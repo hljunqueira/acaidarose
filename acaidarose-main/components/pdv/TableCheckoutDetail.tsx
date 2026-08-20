@@ -1,0 +1,409 @@
+'use client'
+
+import React, { useState } from 'react'
+import { RestaurantTable } from '@/types/tables'
+import { CartItem } from '@/types'
+import { formatCurrency } from '@/lib/i18n/formatters'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { toast } from 'sonner'
+import SplitBillDialog from './SplitBillDialog'
+import PaymentModal from './PaymentModal'
+import TableThermalReceiptDialog from './TableThermalReceiptDialog'
+import { ArrowLeft, Printer, Utensils, Receipt, Split, CheckCircle2 } from 'lucide-react'
+
+interface TableCheckoutDetailProps {
+  table: RestaurantTable
+  allTables: RestaurantTable[]
+  storePhone?: string | null
+  onBack: () => void
+  onSelectOtherTable: (t: RestaurantTable) => void
+  onAddMoreItems: () => void
+  onTableUpdated: () => void
+}
+
+export default function TableCheckoutDetail({
+  table,
+  allTables,
+  storePhone,
+  onBack,
+  onSelectOtherTable,
+  onAddMoreItems,
+  onTableUpdated,
+}: TableCheckoutDetailProps) {
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [targetTableId, setTargetTableId] = useState('')
+  const [splitBillOpen, setSplitBillOpen] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  // Modal de Cupom Térmico / Pré-Conta / Ficha de Produção
+  const [thermalReceiptOpen, setThermalReceiptOpen] = useState(false)
+  const [thermalType, setThermalType] = useState<'PRE_CONTA' | 'FICHA_PRODUCAO'>('PRE_CONTA')
+
+  const items = table.items || []
+  const total = table.total || items.reduce((acc, it) => acc + (it.lineTotal || 0), 0)
+  const occupiedTables = allTables.filter((t) => t.status === 'OCCUPIED')
+  const availableTargetTables = allTables.filter((t) => t.id !== table.id)
+
+  const handleTransfer = async () => {
+    if (!targetTableId) {
+      toast.error('Selecione a mesa de destino')
+      return
+    }
+
+    try {
+      const res = await fetch('/api/tables/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromTableId: table.id,
+          toTableId: targetTableId,
+        }),
+      })
+
+      if (!res.ok) throw new Error('Falha ao transferir itens')
+      toast.success('Itens transferidos para a nova mesa!')
+      setTransferOpen(false)
+      onTableUpdated()
+      onBack()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao transferir')
+    }
+  }
+
+  const handleRemoveItem = async (itemId: string) => {
+    const updatedItems = items.filter((it) => it.id !== itemId)
+    const newTotal = updatedItems.reduce((acc, it) => acc + (it.lineTotal || 0), 0)
+
+    try {
+      if (updatedItems.length === 0) {
+        await fetch(`/api/tables/${table.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'CLOSE' }),
+        })
+        toast.info(`Mesa ${table.number} desocupada.`)
+        onTableUpdated()
+        onBack()
+      } else {
+        await fetch(`/api/tables/${table.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: updatedItems, total: +newTotal.toFixed(2) }),
+        })
+        toast.success('Item removido da comanda!')
+        onTableUpdated()
+      }
+    } catch {
+      toast.error('Erro ao atualizar mesa')
+    }
+  }
+
+  const handlePrintPreReceipt = () => {
+    setThermalType('PRE_CONTA')
+    setThermalReceiptOpen(true)
+  }
+
+  const handlePrintKitchen = () => {
+    setThermalType('FICHA_PRODUCAO')
+    setThermalReceiptOpen(true)
+  }
+
+  const handleFinalizePayment = async (method: any, customer: { name: string; phone: string }) => {
+    setSubmitting(true)
+    try {
+      // 1. Gravar pedido como pago no histórico de comandas
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: table.tenantId,
+          items: table.items,
+          paymentMethod: method,
+          customerName: customer.name || `Cliente Mesa ${table.number.toString().padStart(2, '0')}`,
+          customerPhone: customer.phone,
+          isTableOrder: true,
+          tableNumber: `Mesa ${table.number.toString().padStart(2, '0')}`,
+          status: 'PAID',
+        }),
+      })
+
+      // 2. Liberar a mesa
+      await fetch(`/api/tables/${table.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'CLOSE' }),
+      })
+
+      toast.success(`Mesa ${table.number} recebida e desocupada com sucesso!`)
+      setPaymentOpen(false)
+      onTableUpdated()
+      onBack()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao finalizar')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Barra de Retorno */}
+      <div className="flex items-center justify-between pb-2 border-b border-purple-100">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onBack}
+          className="text-xs font-bold border-purple-200 text-purple-950 hover:bg-purple-50 gap-1.5 cursor-pointer"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Voltar para Salão de Mesas</span>
+        </Button>
+
+        <div className="text-xs font-bold text-muted-foreground">
+          Atendente Responsável: <span className="text-purple-900 font-black">{table.assignedStaffName || 'Geral'}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Coluna Esquerda: Seletor Rápido de Mesas Ativas */}
+        <div className="lg:col-span-2 space-y-2">
+          <div className="text-[10px] font-black uppercase text-purple-950 px-1">
+            Mesas Ativas ({occupiedTables.length})
+          </div>
+          <div className="space-y-2">
+            {occupiedTables.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onSelectOtherTable(t)}
+                className={`w-full p-3 rounded-2xl border-2 text-center transition-all cursor-pointer ${
+                  t.id === table.id
+                    ? 'bg-purple-700 text-white border-purple-800 shadow-md font-black'
+                    : 'bg-white text-purple-950 border-purple-100 hover:border-purple-300 font-bold'
+                }`}
+              >
+                <div className="text-sm font-black">{t.number}</div>
+                <div className="text-[10px] opacity-80 truncate">{t.nickname || `Mesa ${t.number}`}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Coluna Central: Comanda da Mesa */}
+        <div className="lg:col-span-6 bg-white rounded-3xl border border-purple-100 p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            {/* Header da Mesa */}
+            <div className="flex items-center justify-between pb-4 border-b border-purple-100">
+              <div>
+                <h2 className="text-lg font-black text-foreground">
+                  Mesa {table.number.toString().padStart(2, '0')}
+                </h2>
+                <span className="text-xs text-muted-foreground font-semibold">
+                  Ativada às {table.activatedAt || '14:02'}
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTransferOpen(true)}
+                className="text-xs border-purple-200 text-purple-900 font-bold hover:bg-purple-50 cursor-pointer"
+              >
+                ⇄ Transferir Itens
+              </Button>
+            </div>
+
+            {/* Tabela de Itens Consumidos */}
+            <div className="my-4 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-purple-100 text-purple-950 font-bold uppercase text-[10px]">
+                  <tr>
+                    <th className="py-2">Qtde</th>
+                    <th className="py-2">Item</th>
+                    <th className="py-2 text-right">Unit.</th>
+                    <th className="py-2 text-right">Valor</th>
+                    <th className="py-2 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-purple-50">
+                  {items.map((item, idx) => (
+                    <tr key={item.id || idx} className="hover:bg-purple-50/20">
+                      <td className="py-3 font-bold text-purple-900 font-mono">1x</td>
+                      <td className="py-3">
+                        <div className="font-bold text-foreground">{item.container?.name || 'Açaí Personalizado'}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {item.bases?.map((b: any) => b.name).join(', ')}
+                          {item.toppings && item.toppings.length > 0 && ` + ${item.toppings.map((t: any) => t.name).join(', ')}`}
+                        </div>
+                      </td>
+                      <td className="py-3 text-right text-muted-foreground font-mono">
+                        {formatCurrency(item.lineTotal || 0)}
+                      </td>
+                      <td className="py-3 text-right font-black text-purple-950 font-mono">
+                        {formatCurrency(item.lineTotal || 0)}
+                      </td>
+                      <td className="py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="h-6 w-6 rounded-full hover:bg-red-100 text-red-500 hover:text-red-700 inline-flex items-center justify-center font-bold text-xs cursor-pointer"
+                          title="Remover item da mesa"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={onAddMoreItems}
+            className="w-full h-10 border-dashed border-purple-300 text-purple-900 font-bold text-xs hover:bg-purple-50 cursor-pointer"
+          >
+            + Adicionar Mais Itens / Açaís
+          </Button>
+        </div>
+
+        {/* Coluna Direita: Painel de Fechamento de Conta */}
+        <div className="lg:col-span-4 bg-white rounded-3xl border-2 border-purple-100 p-5 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="text-sm font-black text-foreground border-b border-purple-100 pb-3">
+              Fechamento de Conta
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Valor Consumido:</span>
+                <span className="font-bold text-foreground">{formatCurrency(total)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Taxa de Serviço:</span>
+                <span className="font-bold text-foreground">€ 0,00</span>
+              </div>
+            </div>
+
+            {/* Total em Destaque */}
+            <div className="pt-3 border-t border-dashed border-purple-200 text-center">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase">Total a Pagar</div>
+              <div className="text-3xl font-black text-purple-950 mt-1">{formatCurrency(total)}</div>
+            </div>
+          </div>
+
+          {/* Botões de Ação do Fechamento */}
+          <div className="space-y-2.5 pt-4 border-t border-purple-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSplitBillOpen(true)}
+              className="w-full text-xs font-bold border-purple-200 text-purple-900 hover:bg-purple-50 gap-1.5 cursor-pointer"
+            >
+              <Split className="h-3.5 w-3.5" />
+              <span>Dividir Conta (Split Bill)</span>
+            </Button>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrintPreReceipt}
+                className="text-xs font-bold text-purple-900 border-purple-200 hover:bg-purple-50 gap-1 cursor-pointer"
+              >
+                <Receipt className="h-3.5 w-3.5" />
+                <span>Pré-Conta (Talão)</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrintKitchen}
+                className="text-xs font-bold text-purple-900 border-purple-200 hover:bg-purple-50 gap-1 cursor-pointer"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>Ficha Copa</span>
+              </Button>
+            </div>
+
+            <Button
+              type="button"
+              onClick={() => setPaymentOpen(true)}
+              className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm shadow-md cursor-pointer"
+            >
+              Receber e Finalizar
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de Transferência */}
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black">
+              Transferir Itens da Mesa {table.number}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2 my-3">
+            <label className="text-xs font-bold">Selecione a Mesa de Destino:</label>
+            <select
+              value={targetTableId}
+              onChange={(e) => setTargetTableId(e.target.value)}
+              className="w-full h-11 px-3.5 rounded-xl border bg-background text-xs font-bold cursor-pointer"
+            >
+              <option value="">Escolha a mesa...</option>
+              {availableTargetTables.map((t) => (
+                <option key={t.id} value={t.id}>
+                  Mesa {t.number} ({t.nickname || (t.status === 'AVAILABLE' ? 'Livre' : 'Ocupada')})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setTransferOpen(false)}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleTransfer} className="bg-purple-700 text-white font-bold cursor-pointer">
+              Confirmar Transferência
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Divisão de Conta */}
+      <SplitBillDialog
+        open={splitBillOpen}
+        onOpenChange={setSplitBillOpen}
+        total={total}
+        tableNumber={table.number}
+        onConfirmSplit={() => {
+          setPaymentOpen(true)
+        }}
+      />
+
+      {/* Modal de Pagamento com Troco */}
+      <PaymentModal
+        open={paymentOpen}
+        onOpenChange={setPaymentOpen}
+        total={total}
+        storePhone={storePhone}
+        submitting={submitting}
+        onPay={handleFinalizePayment}
+      />
+
+      {/* Modal de Cupom Térmico Não Fiscal 80mm */}
+      <TableThermalReceiptDialog
+        open={thermalReceiptOpen}
+        onOpenChange={setThermalReceiptOpen}
+        table={table}
+        type={thermalType}
+        storePhone={storePhone}
+      />
+    </div>
+  )
+}

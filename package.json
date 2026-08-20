@@ -1,0 +1,10 @@
+{
+  "name": "acaidarose-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix acaidarose-main",
+    "build": "npm run build --prefix acaidarose-main",
+    "start": "npm run start --prefix acaidarose-main"
+  }
+}
