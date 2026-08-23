@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Utensils, Search, Info, ShoppingBag } from 'lucide-react'
+import { Utensils, Search, Info, Bell, ShoppingBag } from 'lucide-react'
 
 export type CustomerTabId = 'menu' | 'search' | 'more'
 
@@ -12,6 +12,8 @@ interface CustomerBottomNavProps {
   cartCount: number
   cartTotal: number
   onOpenCart: () => void
+  isTable?: boolean
+  onCallWaiter?: () => void
 }
 
 export default function CustomerBottomNav({
@@ -20,6 +22,8 @@ export default function CustomerBottomNav({
   cartCount,
   cartTotal,
   onOpenCart,
+  isTable,
+  onCallWaiter,
 }: CustomerBottomNavProps) {
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 bg-[#160228]/95 backdrop-blur-xl border-t border-white/15 shadow-2xl">
@@ -42,8 +46,8 @@ export default function CustomerBottomNav({
         </div>
       )}
 
-      {/* Barra de 3 Abas com Ícones Grandes e Visíveis */}
-      <nav className="max-w-xl mx-auto grid grid-cols-3 py-2.5 text-center select-none">
+      {/* Barra de Navegação com 3 ou 4 Colunas se for Mesa */}
+      <nav className={`max-w-xl mx-auto grid ${isTable ? 'grid-cols-4' : 'grid-cols-3'} py-2 text-center select-none`}>
         <button
           type="button"
           onClick={() => onSelectTab('menu')}
@@ -56,9 +60,9 @@ export default function CustomerBottomNav({
           <div className={`p-1.5 rounded-2xl transition-all ${
             activeTab === 'menu' ? 'bg-fuchsia-500/20 text-fuchsia-300' : 'group-hover:bg-white/5'
           }`}>
-            <Utensils className="h-6 w-6" />
+            <Utensils className="h-5.5 w-5.5" />
           </div>
-          <span className="text-xs font-black mt-1">Cardápio</span>
+          <span className="text-[11px] font-black mt-0.5">Cardápio</span>
         </button>
 
         <button
@@ -73,10 +77,24 @@ export default function CustomerBottomNav({
           <div className={`p-1.5 rounded-2xl transition-all ${
             activeTab === 'search' ? 'bg-fuchsia-500/20 text-fuchsia-300' : 'group-hover:bg-white/5'
           }`}>
-            <Search className="h-6 w-6" />
+            <Search className="h-5.5 w-5.5" />
           </div>
-          <span className="text-xs font-black mt-1">Buscar</span>
+          <span className="text-[11px] font-black mt-0.5">Buscar</span>
         </button>
+
+        {/* Botão de Chamar Atendente na Barra Inferior para Mesas */}
+        {isTable && onCallWaiter && (
+          <button
+            type="button"
+            onClick={onCallWaiter}
+            className="flex flex-col items-center justify-center py-1 transition-all cursor-pointer group text-pink-400 hover:text-pink-300 font-bold active:scale-95"
+          >
+            <div className="p-1.5 rounded-2xl bg-gradient-to-r from-pink-600 to-fuchsia-600 text-white shadow-md shadow-pink-600/30 transition-all group-hover:scale-110">
+              <Bell className="h-5.5 w-5.5 animate-bounce" />
+            </div>
+            <span className="text-[11px] font-black mt-0.5 text-pink-300">Chamar</span>
+          </button>
+        )}
 
         <button
           type="button"
@@ -90,9 +108,9 @@ export default function CustomerBottomNav({
           <div className={`p-1.5 rounded-2xl transition-all ${
             activeTab === 'more' ? 'bg-fuchsia-500/20 text-fuchsia-300' : 'group-hover:bg-white/5'
           }`}>
-            <Info className="h-6 w-6" />
+            <Info className="h-5.5 w-5.5" />
           </div>
-          <span className="text-xs font-black mt-1">Sobre a Loja</span>
+          <span className="text-[11px] font-black mt-0.5">Sobre</span>
         </button>
       </nav>
     </div>

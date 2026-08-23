@@ -7,12 +7,12 @@ export async function GET(req: NextRequest) {
     const tenantId = searchParams.get('tenantId') || 'tenant-torres-novas'
     const config = (mockStore.qrCodeConfigs || {})[tenantId] || {
       mode: 'ORDER_EMISSION',
-      useDelivery: true,
       allowMbwayPayment: true,
       tableMode: 'FIXED_QR',
       customerNameRule: 'OPTIONAL',
       customerPhoneRule: 'REQUIRED',
       customerNifRule: 'OPTIONAL',
+      allowInternationalPhone: true,
       bannerUrl: '',
     }
     return NextResponse.json({ config })

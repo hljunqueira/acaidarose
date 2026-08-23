@@ -32,11 +32,11 @@ import MenuHierarchyView from '@/components/admin/menu/MenuHierarchyView'
 import MenuCategoriesAdmin from '@/components/admin/menu/MenuCategoriesAdmin'
 import MenuSectionsAdmin from '@/components/admin/menu/MenuSectionsAdmin'
 import MenuHighlightsAdmin from '@/components/admin/menu/MenuHighlightsAdmin'
-import MenuOffersAdmin from '@/components/admin/menu/MenuOffersAdmin'
 import ReportsModuleView from '@/components/admin/reports/ReportsModuleView'
 import QRCodeConfigView from '@/components/admin/qrcode/QRCodeConfigView'
 import QRCodeOrdersAdmin from '@/components/admin/orders/QRCodeOrdersAdmin'
 import FranchiseCorporatePage from '@/components/admin/franchise/FranchiseCorporatePage'
+import FranchiseRequestsView from '@/components/admin/franchise/FranchiseRequestsView'
 import StoreCompanySettingsView from '@/components/admin/company/StoreCompanySettingsView'
 import UsersAdmin from '@/components/admin/users/UsersAdmin'
 
@@ -213,12 +213,18 @@ export default function HomePage() {
           {view === 'menu_categories' && isAdmin && <MenuCategoriesAdmin tenantId={activeTenantId} />}
           {view === 'menu_menus' && isAdmin && <MenuSectionsAdmin tenantId={activeTenantId} />}
           {view === 'menu_highlights' && isAdmin && <MenuHighlightsAdmin tenantId={activeTenantId} />}
-          {view === 'menu_offers' && isAdmin && <MenuOffersAdmin tenantId={activeTenantId} />}
           {view === 'franchise' && isSuperAdmin && <FranchiseCorporatePage />}
+          {view === 'franchise_requests' && isAdmin && (
+            <FranchiseRequestsView
+              tenantId={activeTenantId}
+              currentUser={loggedUser}
+              onNavigateToMenu={() => setView('menu')}
+            />
+          )}
           {view === 'company' && isAdmin && <StoreCompanySettingsView tenantId={activeTenantId} />}
           {view === 'reports' && <ReportsModuleView tenantId={activeTenantId} currentUser={loggedUser} />}
           {view === 'qrcode_config' && isAdmin && <QRCodeConfigView tenantId={activeTenantId} />}
-          {view === 'users' && isAdmin && <UsersAdmin currentUser={loggedUser} />}
+          {view === 'users' && isAdmin && <UsersAdmin tenantId={activeTenantId} currentUser={loggedUser} />}
         </main>
       </div>
 

@@ -226,6 +226,107 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
         </div>
       </div>
 
+      {/* 3. Selos de Conformidade Alimentar & Tabela Nutricional Oficial */}
+      <div className="p-6 md:p-8 rounded-3xl bg-[#1f0333]/90 border border-white/15 shadow-2xl space-y-6 text-white text-left">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🌿</span>
+              <h3 className="text-lg font-black text-white tracking-tight">Qualidade & Selos de Conformidade Oficial</h3>
+            </div>
+            <p className="text-xs text-purple-200/70 mt-0.5">
+              Polpa de açaí pura, sustentável e com alto valor nutricional
+            </p>
+          </div>
+          <Badge className="bg-gradient-to-r from-pink-600 to-purple-600 text-white font-black text-[10px] uppercase px-3 py-1 self-start sm:self-auto border-0">
+            Padrão Oficial Açaí da Rose
+          </Badge>
+        </div>
+
+        {/* 6 Selos de Qualidade */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+            <span className="text-xl">🌱</span>
+            <div className="text-[11px] font-black text-white">100% VEGAN</div>
+          </div>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+            <span className="text-xl">🍇</span>
+            <div className="text-[11px] font-black text-white">Antioxidantes</div>
+          </div>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+            <span className="text-xl">🥛</span>
+            <div className="text-[11px] font-black text-white">Sem Leite</div>
+          </div>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+            <span className="text-xl">🌾</span>
+            <div className="text-[11px] font-black text-white">Sem Glúten</div>
+          </div>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+            <span className="text-xl">🛡️</span>
+            <div className="text-[11px] font-black text-white">Sem Conservantes</div>
+          </div>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+            <span className="text-xl">🧬</span>
+            <div className="text-[11px] font-black text-white">Sem OGM</div>
+          </div>
+        </div>
+
+        {/* Ingredientes & Tabela Nutricional */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+          {/* Ingredientes */}
+          <div className="lg:col-span-5 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            <div className="text-xs font-black uppercase text-pink-400 tracking-wider">
+              Ingredientes Oficiais (PT):
+            </div>
+            <p className="text-xs text-purple-200/90 leading-relaxed font-medium">
+              Polpa de Açaí premium, Água, Glucose, Açúcar demerara, Extrato natural de Guaraná, Estabilizante (goma de guar, goma tara, Carboximetilcelulose), Dextrose, Maltodextrina e Ácido cítrico.
+            </p>
+          </div>
+
+          {/* Tabela Nutricional */}
+          <div className="lg:col-span-7 border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-white/10 text-purple-200 text-[10px] uppercase font-black">
+                <tr>
+                  <th className="p-2.5">Componente (Porção 100g)</th>
+                  <th className="p-2.5 text-right">Quantidade</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 text-xs">
+                <tr className="bg-white/5 font-black text-pink-300">
+                  <td className="p-2.5">Valor Energético / Energia</td>
+                  <td className="p-2.5 text-right font-mono">111 kcal / 469 kJ</td>
+                </tr>
+                <tr>
+                  <td className="p-2.5 text-purple-200">Proteínas</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-white">0,5 g</td>
+                </tr>
+                <tr>
+                  <td className="p-2.5 text-purple-200">Lípidos (dos quais saturados)</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-white">2,3 g (0,6 g)</td>
+                </tr>
+                <tr>
+                  <td className="p-2.5 text-purple-200">Hidratos de Carbono (dos quais açúcares)</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-white">20,9 g (20,7 g)</td>
+                </tr>
+                <tr>
+                  <td className="p-2.5 text-purple-200">Fibra Alimentar</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-white">2,5 g</td>
+                </tr>
+                <tr>
+                  <td className="p-2.5 text-purple-200">Cálcio / Vitamina C / Potássio</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-white">103 mg / 13 mg / 28,2 mg</td>
+                </tr>
+                <tr>
+                  <td className="p-2.5 text-purple-200">Sal</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-white">0,05 g</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       {/* Modal de Avaliação Corrigido com Botões Perfeitos */}
       <Dialog open={ratingOpen} onOpenChange={setRatingOpen}>
         <DialogContent className="max-w-md p-6 bg-[#160228] text-white border border-white/20 rounded-3xl shadow-2xl">

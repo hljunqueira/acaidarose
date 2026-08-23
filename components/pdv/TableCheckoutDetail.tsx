@@ -36,6 +36,7 @@ export default function TableCheckoutDetail({
   const [splitBillOpen, setSplitBillOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [selectedItemForDetail, setSelectedItemForDetail] = useState<any | null>(null)
 
   // Modal de Cupom Térmico / Pré-Conta / Ficha de Produção
   const [thermalReceiptOpen, setThermalReceiptOpen] = useState(false)
@@ -226,19 +227,38 @@ export default function TableCheckoutDetail({
                 <thead className="border-b border-purple-100 dark:border-white/10 text-purple-800 dark:text-purple-200 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="py-2">Qtde</th>
-                    <th className="py-2">Item</th>
+                    <th className="py-2">Item / Cliente</th>
                     <th className="py-2 text-right">Unit.</th>
                     <th className="py-2 text-right">Valor</th>
                     <th className="py-2 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-purple-100 dark:divide-white/10">
-                  {items.map((item, idx) => (
+                  {items.map((item: any, idx) => (
                     <tr key={item.id || idx} className="hover:bg-purple-50/50 dark:hover:bg-white/5">
                       <td className="py-3 font-bold text-purple-700 dark:text-pink-300 font-mono">1x</td>
                       <td className="py-3">
-                        <div className="font-bold text-purple-950 dark:text-white">{item.container?.name || 'Açaí Personalizado'}</div>
-                        <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-purple-950 dark:text-white">
+                            {item.containerName || item.container?.name || 'Açaí Personalizado'}
+                          </span>
+                          {item.customerName && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-purple-100 dark:bg-pink-950/60 border border-purple-200 dark:border-pink-500/40 text-[10px] font-bold text-purple-900 dark:text-pink-300">
+                              👤 {item.customerName}
+                            </span>
+                          )}
+                          {item.paymentStatus === 'PAID' && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/40 text-[9px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                              ✓ Pago MB WAY
+                            </span>
+                          )}
+                          {item.orderedAt && (
+                            <span className="text-[10px] text-purple-700/60 dark:text-purple-300/60 font-mono">
+                              {item.orderedAt}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70 mt-0.5">
                           {item.bases?.map((b: any) => b.name).join(', ')}
                           {item.toppings && item.toppings.length > 0 && ` + ${item.toppings.map((t: any) => t.name).join(', ')}`}
                         </div>
@@ -250,14 +270,24 @@ export default function TableCheckoutDetail({
                         {formatCurrency(item.lineTotal || 0)}
                       </td>
                       <td className="py-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="h-6 w-6 rounded-full hover:bg-red-500/20 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 inline-flex items-center justify-center font-bold text-xs cursor-pointer"
-                          title="Remover item da mesa"
-                        >
-                          ✕
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedItemForDetail(item)}
+                            className="h-6 w-6 rounded-lg hover:bg-purple-100 dark:hover:bg-white/10 text-purple-700 dark:text-purple-300 inline-flex items-center justify-center font-bold text-xs cursor-pointer"
+                            title="Ver detalhes dos acompanhamentos"
+                          >
+                            👁️
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="h-6 w-6 rounded-full hover:bg-red-500/20 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 inline-flex items-center justify-center font-bold text-xs cursor-pointer"
+                            title="Remover item da mesa"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -295,7 +325,7 @@ export default function TableCheckoutDetail({
 
             {/* Total em Destaque */}
             <div className="pt-3 border-t border-dashed border-purple-200 dark:border-white/15 text-center">
-              <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70 font-bold uppercase">Total a Pagar</div>
+              <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70 font-bold uppercase">Total Consumido</div>
               <div className="text-3xl font-black text-purple-950 dark:text-white mt-1 font-mono">{formatCurrency(total)}</div>
             </div>
           </div>
@@ -333,13 +363,43 @@ export default function TableCheckoutDetail({
               </Button>
             </div>
 
-            <Button
-              type="button"
-              onClick={() => setPaymentOpen(true)}
-              className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer"
-            >
-              Receber e Finalizar
-            </Button>
+            {items.length > 0 && items.every((it: any) => it.paymentStatus === 'PAID') ? (
+              /* Se todos os itens da mesa já foram pagos online via MB WAY */
+              <Button
+                type="button"
+                disabled={submitting}
+                onClick={async () => {
+                  setSubmitting(true)
+                  try {
+                    await fetch(`/api/tables/${table.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'CLOSE' }),
+                    })
+                    toast.success(`Mesa ${table.number} desocupada e liberada com sucesso!`)
+                    onTableUpdated()
+                    onBack()
+                  } catch {
+                    toast.error('Erro ao liberar mesa')
+                  } finally {
+                    setSubmitting(false)
+                  }
+                }}
+                className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span>✓ 100% Pago Online (Liberar Mesa)</span>
+              </Button>
+            ) : (
+              /* Se houver saldo pendente (lançado manualmente no caixa) */
+              <Button
+                type="button"
+                onClick={() => setPaymentOpen(true)}
+                className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer"
+              >
+                Receber e Finalizar
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -400,6 +460,70 @@ export default function TableCheckoutDetail({
         submitting={submitting}
         onPay={handleFinalizePayment}
       />
+
+      {/* Modal de Detalhes do Item da Mesa (Raio-X de Ingredientes) */}
+      <Dialog open={Boolean(selectedItemForDetail)} onOpenChange={(open) => !open && setSelectedItemForDetail(null)}>
+        <DialogContent className="max-w-md p-5 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl">
+          <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
+            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+              {selectedItemForDetail?.containerName || selectedItemForDetail?.container?.name || 'Açaí Personalizado'}
+            </DialogTitle>
+            <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-semibold">
+              Mesa {table.number} · Cliente: <strong>{selectedItemForDetail?.customerName || 'Mesa'}</strong>
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            {/* Bases */}
+            {selectedItemForDetail?.bases && selectedItemForDetail.bases.length > 0 && (
+              <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-1">
+                <div className="text-[10px] font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
+                  Bases & Cremes Selecionados
+                </div>
+                <div className="font-bold text-purple-950 dark:text-white">
+                  {selectedItemForDetail.bases.map((b: any) => b.name).join(', ')}
+                </div>
+              </div>
+            )}
+
+            {/* Toppings / Frutas / Caldas */}
+            {selectedItemForDetail?.toppings && selectedItemForDetail.toppings.length > 0 && (
+              <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-1">
+                <div className="text-[10px] font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
+                  Acompanhamentos / Frutas / Caldas
+                </div>
+                <div className="font-bold text-purple-950 dark:text-white">
+                  {selectedItemForDetail.toppings.map((t: any) => t.name).join(', ')}
+                </div>
+              </div>
+            )}
+
+            {/* Observações */}
+            {selectedItemForDetail?.notes && (
+              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-950 dark:text-amber-200 italic">
+                <b>Observação:</b> {selectedItemForDetail.notes}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-purple-100/50 dark:bg-white/5 font-black text-sm">
+              <span>Valor do Item:</span>
+              <span className="text-purple-950 dark:text-pink-300 font-mono">
+                {formatCurrency(selectedItemForDetail?.lineTotal || 0)}
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setSelectedItemForDetail(null)}
+              className="w-full bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl"
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Cupom Térmico Não Fiscal 80mm */}
       <TableThermalReceiptDialog

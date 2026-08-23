@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Check, Plus, Minus, X, Heart, AlertCircle, Tag } from 'lucide-react'
-import { useOffersStore } from '@/lib/stores/offersStore'
+import { Check, Plus, Minus, X, Heart, AlertCircle } from 'lucide-react'
 
 interface CustomerProductDetailProps {
   container: ProductContainer | null
@@ -36,22 +35,6 @@ export default function CustomerProductDetail({
   viewOnly = false,
 }: CustomerProductDetailProps) {
   if (!container) return null
-
-  const { getActiveOffersForTenant } = useOffersStore()
-  const activeOffers = useMemo(() => getActiveOffersForTenant(tenantId), [getActiveOffersForTenant, tenantId])
-
-  const matchingOffer = useMemo(() => {
-    return activeOffers.find(
-      (off) =>
-        off.productId === container.id ||
-        off.productName?.toLowerCase().trim() === container.name.toLowerCase().trim() ||
-        (container.name.includes('250') && off.productName?.includes('250')) ||
-        (container.name.includes('350') && off.productName?.includes('350')) ||
-        (container.name.includes('500') && off.productName?.includes('500')) ||
-        (container.name.includes('750') && off.productName?.includes('750')) ||
-        (container.name.includes('1') && off.productName?.includes('1'))
-    )
-  }, [activeOffers, container])
 
   const [selectedBases, setSelectedBases] = useState<ProductBase[]>([catalog.bases?.[0]].filter(Boolean))
   const [selectedToppings, setSelectedToppings] = useState<ProductTopping[]>([])
@@ -137,8 +120,8 @@ export default function CustomerProductDetail({
     }
   }
 
-  // Preço Total com Desconto da Oferta (se houver)
-  const basePrice = matchingOffer ? matchingOffer.discountedPrice : container.precoBase
+  // Preço Total
+  const basePrice = container.precoBase
   const extraPrice = selectedPremiums.reduce((acc, t) => acc + (t.priceTierLow || t.precoExtra || t.precoCobrado || 1.0), 0)
   const unitTotal = basePrice + extraPrice
   const lineTotal = +(unitTotal * quantity).toFixed(2)
@@ -188,30 +171,10 @@ export default function CustomerProductDetail({
 
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black text-sm text-white">{container.name}</span>
-                  {matchingOffer && (
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-pink-500 text-white">
-                      -{matchingOffer.discountPercent}%
-                    </span>
-                  )}
-                </div>
-                <div className="text-right">
-                  {matchingOffer ? (
-                    <div>
-                      <span className="text-[10px] text-purple-300/60 line-through font-mono mr-1">
-                        {formatCurrency(container.precoBase)}
-                      </span>
-                      <span className="font-black text-pink-300 font-mono text-sm">
-                        {formatCurrency(matchingOffer.discountedPrice)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="font-black text-fuchsia-300 font-mono text-sm">
-                      {formatCurrency(container.precoBase)}
-                    </span>
-                  )}
-                </div>
+                <span className="font-black text-sm text-white">{container.name}</span>
+                <span className="font-black text-fuchsia-300 font-mono text-sm">
+                  {formatCurrency(container.precoBase)}
+                </span>
               </div>
               <p className="text-[11px] text-purple-200/70">
                 {isUnlimited
@@ -437,21 +400,11 @@ export default function CustomerProductDetail({
         {/* Rodapé Fixo com Preço Total e Botão Condicional */}
         <div className="px-6 py-4 border-t border-white/10 bg-[#1e0333] flex items-center justify-between gap-4">
           <div>
-            <div className="text-[10px] text-purple-300 font-bold uppercase flex items-center gap-1.5">
-              <span>{viewOnly ? 'Preço Base' : 'Total do Item'}</span>
-              {matchingOffer && (
-                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-pink-500 text-white">
-                  -{matchingOffer.discountPercent}%
-                </span>
-              )}
+            <div className="text-[10px] text-purple-300 font-bold uppercase">
+              {viewOnly ? 'Preço Base' : 'Total do Item'}
             </div>
-            <div className="text-xl sm:text-2xl font-black text-fuchsia-300 font-mono flex items-center gap-2">
-              <span>{formatCurrency(viewOnly ? basePrice : lineTotal)}</span>
-              {matchingOffer && (
-                <span className="text-xs text-purple-300/60 line-through font-normal">
-                  {formatCurrency((container.precoBase + extraPrice) * quantity)}
-                </span>
-              )}
+            <div className="text-xl sm:text-2xl font-black text-fuchsia-300 font-mono">
+              {formatCurrency(viewOnly ? basePrice : lineTotal)}
             </div>
           </div>
 

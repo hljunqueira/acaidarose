@@ -32,7 +32,7 @@ export default function CustomerMenuHeader({
           />
         </Link>
 
-        {/* Informações da Loja & Comanda/Mesa (Apenas no Modo Comanda Digital via QR Code) */}
+        {/* Informações da Loja & Comanda/Mesa */}
         {isTable ? (
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Badge da Loja Selecionada */}
@@ -43,9 +43,9 @@ export default function CustomerMenuHeader({
               </div>
             )}
 
-            {/* Badge da Mesa / Comanda */}
+            {/* Badge da Mesa */}
             {tableLabel && (
-              <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 text-white font-black text-xs shadow-lg shadow-pink-600/30 animate-pulse">
+              <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 text-white font-black text-xs shadow-lg shadow-pink-600/30">
                 <Utensils className="h-3.5 w-3.5" />
                 <span>{tableLabel}</span>
               </div>

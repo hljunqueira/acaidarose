@@ -52,7 +52,7 @@ export async function createOrder(payload: any): Promise<Order> {
     createdAt: new Date().toISOString(),
   }
 
-  // Sincronizar mesa física no salão se for pedido de mesa
+  // Sincronizar mesa física no salão se for pedido de mesa e estiver PAGO ou ativado
   if (newOrder.tableNumber && newOrder.isTableOrder !== false) {
     const tableDigits = newOrder.tableNumber.replace(/\D/g, '')
     const tableNum = parseInt(tableDigits)
@@ -61,10 +61,25 @@ export async function createOrder(payload: any): Promise<Order> {
         (t) => t.tenantId === payload.tenantId && t.number === tableNum
       )
       if (targetTable) {
-        targetTable.status = 'OCCUPIED'
-        targetTable.items = newOrder.items || []
-        targetTable.total = total
-        targetTable.activatedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        // Se o pedido já estiver pago ou criado pelo caixa, adiciona aos itens acumulados da mesa
+        if (newOrder.paymentStatus === 'PAID' || payload.source !== 'QRCODE') {
+          const currentItems = targetTable.items || []
+          const newItems = (newOrder.items || []).map((it: any) => ({
+            ...it,
+            customerName: newOrder.customerName || 'Cliente',
+            orderedAt: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+            orderNumber: newOrder.orderNumber,
+            paymentStatus: newOrder.paymentStatus || 'PAID',
+            paymentMethod: newOrder.paymentMethod,
+          }))
+
+          targetTable.items = [...currentItems, ...newItems]
+          targetTable.total = +(targetTable.items.reduce((s, i) => s + (Number(i.lineTotal) || 0), 0)).toFixed(2)
+          targetTable.status = 'OCCUPIED'
+          if (!targetTable.activatedAt) {
+            targetTable.activatedAt = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+          }
+        }
       }
     }
   }

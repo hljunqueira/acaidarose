@@ -5,14 +5,22 @@ import { v4 as uuidv4 } from 'uuid'
 
 export async function getCatalogByTenant(tenantId: string = DEFAULT_TENANT.id): Promise<CatalogData> {
   const store = getMockStore()
-  const overrides = store.storeProductOverrides[tenantId] || {}
+  const overrides = (store.storeProductOverrides || {})[tenantId] || {}
+  const priceOverrides = ((store as any).storePriceOverrides || {})[tenantId] || {}
 
   const mapItemAvailability = (item: any) => {
     const isOverrideSet = overrides[item.id] !== undefined
     const isAvailableInStore = isOverrideSet ? overrides[item.id] : (item.active !== false)
+    const customPrice =
+      priceOverrides[item.id] ??
+      priceOverrides[item.id.replace('cnt-', 'cont-')] ??
+      priceOverrides[item.id.replace('cont-', 'cnt-')]
     return {
       ...item,
       isAvailableInStore,
+      ...(customPrice !== undefined
+        ? { precoBase: customPrice, price: customPrice, precoCobrado: customPrice }
+        : {}),
     }
   }
 
@@ -25,6 +33,42 @@ export async function getCatalogByTenant(tenantId: string = DEFAULT_TENANT.id): 
     bases: rawBases.map(mapItemAvailability),
     toppings: rawToppings.map(mapItemAvailability),
   }
+}
+
+export async function setStoreProductPrice(
+  tenantId: string,
+  productId: string,
+  newPrice: number
+): Promise<{ success: boolean; tenantId: string; productId: string; newPrice: number }> {
+  const store = getMockStore() as any
+  if (!store.storePriceOverrides) {
+    store.storePriceOverrides = {}
+  }
+  if (!store.storePriceOverrides[tenantId]) {
+    store.storePriceOverrides[tenantId] = {}
+  }
+  const val = Number(newPrice)
+  store.storePriceOverrides[tenantId][productId] = val
+  if (productId.startsWith('cnt-')) {
+    store.storePriceOverrides[tenantId][productId.replace('cnt-', 'cont-')] = val
+  } else if (productId.startsWith('cont-')) {
+    store.storePriceOverrides[tenantId][productId.replace('cont-', 'cnt-')] = val
+  }
+
+  const matching = store.containers.find((c: any) =>
+    c.id === productId ||
+    (productId.includes('500') && c.weightGrams === 500) ||
+    (productId.includes('750') && c.weightGrams === 750) ||
+    (productId.includes('700') && c.weightGrams === 750) ||
+    (productId.includes('350') && c.weightGrams === 350) ||
+    (productId.includes('250') && c.weightGrams === 250) ||
+    (productId.includes('1000') && c.weightGrams === 1000)
+  )
+  if (matching) {
+    store.storePriceOverrides[tenantId][matching.id] = val
+  }
+
+  return { success: true, tenantId, productId, newPrice: val }
 }
 
 export async function toggleStoreItemAvailability(

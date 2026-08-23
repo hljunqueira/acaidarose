@@ -16,7 +16,6 @@ interface TablesManagementViewProps {
 
 export default function TablesManagementView({ tenantId }: TablesManagementViewProps) {
   const [tables, setTables] = useState<RestaurantTable[]>([])
-  const [staffList, setStaffList] = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
 
   // Dialogs
@@ -29,18 +28,11 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [resTables, resStaff] = await Promise.all([
-        fetch(`/api/tables?tenantId=${encodeURIComponent(tenantId)}`),
-        fetch(`/api/staff?tenantId=${encodeURIComponent(tenantId)}`),
-      ])
-
+      const resTables = await fetch(`/api/tables?tenantId=${encodeURIComponent(tenantId)}`)
       const dataTables = await resTables.json()
-      const dataStaff = await resStaff.json()
-
       if (dataTables.tables) setTables(dataTables.tables)
-      if (dataStaff.staff) setStaffList(dataStaff.staff)
     } catch {
-      toast.error('Erro ao carregar mesas e colaboradores')
+      toast.error('Erro ao carregar mesas')
     } finally {
       setLoading(false)
     }
@@ -87,7 +79,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
             Gestão de Mesas
           </h1>
           <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
-            Configuração de mesas, garçons e impressão de QR Codes ({tables.length} mesas)
+            Configure as mesas do salão e imprima as placas de QR Code ({tables.length} mesas registadas)
           </p>
         </div>
 
@@ -117,25 +109,23 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
           <table className="w-full text-left text-xs">
             <thead className="bg-purple-50/70 dark:bg-white/5 border-b border-purple-100 dark:border-white/10 text-purple-950 dark:text-purple-200 font-black uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="py-3.5 px-4">Código</th>
-                <th className="py-3.5 px-4">Apelido</th>
-                <th className="py-3.5 px-4">Serviço (%)</th>
+                <th className="py-3.5 px-4">Mesa</th>
+                <th className="py-3.5 px-4">Apelido / Localização</th>
                 <th className="py-3.5 px-4">Situação</th>
-                <th className="py-3.5 px-4">Garçom Preferido</th>
-                <th className="py-3.5 px-4">QR Code</th>
+                <th className="py-3.5 px-4">QR Code Autoatendimento</th>
                 <th className="py-3.5 px-4 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-purple-100 dark:divide-white/10">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-purple-700 dark:text-purple-300/60 font-bold">
+                  <td colSpan={5} className="py-12 text-center text-purple-700 dark:text-purple-300/60 font-bold">
                     A carregar mesas...
                   </td>
                 </tr>
               ) : tables.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-purple-700/70 dark:text-purple-300/60">
+                  <td colSpan={5} className="py-12 text-center text-purple-700/70 dark:text-purple-300/60">
                     Nenhuma mesa registada nesta unidade. Clique em "+ Adicionar Mesas" para começar.
                   </td>
                 </tr>
@@ -146,35 +136,29 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
                     className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors"
                   >
                     <td className="py-3.5 px-4 font-mono font-black text-sm text-purple-800 dark:text-pink-300">
-                      {t.number}
+                      Mesa {t.number.toString().padStart(2, '0')}
                     </td>
                     <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
                       {t.nickname || `Mesa ${t.number.toString().padStart(2, '0')}`}
                     </td>
-                    <td className="py-3.5 px-4 text-purple-700/80 dark:text-purple-200/70 font-mono">
-                      {t.serviceChargePercent ? `${t.serviceChargePercent.toFixed(1)}%` : '0,00'}
-                    </td>
                     <td className="py-3.5 px-4">
                       <Badge
-                        className={`text-[10px] py-0 px-2 font-bold ${
+                        className={`text-[10px] py-0.5 px-2.5 font-bold ${
                           t.status === 'AVAILABLE'
                             ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
                             : 'bg-pink-100 dark:bg-pink-500/20 text-pink-800 dark:text-pink-300 border border-pink-200 dark:border-pink-500/30'
                         }`}
                       >
-                        {t.status === 'AVAILABLE' ? 'Ativo / Livre' : 'Ocupada'}
+                        {t.status === 'AVAILABLE' ? 'Disponível / Livre' : 'Em Atendimento'}
                       </Badge>
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-purple-900 dark:text-purple-200">
-                      {t.assignedStaffName || '—'}
                     </td>
                     <td className="py-3.5 px-4">
                       <button
                         type="button"
                         onClick={() => handleOpenSingleQR(t)}
-                        className="text-purple-700 dark:text-pink-400 hover:text-purple-900 dark:hover:text-pink-300 font-bold text-xs underline underline-offset-2 cursor-pointer"
+                        className="inline-flex items-center gap-1 text-purple-700 dark:text-pink-400 hover:text-purple-900 dark:hover:text-pink-300 font-bold text-xs underline underline-offset-2 cursor-pointer"
                       >
-                        QR Code
+                        <span>Ver / Imprimir Placa</span>
                       </button>
                     </td>
                     <td className="py-3.5 px-4 text-right space-x-2">
@@ -218,6 +202,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
         open={singleQROpen}
         onOpenChange={setSingleQROpen}
         table={selectedQRTable}
+        tenantId={tenantId}
       />
 
       <BatchTablesQRPrintDialog
@@ -231,7 +216,6 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
         onOpenChange={setAddEditOpen}
         table={editingTable}
         tenantId={tenantId}
-        staffList={staffList}
         onSuccess={fetchData}
       />
     </div>

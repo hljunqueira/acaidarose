@@ -45,6 +45,40 @@ export async function PUT(
   
   order.updatedAt = new Date().toISOString()
 
+  // Se o pedido foi pago e é de mesa, sincronizar itens na mesa
+  if (order.paymentStatus === 'PAID' && order.tableNumber && order.isTableOrder !== false) {
+    const tableDigits = order.tableNumber.replace(/\D/g, '')
+    const tableNum = parseInt(tableDigits)
+    if (!isNaN(tableNum)) {
+      const targetTable = store.tables.find(
+        (t) => t.tenantId === order.tenantId && t.number === tableNum
+      )
+      if (targetTable) {
+        const currentItems = targetTable.items || []
+        const newItems = (order.items || []).map((it: any) => ({
+          ...it,
+          customerName: order.customerName || 'Cliente',
+          orderedAt: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+          orderNumber: order.orderNumber,
+          paymentStatus: 'PAID',
+          paymentMethod: order.paymentMethod,
+        }))
+
+        const existingIds = new Set(currentItems.map((i) => i.id))
+        const itemsToAdd = newItems.filter((i: any) => !existingIds.has(i.id))
+
+        if (itemsToAdd.length > 0) {
+          targetTable.items = [...currentItems, ...itemsToAdd]
+          targetTable.total = +(targetTable.items.reduce((s, i) => s + (Number(i.lineTotal) || 0), 0)).toFixed(2)
+          targetTable.status = 'OCCUPIED'
+          if (!targetTable.activatedAt) {
+            targetTable.activatedAt = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+          }
+        }
+      }
+    }
+  }
+
   return jsonResponse({ order })
 }
 

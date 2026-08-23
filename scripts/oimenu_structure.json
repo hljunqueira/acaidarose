@@ -1,0 +1,2540 @@
+{
+  "tables": [
+    "app_configuration",
+    "app_menu",
+    "app_menu_category",
+    "call_waiter_option",
+    "call_waiter_printer",
+    "card",
+    "category",
+    "configuration",
+    "customer",
+    "deliway_impression",
+    "deliway_item_impression",
+    "developers_auth",
+    "device_log",
+    "event",
+    "feedback",
+    "impression",
+    "notification",
+    "order_vallet",
+    "order_waiter",
+    "order_waiter_option",
+    "payment_flags",
+    "printer",
+    "product",
+    "product_attribute",
+    "product_attribute_option",
+    "product_item",
+    "sale",
+    "sale_account",
+    "sale_attribute",
+    "sale_attribute_option",
+    "sale_extra_item",
+    "sale_extra_item_option",
+    "sale_item",
+    "sale_order",
+    "sale_order_discount",
+    "sale_payment",
+    "sequelizemeta",
+    "square",
+    "store",
+    "store_table",
+    "store_update",
+    "tablet",
+    "temp_product",
+    "user",
+    "user_push_subscription"
+  ],
+  "schemas": {
+    "app_configuration": "CREATE TABLE `app_configuration` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `store_name` varchar(255) DEFAULT NULL,\n  `order_mode` int DEFAULT NULL,\n  `theme` varchar(255) DEFAULT NULL,\n  `color` varchar(255) DEFAULT NULL,\n  `image` varchar(255) DEFAULT NULL,\n  `send_status_delay` int DEFAULT NULL,\n  `print_server_address` varchar(255) DEFAULT NULL,\n  `tablet_printer_enabled` tinyint(1) DEFAULT NULL,\n  `is_search_visible` tinyint(1) DEFAULT NULL,\n  `is_featured_visible` tinyint(1) DEFAULT NULL,\n  `is_about_visible` tinyint(1) DEFAULT NULL,\n  `is_feedback_visible` tinyint(1) DEFAULT NULL,\n  `close_order_enabled` tinyint(1) DEFAULT NULL,\n  `oimenu_printer_id_close_order` int DEFAULT NULL,\n  `power_save_enabled` tinyint(1) DEFAULT NULL,\n  `languages` varchar(255) DEFAULT NULL,\n  `feedback_options` text,\n  `local_server_enabled` tinyint(1) DEFAULT NULL,\n  `local_server_ip` varchar(255) DEFAULT NULL,\n  `local_server_port` int DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `oimenu_printer_id_call_waiter` int DEFAULT NULL,\n  `close_order_block_new_orders` tinyint(1) DEFAULT NULL,\n  `erp_id` int DEFAULT NULL,\n  `oimenu_printer_id_print_duplication` int DEFAULT NULL,\n  `is_close_order_print_detailed` tinyint(1) DEFAULT '0',\n  `is_payment_type_enabled` tinyint(1) NOT NULL DEFAULT '0',\n  `local_printer_enabled` tinyint(1) DEFAULT '0',\n  `is_order_print_enabled` tinyint(1) DEFAULT '1',\n  `is_call_waiter_print_enabled` tinyint(1) DEFAULT '1',\n  `is_the_check_print_enabled` tinyint(1) DEFAULT '1',\n  `is_group_impressions_by_category_enabled` tinyint(1) NOT NULL DEFAULT '0',\n  `is_the_check_detailed` tinyint(1) NOT NULL DEFAULT '0',\n  `is_card_payment_print_enabled` tinyint(1) DEFAULT NULL,\n  `oimenu_printer_id_card_payment` int DEFAULT NULL,\n  `is_card_linked_to_table` tinyint(1) DEFAULT '0',\n  `store_status_id` int DEFAULT NULL,\n  `is_overdue` tinyint(1) DEFAULT NULL,\n  `is_call_vallet_print_enabled` tinyint(1) DEFAULT '1',\n  `oimenu_printer_id_call_vallet` int DEFAULT NULL,\n  `is_min_max_product_by_order` tinyint(1) DEFAULT '0',\n  `is_min_quantity_all_you_can_eat_by_table` tinyint(1) DEFAULT '0',\n  `is_order_print_wait_erp_enabled` tinyint(1) DEFAULT '1',\n  `print_qtd_optional_x_item` tinyint(1) DEFAULT '0',\n  `integration_mode` varchar(255) DEFAULT 'local',\n  `is_kiosk_enabled` tinyint(1) DEFAULT '0',\n  `is_sequential_code_online` tinyint(1) DEFAULT '0',\n  `kiosk_payment_provider` int DEFAULT '0',\n  `kiosk_print_type` int DEFAULT '0',\n  `is_erp_sync_product_enabled` tinyint(1) DEFAULT '1',\n  `kiosk_sequence_type` int DEFAULT '0',\n  `sequence_start` int DEFAULT '1',\n  `kiosk_sequence_reset_time` time DEFAULT '06:00:00',\n  `sequence_end` int DEFAULT '999',\n  `kiosk_order_mode` int DEFAULT '0',\n  `is_cd_table_payment_enabled` tinyint(1) DEFAULT '0',\n  `card_grouped_enabled` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "app_menu": "CREATE TABLE `app_menu` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `all_you_can_eat` tinyint(1) DEFAULT NULL,\n  `oimenu_product_id` int DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "app_menu_category": "CREATE TABLE `app_menu_category` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `oimenu_category_id` int DEFAULT NULL,\n  `oimenu_app_menu_id` int DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=211 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "call_waiter_option": "CREATE TABLE `call_waiter_option` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "call_waiter_printer": "CREATE TABLE `call_waiter_printer` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `oimenu_printer_id` int DEFAULT NULL,\n  `oimenu_square_id` int DEFAULT NULL,\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "card": "CREATE TABLE `card` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `code` bigint unsigned DEFAULT NULL,\n  `uuid` varchar(255) DEFAULT NULL,\n  `service_percentage` decimal(11,2) DEFAULT '0.00',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT '0',\n  `store_table_id` int DEFAULT NULL,\n  `erp_active` tinyint(1) DEFAULT '1',\n  `people_table_number` int DEFAULT '1',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "category": "CREATE TABLE `category` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `all_you_can_eat` tinyint(1) DEFAULT NULL,\n  `oimenu_product_id` int DEFAULT NULL,\n  `oimenu_printer_id` int DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `split_item` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "configuration": "CREATE TABLE `configuration` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) DEFAULT NULL,\n  `value` text,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "customer": "CREATE TABLE `customer` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `email` varchar(255) DEFAULT NULL,\n  `phone_number` varchar(255) DEFAULT NULL,\n  `cpf` varchar(255) DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `oimenu_id` (`oimenu_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "deliway_impression": "CREATE TABLE `deliway_impression` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `header` json DEFAULT NULL,\n  `status_id` smallint DEFAULT '0',\n  `printed` tinyint(1) DEFAULT '0',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "deliway_item_impression": "CREATE TABLE `deliway_item_impression` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `deliway_impression_id` int DEFAULT NULL,\n  `title` varchar(255) DEFAULT NULL,\n  `price` varchar(255) DEFAULT NULL,\n  `quantity` varchar(255) DEFAULT NULL,\n  `total` varchar(255) DEFAULT NULL,\n  `options` json DEFAULT NULL,\n  `oimenu_product_item_id` int DEFAULT NULL,\n  `impression_id` int DEFAULT NULL,\n  `status_id` smallint DEFAULT '0',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "developers_auth": "CREATE TABLE `developers_auth` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) DEFAULT NULL,\n  `secret_auth` varchar(255) DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `type` int DEFAULT '0',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "device_log": "CREATE TABLE `device_log` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `version` varchar(255) DEFAULT NULL,\n  `level` varchar(255) DEFAULT NULL,\n  `message` text,\n  `created_at` datetime(6) DEFAULT NULL,\n  `type` varchar(255) DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`),\n  KEY `device_log_outdated` (`outdated`)\n) ENGINE=InnoDB AUTO_INCREMENT=176 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "event": "CREATE TABLE `event` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `type` varchar(255) DEFAULT NULL,\n  `sale_id` int DEFAULT NULL,\n  `order_waiter_id` int DEFAULT NULL,\n  `sent` tinyint(1) DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT NULL,\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  `oimenu_sale_id` int DEFAULT NULL,\n  `oimenu_id` int DEFAULT NULL,\n  `oimenu_order_waiter_id` int DEFAULT NULL,\n  `oimenu_sale_payment_id` int DEFAULT NULL,\n  `sale_payment_id` int DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "feedback": "CREATE TABLE `feedback` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `tablet_identity` varchar(255) DEFAULT NULL,\n  `table_id` int DEFAULT NULL,\n  `user_id` int DEFAULT NULL,\n  `phone_number` varchar(255) DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `email` varchar(255) DEFAULT NULL,\n  `rates` varchar(255) DEFAULT NULL,\n  `note` text,\n  `outdated` tinyint(1) DEFAULT '1',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "impression": "CREATE TABLE `impression` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `printer_id` int DEFAULT NULL,\n  `status` int DEFAULT NULL,\n  `enqueued_at` datetime DEFAULT NULL,\n  `printed_at` datetime DEFAULT NULL,\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  `type` varchar(20) DEFAULT NULL,\n  `type_id` int DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "notification": "CREATE TABLE `notification` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `type` smallint DEFAULT NULL,\n  `title` varchar(255) DEFAULT NULL,\n  `body` varchar(255) DEFAULT NULL,\n  `entity_id` int DEFAULT NULL,\n  `push_sent` tinyint(1) DEFAULT '0',\n  `outdated` tinyint(1) DEFAULT '1',\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  `tablet_sent` tinyint(1) DEFAULT '1',\n  `tablet_lock` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "order_vallet": "CREATE TABLE `order_vallet` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `tablet_id` int NOT NULL,\n  `store_table_id` int NOT NULL,\n  `user_id` int DEFAULT NULL,\n  `observation` varchar(255) NOT NULL,\n  `impression_id` int DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT '1',\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "order_waiter": "CREATE TABLE `order_waiter` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `tablet_id` int NOT NULL,\n  `store_table_id` int NOT NULL,\n  `user_id` int NOT NULL,\n  `impression_id` int DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT '1',\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  `call_waiter_printer_id` int DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "order_waiter_option": "CREATE TABLE `order_waiter_option` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `order_waiter_id` int NOT NULL,\n  `call_waiter_option_id` int NOT NULL,\n  `quantity` int DEFAULT NULL,\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "payment_flags": "CREATE TABLE `payment_flags` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int DEFAULT NULL,\n  `type` int DEFAULT NULL,\n  `source` varchar(255) DEFAULT NULL,\n  `standard` varchar(255) DEFAULT NULL,\n  `status_id` smallint DEFAULT '0',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "printer": "CREATE TABLE `printer` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `uri` varchar(255) DEFAULT NULL,\n  `driver` int DEFAULT NULL,\n  `paper_size` int DEFAULT NULL,\n  `font_size` int DEFAULT NULL,\n  `font_type` int DEFAULT NULL,\n  `split_items` tinyint(1) DEFAULT '0',\n  `default_printer` tinyint(1) DEFAULT '0',\n  `is_conference_printer` tinyint(1) DEFAULT '0',\n  `has_auto_cutter` tinyint(1) DEFAULT '1',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `lines_for_cut` int NOT NULL DEFAULT '4',\n  `copies_number` int DEFAULT '1',\n  `line_start_spaces` int DEFAULT '0',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "product": "CREATE TABLE `product` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `oimenu_category_id` int NOT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `remote_code` varchar(255) DEFAULT NULL,\n  `all_you_can_eat` tinyint(1) DEFAULT NULL,\n  `oimenu_printer_id` int DEFAULT NULL,\n  `split_item` tinyint(1) NOT NULL DEFAULT '0',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `is_combo` tinyint(1) DEFAULT '0',\n  `min_quantity` int DEFAULT NULL,\n  `max_quantity` int DEFAULT NULL,\n  `is_pizza` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`),\n  KEY `product_oimenu_id` (`oimenu_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "product_attribute": "CREATE TABLE `product_attribute` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `product_id` int DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `type` varchar(1) DEFAULT NULL,\n  `pricing_type` varchar(1) NOT NULL DEFAULT 'I',\n  `allow_quantity` tinyint(1) DEFAULT '0',\n  `remote_code` varchar(255) DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `is_product` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`),\n  KEY `product_attribute_oimenu_id` (`oimenu_id`),\n  KEY `product_attribute_deleted_at_product_id` (`deletedAt`,`product_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "product_attribute_option": "CREATE TABLE `product_attribute_option` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `product_attribute_id` int DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `price` decimal(11,2) DEFAULT '0.00',\n  `remote_code` varchar(255) DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `visible` tinyint(1) DEFAULT '1',\n  `is_invisible_by_api` tinyint(1) DEFAULT '0',\n  `is_invisible_by_matriz_first_load` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`),\n  KEY `product_attribute_option_oimenu_id` (`oimenu_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "product_item": "CREATE TABLE `product_item` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `product_id` int DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `price` decimal(11,2) DEFAULT '0.00',\n  `remote_code` varchar(255) DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `oimenu_printer_id` int DEFAULT NULL,\n  `visible` tinyint(1) DEFAULT '1',\n  `is_invisible_by_api` tinyint(1) DEFAULT '0',\n  `is_invisible_by_matriz_first_load` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`),\n  KEY `product_item_oimenu_id` (`oimenu_id`),\n  KEY `product_item_deleted_at_product_id` (`deletedAt`,`product_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale": "CREATE TABLE `sale` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `card_number` bigint unsigned DEFAULT NULL,\n  `tablet_identity` varchar(255) DEFAULT NULL,\n  `store_table_id` int DEFAULT NULL,\n  `created_by` int DEFAULT NULL,\n  `status_id` smallint DEFAULT '0',\n  `bill_requested` tinyint(1) DEFAULT '0',\n  `sent_to_erp` tinyint(1) DEFAULT '0',\n  `outdated` tinyint(1) DEFAULT '0',\n  `impression_id_close` int DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `split_bill_with` int DEFAULT NULL,\n  `remote_id` varchar(255) DEFAULT NULL,\n  `remote_operation_id` varchar(255) DEFAULT NULL,\n  `sale_number` int DEFAULT NULL,\n  `customer_document` varchar(20) DEFAULT NULL,\n  `locked` tinyint(1) DEFAULT '0',\n  `locked_at` datetime DEFAULT NULL,\n  `payment_type_id` int DEFAULT NULL,\n  `change_to` decimal(11,2) DEFAULT '0.00',\n  `user_allowed_service_fee` tinyint(1) NOT NULL DEFAULT '0',\n  `is_paid` tinyint(1) NOT NULL DEFAULT '0',\n  `oimenu_id` int DEFAULT NULL,\n  `oimenu_store_table_id` int DEFAULT NULL,\n  `oimenu_created_by` int DEFAULT NULL,\n  `oimenu_impression_id_close` int DEFAULT NULL,\n  `printed` tinyint(1) NOT NULL DEFAULT '0',\n  `is_payment_sent_to_erp` tinyint(1) NOT NULL DEFAULT '0',\n  `sequential_code` int DEFAULT NULL,\n  `bill_requested_by_erp` tinyint(1) DEFAULT '0',\n  `people_table_number` int DEFAULT '1',\n  `fiscal_document` varchar(255) DEFAULT NULL,\n  `fiscal_print` tinyint(1) DEFAULT '0',\n  `customer_name` varchar(255) DEFAULT NULL,\n  `take_away` tinyint(1) DEFAULT '0',\n  `customer_phone` varchar(20) DEFAULT NULL,\n  `extra_data` json DEFAULT NULL,\n  `gate` smallint DEFAULT '0',\n  `discount` decimal(11,2) DEFAULT '0.00',\n  `loyalty_use_discount` tinyint(1) DEFAULT '0',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_account": "CREATE TABLE `sale_account` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `sale_id` int DEFAULT NULL,\n  `oimenu_id` int DEFAULT NULL,\n  `data` json DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT '1',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_attribute": "CREATE TABLE `sale_attribute` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `sale_item_id` int DEFAULT NULL,\n  `product_attribute_id` int DEFAULT NULL,\n  `choice` tinyint(1) DEFAULT '0',\n  `name` varchar(255) DEFAULT NULL,\n  `pricing_type` varchar(1) NOT NULL DEFAULT 'I',\n  `product_attribute_option_oimenu_id_flow` int DEFAULT NULL,\n  `sale_attribute_option_id_flow` int DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `sale_attribute_sale_item_id` (`sale_item_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_attribute_option": "CREATE TABLE `sale_attribute_option` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `sale_attribute_id` int DEFAULT NULL,\n  `product_attribute_option_id` int DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `quantity` decimal(21,10) DEFAULT '1.0000000000',\n  `price` decimal(21,10) DEFAULT '0.0000000000',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `is_product` tinyint(1) DEFAULT NULL,\n  `remote_id` varchar(255) DEFAULT NULL,\n  `codigo_externo` varchar(255) DEFAULT NULL,\n  `oimenu_id` int DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `sale_attribute_option_sale_attribute_id` (`sale_attribute_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_extra_item": "CREATE TABLE `sale_extra_item` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `remote_id` varchar(255) DEFAULT NULL,\n  `sale_id` int DEFAULT NULL,\n  `sale_order_id` int DEFAULT NULL,\n  `code` varchar(255) DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `quantity` decimal(11,3) DEFAULT '1.000',\n  `price` decimal(11,2) DEFAULT '0.00',\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  `status_id` smallint DEFAULT '0',\n  `table_position` int DEFAULT NULL,\n  `deduplicate_id` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `sale_extra_item_sale_order_id` (`sale_order_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_extra_item_option": "CREATE TABLE `sale_extra_item_option` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `sale_extra_item_id` int DEFAULT NULL,\n  `code` varchar(255) DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `quantity` decimal(11,3) DEFAULT '1.000',\n  `price` decimal(11,2) DEFAULT '0.00',\n  `status_id` smallint DEFAULT '0',\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_item": "CREATE TABLE `sale_item` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `sale_id` int DEFAULT NULL,\n  `product_item_id` int DEFAULT NULL,\n  `quantity` int DEFAULT '1',\n  `product_name` varchar(255) DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `price` decimal(11,2) DEFAULT '0.00',\n  `sale_order_id` int DEFAULT NULL,\n  `status_id` smallint DEFAULT NULL,\n  `remote_id` varchar(255) DEFAULT NULL,\n  `impression_id` int DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `remote_code` varchar(255) DEFAULT NULL,\n  `uuid_group` varchar(255) DEFAULT NULL,\n  `sent_to_erp` tinyint(1) DEFAULT '0',\n  `sale_item_id` int DEFAULT '0',\n  `codigo_externo` varchar(255) DEFAULT NULL,\n  `observation` varchar(255) DEFAULT NULL,\n  `sequence_automatic` tinyint(1) DEFAULT '0',\n  `referer_product_match_id` int DEFAULT NULL,\n  `meta` json DEFAULT NULL,\n  `sale_item_uuid` varchar(255) DEFAULT NULL,\n  `table_position` int DEFAULT NULL,\n  `sale_extra_item_id` int DEFAULT '0',\n  PRIMARY KEY (`id`),\n  KEY `sale_item_sale_order_id` (`sale_order_id`),\n  KEY `sale_item_sale_id` (`sale_id`),\n  KEY `sale_item_remote_id` (`remote_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_order": "CREATE TABLE `sale_order` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `uuid` varchar(255) DEFAULT NULL,\n  `sale_id` int DEFAULT NULL,\n  `order_date` datetime DEFAULT NULL,\n  `sent_to_erp` tinyint(1) DEFAULT '0',\n  `sent_to_oimenu` tinyint(1) DEFAULT '0',\n  `retry_expired` tinyint(1) DEFAULT '0',\n  `printed` tinyint(1) DEFAULT '0',\n  `sale_order_id_transf` int DEFAULT NULL,\n  `remote_id` varchar(255) DEFAULT NULL,\n  `impression_id_not_sent` int DEFAULT NULL,\n  `created_by` int DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `uuid_group` varchar(255) DEFAULT NULL,\n  `confirmed_by_erp` tinyint(1) DEFAULT '0',\n  `sent_to_erp_error` tinyint(1) DEFAULT '0',\n  `sent_to_kds` tinyint(1) DEFAULT '0',\n  `tablet_identity` varchar(255) DEFAULT NULL,\n  `customer_key_name` varchar(255) DEFAULT NULL,\n  `customer_key_value` varchar(255) DEFAULT NULL,\n  `customer_oimenu_id` int DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `sale_order_sale_id` (`sale_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_order_discount": "CREATE TABLE `sale_order_discount` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `sale_order_id` bigint NOT NULL,\n  `type` smallint NOT NULL,\n  `value` decimal(11,2) NOT NULL,\n  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_sale_order_discount_sale_order_id` (`sale_order_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sale_payment": "CREATE TABLE `sale_payment` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int DEFAULT NULL,\n  `sale_id` int DEFAULT NULL,\n  `type` int DEFAULT NULL,\n  `value` decimal(11,2) DEFAULT '0.00',\n  `customer_data_id` int DEFAULT NULL,\n  `flag` varchar(255) DEFAULT NULL,\n  `remote_id` varchar(255) DEFAULT NULL,\n  `provider` varchar(255) DEFAULT NULL,\n  `status_id` smallint DEFAULT '0',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `transaction_id` varchar(255) DEFAULT NULL,\n  `host_transaction_id` varchar(255) DEFAULT NULL,\n  `uuid` varchar(255) DEFAULT NULL,\n  `deduplicate_id` varchar(255) DEFAULT NULL,\n  `table_position` json DEFAULT NULL,\n  `customer_id` int DEFAULT NULL,\n  `customer_document` varchar(255) DEFAULT NULL,\n  `customer_name` varchar(255) DEFAULT NULL,\n  `customer_phone` varchar(255) DEFAULT NULL,\n  `gate` int DEFAULT '0',\n  `tip_value` decimal(11,2) NOT NULL DEFAULT '0.00',\n  `tip_percentage` decimal(11,2) NOT NULL DEFAULT '0.00',\n  `extra_data` json DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "sequelizemeta": "CREATE TABLE `sequelizemeta` (\n  `name` varchar(255) COLLATE utf8mb3_unicode_ci NOT NULL,\n  PRIMARY KEY (`name`),\n  UNIQUE KEY `name` (`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;\n",
+    "square": "CREATE TABLE `square` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `remote_code` varchar(255) DEFAULT '1',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "store": "CREATE TABLE `store` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `token` varchar(255) DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `database_flushed_at` datetime DEFAULT CURRENT_TIMESTAMP,\n  `sales_closed_at` datetime DEFAULT CURRENT_TIMESTAMP,\n  `next_sequential` int DEFAULT '1',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "store_table": "CREATE TABLE `store_table` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `code` int DEFAULT NULL,\n  `name` varchar(30) DEFAULT NULL,\n  `service_percentage` decimal(11,2) DEFAULT '0.00',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT '0',\n  `remote_code` varchar(255) DEFAULT NULL,\n  `oimenu_square_id` int DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `store_table_oimenu_id` (`oimenu_id`)\n) ENGINE=InnoDB AUTO_INCREMENT=174 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "store_update": "CREATE TABLE `store_update` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `endpoint` varchar(255) DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "tablet": "CREATE TABLE `tablet` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int DEFAULT NULL,\n  `tablet_number` int DEFAULT NULL,\n  `identity` varchar(255) DEFAULT NULL,\n  `push_key` varchar(255) DEFAULT NULL,\n  `store_table_id` int DEFAULT NULL,\n  `note` text,\n  `battery_level` int DEFAULT NULL,\n  `wifi_status` int DEFAULT NULL,\n  `app_version` varchar(255) DEFAULT NULL,\n  `os_identity` varchar(255) DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT '0',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `wifi_level` int DEFAULT NULL,\n  `data_result` json DEFAULT NULL,\n  `data_send` json DEFAULT NULL,\n  `operation_mode` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "temp_product": "CREATE TABLE `temp_product` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `code` varchar(255) DEFAULT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `price` decimal(11,2) DEFAULT '0.00',\n  `outdated` tinyint(1) DEFAULT '1',\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `extra_fields` text,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "user": "CREATE TABLE `user` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int NOT NULL,\n  `name` varchar(255) DEFAULT NULL,\n  `username` varchar(255) DEFAULT NULL,\n  `remote_code` varchar(255) DEFAULT NULL,\n  `password_hash` varchar(255) DEFAULT NULL,\n  `level` varchar(255) DEFAULT NULL,\n  `createdAt` datetime NOT NULL,\n  `updatedAt` datetime NOT NULL,\n  `deletedAt` datetime DEFAULT NULL,\n  `email` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `user_oimenu_id` (`oimenu_id`)\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n",
+    "user_push_subscription": "CREATE TABLE `user_push_subscription` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `oimenu_id` int DEFAULT NULL,\n  `oimenu_user_id` int DEFAULT NULL,\n  `endpoint` text,\n  `public_key` varchar(255) DEFAULT NULL,\n  `auth_token` varchar(255) DEFAULT NULL,\n  `outdated` tinyint(1) DEFAULT '1',\n  `status_id` smallint DEFAULT NULL,\n  `created_at` datetime NOT NULL,\n  `updated_at` datetime NOT NULL,\n  `deleted_at` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n"
+  },
+  "columns": {
+    "app_configuration": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "store_name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "order_mode",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "theme",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "color",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "image",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "send_status_delay",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "print_server_address",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "tablet_printer_enabled",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "is_search_visible",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "is_featured_visible",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "is_about_visible",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "is_feedback_visible",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "close_order_enabled",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_printer_id_close_order",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "power_save_enabled",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "languages",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "feedback_options",
+        "type": "text"
+      },
+      {
+        "name": "local_server_enabled",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "local_server_ip",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "local_server_port",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_printer_id_call_waiter",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "close_order_block_new_orders",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "erp_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_printer_id_print_duplication",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "is_close_order_print_detailed",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "is_payment_type_enabled",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "local_printer_enabled",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "is_order_print_enabled",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "is_call_waiter_print_enabled",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "is_the_check_print_enabled",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "is_group_impressions_by_category_enabled",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "is_the_check_detailed",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "is_card_payment_print_enabled",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_printer_id_card_payment",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "is_card_linked_to_table",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "store_status_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "is_overdue",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "is_call_vallet_print_enabled",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "oimenu_printer_id_call_vallet",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "is_min_max_product_by_order",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "is_min_quantity_all_you_can_eat_by_table",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "is_order_print_wait_erp_enabled",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "print_qtd_optional_x_item",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "integration_mode",
+        "type": "varchar(255) DEFAULT 'local'"
+      },
+      {
+        "name": "is_kiosk_enabled",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "is_sequential_code_online",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "kiosk_payment_provider",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "kiosk_print_type",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "is_erp_sync_product_enabled",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "kiosk_sequence_type",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "sequence_start",
+        "type": "int DEFAULT '1'"
+      },
+      {
+        "name": "kiosk_sequence_reset_time",
+        "type": "time DEFAULT '06:00:00'"
+      },
+      {
+        "name": "sequence_end",
+        "type": "int DEFAULT '999'"
+      },
+      {
+        "name": "kiosk_order_mode",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "is_cd_table_payment_enabled",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "card_grouped_enabled",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "app_menu": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "all_you_can_eat",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_product_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "app_menu_category": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "oimenu_category_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_app_menu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "call_waiter_option": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "call_waiter_printer": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_printer_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_square_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "card": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "code",
+        "type": "bigint unsigned DEFAULT NULL"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "service_percentage",
+        "type": "decimal(11"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "store_table_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "erp_active",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "people_table_number",
+        "type": "int DEFAULT '1'"
+      }
+    ],
+    "category": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "all_you_can_eat",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_product_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_printer_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "split_item",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "configuration": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "value",
+        "type": "text"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "customer": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "email",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "phone_number",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "cpf",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      }
+    ],
+    "deliway_impression": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "header",
+        "type": "json DEFAULT NULL"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT '0'"
+      },
+      {
+        "name": "printed",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "deliway_item_impression": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "deliway_impression_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "title",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "price",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "quantity",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "total",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "options",
+        "type": "json DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_product_item_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "impression_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT '0'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "developers_auth": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "secret_auth",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "type",
+        "type": "int DEFAULT '0'"
+      }
+    ],
+    "device_log": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "version",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "level",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "message",
+        "type": "text"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime(6) DEFAULT NULL"
+      },
+      {
+        "name": "type",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "event": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "type",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sale_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "order_waiter_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "sent",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_sale_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_order_waiter_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_sale_payment_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "sale_payment_id",
+        "type": "int DEFAULT NULL"
+      }
+    ],
+    "feedback": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "tablet_identity",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "table_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "phone_number",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "email",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "rates",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "note",
+        "type": "text"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "impression": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "printer_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "status",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "enqueued_at",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "printed_at",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "type",
+        "type": "varchar(20) DEFAULT NULL"
+      },
+      {
+        "name": "type_id",
+        "type": "int DEFAULT NULL"
+      }
+    ],
+    "notification": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "type",
+        "type": "smallint DEFAULT NULL"
+      },
+      {
+        "name": "title",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "body",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "entity_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "push_sent",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "tablet_sent",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "tablet_lock",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "order_vallet": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "tablet_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "store_table_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "observation",
+        "type": "varchar(255) NOT NULL"
+      },
+      {
+        "name": "impression_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "order_waiter": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "tablet_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "store_table_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "impression_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "call_waiter_printer_id",
+        "type": "int DEFAULT NULL"
+      }
+    ],
+    "order_waiter_option": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "order_waiter_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "call_waiter_option_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "quantity",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "payment_flags": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "type",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "source",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "standard",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT '0'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "printer": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "uri",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "driver",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "paper_size",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "font_size",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "font_type",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "split_items",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "default_printer",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "is_conference_printer",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "has_auto_cutter",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "lines_for_cut",
+        "type": "int NOT NULL DEFAULT '4'"
+      },
+      {
+        "name": "copies_number",
+        "type": "int DEFAULT '1'"
+      },
+      {
+        "name": "line_start_spaces",
+        "type": "int DEFAULT '0'"
+      }
+    ],
+    "product": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "oimenu_category_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "remote_code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "all_you_can_eat",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_printer_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "split_item",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "is_combo",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "min_quantity",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "max_quantity",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "is_pizza",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "product_attribute": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "product_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "type",
+        "type": "varchar(1) DEFAULT NULL"
+      },
+      {
+        "name": "pricing_type",
+        "type": "varchar(1) NOT NULL DEFAULT 'I'"
+      },
+      {
+        "name": "allow_quantity",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "remote_code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "is_product",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "product_attribute_option": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "product_attribute_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "price",
+        "type": "decimal(11"
+      },
+      {
+        "name": "remote_code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "visible",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "is_invisible_by_api",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "is_invisible_by_matriz_first_load",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "product_item": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "product_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "price",
+        "type": "decimal(11"
+      },
+      {
+        "name": "remote_code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_printer_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "visible",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "is_invisible_by_api",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "is_invisible_by_matriz_first_load",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "sale": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "card_number",
+        "type": "bigint unsigned DEFAULT NULL"
+      },
+      {
+        "name": "tablet_identity",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "store_table_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "created_by",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT '0'"
+      },
+      {
+        "name": "bill_requested",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "sent_to_erp",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "impression_id_close",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "split_bill_with",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "remote_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "remote_operation_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sale_number",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "customer_document",
+        "type": "varchar(20) DEFAULT NULL"
+      },
+      {
+        "name": "locked",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "locked_at",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "payment_type_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "change_to",
+        "type": "decimal(11"
+      },
+      {
+        "name": "user_allowed_service_fee",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "is_paid",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_store_table_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_created_by",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_impression_id_close",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "printed",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "is_payment_sent_to_erp",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "sequential_code",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "bill_requested_by_erp",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "people_table_number",
+        "type": "int DEFAULT '1'"
+      },
+      {
+        "name": "fiscal_document",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "fiscal_print",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "customer_name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "take_away",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "customer_phone",
+        "type": "varchar(20) DEFAULT NULL"
+      },
+      {
+        "name": "extra_data",
+        "type": "json DEFAULT NULL"
+      },
+      {
+        "name": "gate",
+        "type": "smallint DEFAULT '0'"
+      },
+      {
+        "name": "discount",
+        "type": "decimal(11"
+      },
+      {
+        "name": "loyalty_use_discount",
+        "type": "tinyint(1) DEFAULT '0'"
+      }
+    ],
+    "sale_account": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "sale_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "data",
+        "type": "json DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "sale_attribute": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sale_item_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "product_attribute_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "choice",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "pricing_type",
+        "type": "varchar(1) NOT NULL DEFAULT 'I'"
+      },
+      {
+        "name": "product_attribute_option_oimenu_id_flow",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "sale_attribute_option_id_flow",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "sale_attribute_option": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sale_attribute_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "product_attribute_option_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "quantity",
+        "type": "decimal(21"
+      },
+      {
+        "name": "price",
+        "type": "decimal(21"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "is_product",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "remote_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "codigo_externo",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      }
+    ],
+    "sale_extra_item": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "remote_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sale_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "sale_order_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "quantity",
+        "type": "decimal(11"
+      },
+      {
+        "name": "price",
+        "type": "decimal(11"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT '0'"
+      },
+      {
+        "name": "table_position",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "deduplicate_id",
+        "type": "varchar(255) DEFAULT NULL"
+      }
+    ],
+    "sale_extra_item_option": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sale_extra_item_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "quantity",
+        "type": "decimal(11"
+      },
+      {
+        "name": "price",
+        "type": "decimal(11"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT '0'"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "sale_item": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sale_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "product_item_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "quantity",
+        "type": "int DEFAULT '1'"
+      },
+      {
+        "name": "product_name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "price",
+        "type": "decimal(11"
+      },
+      {
+        "name": "sale_order_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT NULL"
+      },
+      {
+        "name": "remote_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "impression_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "remote_code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "uuid_group",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sent_to_erp",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "sale_item_id",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "codigo_externo",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "observation",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sequence_automatic",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "referer_product_match_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "meta",
+        "type": "json DEFAULT NULL"
+      },
+      {
+        "name": "sale_item_uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "table_position",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "sale_extra_item_id",
+        "type": "int DEFAULT '0'"
+      }
+    ],
+    "sale_order": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "sale_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "order_date",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "sent_to_erp",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "sent_to_oimenu",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "retry_expired",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "printed",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "sale_order_id_transf",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "remote_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "impression_id_not_sent",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "created_by",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "uuid_group",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "confirmed_by_erp",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "sent_to_erp_error",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "sent_to_kds",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "tablet_identity",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "customer_key_name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "customer_key_value",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "customer_oimenu_id",
+        "type": "int DEFAULT NULL"
+      }
+    ],
+    "sale_order_discount": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "sale_order_id",
+        "type": "bigint NOT NULL"
+      },
+      {
+        "name": "type",
+        "type": "smallint NOT NULL"
+      },
+      {
+        "name": "value",
+        "type": "decimal(11"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "sale_payment": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "sale_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "type",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "value",
+        "type": "decimal(11"
+      },
+      {
+        "name": "customer_data_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "flag",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "remote_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "provider",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT '0'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "transaction_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "host_transaction_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "uuid",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "deduplicate_id",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "table_position",
+        "type": "json DEFAULT NULL"
+      },
+      {
+        "name": "customer_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "customer_document",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "customer_name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "customer_phone",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "gate",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "tip_value",
+        "type": "decimal(11"
+      },
+      {
+        "name": "tip_percentage",
+        "type": "decimal(11"
+      },
+      {
+        "name": "extra_data",
+        "type": "json DEFAULT NULL"
+      }
+    ],
+    "sequelizemeta": [
+      {
+        "name": "name",
+        "type": "varchar(255) COLLATE utf8mb3_unicode_ci NOT NULL"
+      }
+    ],
+    "square": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "remote_code",
+        "type": "varchar(255) DEFAULT '1'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "store": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "token",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "database_flushed_at",
+        "type": "datetime DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "sales_closed_at",
+        "type": "datetime DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "next_sequential",
+        "type": "int DEFAULT '1'"
+      }
+    ],
+    "store_table": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "code",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(30) DEFAULT NULL"
+      },
+      {
+        "name": "service_percentage",
+        "type": "decimal(11"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "remote_code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_square_id",
+        "type": "int DEFAULT NULL"
+      }
+    ],
+    "store_update": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "endpoint",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      }
+    ],
+    "tablet": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "tablet_number",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "identity",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "push_key",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "store_table_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "note",
+        "type": "text"
+      },
+      {
+        "name": "battery_level",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "wifi_status",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "app_version",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "os_identity",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "wifi_level",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "data_result",
+        "type": "json DEFAULT NULL"
+      },
+      {
+        "name": "data_send",
+        "type": "json DEFAULT NULL"
+      },
+      {
+        "name": "operation_mode",
+        "type": "varchar(255) DEFAULT NULL"
+      }
+    ],
+    "temp_product": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "price",
+        "type": "decimal(11"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "extra_fields",
+        "type": "text"
+      }
+    ],
+    "user": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "username",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "remote_code",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "password_hash",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "level",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updatedAt",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deletedAt",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "email",
+        "type": "varchar(255) DEFAULT NULL"
+      }
+    ],
+    "user_push_subscription": [
+      {
+        "name": "id",
+        "type": "int NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "oimenu_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "oimenu_user_id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "endpoint",
+        "type": "text"
+      },
+      {
+        "name": "public_key",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "auth_token",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "outdated",
+        "type": "tinyint(1) DEFAULT '1'"
+      },
+      {
+        "name": "status_id",
+        "type": "smallint DEFAULT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "datetime DEFAULT NULL"
+      }
+    ]
+  }
+}

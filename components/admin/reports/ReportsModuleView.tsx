@@ -47,45 +47,59 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
   ]
 
   return (
-    <div className="space-y-4">
-      {/* Header Minimalista */}
+    <div className="w-full space-y-4">
+      {/* Header Minimalista Padrão */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
         <div>
           <h1 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">
             Relatórios & Fecho de Caixa
           </h1>
           <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
-            Desempenho diário, vendas por método e auditoria
+            Desempenho diário, vendas por método de pagamento e auditoria
           </p>
         </div>
 
-        {/* Sub-Abas dos 5 Relatórios Oficiais */}
-        <div className="flex items-center gap-1.5 overflow-x-auto bg-purple-50/70 dark:bg-white/5 p-1.5 rounded-2xl border border-purple-200 dark:border-white/10 shadow-xs">
-          {[
-            { id: 'overview', label: 'Visão Geral' },
-            { id: 'sales', label: 'Relatório de Vendas' },
-            { id: 'invisible', label: `Produtos Invisíveis (${invisibleProducts.length})` },
-            { id: 'audit', label: 'Histórico de Alterações', isHqOnly: true },
-            { id: 'orders', label: 'Histórico de Pedidos' },
-          ].map((tab) => {
-            const isTabActive = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  isTabActive
-                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                    : 'text-purple-800 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10'
-                }`}
-              >
-                <span>{tab.label}</span>
-                {tab.isHqOnly && <span className="ml-1 text-[9px] font-black opacity-80">[HQ]</span>}
-              </button>
-            )
-          })}
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              window.print()
+              toast.success('A gerar relatório para impressão...')
+            }}
+            className="h-9 px-3 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-xs"
+          >
+            Imprimir Relatório (Z)
+          </Button>
         </div>
+      </div>
+
+      {/* Sub-Abas dos Relatórios Oficiais */}
+      <div className="flex items-center gap-1.5 overflow-x-auto bg-purple-50/70 dark:bg-white/5 p-1 rounded-2xl border border-purple-150 dark:border-white/10 w-fit">
+        {[
+          { id: 'overview', label: 'Visão Geral' },
+          { id: 'sales', label: 'Relatório de Vendas' },
+          { id: 'invisible', label: `Produtos Ocultos (${invisibleProducts.length})` },
+          { id: 'audit', label: 'Histórico de Alterações', isHqOnly: true },
+          { id: 'orders', label: 'Histórico de Pedidos' },
+        ].map((tab) => {
+          const isTabActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                isTabActive
+                  ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                  : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+              }`}
+            >
+              <span>{tab.label}</span>
+              {tab.isHqOnly && <span className="ml-1 text-[9px] font-black opacity-80">[HQ]</span>}
+            </button>
+          )
+        })}
       </div>
 
       {/* ========================================================= */}

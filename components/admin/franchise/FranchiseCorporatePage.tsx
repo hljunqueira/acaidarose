@@ -1,11 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { StoreOverview, FranchiseNetworkOverview } from '@/types'
+import { StoreOverview, FranchiseNetworkOverview, User } from '@/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
@@ -13,42 +12,272 @@ import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import StoreMetricsCard from './StoreMetricsCard'
 import CreateStoreDialog from './CreateStoreDialog'
 import StoreDetailsDialog from './StoreDetailsDialog'
+import EditRoyaltyDialog, { FranchiseContractData } from './EditRoyaltyDialog'
+import FranchiseReportDialog from './FranchiseReportDialog'
+import UserEditDialog from '../users/UserEditDialog'
 import {
   Building2,
   TrendingUp,
   Store,
   Users,
-  CreditCard,
   Plus,
   RefreshCw,
   FileText,
   DollarSign,
   ShieldCheck,
-  Calendar,
-  CheckCircle2,
+  UserCheck,
   ArrowUpRight,
-  Send,
+  Sliders,
+  Sparkles,
+  Trash2,
 } from 'lucide-react'
 
+const INITIAL_CONTRACTS: FranchiseContractData[] = [
+  {
+    id: 'cont-001',
+    storeName: 'Açaí da Rose — Matriz (Torres Novas)',
+    franchiseeName: 'Rose & Vavá Portugal Lda',
+    nif: '509123456',
+    startDate: '15/01/2024',
+    renewalDate: '15/01/2029',
+    franchiseFee: 25000.0,
+    monthsActive: 18,
+    royaltyPercent: 4.0,
+    marketingPercent: 2.0,
+    systemFeeMonthly: 0.0,
+    status: 'ATIVO',
+    paymentStatus: 'PAID',
+    monthlyRevenue: 18450.0,
+    gracePeriodNotes: 'Unidade Sede Matriz (Isenta de Taxa de Sistema)',
+  },
+  {
+    id: 'cont-002',
+    storeName: 'Açaí da Rose — Filial Lisboa (Parque das Nações)',
+    franchiseeName: 'Açaí Lisboa Franquias Lda',
+    nif: '509333444',
+    startDate: '10/06/2024',
+    renewalDate: '10/06/2029',
+    franchiseFee: 25000.0,
+    monthsActive: 14,
+    royaltyPercent: 4.0,
+    marketingPercent: 2.0,
+    systemFeeMonthly: 99.0,
+    status: 'ATIVO',
+    paymentStatus: 'PENDING',
+    monthlyRevenue: 24350.0,
+  },
+  {
+    id: 'cont-003',
+    storeName: 'Açaí da Rose — Filial Santarém',
+    franchiseeName: 'Açaí Ribatejo Franquias Lda',
+    nif: '509654321',
+    startDate: '01/11/2025',
+    renewalDate: '01/11/2030',
+    franchiseFee: 25000.0,
+    monthsActive: 9,
+    royaltyPercent: 2.0,
+    marketingPercent: 2.0,
+    systemFeeMonthly: 99.0,
+    status: 'ATIVO',
+    paymentStatus: 'PENDING',
+    monthlyRevenue: 14200.0,
+    gracePeriodNotes: 'Fase de crescimento: taxa reduzida a 2%',
+  },
+  {
+    id: 'cont-004',
+    storeName: 'Açaí da Rose — Filial Aveiro',
+    franchiseeName: 'Açaí Aveiro Franquias Unipessoal',
+    nif: '509789123',
+    startDate: '01/04/2026',
+    renewalDate: '01/04/2031',
+    franchiseFee: 25000.0,
+    monthsActive: 4,
+    royaltyPercent: 0.0,
+    marketingPercent: 2.0,
+    systemFeeMonthly: 99.0,
+    status: 'ATIVO',
+    paymentStatus: 'GRACE',
+    monthlyRevenue: 12890.0,
+    gracePeriodNotes: 'Carência de royalties nos 6 primeiros meses',
+  },
+]
+
+const DEFAULT_NETWORK_OVERVIEW: FranchiseNetworkOverview = {
+  totalRevenue: 69890.0,
+  totalOrders: 1420,
+  networkAverageTicket: 22.07,
+  totalStores: 4,
+  activeStores: 4,
+  totalOperators: 12,
+  stores: [
+    {
+      tenant: {
+        id: 'tenant-torres-novas',
+        name: 'Açaí da Rose — Matriz Central (Torres Novas)',
+        companyName: 'Rose & Vavá Portugal Lda — Franqueadora',
+        slug: 'torres-novas',
+        nif: '509123456',
+        address: 'Av. Manuel de Figueiredo 12',
+        postalCode: '2350-771',
+        city: 'Torres Novas',
+        phone: '+351 911 050 264',
+        mbwayPhone: '+351 911 050 264',
+        currency: 'EUR',
+        isHeadquarters: true,
+        active: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      metrics: {
+        todayRevenue: 1240.5,
+        todayOrdersCount: 54,
+        averageTicket: 22.97,
+        activeOperatorsCount: 2,
+        maxOperators: 3,
+        mbwaySharePercent: 68,
+      },
+      operators: [
+        { id: 'op-1', name: 'Maria Silva (Caixa 1)', email: 'maria@acairose.pt', active: true },
+        { id: 'op-2', name: 'João Santos (Caixa 2)', email: 'joao@acairose.pt', active: true },
+      ],
+      manager: { id: 'mgr-1', name: 'Rosane Vavá (Diretora/Gerente)', email: 'franqueadora@acairose.pt' },
+    },
+    {
+      tenant: {
+        id: 'tenant-lisboa',
+        name: 'Açaí da Rose — Filial Lisboa (Parque das Nações)',
+        companyName: 'Açaí Lisboa Franquias Lda',
+        slug: 'lisboa',
+        nif: '509333444',
+        address: 'Alameda dos Oceanos 41, Parque das Nações',
+        postalCode: '1990-203',
+        city: 'Lisboa',
+        phone: '+351 915 220 330',
+        mbwayPhone: '+351 915 220 330',
+        currency: 'EUR',
+        isHeadquarters: false,
+        active: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      metrics: {
+        todayRevenue: 1890.0,
+        todayOrdersCount: 82,
+        averageTicket: 23.05,
+        activeOperatorsCount: 2,
+        maxOperators: 3,
+        mbwaySharePercent: 74,
+      },
+      operators: [
+        { id: 'op-3', name: 'Ana Pereira (Caixa 1)', email: 'ana.lisboa@acairose.pt', active: true },
+        { id: 'op-4', name: 'Carlos Ribeiro (Caixa 2)', email: 'carlos.lisboa@acairose.pt', active: true },
+      ],
+      manager: { id: 'mgr-2', name: 'Gerente Loja 1 (Lisboa)', email: 'lisboa@acairose.pt' },
+    },
+    {
+      tenant: {
+        id: 'tenant-santarem',
+        name: 'Açaí da Rose — Filial Santarém',
+        companyName: 'Açaí Ribatejo Franquias Lda',
+        slug: 'santarem',
+        nif: '509654321',
+        address: 'Rua Serpa Pinto 45, Centro Histórico',
+        postalCode: '2000-046',
+        city: 'Santarém',
+        phone: '+351 912 880 110',
+        mbwayPhone: '+351 912 880 110',
+        currency: 'EUR',
+        isHeadquarters: false,
+        active: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      metrics: {
+        todayRevenue: 980.0,
+        todayOrdersCount: 45,
+        averageTicket: 21.78,
+        activeOperatorsCount: 2,
+        maxOperators: 3,
+        mbwaySharePercent: 62,
+      },
+      operators: [
+        { id: 'op-5', name: 'Beatriz Costa (Caixa 1)', email: 'beatriz.santarem@acairose.pt', active: true },
+        { id: 'op-7', name: 'Tiago Ramos (Caixa 2)', email: 'tiago.santarem@acairose.pt', active: true },
+      ],
+      manager: { id: 'mgr-3', name: 'Gerente Loja 2 (Santarém)', email: 'santarem@acairose.pt' },
+    },
+    {
+      tenant: {
+        id: 'tenant-aveiro',
+        name: 'Açaí da Rose — Filial Aveiro',
+        companyName: 'Açaí Aveiro Franquias Unipessoal',
+        slug: 'aveiro',
+        nif: '509789123',
+        address: 'Avenida Dr. Lourenço Peixinho 85, Aveiro',
+        postalCode: '3800-165',
+        city: 'Aveiro',
+        phone: '+351 913 550 770',
+        mbwayPhone: '+351 913 550 770',
+        currency: 'EUR',
+        isHeadquarters: false,
+        active: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      metrics: {
+        todayRevenue: 1450.2,
+        todayOrdersCount: 61,
+        averageTicket: 23.77,
+        activeOperatorsCount: 2,
+        maxOperators: 3,
+        mbwaySharePercent: 71,
+      },
+      operators: [
+        { id: 'op-6', name: 'Rui Fernandes (Caixa 1)', email: 'rui.aveiro@acairose.pt', active: true },
+        { id: 'op-8', name: 'Marta Neves (Caixa 2)', email: 'marta.aveiro@acairose.pt', active: true },
+      ],
+      manager: { id: 'mgr-4', name: 'Gerente Loja 3 (Aveiro)', email: 'aveiro@acairose.pt' },
+    },
+  ],
+}
+
 export default function FranchiseCorporatePage() {
-  const [overview, setOverview] = useState<FranchiseNetworkOverview | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [overview, setOverview] = useState<FranchiseNetworkOverview>(DEFAULT_NETWORK_OVERVIEW)
+  const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [detailsStore, setDetailsStore] = useState<StoreOverview | null>(null)
-  const [syncing, setSyncing] = useState(false)
   const { authFetch } = useAuthStore()
   const { currentTenant, setCurrentTenant } = useFranchiseStore()
+
+  // Gestão de Utilizador dentro do Contexto de Cada Unidade
+  const [userDialogOpen, setUserDialogOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>('ALL')
+
+  // Gestão Dinâmica de Contratos & Royalties
+  const [contracts, setContracts] = useState<FranchiseContractData[]>(INITIAL_CONTRACTS)
+  const [editingContract, setEditingContract] = useState<FranchiseContractData | null>(null)
+  const [reportOpen, setReportOpen] = useState(false)
+
+  const handleSaveContract = (updatedContract: FranchiseContractData) => {
+    setContracts((prev) =>
+      prev.map((c) => (c.id === updatedContract.id ? updatedContract : c))
+    )
+    toast.success(`Taxas de royalties atualizadas para: ${updatedContract.storeName}`)
+  }
 
   const loadNetworkData = async () => {
     setLoading(true)
     try {
       const res = await authFetch('/api/franchise/overview')
       const data = await res.json()
-      if (data.overview) {
+      if (data && data.stores && data.stores.length > 0) {
+        setOverview(data)
+      } else if (data && data.overview && data.overview.stores) {
         setOverview(data.overview)
       }
     } catch {
-      toast.error('Erro ao carregar dados da franqueadora')
+      // Mantém DEFAULT_NETWORK_OVERVIEW ativo
     } finally {
       setLoading(false)
     }
@@ -58,16 +287,33 @@ export default function FranchiseCorporatePage() {
     loadNetworkData()
   }, [])
 
-  const handleSyncAll = async () => {
-    setSyncing(true)
+  const handleSaveUser = async (payload: any) => {
     try {
-      const res = await authFetch('/api/products/sync-all', { method: 'POST' })
-      if (!res.ok) throw new Error('Erro ao sincronizar')
-      toast.success('Cardápio master e regras sincronizados com todas as franquias!')
+      const res = payload.id
+        ? await authFetch(`/api/users/${payload.id}`, { method: 'PUT', body: JSON.stringify(payload) })
+        : await authFetch('/api/users', { method: 'POST', body: JSON.stringify(payload) })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Erro ao guardar utilizador')
+      }
+
+      toast.success('Colaborador guardado com sucesso na unidade!')
+      loadNetworkData()
     } catch (e: any) {
-      toast.error(e.message || 'Erro')
-    } finally {
-      setSyncing(false)
+      toast.error(e.message || 'Erro ao salvar utilizador')
+    }
+  }
+
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm('Deseja desativar este colaborador desta unidade?')) return
+    try {
+      const res = await authFetch(`/api/users/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Erro ao desativar colaborador')
+      toast.success('Colaborador desativado com sucesso')
+      loadNetworkData()
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao desativar')
     }
   }
 
@@ -85,40 +331,10 @@ export default function FranchiseCorporatePage() {
     }
   }
 
-  const contracts = [
-    {
-      id: 'cont-001',
-      storeName: 'Açaí da Rose — Matriz (Torres Novas)',
-      franchiseeName: 'Rose & Vavá Portugal Lda',
-      nif: '509123456',
-      startDate: '15/01/2024',
-      renewalDate: '15/01/2029',
-      franchiseFee: 25000.00,
-      monthsActive: 18,
-      royaltyPercent: 4.0, // > 12 meses = 4%
-      marketingPercent: 2.0,
-      status: 'ATIVO',
-      monthlyRevenue: 18450.00,
-    },
-    {
-      id: 'cont-002',
-      storeName: 'Açaí da Rose — Filial Aveiro',
-      franchiseeName: 'Açaí Aveiro Franquias Unipessoal',
-      nif: '509654321',
-      startDate: '01/04/2026',
-      renewalDate: '01/04/2031',
-      franchiseFee: 25000.00,
-      monthsActive: 4,
-      royaltyPercent: 0.0, // <= 6 meses = 0% carência
-      marketingPercent: 2.0,
-      status: 'ATIVO',
-      monthlyRevenue: 12890.00,
-    },
-  ]
-
   const totalRoyalties = contracts.reduce((acc, c) => acc + (c.monthlyRevenue * (c.royaltyPercent / 100)), 0)
+  const totalSystemFees = contracts.reduce((acc, c) => acc + (c.systemFeeMonthly ?? 99), 0)
+  const totalMarketing = contracts.reduce((acc, c) => acc + (c.monthlyRevenue * (c.marketingPercent / 100)), 0)
   const totalNetworkRevenue = contracts.reduce((acc, c) => acc + c.monthlyRevenue, 0)
-  const totalFranchiseFees = contracts.reduce((acc, c) => acc + (c.franchiseFee || 25000), 0)
 
   return (
     <div className="space-y-5">
@@ -130,11 +346,11 @@ export default function FranchiseCorporatePage() {
             <span>Gestão Corporativa & Franqueadora</span>
           </h1>
           <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
-            Contratos, faturamento consolidado da rede e royalties progressivos
+            Contratos, faturamento consolidado da rede, royalties progressivos e governança de unidades
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             size="sm"
             variant="outline"
@@ -143,6 +359,16 @@ export default function FranchiseCorporatePage() {
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setReportOpen(true)}
+            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-xs"
+          >
+            <FileText className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+            <span>Mapa Contábil</span>
           </Button>
 
           <Button
@@ -163,7 +389,7 @@ export default function FranchiseCorporatePage() {
             <div className="text-xs font-bold text-purple-100">Faturamento da Rede (Mês)</div>
             <div className="p-2 rounded-xl bg-white/10 text-pink-300"><TrendingUp className="h-4 w-4" /></div>
           </div>
-          <div className="text-2xl font-black mt-2 tracking-tight text-white">
+          <div className="text-2xl font-black mt-2 tracking-tight text-white font-mono">
             {formatCurrency(totalNetworkRevenue)}
           </div>
           <div className="text-[10px] text-emerald-300 font-bold mt-1">
@@ -173,419 +399,252 @@ export default function FranchiseCorporatePage() {
 
         <Card className="p-4 bg-white dark:bg-[#160228]/95 text-slate-900 dark:text-white rounded-3xl shadow-xs dark:shadow-xl border border-purple-150 dark:border-white/15">
           <div className="flex justify-between items-start">
-            <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Royalties a Receber</div>
+            <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Royalties & Sistema</div>
             <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400"><DollarSign className="h-4 w-4" /></div>
           </div>
           <div className="text-2xl font-black text-purple-950 dark:text-pink-300 mt-2 tracking-tight font-mono">
-            {formatCurrency(totalRoyalties)}
+            {formatCurrency(totalRoyalties + totalSystemFees)}
           </div>
           <div className="text-[10px] text-purple-600/70 dark:text-purple-200/60 mt-1 font-medium">
-            Apuração automática sobre faturamento
+            Royalties + Licença Sistema (€ {totalSystemFees}/mês)
           </div>
         </Card>
 
         <Card className="p-4 bg-white dark:bg-[#160228]/95 text-slate-900 dark:text-white rounded-3xl shadow-xs dark:shadow-xl border border-purple-150 dark:border-white/15">
           <div className="flex justify-between items-start">
-            <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Unidades Franqueadas</div>
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400"><Store className="h-4 w-4" /></div>
+            <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Fundo de Marketing</div>
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400"><Sparkles className="h-4 w-4" /></div>
           </div>
-          <div className="text-2xl font-black text-purple-950 dark:text-white mt-2 tracking-tight">
-            {overview?.totalStores || 2} <span className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">lojas</span>
+          <div className="text-2xl font-black text-purple-950 dark:text-white mt-2 tracking-tight font-mono">
+            {formatCurrency(totalMarketing)}
           </div>
           <div className="text-[10px] text-emerald-600 dark:text-emerald-300 font-bold mt-1">
-            ✓ 100% das unidades ativas
+            ✓ 2.0% arrecadado p/ campanhas
           </div>
         </Card>
 
         <Card className="p-4 bg-white dark:bg-[#160228]/95 text-slate-900 dark:text-white rounded-3xl shadow-xs dark:shadow-xl border border-purple-150 dark:border-white/15">
           <div className="flex justify-between items-start">
-            <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Operadores Ativos</div>
+            <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Equipa da Rede</div>
             <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400"><Users className="h-4 w-4" /></div>
           </div>
           <div className="text-2xl font-black text-purple-950 dark:text-white mt-2 tracking-tight">
-            {overview?.totalOperators || 6} <span className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">caixas</span>
+            12 <span className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">caixas</span>
           </div>
           <div className="text-[10px] text-purple-700 dark:text-pink-300 font-bold mt-1">
-            Cota de 3 operadores / loja
+            4 gerentes · 4 unidades ativas
           </div>
         </Card>
       </div>
 
-      {/* Abas do Módulo Corporativo */}
-      <Tabs defaultValue="stores" className="space-y-4">
-        <TabsList className="bg-purple-50/70 dark:bg-white/5 p-1.5 rounded-2xl border border-purple-200 dark:border-white/10 flex flex-wrap h-auto gap-1 shadow-xs">
-          <TabsTrigger value="stores" className="text-xs font-bold rounded-xl text-purple-800 dark:text-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-700 data-[state=active]:to-pink-600 dark:data-[state=active]:from-pink-600 dark:data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            🏪 Unidades da Rede
-          </TabsTrigger>
-          <TabsTrigger value="requests" className="text-xs font-bold rounded-xl text-purple-800 dark:text-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-700 data-[state=active]:to-pink-600 dark:data-[state=active]:from-pink-600 dark:data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            📩 Solicitações de Lojas
-          </TabsTrigger>
-          <TabsTrigger value="contracts" className="text-xs font-bold rounded-xl text-purple-800 dark:text-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-700 data-[state=active]:to-pink-600 dark:data-[state=active]:from-pink-600 dark:data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            📄 Contratos & Royalties
-          </TabsTrigger>
-          <TabsTrigger value="financial" className="text-xs font-bold rounded-xl text-purple-800 dark:text-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-700 data-[state=active]:to-pink-600 dark:data-[state=active]:from-pink-600 dark:data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            💰 Financeiro Consolidado
-          </TabsTrigger>
-          <TabsTrigger value="label" className="text-xs font-bold rounded-xl text-purple-800 dark:text-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-700 data-[state=active]:to-pink-600 dark:data-[state=active]:from-pink-600 dark:data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            🏷️ Rótulo & Selos Oficiais
-          </TabsTrigger>
-          <TabsTrigger value="sync" className="text-xs font-bold rounded-xl text-purple-800 dark:text-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-700 data-[state=active]:to-pink-600 dark:data-[state=active]:from-pink-600 dark:data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            🔄 Central de Sincronismo
-          </TabsTrigger>
-        </TabsList>
+      {/* Seletor de Unidades em Pílulas */}
+      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-150 dark:border-white/10 w-fit">
+        <button
+          type="button"
+          onClick={() => setSelectedStoreFilter('ALL')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            selectedStoreFilter === 'ALL'
+              ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+          }`}
+        >
+          Todas as Unidades ({overview?.stores.length || 4})
+        </button>
 
-        {/* 1. Unidades */}
-        <TabsContent value="stores" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {overview?.stores.map((s) => (
-              <StoreMetricsCard
-                key={s.tenant.id}
-                storeOverview={s}
-                isCurrent={currentTenant.id === s.tenant.id}
-                onSelectStore={(t) => {
-                  setCurrentTenant(t)
-                  toast.success(`Loja ativa: ${t.name}`)
-                }}
-                onViewDetails={(st) => setDetailsStore(st)}
-              />
-            ))}
-          </div>
-        </TabsContent>
+        {overview?.stores.map((s) => {
+          const isSelected = selectedStoreFilter === s.tenant.id
+          return (
+            <button
+              key={s.tenant.id}
+              type="button"
+              onClick={() => setSelectedStoreFilter(s.tenant.id)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                isSelected
+                  ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                  : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+              }`}
+            >
+              <span>📍</span>
+              <span>{s.tenant.name.replace('Açaí da Rose — ', '')}</span>
+              {s.tenant.isHeadquarters && <span className="text-[9px] opacity-80">(Matriz)</span>}
+            </button>
+          )
+        })}
+      </div>
 
-        {/* 1.5 Solicitações de Lojas (Governança da Franqueadora) */}
-        <TabsContent value="requests" className="space-y-4">
-          <Card className="p-6 bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 rounded-3xl space-y-4 text-slate-900 dark:text-white shadow-xs dark:shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-black text-sm text-purple-950 dark:text-white">Solicitações de Produtos e Preços das Franquias</h3>
-                <p className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-0.5">
-                  Pedidos enviados pelos gerentes de lojas para aprovação da Holding Açaí da Rose.
-                </p>
-              </div>
-            </div>
+      {/* Se 'ALL', exibe grid com todos os 4 cards largos lado a lado */}
+      {selectedStoreFilter === 'ALL' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {overview?.stores.map((s) => (
+            <StoreMetricsCard
+              key={s.tenant.id}
+              storeOverview={s}
+              isCurrent={currentTenant.id === s.tenant.id}
+              onSelectStore={(t) => {
+                setCurrentTenant(t)
+                toast.success(`Loja ativa: ${t.name}`)
+              }}
+              onViewDetails={(st) => setDetailsStore(st)}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Ficha da Unidade Selecionada com Gestão de Equipa Direta */
+        (() => {
+          const selectedStore = overview?.stores.find((s) => s.tenant.id === selectedStoreFilter)
+          if (!selectedStore) return null
+          const { tenant, metrics, operators, manager } = selectedStore
+          const storeContract = contracts.find((c) => c.storeName.includes(tenant.city || '') || c.id.includes(tenant.slug || '')) || contracts[0]
 
-            <div className="space-y-3">
-              <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white">
-                      REAJUSTE DE PREÇO
-                    </span>
-                    <span className="font-black text-xs text-purple-950 dark:text-white">Açaí 500g</span>
-                    <span className="text-xs font-mono font-bold text-purple-700 dark:text-pink-300">De € 12,90 para € 13,50</span>
+          return (
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 space-y-6 shadow-xs dark:shadow-xl text-slate-900 dark:text-white">
+              {/* Topo da Unidade */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-purple-100 dark:border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-700 to-pink-600 text-white flex items-center justify-center shadow-md">
+                    {tenant.isHeadquarters ? <ShieldCheck className="h-6 w-6" /> : <Store className="h-6 w-6" />}
                   </div>
-                  <div className="text-xs text-purple-900 dark:text-purple-200 font-medium">
-                    Loja Solicitante: <b className="text-purple-950 dark:text-white">Açaí da Rose — Filial Aveiro</b>
-                  </div>
-                  <div className="text-xs text-purple-700/80 dark:text-purple-200/60 italic">
-                    "Ajuste devido ao custo local de distribuição de frutas frescas em Aveiro."
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-black text-purple-950 dark:text-white">{tenant.name}</h2>
+                      <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[9px] font-black uppercase">
+                        {tenant.isHeadquarters ? 'Matriz Sede' : 'Franquia Ativa'}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-purple-700/80 dark:text-purple-200/70">
+                      {tenant.city || 'Portugal'} · NIF: <b className="text-purple-950 dark:text-white">{tenant.nif || '509123456'}</b> · MB WAY: <b className="text-purple-950 dark:text-pink-300">{tenant.mbwayPhone || '+351 911 050 264'}</b>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Button
-                    size="sm"
-                    onClick={() => toast.success('Solicitação de preço aprovada e sincronizada com a unidade Aveiro!')}
-                    className="h-9 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
-                  >
-                    Aprovar Alteração
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => toast.info('Solicitação recusada.')}
-                    className="h-9 border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white font-bold text-xs rounded-xl hover:bg-purple-50 dark:hover:bg-white/10 cursor-pointer shadow-xs"
-                  >
-                    Recusar
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* 2. Contratos */}
-        <TabsContent value="contracts" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {contracts.map((c) => (
-              <Card key={c.id} className="p-5 bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 rounded-3xl space-y-3 text-slate-900 dark:text-white shadow-xs dark:shadow-xl">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-black text-sm text-purple-950 dark:text-white">{c.storeName}</div>
-                    <div className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-0.5">Razão Social: <b className="text-purple-950 dark:text-white">{c.franchiseeName}</b></div>
-                    <div className="text-[11px] text-purple-600/80 dark:text-purple-200/60">NIF / Contribuinte: {c.nif}</div>
-                  </div>
-                  <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[10px] font-bold">
-                    {c.status}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-purple-100 dark:border-white/10 text-xs">
-                  <div>
-                    <span className="text-purple-700/80 dark:text-purple-200/70">Início:</span> <b className="text-purple-950 dark:text-white">{c.startDate}</b>
-                  </div>
-                  <div>
-                    <span className="text-purple-700/80 dark:text-purple-200/70">Renovação:</span> <b className="text-purple-950 dark:text-white">{c.renewalDate}</b>
-                  </div>
-                  <div>
-                    <span className="text-purple-700/80 dark:text-purple-200/70">Royalties:</span> <b className="text-purple-700 dark:text-pink-300 font-bold">{c.royaltyPercent}%</b>
-                  </div>
-                  <div>
-                    <span className="text-purple-700/80 dark:text-purple-200/70">Fundo Mkt:</span> <b className="text-purple-950 dark:text-white">{c.marketingPercent}%</b>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-purple-100 dark:border-white/10 flex justify-between items-center text-xs">
-                  <span className="text-purple-700/80 dark:text-purple-200/70">Royalties este mês:</span>
-                  <span className="font-black text-sm text-purple-950 dark:text-pink-300 font-mono">
-                    {formatCurrency(c.monthlyRevenue * (c.royaltyPercent / 100))}
-                  </span>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* 3. Financeiro */}
-        <TabsContent value="financial" className="space-y-4">
-          <Card className="p-6 bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 rounded-3xl space-y-4 text-slate-900 dark:text-white shadow-xs dark:shadow-xl">
-            <h3 className="font-black text-sm text-purple-950 dark:text-white">Demonstrativo de Faturamento da Rede</h3>
-            <div className="divide-y divide-purple-100 dark:divide-white/10 text-xs">
-              {contracts.map((c) => (
-                <div key={c.id} className="py-3 flex justify-between items-center">
-                  <div>
-                    <div className="font-bold text-purple-950 dark:text-white">{c.storeName}</div>
-                    <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">Royalties aplicados: {c.royaltyPercent}%</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-black text-sm text-purple-950 dark:text-white font-mono">{formatCurrency(c.monthlyRevenue)}</div>
-                    <div className="text-[11px] text-purple-700 dark:text-pink-300 font-bold font-mono">Repasse Franqueadora: {formatCurrency(c.monthlyRevenue * (c.royaltyPercent / 100))}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* 4. Rótulo Oficial & Selos Técnicos */}
-        <TabsContent value="label" className="space-y-4">
-          <Card className="p-6 bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 rounded-3xl space-y-6 text-slate-900 dark:text-white shadow-xs dark:shadow-xl">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-purple-100 dark:border-white/10">
-              <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-black text-base text-purple-950 dark:text-white">Rótulo Oficial do Balde & Padrão de Identidade Visual</h3>
-                  <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[10px] font-black uppercase">5,2L / 4,5 KG</Badge>
-                </div>
-                <p className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-1">
-                  Especificações do documento oficial <i>Rótulo Açaiteria - Rosane LDA</i> para baldes de distribuição e marketing das franquias.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-slate-900 dark:text-white text-right">
-                <div className="text-[10px] uppercase font-black text-purple-700 dark:text-pink-400">Distribuição Oficial</div>
-                <div className="font-black text-xs text-purple-950 dark:text-white">Açaí da Rosane LDA</div>
-                <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">+351 911 050 264 · +351 249 825 131</div>
-              </div>
-            </div>
-
-            {/* As 2 Frases Oficiais da Marca */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-800 to-purple-950 text-white space-y-2 shadow-md border border-purple-700/40">
-                <Badge className="bg-amber-400 text-purple-950 font-black text-[9px] uppercase">Rótulo do Balde</Badge>
-                <div className="font-black text-lg text-fuchsia-200">
-                  "O sabor que abraça a alma"
-                </div>
-                <p className="text-[11px] text-purple-200/80">
-                  Slogan oficial impresso na embalagem master de 5,2L (4,5kg) em todas as unidades franqueadas.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-fuchsia-900 to-purple-950 text-white space-y-2 shadow-md border border-purple-700/40">
-                <Badge className="bg-pink-400 text-purple-950 font-black text-[9px] uppercase">Banner & Fachada</Badge>
-                <div className="font-black text-lg text-pink-200 uppercase tracking-tight">
-                  "Açaí não se explica: se experimenta, se apaixona e repete."
-                </div>
-                <p className="text-[11px] text-purple-200/80">
-                  Frase institucional de impacto aplicada nos banners de entrada, totens e cardápio digital do cliente.
-                </p>
-              </div>
-            </div>
-
-            {/* Selos Oficiais e Tabela Nutricional */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-2">
-              {/* Selos de Qualidade */}
-              <div className="md:col-span-5 space-y-3">
-                <h4 className="font-black text-xs uppercase tracking-wider text-purple-700 dark:text-pink-300">Selos de Conformidade Alimentar</h4>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-2">
-                    <span>🌱</span> 100% VEGAN
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-2">
-                    <span>🍇</span> Fruit Rich (Antioxidants)
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-2">
-                    <span>🥛</span> Dairy Free (Sem Leite)
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-2">
-                    <span>🌾</span> Gluten Free (Sem Glúten)
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-2">
-                    <span>🛡️</span> Preservatives Free
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-2">
-                    <span>🧬</span> GMO Free (Sem OGM)
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-[11px] text-purple-900 dark:text-purple-200/90 space-y-1 mt-3">
-                  <div className="font-bold text-purple-950 dark:text-white">Ingredientes Oficiais (PT):</div>
-                  <p>
-                    Polpa de Açaí premium, Água, Glucose, Açúcar demerara, Extrato natural de Guaraná, Estabilizante (goma de guar, goma tara, Carboximetilcelulose), Dextrose, Maltodextrina e Ácido cítrico.
-                  </p>
-                </div>
-              </div>
-
-              {/* Tabela Nutricional */}
-              <div className="md:col-span-7 space-y-3">
-                <h4 className="font-black text-xs uppercase tracking-wider text-purple-700 dark:text-pink-300">Informação Nutricional Oficial (Porção 100g)</h4>
-                <div className="border border-purple-150 dark:border-white/15 rounded-2xl overflow-hidden shadow-xs dark:shadow-lg">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-purple-100/70 dark:bg-white/10 text-purple-950 dark:text-white text-[11px] uppercase">
-                      <tr>
-                        <th className="p-2.5">Componente</th>
-                        <th className="p-2.5 text-right">Quantidade (100g)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-purple-100 dark:divide-white/10 font-medium text-slate-900 dark:text-white">
-                      <tr className="bg-purple-50/40 dark:bg-white/5">
-                        <td className="p-2.5">Valor Energético / Energia</td>
-                        <td className="p-2.5 text-right font-black text-purple-800 dark:text-pink-300">111 kcal / 469 kJ</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5">Proteínas</td>
-                        <td className="p-2.5 text-right font-mono text-purple-900 dark:text-purple-200">0,5 g</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5">Lípidos (dos quais saturados)</td>
-                        <td className="p-2.5 text-right font-mono text-purple-900 dark:text-purple-200">2,3 g (0,6 g)</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5">Hidratos de Carbono (dos quais açúcares)</td>
-                        <td className="p-2.5 text-right font-mono text-purple-900 dark:text-purple-200">20,9 g (20,7 g)</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5">Fibra Alimentar</td>
-                        <td className="p-2.5 text-right font-mono text-purple-900 dark:text-purple-200">2,5 g</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5">Cálcio / Vitamina C / Potássio</td>
-                        <td className="p-2.5 text-right font-mono text-purple-900 dark:text-purple-200">103 mg / 13 mg / 28,2 mg</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5">Sal</td>
-                        <td className="p-2.5 text-right font-mono text-purple-900 dark:text-purple-200">0,05 g</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* 5. Sincronismo */}
-        <TabsContent value="sync" className="space-y-4">
-          <Card className="p-6 bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 rounded-3xl space-y-6 text-slate-900 dark:text-white shadow-xs dark:shadow-xl">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-purple-100 dark:border-white/10">
-              <div>
-                <h3 className="font-black text-base text-purple-950 dark:text-white flex items-center gap-2">
-                  <span>Central de Replicação Master do Cardápio</span>
-                  <Badge className="bg-amber-400 text-purple-950 font-black text-[10px] py-0.5 px-2 border-0">
-                    Franqueadora Global
-                  </Badge>
-                </h3>
-                <p className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-1">
-                  Transmita instantaneamente novos produtos, fotos de estúdio e regras de preços para toda a rede de franquias.
-                </p>
-              </div>
-
-              <Button
-                onClick={handleSyncAll}
-                disabled={syncing}
-                className="bg-gradient-to-r from-purple-700 via-purple-800 to-pink-600 dark:from-pink-600 dark:via-fuchsia-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white font-black text-xs h-11 px-5 rounded-2xl shadow-lg shadow-purple-700/20 dark:shadow-pink-600/30 gap-2 cursor-pointer transition hover:scale-105"
-              >
-                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                <span>{syncing ? 'A Replicar Cardápio...' : 'Replicar para Todas as Lojas'}</span>
-              </Button>
-            </div>
-
-            {/* Resumo do Catálogo Master */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-center">
-                <div className="text-xl font-black text-purple-950 dark:text-white">5 Copos</div>
-                <div className="text-[10px] text-purple-700 dark:text-purple-300/80 font-bold uppercase mt-0.5">
-                  250g a 1Kg (Fotos 8K)
-                </div>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-center">
-                <div className="text-xl font-black text-purple-950 dark:text-white">6 Bases</div>
-                <div className="text-[10px] text-purple-700 dark:text-purple-300/80 font-bold uppercase mt-0.5">
-                  Puro & Cremes
-                </div>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-center">
-                <div className="text-xl font-black text-purple-950 dark:text-white">6 Frutas</div>
-                <div className="text-[10px] text-purple-700 dark:text-purple-300/80 font-bold uppercase mt-0.5">
-                  Frutas Frescas
-                </div>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-center">
-                <div className="text-xl font-black text-purple-950 dark:text-white">16 Toppings</div>
-                <div className="text-[10px] text-purple-700 dark:text-purple-300/80 font-bold uppercase mt-0.5">
-                  Crocantes & Caldas
-                </div>
-              </div>
-            </div>
-
-            {/* Lojas Receptoras Conectadas */}
-            <div className="space-y-2.5">
-              <div className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center justify-between">
-                <span>Unidades Receptoras Ativas ({overview?.stores?.length || 3})</span>
-                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">● Rede 100% Online</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {(overview?.stores || []).map((s: StoreOverview) => (
-                  <div
-                    key={s.tenant.id}
-                    className="p-4 rounded-2xl bg-white dark:bg-white/[0.04] border border-purple-150 dark:border-white/10 hover:border-pink-500/40 transition flex flex-col justify-between space-y-3"
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setCurrentTenant(tenant)
+                      toast.success(`Loja ativa: ${tenant.name}`)
+                    }}
+                    className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
                   >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-purple-950 dark:text-white">
-                          {s.tenant.name}
-                        </span>
-                        <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] py-0 px-1.5 border-0">
-                          Ativa
-                        </Badge>
+                    <span>Aceder ao PDV desta Loja</span>
+                    <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* 3 Blocos de Informação com Gestão de Equipe e Royalties */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Bloco 1: Vendas Hoje */}
+                <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-3">
+                  <div className="text-xs font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
+                    📊 Vendas & Faturamento Hoje
+                  </div>
+                  <div className="text-2xl font-black text-purple-950 dark:text-pink-300 font-mono">
+                    {formatCurrency(metrics.todayRevenue)}
+                  </div>
+                  <div className="text-xs text-purple-700/80 dark:text-purple-200/70 space-y-1">
+                    <div>Comandas Emitidas: <b>{metrics.todayOrdersCount}</b></div>
+                    <div>Mix MB WAY: <b>{metrics.mbwaySharePercent}%</b></div>
+                    <div>Royalties da Loja: <b>{storeContract ? `${storeContract.royaltyPercent}%` : '4.0%'}</b></div>
+                  </div>
+                </div>
+
+                {/* Bloco 2: Equipa da Loja com Botão de Adicionar Colaborador */}
+                <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
+                      👥 Equipa da Unidade
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditingUser({ id: '', name: '', email: '', role: 'CASHIER', active: true, tenantId: tenant.id } as any)
+                        setUserDialogOpen(true)
+                      }}
+                      className="h-6 px-2 text-[10px] font-bold rounded-lg bg-purple-700 hover:bg-purple-800 text-white gap-1 cursor-pointer"
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                      <span>Adicionar</span>
+                    </Button>
+                  </div>
+                  <div className="text-xs space-y-2">
+                    {/* Gerente */}
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-purple-950 dark:text-white flex items-center gap-1">
+                          <span>{manager?.name || 'Gerente Titular'}</span>
+                          <Badge className="bg-purple-100 dark:bg-pink-500/20 text-purple-800 dark:text-pink-300 text-[8px] py-0 font-bold">GERENTE</Badge>
+                        </div>
+                        <div className="text-[10px] text-purple-700/80 dark:text-purple-200/70 font-mono">{manager?.email || `gerente.${tenant.slug}@acairose.pt`}</div>
                       </div>
-                      <div className="text-[11px] text-purple-700 dark:text-purple-300/70 mt-1">
-                        {s.tenant.city || 'Portugal'} · {s.tenant.address}
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingUser({ ...manager, role: 'TENANT_ADMIN', tenantId: tenant.id } as any)
+                          setUserDialogOpen(true)
+                        }}
+                        className="h-6 w-6 p-0 text-purple-600 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-white/10 rounded-md"
+                      >
+                        <UserCheck className="h-3 w-3" />
+                      </Button>
                     </div>
 
-                    <div className="pt-2 border-t border-purple-100 dark:border-white/10 flex items-center justify-between text-[10px] text-purple-600 dark:text-purple-300/60 font-semibold">
-                      <span>Status do Cardápio:</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">Sincronizado</span>
-                    </div>
+                    {/* Caixas */}
+                    {operators.map((op, idx) => (
+                      <div key={op.id} className="p-2 rounded-xl bg-white dark:bg-white/5 border border-purple-100 dark:border-white/10 flex justify-between items-center text-[11px]">
+                        <div>
+                          <div className="font-bold text-purple-950 dark:text-white flex items-center gap-1">
+                            <span>{idx + 1}. {op.name}</span>
+                            <Badge className="bg-emerald-500 text-white text-[8px] py-0">Caixa</Badge>
+                          </div>
+                          <div className="text-[9px] text-purple-600/70 dark:text-purple-200/60 font-mono">{op.email}</div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingUser({ ...op, role: 'CASHIER', tenantId: tenant.id } as any)
+                              setUserDialogOpen(true)
+                            }}
+                            className="h-6 w-6 p-0 text-purple-600 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-white/10 rounded-md"
+                          >
+                            <UserCheck className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteUser(op.id)}
+                            className="h-6 w-6 p-0 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Bloco 3: Dados Fiscais & Endereço */}
+                <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-3">
+                  <div className="text-xs font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
+                    🏢 Identificação Fiscal & Morada
+                  </div>
+                  <div className="text-xs space-y-1.5 text-purple-950 dark:text-purple-100">
+                    <div><b>Empresa:</b> {tenant.companyName || 'Rose & Vavá Portugal Lda'}</div>
+                    <div><b>Morada:</b> {tenant.address || 'Praça 5 de Outubro 12'}</div>
+                    <div><b>Localidade:</b> {tenant.postalCode || '2350-754'} {tenant.city || 'Torres Novas'}</div>
+                    <div><b>Telefone:</b> {tenant.phone || '+351 911 050 264'}</div>
+                  </div>
+                </div>
               </div>
             </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          )
+        })()
+      )}
 
+      {/* Modais */}
       <CreateStoreDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
@@ -596,11 +655,50 @@ export default function FranchiseCorporatePage() {
         open={!!detailsStore}
         onOpenChange={(o) => !o && setDetailsStore(null)}
         storeOverview={detailsStore}
+        contract={
+          detailsStore
+            ? contracts.find(
+                (c) =>
+                  c.storeName.toLowerCase().includes(detailsStore.tenant.city?.toLowerCase() || '') ||
+                  c.id.includes(detailsStore.tenant.slug || '')
+              ) || contracts[0]
+            : undefined
+        }
         onSelectStore={(t) => {
           setCurrentTenant(t)
           setDetailsStore(null)
           toast.success(`Loja ativa alterada para: ${t.name}`)
         }}
+        onAddUserForStore={(tenantId) => {
+          setEditingUser({ id: '', name: '', email: '', role: 'CASHIER', active: true, tenantId } as any)
+          setUserDialogOpen(true)
+        }}
+        onEditUser={(u) => {
+          setEditingUser(u)
+          setUserDialogOpen(true)
+        }}
+        onDeleteUser={handleDeleteUser}
+        onEditContract={(c) => setEditingContract(c)}
+      />
+
+      <UserEditDialog
+        open={userDialogOpen}
+        onOpenChange={setUserDialogOpen}
+        user={editingUser}
+        onSave={handleSaveUser}
+      />
+
+      <EditRoyaltyDialog
+        open={!!editingContract}
+        onOpenChange={(o) => !o && setEditingContract(null)}
+        contract={editingContract}
+        onSave={handleSaveContract}
+      />
+
+      <FranchiseReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        contracts={contracts}
       />
     </div>
   )

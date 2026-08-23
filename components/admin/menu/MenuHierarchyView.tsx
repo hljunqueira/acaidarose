@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { CatalogData } from '@/types'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -357,105 +358,112 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       <hr className="border-t border-purple-100 dark:border-white/10 my-2" />
 
-      {/* 3. NÍVEL 2: LISTA DE CATEGORIAS (FILTRO 'Todas as categorias' + Categorias Reais) */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setSelectedCategory('all_cats')}
-          className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-            selectedCategory === 'all_cats'
-              ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
-              : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-          }`}
-        >
-          Todas as categorias
-        </button>
-
-        {categories
-          .filter((c) => c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias'))
-          .map((cat) => {
-            const isSelected = selectedCategory === cat.id
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
-                    : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-                }`}
-              >
-                {cat.name}
-              </button>
-            )
-          })}
-
-        {/* Botão + Adicionar Categoria */}
-        {isSuperAdmin && (
+      {/* 3. NÍVEL 2: CATEGORIAS & BARRA DE AÇÕES */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pt-1">
+        {/* Pílulas de Categorias */}
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setAddCatDialogOpen(true)}
-            className="px-3.5 py-1.5 rounded-full text-[11px] font-bold bg-purple-700 dark:bg-pink-600 hover:bg-purple-800 dark:hover:bg-pink-500 text-white flex items-center gap-1 transition cursor-pointer shadow-sm"
+            onClick={() => setSelectedCategory('all_cats')}
+            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+              selectedCategory === 'all_cats'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+            }`}
           >
-            <PlusCircle className="h-3 w-3" />
-            <span>Adicionar Categoria</span>
+            Todas as categorias
           </button>
-        )}
-      </div>
 
-      {/* 4. BARRA DE AÇÕES INFERIOR DIREITA */}
-      <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3">
-        {/* Solicitar à Franqueadora (Para Franqueados) */}
-        {!isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setFranchiseReqOpen(true)}
-            className="h-9 px-3.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-            <span>Solicitar à Franqueadora</span>
-          </button>
-        )}
+          {categories
+            .filter((c) => c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias'))
+            .map((cat) => {
+              const isSelected = selectedCategory === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                      : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              )
+            })}
 
-        {/* + Adicionar Novo Item (Verde) */}
-        <button
-          type="button"
-          onClick={handleOpenNew}
-          className="h-9 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
-        >
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span>{isSuperAdmin ? 'Adicionar Novo Item' : 'Sugerir Produto'}</span>
-        </button>
-
-        {/* Modelos de Opções (Apenas Franqueadora) */}
-        {isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setOptionModelOpen(true)}
-            className="h-9 px-3.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-            <span>Modelos de Opções</span>
-          </button>
-        )}
-
-        {/* Filtro com Contador Ativo */}
-        <button
-          type="button"
-          onClick={() => setFilterDialogOpen(true)}
-          className={`h-9 px-3.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs ${
-            hasActiveFilters
-              ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
-              : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
-          }`}
-        >
-          <Filter className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-          <span>Filtro</span>
-          {hasActiveFilters && (
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          {/* Botão + Adicionar Categoria */}
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setAddCatDialogOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-100 dark:bg-pink-950/40 border border-purple-200 dark:border-pink-500/30 text-purple-900 dark:text-pink-300 hover:bg-purple-200/70 dark:hover:bg-pink-900/40 flex items-center gap-1 transition cursor-pointer"
+            >
+              <PlusCircle className="h-3 w-3" />
+              <span>Adicionar Categoria</span>
+            </button>
           )}
-        </button>
+        </div>
+
+        {/* Barra de Ações Integrada */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Solicitar à Franqueadora (Para Franqueados) */}
+          {!isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setFranchiseReqOpen(true)}
+              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+              <span>Solicitar à Franqueadora</span>
+            </button>
+          )}
+
+          {/* + Adicionar Novo Item (Verde - Apenas Franqueadora Master) */}
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={handleOpenNew}
+              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <PlusCircle className="h-3.5 w-3.5" />
+              <span>Novo Item</span>
+            </button>
+          )}
+
+          {/* Modelos de Opções (Apenas Franqueadora) */}
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setOptionModelOpen(true)}
+              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+              <span>Modelos</span>
+            </button>
+          )}
+
+          {/* Filtro com Contador Ativo */}
+          <button
+            type="button"
+            onClick={() => setFilterDialogOpen(true)}
+            className={`h-8 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs ${
+              hasActiveFilters
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
+                : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+            <span>Filtro</span>
+            {hasActiveFilters && (
+              <span className="h-4 w-4 rounded-full bg-white text-purple-700 text-[10px] font-black flex items-center justify-center">
+                !
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* 5. LISTAGEM DE PRODUTOS */}
@@ -481,6 +489,101 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             />
           ))
         )}
+      </div>
+
+      {/* 5.5 INFORMAÇÃO NUTRICIONAL & SELOS DE CONFORMIDADE (PADRÃO REDE) */}
+      <div className="pt-3">
+        <details className="group rounded-3xl bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 p-4 shadow-xs dark:shadow-xl text-slate-900 dark:text-white transition cursor-pointer">
+          <summary className="flex items-center justify-between text-xs font-black text-purple-950 dark:text-white select-none list-none">
+            <div className="flex items-center gap-2">
+              <span>🌿</span>
+              <span>Selos Oficiais de Conformidade & Tabela Nutricional</span>
+              <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[9px] font-black uppercase">
+                Padrão Açaí da Rose
+              </Badge>
+            </div>
+            <span className="text-purple-600 dark:text-pink-400 group-open:rotate-180 transition-transform font-bold text-xs">
+              ▼
+            </span>
+          </summary>
+
+          <div className="pt-4 mt-3 border-t border-purple-100 dark:border-white/10 space-y-4 cursor-default">
+            {/* Selos de Qualidade */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
+                <span>🌱</span> 100% VEGAN
+              </div>
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
+                <span>🍇</span> Antioxidantes
+              </div>
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
+                <span>🥛</span> Sem Leite
+              </div>
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
+                <span>🌾</span> Sem Glúten
+              </div>
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
+                <span>🛡️</span> Sem Conservantes
+              </div>
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
+                <span>🧬</span> Sem OGM
+              </div>
+            </div>
+
+            {/* Ingredientes & Tabela Nutricional */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-xs">
+              <div className="md:col-span-5 p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-1.5">
+                <div className="font-bold text-purple-950 dark:text-white uppercase tracking-wider text-[10px]">
+                  Ingredientes Oficiais (PT):
+                </div>
+                <p className="text-purple-900 dark:text-purple-200/90 text-[11px] leading-relaxed">
+                  Polpa de Açaí premium, Água, Glucose, Açúcar demerara, Extrato natural de Guaraná, Estabilizante (goma de guar, goma tara, Carboximetilcelulose), Dextrose, Maltodextrina e Ácido cítrico.
+                </p>
+              </div>
+
+              <div className="md:col-span-7 border border-purple-150 dark:border-white/15 rounded-2xl overflow-hidden shadow-xs dark:shadow-lg">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-purple-100/70 dark:bg-white/10 text-purple-950 dark:text-white text-[10px] uppercase">
+                    <tr>
+                      <th className="p-2">Componente (Porção 100g)</th>
+                      <th className="p-2 text-right">Quantidade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-purple-100 dark:divide-white/10 text-[11px]">
+                    <tr className="bg-purple-50/40 dark:bg-white/5 font-bold">
+                      <td className="p-2">Valor Energético / Energia</td>
+                      <td className="p-2 text-right text-purple-800 dark:text-pink-300 font-mono">111 kcal / 469 kJ</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2">Proteínas</td>
+                      <td className="p-2 text-right font-mono">0,5 g</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2">Lípidos (saturados)</td>
+                      <td className="p-2 text-right font-mono">2,3 g (0,6 g)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2">Hidratos de Carbono (açúcares)</td>
+                      <td className="p-2 text-right font-mono">20,9 g (20,7 g)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2">Fibra Alimentar</td>
+                      <td className="p-2 text-right font-mono">2,5 g</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2">Cálcio / Vit. C / Potássio</td>
+                      <td className="p-2 text-right font-mono">103 mg / 13 mg / 28,2 mg</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2">Sal</td>
+                      <td className="p-2 text-right font-mono">0,05 g</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
 
       {/* 6. MODAL ADICIONAR NOVA CATEGORIA */}
@@ -558,6 +661,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         open={franchiseReqOpen}
         onOpenChange={setFranchiseReqOpen}
         tenantId={tenantId}
+        catalog={catalog}
       />
 
       <ContainerAssemblyRulesDialog

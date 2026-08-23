@@ -1,7 +1,7 @@
 import { ProductBase, ProductContainer, ProductTopping } from './catalog'
 
-export type PaymentMethodCode = 'NUMERARIO' | 'MULTIBANCO' | 'MB_WAY' | 'PLATAFORMA' | 'MBWAY' | 'CASH'
-export type OrderStatus = 'NEW' | 'OPEN' | 'PAID' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED'
+export type PaymentMethodCode = 'NUMERARIO' | 'MULTIBANCO' | 'MB_WAY' | 'PLATAFORMA' | 'MBWAY' | 'CASH' | 'CARD'
+export type OrderStatus = 'NEW' | 'OPEN' | 'PAID' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'WAITING_PAYMENT'
 
 export interface OrderItemTopping extends ProductTopping {
   isPaid: boolean

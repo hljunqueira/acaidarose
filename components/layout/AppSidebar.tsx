@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { User, Tenant } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { ChevronDown, ChevronUp, Store, Utensils, Building2 } from 'lucide-react'
@@ -16,6 +16,7 @@ export type AppViewId =
   | 'menu_highlights'
   | 'menu_offers'
   | 'franchise'
+  | 'franchise_requests'
   | 'reports'
   | 'qrcode_config'
   | 'company'
@@ -44,6 +45,36 @@ export default function AppSidebar({
   const isTenantAdmin = user.role === 'TENANT_ADMIN'
   const isAdmin = isSuperAdmin || isTenantAdmin
 
+  const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0)
+
+  useEffect(() => {
+    const loadCount = () => {
+      fetch('/api/franchise-requests')
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.requests) {
+            const count = d.requests.filter((r: any) => r.status === 'PENDING').length
+            setPendingRequestsCount(count)
+          }
+        })
+        .catch(() => {})
+    }
+
+    loadCount()
+
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (customEvent.detail?.count !== undefined) {
+        setPendingRequestsCount(customEvent.detail.count)
+      } else {
+        loadCount()
+      }
+    }
+
+    window.addEventListener('franchise_requests_updated', handleUpdate)
+    return () => window.removeEventListener('franchise_requests_updated', handleUpdate)
+  }, [currentView])
+
   // Controle de colapso de cada grupo
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     franchise: true,
@@ -61,13 +92,7 @@ export default function AppSidebar({
     {
       id: 'franchise' as AppViewId,
       label: 'Franqueadora Master',
-      subtitle: 'Holding Global & Contratos',
-      show: isSuperAdmin,
-    },
-    {
-      id: 'users' as AppViewId,
-      label: 'Gestão de Utilizadores',
-      subtitle: 'Acessos Globais',
+      subtitle: 'Holding, Lojas, Utilizadores & Contratos',
       show: isSuperAdmin,
     },
   ]
@@ -76,23 +101,13 @@ export default function AppSidebar({
   const salonItems = [
     {
       id: 'qrcode' as AppViewId,
-      label: 'Pedidos',
-      subtitle: 'Mesa / Balcão',
-      show: true,
-    },
-    {
-      id: 'pdv' as AppViewId,
-      label: 'PDV & Salão de Mesas',
+      label: 'Pedidos & KDS',
+      subtitle: 'Mesas / Balcão',
       show: true,
     },
     {
       id: 'tables' as AppViewId,
       label: 'Gestão de Mesas',
-      show: isAdmin,
-    },
-    {
-      id: 'staff' as AppViewId,
-      label: 'Garçons & Atendentes',
       show: isAdmin,
     },
   ]
@@ -103,13 +118,19 @@ export default function AppSidebar({
     { id: 'menu_categories' as AppViewId, label: 'Categorias', show: isAdmin },
     { id: 'menu_menus' as AppViewId, label: 'Menus', show: isAdmin },
     { id: 'menu_highlights' as AppViewId, label: 'Destaques', show: isAdmin },
-    { id: 'menu_offers' as AppViewId, label: 'Ofertas', show: isAdmin },
+    {
+      id: 'franchise_requests' as AppViewId,
+      label: isSuperAdmin && currentTenant?.isHeadquarters ? 'Solicitações da Rede' : 'Solicitações à Franqueadora',
+      badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
+      show: isAdmin,
+    },
   ]
 
   // 4. GRUPO LOJA: CONFIGURAÇÕES DA LOJA
   const storeConfigItems = [
     { id: 'company' as AppViewId, label: 'Dados da Loja', show: isAdmin },
     { id: 'qrcode_config' as AppViewId, label: 'Configurações QR Code', show: isAdmin },
+    { id: 'users' as AppViewId, label: 'Utilizadores & Permissões', show: isAdmin },
     { id: 'reports' as AppViewId, label: 'Relatórios & Fecho de Caixa', show: true },
   ]
 
@@ -334,13 +355,18 @@ export default function AppSidebar({
                             onSelectView(sub.id)
                             onCloseMobile()
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-between ${
                             active
                               ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-amber-600 dark:to-pink-600 text-white font-bold shadow-md'
                               : 'text-purple-900 dark:text-purple-200/70 font-semibold hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
                           }`}
                         >
                           <span className="font-bold text-xs leading-tight">{sub.label}</span>
+                          {(sub as any).badge && (
+                            <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-pink-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                              {(sub as any).badge}
+                            </span>
+                          )}
                         </button>
                       )
                     })}

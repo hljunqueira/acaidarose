@@ -231,12 +231,34 @@ function getInitialStore(): MockDataStore {
       createdAt: new Date().toISOString(),
     },
 
-    // Operador de Caixa
+    // Operadores de Caixa por Loja
     {
-      id: 'usr-caixa-alias',
+      id: 'usr-caixa-lisboa',
       tenantId: 'tenant-lisboa',
       name: 'Operador Caixa Lisboa',
-      email: 'caixa@acairose.pt',
+      email: 'caixa.lisboa@acairose.pt',
+      password: '123456',
+      passwordHash: '123456',
+      role: 'CASHIER',
+      active: true,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'usr-caixa-aveiro',
+      tenantId: 'tenant-aveiro',
+      name: 'Operador Caixa Aveiro',
+      email: 'caixa.aveiro@acairose.pt',
+      password: '123456',
+      passwordHash: '123456',
+      role: 'CASHIER',
+      active: true,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'usr-caixa-santarem',
+      tenantId: 'tenant-santarem',
+      name: 'Operador Caixa Santarém',
+      email: 'caixa.santarem@acairose.pt',
       password: '123456',
       passwordHash: '123456',
       role: 'CASHIER',
