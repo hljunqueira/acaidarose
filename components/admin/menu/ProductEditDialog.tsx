@@ -1,0 +1,517 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/lib/stores/authStore'
+import {
+  GripVertical,
+  Eye,
+  EyeOff,
+  Edit2,
+  Trash2,
+  Plus,
+  Camera,
+  Lock,
+  Info,
+} from 'lucide-react'
+import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
+import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
+
+interface ProductEditDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  collection: 'containers' | 'bases' | 'toppings'
+  item: any
+  onSave: (collection: string, item: any) => Promise<void>
+}
+
+// Modelos de Opções Globais Disponíveis para Vincular
+const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
+  {
+    id: 'model-bases',
+    name: 'Escolha seu creme ou base (10 Sabores)',
+    priceType: 'Gratis',
+    minQty: 1,
+    maxQty: 2,
+    isRequired: true,
+    active: true,
+    options: [
+      { id: 'b-1', name: 'Açaí Tradicional Especial', code: '101', price: 0.00, description: 'Batido puro na hora', active: true },
+      { id: 'b-2', name: 'Creme de Morango Artesanal', code: '102', price: 0.00, description: 'Creme com morangos frescos', active: true },
+      { id: 'b-3', name: 'Creme de Leite Ninho', code: '103', price: 0.00, description: 'Creme aveludado de Ninho', active: true },
+    ],
+  },
+  {
+    id: 'model-frutas',
+    name: 'Deseja adicionar frutas frescas selecionadas?',
+    priceType: 'Gratis',
+    minQty: 0,
+    maxQty: 3,
+    isRequired: false,
+    active: true,
+    options: [
+      { id: 'f-1', name: 'Morango Fresco', code: '201', price: 0.00, description: 'Fruta cortada fresca', active: true },
+      { id: 'f-2', name: 'Banana Fatiada', code: '202', price: 0.00, description: 'Banana fresca', active: true },
+      { id: 'f-3', name: 'Kiwi Especial', code: '203', price: 0.00, description: 'Kiwi em fatias', active: true },
+      { id: 'f-4', name: 'Manga Doce', code: '204', price: 0.00, description: 'Manga madura em cubos', active: true },
+    ],
+  },
+  {
+    id: 'model-toppings',
+    name: 'Quais toppings e crocantes tradicionais?',
+    priceType: 'Gratis',
+    minQty: 0,
+    maxQty: 4,
+    isRequired: false,
+    active: true,
+    options: [
+      { id: 't-1', name: 'Granola Tradicional Crocante', code: '301', price: 0.00, description: 'Granola dourada crocante', active: true },
+      { id: 't-2', name: 'Leite Ninho em Pó', code: '302', price: 0.00, description: 'Leite em pó puro', active: true },
+      { id: 't-3', name: 'Paçoca de Amendoim', code: '303', price: 0.00, description: 'Paçoca esfarelada', active: true },
+      { id: 't-4', name: 'Chocoball Crocante', code: '304', price: 0.00, description: 'Bolinhas crocantes de chocolate', active: true },
+    ],
+  },
+  {
+    id: 'model-caldas',
+    name: 'Deseja adicionar caldas nobres?',
+    priceType: 'Individual',
+    minQty: 0,
+    maxQty: 3,
+    isRequired: false,
+    active: true,
+    options: [
+      { id: 'c-1', name: 'Nutella Original', code: '401', price: 1.00, description: 'Creme de avelã com cacau puro', active: true },
+      { id: 'c-2', name: 'Creme de Leite Ninho Nobre', code: '402', price: 1.00, description: 'Creme aveludado de Ninho', active: true },
+      { id: 'c-3', name: 'Pasta de Pistache Artesanal', code: '403', price: 1.20, description: 'Pasta nobre de pistache italiano', active: true },
+    ],
+  },
+]
+
+export default function ProductEditDialog({
+  open,
+  onOpenChange,
+  collection,
+  item,
+  onSave,
+}: ProductEditDialogProps) {
+  const { user } = useAuthStore()
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const { categories } = useMenuConfigStore()
+
+  const getInitialCategory = (prod: any) => {
+    if (prod?.category) return prod.category
+    if (prod?.weightGrams === 250 || prod?.name?.includes('250')) return 'AÇAÍ 250G'
+    if (prod?.weightGrams === 350 || prod?.name?.includes('350')) return 'AÇAÍ 350G'
+    if (prod?.weightGrams === 500 || prod?.name?.includes('500')) return 'AÇAÍ 500G'
+    if (prod?.weightGrams === 750 || prod?.name?.includes('750')) return 'AÇAÍ 750G'
+    if (prod?.weightGrams === 1000 || prod?.name?.includes('1')) return 'AÇAÍ 1 KG'
+    return 'AÇAÍ 500G'
+  }
+
+  const [form, setForm] = useState<any>({
+    name: '',
+    description: '',
+    category: 'AÇAÍ 500G',
+    price: 12.90,
+    code: '2885',
+    image: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [optionModelOpen, setOptionModelOpen] = useState(false)
+  const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
+  const [showImageInput, setShowImageInput] = useState(false)
+
+  const [linkedOptionGroups, setLinkedOptionGroups] = useState<(OptionModelData & { active?: boolean })[]>(AVAILABLE_OPTION_MODELS)
+
+  useEffect(() => {
+    if (item) {
+      setForm({
+        name: item.name || '',
+        description: item.description || '',
+        category: getInitialCategory(item),
+        price: item.precoBase || item.price || 12.90,
+        code: item.code || '2885',
+        image: item.image || '',
+      })
+    }
+  }, [item])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await onSave(collection, {
+        ...item,
+        name: form.name,
+        description: form.description,
+        image: form.image,
+        code: form.code,
+        precoBase: Number(form.price),
+        category: form.category,
+      })
+      toast.success(`"${form.name}" salvo com sucesso!`)
+      onOpenChange(false)
+    } catch {
+      toast.error('Erro ao salvar produto')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleOpenNewOptionModel = () => {
+    if (!isSuperAdmin) return
+    setEditingModel(null)
+    setOptionModelOpen(true)
+  }
+
+  const handleEditOptionModel = (group: OptionModelData) => {
+    if (!isSuperAdmin) return
+    setEditingModel(group)
+    setOptionModelOpen(true)
+  }
+
+  const handleSaveOptionModel = (savedModel: OptionModelData) => {
+    setLinkedOptionGroups((prev) => {
+      const exists = prev.find((g) => g.id === savedModel.id || g.name === savedModel.name)
+      if (exists) {
+        return prev.map((g) => (g.id === savedModel.id || g.name === savedModel.name ? { ...savedModel, active: true } : g))
+      }
+      return [...prev, { ...savedModel, active: true }]
+    })
+  }
+
+  const handleToggleGroupActive = (groupId?: string, groupName?: string) => {
+    if (!isSuperAdmin) {
+      toast.info('Regras de opcionais são gerenciadas pela Franqueadora Master.')
+      return
+    }
+    setLinkedOptionGroups((prev) =>
+      prev.map((g) => {
+        if ((groupId && g.id === groupId) || g.name === groupName) {
+          const next = g.active === false ? true : false
+          toast.success(next ? `Opcional "${g.name}" ativado no produto.` : `Opcional "${g.name}" pausado no produto.`)
+          return { ...g, active: next }
+        }
+        return g
+      })
+    )
+  }
+
+  const handleUnlinkGroup = (groupId?: string, groupName?: string) => {
+    if (!isSuperAdmin) return
+    setLinkedOptionGroups((prev) => prev.filter((g) => (groupId ? g.id !== groupId : g.name !== groupName)))
+    toast.success('Modelo de opção desvinculado deste produto.')
+  }
+
+  const handleSelectAndLinkModel = (modelId: string) => {
+    if (!isSuperAdmin) return
+    const found = AVAILABLE_OPTION_MODELS.find((m) => m.id === modelId)
+    if (!found) return
+    handleSaveOptionModel(found)
+    toast.success(`Modelo "${found.name}" vinculado com sucesso!`)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-100 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+        <div className="p-4 px-6 border-b border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <DialogTitle className="text-sm font-black text-purple-950 dark:text-white tracking-tight">
+              {isSuperAdmin ? 'Editar Produto — Franqueadora Master' : 'Detalhes do Produto — Filial'}
+            </DialogTitle>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              isSuperAdmin
+                ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-700/50'
+                : 'bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/15'
+            }`}>
+              {isSuperAdmin ? 'Modo Master' : 'Visualização de Filial'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="text-xs font-bold text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white cursor-pointer"
+          >
+            Fechar
+          </button>
+        </div>
+
+        {!isSuperAdmin && (
+          <div className="px-6 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/60 dark:border-amber-500/20 flex items-center gap-2 text-xs text-amber-900 dark:text-amber-200">
+            <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <span>
+              <strong>Edição de Filial:</strong> Você pode personalizar a foto local do produto. Nome, preço de tabela e regras de opcionais são padronizados pela Franqueadora.
+            </span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-purple-100 dark:divide-white/10 text-xs">
+          <div className="p-6 md:w-[48%] space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Foto do Produto:</Label>
+                <button
+                  type="button"
+                  onClick={() => setShowImageInput(!showImageInput)}
+                  className="text-[11px] text-purple-700 dark:text-pink-400 hover:underline font-semibold cursor-pointer"
+                >
+                  {showImageInput ? 'Ocultar URL' : 'Alterar URL da foto'}
+                </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-20 w-20 rounded-xl overflow-hidden bg-purple-50 dark:bg-white/5 border border-purple-200 dark:border-white/10 flex-shrink-0 relative">
+                  {form.image ? (
+                    <img src={form.image} alt="Preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-purple-300 dark:text-purple-600">
+                      <Camera className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+                <div
+                  onClick={() => setShowImageInput(true)}
+                  className="h-20 flex-1 border border-dashed border-purple-200 dark:border-white/20 rounded-xl flex flex-col items-center justify-center gap-1 text-[10px] font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50/50 dark:hover:bg-white/5 cursor-pointer text-center p-2 transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>PERSONALIZAR FOTO</span>
+                </div>
+              </div>
+              {showImageInput && (
+                <div className="space-y-1 pt-1 animate-in fade-in duration-150">
+                  <Label className="text-[10px] font-bold text-purple-900 dark:text-purple-300">URL da Imagem:</Label>
+                  <Input
+                    value={form.image}
+                    onChange={(e) => setForm({ ...form, image: e.target.value })}
+                    placeholder="https://exemplo.com/foto-acai.jpg"
+                    className="h-8 text-xs border-purple-200 dark:border-white/15 rounded-lg font-mono bg-white dark:bg-white/5"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Nome do Produto:</Label>
+                {!isSuperAdmin && (
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium flex items-center gap-1">
+                    <Lock className="h-3 w-3" /> Padrão Master
+                  </span>
+                )}
+              </div>
+              <Input
+                required
+                readOnly={!isSuperAdmin}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Ex: Açaí 500g"
+                className={`h-9 text-xs rounded-lg font-bold border-purple-200 dark:border-white/15 ${
+                  isSuperAdmin
+                    ? 'bg-white dark:bg-white/5 text-purple-950 dark:text-white'
+                    : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed'
+                }`}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">Descrição Oficial:</Label>
+              <textarea
+                readOnly={!isSuperAdmin}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={2}
+                placeholder="Descrição dos ingredientes e regras..."
+                className={`w-full p-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg focus:outline-none ${
+                  isSuperAdmin
+                    ? 'bg-white dark:bg-white/5 text-purple-950 dark:text-white'
+                    : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed'
+                }`}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria:</Label>
+              <select
+                disabled={!isSuperAdmin}
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className={`w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold ${
+                  isSuperAdmin
+                    ? 'bg-white dark:bg-[#160228] text-purple-950 dark:text-white'
+                    : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed'
+                }`}
+              >
+                <optgroup label="Tamanhos de Açaí">
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Complementos">
+                  <option value="BASES & CREMES">BASES & CREMES</option>
+                  <option value="FRUTAS FRESCAS">FRUTAS FRESCAS</option>
+                  <option value="TOPPINGS & CROCANTES">TOPPINGS & CROCANTES</option>
+                  <option value="CALDAS PREMIUM">CALDAS NOBRES</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <div className="p-6 md:w-[52%] space-y-5">
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-950 dark:text-white text-xs">Preço de Tabela:</h3>
+              <div className="p-3.5 border border-purple-100 dark:border-white/10 rounded-xl bg-purple-50/40 dark:bg-white/5 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-purple-950 dark:text-white">{form.name || 'Produto'}</div>
+                  <div className="text-[11px] text-purple-700 dark:text-purple-300/70">
+                    {isSuperAdmin ? 'Preço Master Sugerido' : 'Preço Oficial Fixado pela Franqueadora'}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-purple-900 dark:text-purple-200">€</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    disabled={!isSuperAdmin}
+                    value={form.price}
+                    onChange={(e) => setForm({ ...form, price: e.target.value })}
+                    className={`w-20 h-8 px-2 text-xs font-bold font-mono border rounded-lg ${
+                      isSuperAdmin
+                        ? 'border-purple-300 dark:border-white/20 bg-white dark:bg-white/10 text-purple-950 dark:text-white'
+                        : 'border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed text-right'
+                    }`}
+                  />
+                  {!isSuperAdmin && <Lock className="h-3 w-3 text-zinc-400" />}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-purple-950 dark:text-white text-xs">Grupos de Opcionais Vinculados:</h3>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleOpenNewOptionModel}
+                    className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer"
+                  >
+                    + Novo Modelo
+                  </button>
+                )}
+              </div>
+              {isSuperAdmin && (
+                <div className="space-y-1">
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      handleSelectAndLinkModel(e.target.value)
+                      e.target.value = ''
+                    }}
+                    className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 focus:outline-none cursor-pointer"
+                  >
+                    <option value="" disabled>
+                      [ Selecionar modelo para vincular ]
+                    </option>
+                    {AVAILABLE_OPTION_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        + {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="space-y-2">
+                {linkedOptionGroups.map((grp) => {
+                  const isActive = grp.active !== false
+                  return (
+                    <div
+                      key={grp.id || grp.name}
+                      className={`p-2.5 rounded-xl border text-xs flex items-center justify-between transition ${
+                        isActive
+                          ? 'border-purple-100 dark:border-white/10 bg-white dark:bg-white/5'
+                          : 'border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.02] opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        {isSuperAdmin && <GripVertical className="h-3 w-3 text-purple-400 cursor-grab flex-shrink-0" />}
+                        <span className={`truncate font-medium ${isActive ? 'text-purple-950 dark:text-white' : 'line-through text-zinc-400'}`}>
+                          {grp.name}
+                        </span>
+                      </div>
+                      {isSuperAdmin ? (
+                        <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleGroupActive(grp.id, grp.name)}
+                            className="p-1 hover:text-purple-900 dark:hover:text-white cursor-pointer"
+                            title={isActive ? 'Ativo no produto' : 'Pausado no produto'}
+                          >
+                            {isActive ? (
+                              <Eye className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                            ) : (
+                              <EyeOff className="h-3.5 w-3.5 text-red-500" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEditOptionModel(grp)}
+                            className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white cursor-pointer"
+                            title="Editar Modelo"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUnlinkGroup(grp.id, grp.name)}
+                            className="p-1 text-red-500 hover:text-red-700 cursor-pointer"
+                            title="Desvincular"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-purple-700 dark:text-purple-300/60 font-semibold flex-shrink-0">
+                          Padrão da Rede
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <div className="p-4 px-6 bg-purple-50/50 dark:bg-white/5 border-t border-purple-100 dark:border-white/10 flex items-center justify-end gap-2.5">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="px-4 py-2 text-xs font-bold text-purple-900 dark:text-purple-200 bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 rounded-xl hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer transition"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleSubmit}
+            className="px-6 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 rounded-xl cursor-pointer shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition"
+          >
+            {saving ? 'Guardando...' : 'Guardar Alterações'}
+          </button>
+        </div>
+      </DialogContent>
+
+      {isSuperAdmin && (
+        <OptionModelDialog
+          open={optionModelOpen}
+          onOpenChange={setOptionModelOpen}
+          initialModel={editingModel}
+          onSave={handleSaveOptionModel}
+        />
+      )}
+    </Dialog>
+  )
+}
