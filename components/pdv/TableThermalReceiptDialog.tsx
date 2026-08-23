@@ -35,6 +35,12 @@ export default function TableThermalReceiptDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 overflow-hidden bg-zinc-100">
+        <DialogHeader className="sr-only">
+          <DialogTitle>
+            {isKitchen ? 'Ficha de Produção e Copa' : 'Prévia de Comanda Térmica'}
+          </DialogTitle>
+        </DialogHeader>
+
         {/* CSS Específico para Impressão Térmica de 80mm */}
         <style jsx global>{`
           @media print {

@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const tenantId = request.nextUrl.searchParams.get('tenantId')
     const store = getMockStore()
     const orders = store.orders.filter(
-      (o: Order) => !o.deletedAt && (!tenantId || o.tenantId === tenantId)
+      (o: Order) => !tenantId || o.tenantId === tenantId
     )
     return NextResponse.json({ orders })
   } catch (error: any) {

@@ -248,10 +248,10 @@ export default function LoginPage() {
                   <span className="text-xs text-amber-400 font-black">Entrar ›</span>
                 </button>
 
-                {/* Loja 1: Torres Novas */}
+                {/* Loja 1: Lisboa */}
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('admin@acairose.pt', '123456')}
+                  onClick={() => handleQuickLogin('lisboa@acairose.pt', '123456')}
                   className="p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-purple-500/40 text-left flex items-center justify-between transition cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5">
@@ -260,9 +260,9 @@ export default function LoginPage() {
                     </div>
                     <div>
                       <div className="text-xs font-bold text-white group-hover:text-purple-300 transition">
-                        Loja 1 — Torres Novas
+                        Loja 1 — Lisboa (Parque das Nações)
                       </div>
-                      <div className="text-[10px] text-purple-200/60 font-mono">admin@acairose.pt</div>
+                      <div className="text-[10px] text-purple-200/60 font-mono">lisboa@acairose.pt</div>
                     </div>
                   </div>
                   <span className="text-xs text-purple-400 font-black">Entrar ›</span>

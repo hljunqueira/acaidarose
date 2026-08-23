@@ -23,8 +23,8 @@ export interface MockDataStore {
 
 export const HQ_TENANT: Tenant = {
   id: 'tenant-torres-novas',
-  name: 'Açaí da Rose — Matriz (Torres Novas)',
-  companyName: 'Rose & Vavá Portugal Lda',
+  name: 'Açaí da Rose — Matriz Central (Torres Novas)',
+  companyName: 'Rose & Vavá Portugal Lda — Franqueadora',
   slug: 'torres-novas',
   nif: '509123456',
   address: 'Av. Manuel de Figueiredo 12',
@@ -35,7 +35,7 @@ export const HQ_TENANT: Tenant = {
   currency: 'EUR',
   wifiNetwork: 'AcaiDaRose_Clientes',
   wifiPassword: 'acaiportugal2026',
-  aboutText: 'O autêntico açaí artesanal brasileiro no coração de Torres Novas. Frutas frescas cortadas na hora, cremes cremosos e uma experiência única de sabor e energia.',
+  aboutText: 'Sede Central e Matriz do autêntico açaí artesanal brasileiro em Portugal. Frutas frescas cortadas na hora, cremes artesanais e gestão de toda a rede de franquias.',
   instagramUrl: 'https://instagram.com/acaidarose.pt',
   googleMapsUrl: 'https://www.google.com/maps/place/A%C3%A7a%C3%AD+da+Rose+Torres+Novas/@39.483811,-8.538574,17z',
   ratingAverage: 4.9,
@@ -50,6 +50,37 @@ export const HQ_TENANT: Tenant = {
     dom: { open: '15:00', close: '22:00' },
   },
   isHeadquarters: true,
+  active: true,
+}
+
+export const LISBOA_TENANT: Tenant = {
+  id: 'tenant-lisboa',
+  name: 'Açaí da Rose — Filial Lisboa (Parque das Nações)',
+  companyName: 'Açaí Lisboa Franquias Lda',
+  slug: 'lisboa',
+  nif: '509333444',
+  address: 'Alameda dos Oceanos 41, Parque das Nações',
+  postalCode: '1990-203',
+  city: 'Lisboa',
+  phone: '+351 915 220 330',
+  mbwayPhone: '+351 915 220 330',
+  currency: 'EUR',
+  wifiNetwork: 'AcaiDaRose_Lisboa',
+  wifiPassword: 'acaiportugal2026',
+  aboutText: 'A filial de Lisboa traz toda a cremosidade e tradição das receitas originais do Açaí da Rose à beira do Rio Tejo.',
+  instagramUrl: 'https://instagram.com/acaidarose.lisboa',
+  ratingAverage: 4.9,
+  ratingCount: 185,
+  openingHours: {
+    seg: { open: '11:30', close: '22:30' },
+    ter: { open: '11:30', close: '22:30' },
+    qua: { open: '11:30', close: '22:30' },
+    qui: { open: '11:30', close: '22:30' },
+    sex: { open: '11:30', close: '23:30' },
+    sab: { open: '11:30', close: '23:30' },
+    dom: { open: '12:00', close: '22:30' },
+  },
+  isHeadquarters: false,
   active: true,
 }
 
@@ -120,6 +151,7 @@ export const DEFAULT_TENANT: Tenant = HQ_TENANT
 function getInitialStore(): MockDataStore {
   const tenants: Tenant[] = [
     HQ_TENANT,
+    LISBOA_TENANT,
     SANTAREM_TENANT,
     AVEIRO_TENANT,
   ]
@@ -140,7 +172,7 @@ function getInitialStore(): MockDataStore {
     {
       id: 'usr-super-alias',
       tenantId: 'tenant-torres-novas',
-      name: 'Super Admin (Franqueadora)',
+      name: 'Açaí da Rose (Franqueadora)',
       email: 'super@acairose.pt',
       password: '123456',
       passwordHash: '123456',
@@ -149,12 +181,12 @@ function getInitialStore(): MockDataStore {
       createdAt: new Date().toISOString(),
     },
 
-    // 2. Loja 1 — Torres Novas (Email Principal)
+    // 2. Loja 1 — Lisboa / Parque das Nações (Email Principal)
     {
-      id: 'usr-gerente-torres',
-      tenantId: 'tenant-torres-novas',
-      name: 'Gerente Torres Novas',
-      email: 'torresnovas@acairose.pt',
+      id: 'usr-gerente-lisboa',
+      tenantId: 'tenant-lisboa',
+      name: 'Gerente Loja 1 (Lisboa)',
+      email: 'lisboa@acairose.pt',
       password: '123456',
       passwordHash: '123456',
       role: 'TENANT_ADMIN',
@@ -163,8 +195,8 @@ function getInitialStore(): MockDataStore {
     },
     {
       id: 'usr-admin-alias',
-      tenantId: 'tenant-torres-novas',
-      name: 'Gerente Loja 1 (Torres Novas)',
+      tenantId: 'tenant-lisboa',
+      name: 'Gerente Loja 1 (Lisboa)',
       email: 'admin@acairose.pt',
       password: '123456',
       passwordHash: '123456',
@@ -199,11 +231,11 @@ function getInitialStore(): MockDataStore {
       createdAt: new Date().toISOString(),
     },
 
-    // Operador de Caixa (para uso interno do PDV)
+    // Operador de Caixa
     {
       id: 'usr-caixa-alias',
-      tenantId: 'tenant-torres-novas',
-      name: 'Operador Caixa & Salão',
+      tenantId: 'tenant-lisboa',
+      name: 'Operador Caixa Lisboa',
       email: 'caixa@acairose.pt',
       password: '123456',
       passwordHash: '123456',
@@ -501,13 +533,64 @@ function getInitialStore(): MockDataStore {
   ]
 
   const tables: RestaurantTable[] = [
-    // Loja 1: Torres Novas
+    // Loja 1: Lisboa (Parque das Nações)
+    {
+      id: 'tbl-lx-01',
+      tenantId: 'tenant-lisboa',
+      number: 1,
+      code: '1',
+      nickname: 'Salão Tejo 01',
+      serviceChargePercent: 0,
+      status: 'AVAILABLE',
+      assignedStaffId: 'staff-01',
+      assignedStaffName: 'Atendente Sofia',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'tbl-lx-02',
+      tenantId: 'tenant-lisboa',
+      number: 2,
+      code: '2',
+      nickname: 'Esplanada Tejo 02',
+      serviceChargePercent: 0,
+      status: 'OCCUPIED',
+      assignedStaffId: 'staff-01',
+      assignedStaffName: 'Atendente Sofia',
+      activatedAt: '14:02',
+      total: 12.90,
+      items: [
+        {
+          id: 'item-tbl-lx-02',
+          container: containers[2], // 500g
+          bases: [bases[0]], // Puro
+          toppings: [
+            { ...toppings[0], isPaid: false, precoCobrado: 0 },
+            { ...toppings[1], isPaid: false, precoCobrado: 0 },
+          ],
+          lineTotal: 12.90,
+        },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'tbl-lx-03',
+      tenantId: 'tenant-lisboa',
+      number: 3,
+      code: '3',
+      nickname: 'Balcão Rápido',
+      serviceChargePercent: 0,
+      status: 'AVAILABLE',
+      assignedStaffId: 'staff-02',
+      assignedStaffName: 'Atendente Duarte',
+      createdAt: new Date().toISOString(),
+    },
+
     {
       id: 'tbl-tn-01',
       tenantId: 'tenant-torres-novas',
       number: 1,
       code: '1',
-      nickname: 'Salão Principal 01',
+      nickname: 'Salão Matriz 01',
       serviceChargePercent: 0,
       status: 'AVAILABLE',
       assignedStaffId: 'staff-01',
@@ -519,51 +602,27 @@ function getInitialStore(): MockDataStore {
       tenantId: 'tenant-torres-novas',
       number: 2,
       code: '2',
-      nickname: 'Salão Principal 02',
+      nickname: 'Salão Matriz 02',
       serviceChargePercent: 0,
       status: 'OCCUPIED',
       assignedStaffId: 'staff-01',
       assignedStaffName: 'Atendente Karol',
-      activatedAt: '14:02',
+      activatedAt: '14:15',
       total: 13.90,
       items: [
         {
-          id: 'item-tbl-02',
+          id: 'item-1',
           container: containers[2], // 500g
-          bases: [bases[0]], // Puro
+          bases: [bases[0]], // Açaí Tradicional
           toppings: [
-            { ...toppings[0], isPaid: false, precoCobrado: 0 },
-            { ...toppings[1], isPaid: false, precoCobrado: 0 },
-            { ...toppings[4], isPaid: false, precoCobrado: 0 },
-            { ...toppings[8], isPaid: false, precoCobrado: 0 },
+            { id: 'fruta-morango', name: 'Morango', category: 'Frutas', emoji: '🍓', isPaid: false, precoCobrado: 0, precoExtra: 0, active: true },
+            { id: 'fruta-banana', name: 'Banana', category: 'Frutas', emoji: '🍌', isPaid: false, precoCobrado: 0, precoExtra: 0, active: true },
+            { id: 'top-granola', name: 'Granola', category: 'Toppings', emoji: '🌾', isPaid: false, precoCobrado: 0, precoExtra: 0, active: true },
+            { id: 'add-nutella', name: 'Nutella Original', category: 'Adicionais', emoji: '🍫', isPaid: true, precoCobrado: 1.00, precoExtra: 1.00, active: true },
           ],
           lineTotal: 13.90,
         },
       ],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'tbl-tn-03',
-      tenantId: 'tenant-torres-novas',
-      number: 3,
-      code: '3',
-      nickname: 'Esplanada 01',
-      serviceChargePercent: 0,
-      status: 'AVAILABLE',
-      assignedStaffId: 'staff-02',
-      assignedStaffName: 'Atendente Tiago',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'tbl-tn-04',
-      tenantId: 'tenant-torres-novas',
-      number: 4,
-      code: '4',
-      nickname: 'Esplanada 02',
-      serviceChargePercent: 0,
-      status: 'AVAILABLE',
-      assignedStaffId: 'staff-02',
-      assignedStaffName: 'Atendente Tiago',
       createdAt: new Date().toISOString(),
     },
 
@@ -643,6 +702,16 @@ function getInitialStore(): MockDataStore {
       customerNifRule: 'OPTIONAL',
       bannerUrl: '',
     },
+    'tenant-lisboa': {
+      mode: 'ORDER_EMISSION',
+      useDelivery: true,
+      allowMbwayPayment: true,
+      tableMode: 'FIXED_QR',
+      customerNameRule: 'OPTIONAL',
+      customerPhoneRule: 'REQUIRED',
+      customerNifRule: 'OPTIONAL',
+      bannerUrl: '',
+    },
     'tenant-santarem': {
       mode: 'ORDER_EMISSION',
       useDelivery: true,
@@ -686,6 +755,7 @@ function getInitialStore(): MockDataStore {
 
   const storeProductOverrides: Record<string, Record<string, boolean>> = {
     'tenant-torres-novas': {},
+    'tenant-lisboa': {},
     'tenant-santarem': {},
     'tenant-aveiro': {},
   }
@@ -696,13 +766,13 @@ function getInitialStore(): MockDataStore {
   return { tenants, users, staff, tables, cashierTransactions, containers, bases, toppings, orders, sessions, storeProductOverrides, franchiseContracts, qrCodeConfigs, auditLogs, reviews }
 }
 
-const globalForMock = globalThis as unknown as { __mock_store_v8__?: MockDataStore }
+const globalForMock = globalThis as unknown as { __mock_store_v10__?: MockDataStore }
 
 export function getMockStore(): MockDataStore {
-  if (!globalForMock.__mock_store_v8__) {
-    globalForMock.__mock_store_v8__ = getInitialStore()
+  if (!globalForMock.__mock_store_v10__) {
+    globalForMock.__mock_store_v10__ = getInitialStore()
   }
-  return globalForMock.__mock_store_v8__
+  return globalForMock.__mock_store_v10__
 }
 
 export const mockStore = new Proxy({} as MockDataStore, {

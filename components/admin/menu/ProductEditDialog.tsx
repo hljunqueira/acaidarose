@@ -16,6 +16,8 @@ import {
   Camera,
   Lock,
   Info,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
@@ -39,9 +41,11 @@ const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
     isRequired: true,
     active: true,
     options: [
-      { id: 'b-1', name: 'Açaí Tradicional Especial', code: '101', price: 0.00, description: 'Batido puro na hora', active: true },
-      { id: 'b-2', name: 'Creme de Morango Artesanal', code: '102', price: 0.00, description: 'Creme com morangos frescos', active: true },
-      { id: 'b-3', name: 'Creme de Leite Ninho', code: '103', price: 0.00, description: 'Creme aveludado de Ninho', active: true },
+      { id: 'b-1', name: 'Açaí Tradicional Especial', code: '101', price: 0.0, description: 'Batido puro na hora', active: true },
+      { id: 'b-2', name: 'Creme de Morango Artesanal', code: '102', price: 0.0, description: 'Creme com morangos frescos', active: true },
+      { id: 'b-3', name: 'Creme de Leite Ninho', code: '103', price: 0.0, description: 'Creme aveludado de Ninho', active: true },
+      { id: 'b-4', name: 'Creme de Cupuaçu', code: '104', price: 0.0, description: 'Fruta amazônica suave', active: true },
+      { id: 'b-5', name: 'Creme de Pitaya Rosa', code: '105', price: 0.0, description: 'Sabor refrescante e cor vibrante', active: true },
     ],
   },
   {
@@ -53,10 +57,11 @@ const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
     isRequired: false,
     active: true,
     options: [
-      { id: 'f-1', name: 'Morango Fresco', code: '201', price: 0.00, description: 'Fruta cortada fresca', active: true },
-      { id: 'f-2', name: 'Banana Fatiada', code: '202', price: 0.00, description: 'Banana fresca', active: true },
-      { id: 'f-3', name: 'Kiwi Especial', code: '203', price: 0.00, description: 'Kiwi em fatias', active: true },
-      { id: 'f-4', name: 'Manga Doce', code: '204', price: 0.00, description: 'Manga madura em cubos', active: true },
+      { id: 'f-1', name: 'Morango Fresco', code: '201', price: 0.0, description: 'Fruta cortada fresca', active: true },
+      { id: 'f-2', name: 'Banana Fatiada', code: '202', price: 0.0, description: 'Banana fresca', active: true },
+      { id: 'f-3', name: 'Kiwi Especial', code: '203', price: 0.0, description: 'Kiwi em fatias', active: true },
+      { id: 'f-4', name: 'Manga Doce', code: '204', price: 0.0, description: 'Manga madura em cubos', active: true },
+      { id: 'f-5', name: 'Abacaxi em Cubos', code: '205', price: 0.0, description: 'Abacaxi fresco', active: true },
     ],
   },
   {
@@ -68,10 +73,12 @@ const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
     isRequired: false,
     active: true,
     options: [
-      { id: 't-1', name: 'Granola Tradicional Crocante', code: '301', price: 0.00, description: 'Granola dourada crocante', active: true },
-      { id: 't-2', name: 'Leite Ninho em Pó', code: '302', price: 0.00, description: 'Leite em pó puro', active: true },
-      { id: 't-3', name: 'Paçoca de Amendoim', code: '303', price: 0.00, description: 'Paçoca esfarelada', active: true },
-      { id: 't-4', name: 'Chocoball Crocante', code: '304', price: 0.00, description: 'Bolinhas crocantes de chocolate', active: true },
+      { id: 't-1', name: 'Granola Tradicional Crocante', code: '301', price: 0.0, description: 'Granola dourada crocante', active: true },
+      { id: 't-2', name: 'Leite Ninho em Pó', code: '302', price: 0.0, description: 'Leite em pó puro', active: true },
+      { id: 't-3', name: 'Paçoca de Amendoim', code: '303', price: 0.0, description: 'Paçoca esfarelada', active: true },
+      { id: 't-4', name: 'Chocoball Crocante', code: '304', price: 0.0, description: 'Bolinhas crocantes de chocolate', active: true },
+      { id: 't-5', name: 'Amendoim Triturado', code: '305', price: 0.0, description: 'Amendoim torrado moído', active: true },
+      { id: 't-6', name: 'Coco Ralado Fino', code: '306', price: 0.0, description: 'Coco ralado natural', active: true },
     ],
   },
   {
@@ -83,9 +90,11 @@ const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
     isRequired: false,
     active: true,
     options: [
-      { id: 'c-1', name: 'Nutella Original', code: '401', price: 1.00, description: 'Creme de avelã com cacau puro', active: true },
-      { id: 'c-2', name: 'Creme de Leite Ninho Nobre', code: '402', price: 1.00, description: 'Creme aveludado de Ninho', active: true },
-      { id: 'c-3', name: 'Pasta de Pistache Artesanal', code: '403', price: 1.20, description: 'Pasta nobre de pistache italiano', active: true },
+      { id: 'c-1', name: 'Nutella Original', code: '401', price: 1.0, description: 'Creme de avelã com cacau puro', active: true },
+      { id: 'c-2', name: 'Creme de Leite Ninho Nobre', code: '402', price: 1.0, description: 'Creme aveludado de Ninho', active: true },
+      { id: 'c-3', name: 'Pasta de Pistache Artesanal', code: '403', price: 1.2, description: 'Pasta nobre de pistache italiano', active: true },
+      { id: 'c-4', name: 'Leite Condensado Moça', code: '404', price: 0.8, description: 'Leite condensado cremoso', active: true },
+      { id: 'c-5', name: 'Mel Puro Silvestre', code: '405', price: 0.8, description: 'Mel natural de abelha', active: true },
     ],
   },
 ]
@@ -115,7 +124,7 @@ export default function ProductEditDialog({
     name: '',
     description: '',
     category: 'AÇAÍ 500G',
-    price: 12.90,
+    price: 12.9,
     code: '2885',
     image: '',
   })
@@ -123,6 +132,14 @@ export default function ProductEditDialog({
   const [optionModelOpen, setOptionModelOpen] = useState(false)
   const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
   const [showImageInput, setShowImageInput] = useState(false)
+
+  // Estado para controlar quais grupos de opções estão expandidos (colapsáveis)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    'model-bases': true,
+    'model-frutas': false,
+    'model-toppings': false,
+    'model-caldas': false,
+  })
 
   const [linkedOptionGroups, setLinkedOptionGroups] = useState<(OptionModelData & { active?: boolean })[]>(AVAILABLE_OPTION_MODELS)
 
@@ -132,12 +149,19 @@ export default function ProductEditDialog({
         name: item.name || '',
         description: item.description || '',
         category: getInitialCategory(item),
-        price: item.precoBase || item.price || 12.90,
+        price: item.precoBase || item.price || 12.9,
         code: item.code || '2885',
         image: item.image || '',
       })
     }
   }, [item])
+
+  const toggleGroupExpanded = (groupId: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -151,6 +175,7 @@ export default function ProductEditDialog({
         code: form.code,
         precoBase: Number(form.price),
         category: form.category,
+        optionGroups: linkedOptionGroups,
       })
       toast.success(`"${form.name}" salvo com sucesso!`)
       onOpenChange(false)
@@ -183,17 +208,34 @@ export default function ProductEditDialog({
     })
   }
 
+  // Alterna o grupo inteiro (ativo / inativo) - Franqueadora e Filial podem alternar visibilidade local
   const handleToggleGroupActive = (groupId?: string, groupName?: string) => {
-    if (!isSuperAdmin) {
-      toast.info('Regras de opcionais são gerenciadas pela Franqueadora Master.')
-      return
-    }
     setLinkedOptionGroups((prev) =>
       prev.map((g) => {
         if ((groupId && g.id === groupId) || g.name === groupName) {
           const next = g.active === false ? true : false
-          toast.success(next ? `Opcional "${g.name}" ativado no produto.` : `Opcional "${g.name}" pausado no produto.`)
+          toast.success(next ? `Grupo "${g.name}" visível na loja.` : `Grupo "${g.name}" pausado/invisível na loja.`)
           return { ...g, active: next }
+        }
+        return g
+      })
+    )
+  }
+
+  // Alterna um item individual de opcional dentro do grupo (ex: Morango, Nutella) - Franqueadora e Filial podem alternar!
+  const handleToggleOptionItemActive = (groupId: string, optionId: string) => {
+    setLinkedOptionGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId || (!g.id && g.name === groupId)) {
+          const updatedOptions = (g.options || []).map((opt) => {
+            if (opt.id === optionId) {
+              const next = opt.active === false ? true : false
+              toast.success(next ? `Opcional "${opt.name}" agora está visível no cardápio.` : `Opcional "${opt.name}" oculto no cardápio.`)
+              return { ...opt, active: next }
+            }
+            return opt
+          })
+          return { ...g, options: updatedOptions }
         }
         return g
       })
@@ -216,7 +258,7 @@ export default function ProductEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-100 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-100 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl [&>button]:hidden">
         <div className="p-4 px-6 border-b border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <DialogTitle className="text-sm font-black text-purple-950 dark:text-white tracking-tight">
@@ -233,7 +275,7 @@ export default function ProductEditDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="text-xs font-bold text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white cursor-pointer"
+            className="text-xs font-bold text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white cursor-pointer px-2.5 py-1 rounded-lg hover:bg-purple-100/50 dark:hover:bg-white/10 transition"
           >
             Fechar
           </button>
@@ -243,13 +285,14 @@ export default function ProductEditDialog({
           <div className="px-6 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/60 dark:border-amber-500/20 flex items-center gap-2 text-xs text-amber-900 dark:text-amber-200">
             <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <span>
-              <strong>Edição de Filial:</strong> Você pode personalizar a foto local do produto. Nome, preço de tabela e regras de opcionais são padronizados pela Franqueadora.
+              <strong>Edição de Filial:</strong> Você pode personalizar a foto, descrição e visibilidade de cada opcional. Nome e preço de tabela são padronizados pela Franqueadora.
             </span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-purple-100 dark:divide-white/10 text-xs">
-          <div className="p-6 md:w-[48%] space-y-4">
+          {/* LADO ESQUERDO: FOTO, NOME, DESCRIÇÃO, CATEGORIA */}
+          <div className="p-6 md:w-[46%] space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold text-purple-950 dark:text-white">Foto do Produto:</Label>
@@ -318,30 +361,20 @@ export default function ProductEditDialog({
             <div className="space-y-1">
               <Label className="text-xs font-bold text-purple-950 dark:text-white">Descrição Oficial:</Label>
               <textarea
-                readOnly={!isSuperAdmin}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={2}
                 placeholder="Descrição dos ingredientes e regras..."
-                className={`w-full p-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg focus:outline-none ${
-                  isSuperAdmin
-                    ? 'bg-white dark:bg-white/5 text-purple-950 dark:text-white'
-                    : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed'
-                }`}
+                className="w-full p-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg focus:outline-none bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500"
               />
             </div>
 
             <div className="space-y-1">
               <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria:</Label>
               <select
-                disabled={!isSuperAdmin}
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className={`w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold ${
-                  isSuperAdmin
-                    ? 'bg-white dark:bg-[#160228] text-purple-950 dark:text-white'
-                    : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed'
-                }`}
+                className="w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold bg-white dark:bg-[#160228] text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500 cursor-pointer"
               >
                 <optgroup label="Tamanhos de Açaí">
                   {categories.map((c) => (
@@ -360,7 +393,8 @@ export default function ProductEditDialog({
             </div>
           </div>
 
-          <div className="p-6 md:w-[52%] space-y-5">
+          {/* LADO DIREITO: PREÇO & GRUPOS DE OPCIONAIS COLAPSÁVEIS COM CONTROLE DE VISIBILIDADE */}
+          <div className="p-6 md:w-[54%] space-y-4">
             <div className="space-y-2">
               <h3 className="font-bold text-purple-950 dark:text-white text-xs">Preço de Tabela:</h3>
               <div className="p-3.5 border border-purple-100 dark:border-white/10 rounded-xl bg-purple-50/40 dark:bg-white/5 flex items-center justify-between">
@@ -391,17 +425,23 @@ export default function ProductEditDialog({
 
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-purple-950 dark:text-white text-xs">Grupos de Opcionais Vinculados:</h3>
+                <div>
+                  <h3 className="font-bold text-purple-950 dark:text-white text-xs">Grupos de Opcionais Vinculados:</h3>
+                  <p className="text-[10px] text-purple-600/80 dark:text-purple-300/70">
+                    Clique no grupo para expandir e gerenciar a visibilidade de cada item na loja
+                  </p>
+                </div>
                 {isSuperAdmin && (
                   <button
                     type="button"
                     onClick={handleOpenNewOptionModel}
-                    className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer"
+                    className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer flex-shrink-0"
                   >
                     + Novo Modelo
                   </button>
                 )}
               </div>
+
               {isSuperAdmin && (
                 <div className="space-y-1">
                   <select
@@ -423,59 +463,132 @@ export default function ProductEditDialog({
                   </select>
                 </div>
               )}
-              <div className="space-y-2">
+
+              {/* LISTA DE GRUPOS COLAPSÁVEIS COM ITENS INTERNOS */}
+              <div className="space-y-2.5">
                 {linkedOptionGroups.map((grp) => {
-                  const isActive = grp.active !== false
+                  const isGroupActive = grp.active !== false
+                  const groupId = grp.id || grp.name
+                  const isExpanded = expandedGroups[groupId] ?? false
+                  const optionsList = grp.options || []
+
                   return (
                     <div
-                      key={grp.id || grp.name}
-                      className={`p-2.5 rounded-xl border text-xs flex items-center justify-between transition ${
-                        isActive
-                          ? 'border-purple-100 dark:border-white/10 bg-white dark:bg-white/5'
-                          : 'border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.02] opacity-60'
+                      key={groupId}
+                      className={`rounded-xl border transition-all overflow-hidden ${
+                        isGroupActive
+                          ? 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5'
+                          : 'border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.02] opacity-75'
                       }`}
                     >
-                      <div className="flex items-center gap-2 truncate">
-                        {isSuperAdmin && <GripVertical className="h-3 w-3 text-purple-400 cursor-grab flex-shrink-0" />}
-                        <span className={`truncate font-medium ${isActive ? 'text-purple-950 dark:text-white' : 'line-through text-zinc-400'}`}>
-                          {grp.name}
-                        </span>
-                      </div>
-                      {isSuperAdmin ? (
-                        <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                      {/* CABEÇALHO DO GRUPO (CLICÁVEL PARA EXPANDIR / COLAPSAR) */}
+                      <div
+                        onClick={() => toggleGroupExpanded(groupId)}
+                        className="p-3 flex items-center justify-between cursor-pointer hover:bg-purple-50/50 dark:hover:bg-white/5 select-none"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <span className="text-purple-600 dark:text-pink-400">
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </span>
+                          <span className={`font-bold text-xs truncate ${isGroupActive ? 'text-purple-950 dark:text-white' : 'line-through text-zinc-400'}`}>
+                            {grp.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-purple-500/80 dark:text-purple-300/60 flex-shrink-0">
+                            ({optionsList.length} itens)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {/* Alternar visibilidade do grupo inteiro */}
                           <button
                             type="button"
                             onClick={() => handleToggleGroupActive(grp.id, grp.name)}
-                            className="p-1 hover:text-purple-900 dark:hover:text-white cursor-pointer"
-                            title={isActive ? 'Ativo no produto' : 'Pausado no produto'}
+                            className="p-1 rounded-md hover:bg-purple-100/70 dark:hover:bg-white/10 transition cursor-pointer"
+                            title={isGroupActive ? 'Grupo Visível (Clique para ocultar)' : 'Grupo Oculto (Clique para exibir)'}
                           >
-                            {isActive ? (
-                              <Eye className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                            {isGroupActive ? (
+                              <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                             ) : (
-                              <EyeOff className="h-3.5 w-3.5 text-red-500" />
+                              <EyeOff className="h-4 w-4 text-red-500" />
                             )}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleEditOptionModel(grp)}
-                            className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white cursor-pointer"
-                            title="Editar Modelo"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleUnlinkGroup(grp.id, grp.name)}
-                            className="p-1 text-red-500 hover:text-red-700 cursor-pointer"
-                            title="Desvincular"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+
+                          {isSuperAdmin && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleEditOptionModel(grp)}
+                                className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white rounded-md cursor-pointer"
+                                title="Editar Modelo"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleUnlinkGroup(grp.id, grp.name)}
+                                className="p-1 text-red-500 hover:text-red-700 rounded-md cursor-pointer"
+                                title="Desvincular"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
+
+                          {!isSuperAdmin && (
+                            <span className="text-[10px] text-purple-700 dark:text-purple-300/70 font-bold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-white/5 border border-purple-200 dark:border-white/10">
+                              {isGroupActive ? 'Ativo' : 'Oculto'}
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-[10px] text-purple-700 dark:text-purple-300/60 font-semibold flex-shrink-0">
-                          Padrão da Rede
-                        </span>
+                      </div>
+
+                      {/* CONTEÚDO EXPANDIDO: ITENS DO GRUPO COM CONTROLE DE VISIBILIDADE */}
+                      {isExpanded && (
+                        <div className="p-2.5 pt-0 space-y-1.5 border-t border-purple-100 dark:border-white/10 bg-purple-50/30 dark:bg-black/20">
+                          {optionsList.length === 0 ? (
+                            <p className="text-[11px] text-zinc-400 italic p-2">Nenhum item cadastrado neste grupo.</p>
+                          ) : (
+                            optionsList.map((opt) => {
+                              const isOptActive = opt.active !== false
+                              return (
+                                <div
+                                  key={opt.id || opt.name}
+                                  className={`p-2 rounded-lg border flex items-center justify-between gap-2 transition ${
+                                    isOptActive
+                                      ? 'border-purple-100 dark:border-white/10 bg-white dark:bg-white/5'
+                                      : 'border-zinc-200 dark:border-white/5 bg-zinc-100/50 dark:bg-white/[0.02] opacity-60'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className={`text-xs font-semibold truncate ${isOptActive ? 'text-purple-950 dark:text-white' : 'line-through text-zinc-400'}`}>
+                                      {opt.name}
+                                    </span>
+                                    {opt.price !== undefined && Number(opt.price) > 0 && (
+                                      <span className="text-[10px] font-mono font-bold text-purple-700 dark:text-pink-300">
+                                        + € {Number(opt.price).toFixed(2).replace('.', ',')}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleOptionItemActive(groupId, opt.id)}
+                                      className={`px-2 py-0.5 text-[10px] font-bold rounded-full border transition cursor-pointer ${
+                                        isOptActive
+                                          ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100'
+                                          : 'bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/30 hover:bg-red-100'
+                                      }`}
+                                      title="Clique para alternar a visibilidade desta opção na loja"
+                                    >
+                                      {isOptActive ? 'Visível' : 'Invisível'}
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
                       )}
                     </div>
                   )

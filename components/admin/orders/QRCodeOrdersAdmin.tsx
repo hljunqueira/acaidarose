@@ -26,13 +26,17 @@ import {
   SlidersHorizontal,
   FileText,
   AlertCircle,
+  Printer,
+  Store,
+  Layers,
+  XCircle,
 } from 'lucide-react'
 
 import { playOrderNotificationSound } from '@/lib/utils/soundNotification'
 import OrderHistoryAuditModal from './OrderHistoryAuditModal'
 import OrderEditDialog from './OrderEditDialog'
 import NewOrderManualModal from './NewOrderManualModal'
-import SafeConfirmDialog from './SafeConfirmDialog'
+import CancelReasonDialog from './CancelReasonDialog'
 
 interface QRCodeOrdersAdminProps {
   tenantId: string
@@ -53,7 +57,7 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
   {
     id: 'NEW',
     title: 'Novos Pedidos',
-    subtitle: 'Comandas a aguardar aceitação',
+    subtitle: 'Aguardando aceitação / preparo',
     color: 'text-amber-950 dark:text-white',
     bgLight: 'bg-amber-500/10 dark:bg-amber-950/25 backdrop-blur-md',
     borderLight: 'border-amber-300 dark:border-amber-500/40',
@@ -90,12 +94,23 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
     accentColor: 'bg-slate-700 dark:bg-zinc-700 text-white font-black',
     icon: <FileText className="h-4 w-4 text-slate-700 dark:text-zinc-300" />,
   },
+  {
+    id: 'CANCELLED',
+    title: 'Cancelados',
+    subtitle: 'Comandas estornadas / canceladas',
+    color: 'text-red-950 dark:text-red-300',
+    bgLight: 'bg-red-500/10 dark:bg-red-950/25 backdrop-blur-md',
+    borderLight: 'border-red-300 dark:border-red-500/40',
+    accentColor: 'bg-red-600 dark:bg-red-700 text-white font-black',
+    icon: <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />,
+  },
 ]
 
 export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [originFilter, setOriginFilter] = useState<'ALL' | 'TABLES' | 'COUNTER'>('ALL')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [prevCount, setPrevCount] = useState(0)
 
@@ -123,7 +138,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         const newCount = newOrders.filter((o) => o.status === 'NEW' || !o.status).length
         if (newCount > prevCount && prevCount > 0 && soundEnabled) {
           playOrderNotificationSound()
-          toast.info('🔔 Novo pedido recebido via QR Code!')
+          toast.info('Novo pedido recebido via QR Code!')
         }
         setPrevCount(newCount)
         setOrders(newOrders)
@@ -190,16 +205,17 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     loadOrders()
   }
 
-  // Cancelamento seguro de pedido
-  const handleConfirmCancel = async () => {
-    if (!orderToCancel) return
+  // Cancelamento seguro de pedido com motivo para auditoria
+  const handleConfirmCancel = async (orderId: string, reason: string) => {
     setCancelLoading(true)
     try {
-      const res = await authFetch(`/api/orders/${orderToCancel.id}`, {
+      const res = await authFetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
       })
       if (!res.ok) throw new Error('Erro ao cancelar comanda')
-      toast.success(`Comanda #${orderToCancel.orderNumber || 100} cancelada`)
+      toast.success(`Comanda #${orderToCancel?.orderNumber || 100} cancelada: ${reason}`)
       setCancelConfirmOpen(false)
       setSelectedOrderForAudit(null)
       loadOrders()
@@ -208,6 +224,17 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     } finally {
       setCancelLoading(false)
     }
+  }
+
+  // Impressão da comanda de montagem
+  const handlePrintOrder = (e: React.MouseEvent, order: Order) => {
+    e.stopPropagation()
+    if (order.paymentStatus !== 'PAID') {
+      toast.error('O pedido precisa ser pago antes de emitir a comanda de produção.')
+      return
+    }
+    window.print()
+    toast.success(`Comanda #${order.orderNumber || 100} enviada para a impressora térmica!`)
   }
 
   // --- Handlers de Drag and Drop (Mouse) ---
@@ -238,6 +265,12 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     if (!orderId) return
     const order = orders.find((o) => o.id === orderId)
     if (order && order.status !== targetStatus) {
+      if (targetStatus === 'CANCELLED') {
+        setOrderToCancel(order)
+        setCancelConfirmOpen(true)
+        return
+      }
+
       const paymentStatus: 'PAID' | 'PENDING' =
         targetStatus === 'PAID'
           ? 'PAID'
@@ -248,8 +281,14 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     }
   }
 
-  // Filtro de pesquisa
+  // Filtro de pesquisa e de origem
   const filteredOrders = orders.filter((o) => {
+    // Filtro de Origem
+    const isTable = o.isTableOrder !== false && !!o.tableNumber
+    if (originFilter === 'TABLES' && !isTable) return false
+    if (originFilter === 'COUNTER' && isTable) return false
+
+    // Busca textual
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
     const matchNumber = String(o.orderNumber || '').includes(q)
@@ -266,6 +305,32 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     })
   }
 
+  // Helper de SLA
+  const getSlaBadge = (elapsedMinutes: number) => {
+    if (elapsedMinutes <= 5) {
+      return {
+        label: `${elapsedMinutes}m`,
+        className: 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
+        dotClass: 'bg-emerald-500',
+      }
+    }
+    if (elapsedMinutes <= 10) {
+      return {
+        label: `${elapsedMinutes}m`,
+        className: 'bg-amber-50 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
+        dotClass: 'bg-amber-500',
+      }
+    }
+    return {
+      label: `${elapsedMinutes}m (Atrasado)`,
+      className: 'bg-red-50 dark:bg-red-500/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-500/30 animate-pulse',
+      dotClass: 'bg-red-500',
+    }
+  }
+
+  const countTables = orders.filter((o) => o.isTableOrder !== false && !!o.tableNumber).length
+  const countCounter = orders.filter((o) => o.isTableOrder === false || !o.tableNumber).length
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-4">
       {/* 1. Header Minimalista & Painel de Ações */}
@@ -280,7 +345,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
             </Badge>
           </div>
           <p className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-0.5">
-            Arraste os cards com o rato entre as colunas para atualizar o fluxo de produção em tempo real.
+            Arraste os cards com o rato entre as colunas para atualizar o fluxo de produção em tempo real
           </p>
         </div>
 
@@ -334,8 +399,59 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         </div>
       </div>
 
-      {/* 2. Colunas do Kanban com Drag & Drop */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+      {/* 2. Filtros Rápidos de Origem: Todos / Mesas / Balcão */}
+      <div className="flex items-center gap-2 p-1 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 w-fit">
+        <button
+          type="button"
+          onClick={() => setOriginFilter('ALL')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            originFilter === 'ALL'
+              ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-sm'
+              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+          }`}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          <span>Todos os Pedidos</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
+            {orders.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setOriginFilter('TABLES')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            originFilter === 'TABLES'
+              ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-sm'
+              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+          }`}
+        >
+          <Smartphone className="h-3.5 w-3.5" />
+          <span>Mesas / QR Code</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
+            {countTables}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setOriginFilter('COUNTER')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            originFilter === 'COUNTER'
+              ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-sm'
+              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+          }`}
+        >
+          <Store className="h-3.5 w-3.5" />
+          <span>Balcão / Take-Away</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
+            {countCounter}
+          </span>
+        </button>
+      </div>
+
+      {/* 3. Colunas do Kanban com Drag & Drop (5 Colunas) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 items-start">
         {KANBAN_COLUMNS.map((col) => {
           const colOrders = getOrdersForColumn(col.id)
           const isOver = dragOverColumn === col.id
@@ -384,10 +500,12 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                   colOrders.map((order) => {
                     const isTable = order.isTableOrder !== false && !!order.tableNumber
                     const elapsedMinutes = Math.max(
-                       0,
-                       Math.floor((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60))
+                      0,
+                      Math.floor((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60))
                     )
+                    const sla = getSlaBadge(elapsedMinutes)
                     const isDraggingThis = draggedOrderId === order.id
+                    const isCancelled = order.status === 'CANCELLED'
 
                     return (
                       <Card
@@ -395,11 +513,15 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                         draggable={true}
                         onDragStart={(e) => handleDragStart(e, order)}
                         onClick={() => setSelectedOrderForAudit(order)}
-                        className={`p-3.5 bg-white dark:bg-[#18022b]/95 border border-purple-150 dark:border-white/15 rounded-2xl shadow-xs dark:shadow-lg hover:shadow-md hover:border-purple-400 dark:hover:border-pink-500/50 transition-all cursor-grab active:cursor-grabbing group relative select-none text-slate-900 dark:text-white ${
+                        className={`p-3.5 bg-white dark:bg-[#18022b]/95 border rounded-2xl shadow-xs dark:shadow-lg hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative select-none text-slate-900 dark:text-white ${
+                          isCancelled
+                            ? 'border-red-200 dark:border-red-500/30 opacity-75 bg-red-50/20'
+                            : 'border-purple-150 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50'
+                        } ${
                           isDraggingThis ? 'opacity-40 scale-95 border-purple-600 dark:border-pink-500' : ''
                         }`}
                       >
-                        {/* Indicador de Arraste lateral sutil */}
+                        {/* Header do Card */}
                         <div className="flex items-center justify-between gap-2 pb-2 border-b border-purple-100 dark:border-white/10">
                           <div className="flex items-center gap-1.5">
                             <GripVertical className="h-3.5 w-3.5 text-purple-400/60 dark:text-purple-400/40 group-hover:text-purple-700 dark:group-hover:text-pink-400 transition" />
@@ -417,10 +539,17 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                             )}
                           </div>
 
-                          <div className="text-[10px] font-bold text-purple-600 dark:text-purple-300/80 flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-purple-700 dark:text-pink-400" />
-                            <span>{elapsedMinutes}m</span>
-                          </div>
+                          {/* Badge Dinâmica de SLA ou Cancelado */}
+                          {isCancelled ? (
+                            <div className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-500/40">
+                              Cancelado
+                            </div>
+                          ) : (
+                            <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${sla.className}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${sla.dotClass}`} />
+                              <span>{sla.label}</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Cliente e Resumo de Itens */}
@@ -428,7 +557,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                           <div className="flex items-center justify-between text-xs font-bold text-purple-950 dark:text-white">
                             <span className="truncate flex items-center gap-1">
                               <User className="h-3 w-3 text-purple-700 dark:text-pink-400 flex-shrink-0" />
-                              <span className="truncate">{order.customerName || 'Cliente na Mesa'}</span>
+                              <span className="truncate">{order.customerName || (isTable ? 'Cliente na Mesa' : 'Cliente Balcão')}</span>
                             </span>
                           </div>
 
@@ -438,7 +567,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                               order.items.slice(0, 2).map((item, i) => (
                                 <div key={i} className="flex justify-between items-center truncate">
                                   <span className="truncate font-semibold">
-                                    {item.containerEmoji || '🍨'} {item.containerName || item.container?.name || 'Açaí'}
+                                    {item.quantity || 1}x {item.containerName || item.container?.name || 'Açaí'}
                                   </span>
                                   <span className="font-bold text-purple-700 dark:text-pink-300 ml-1">
                                     {formatCurrency(item.lineTotal || 0)}
@@ -455,7 +584,14 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                             )}
                           </div>
 
-                          {order.notes && (
+                          {order.cancelReason && (
+                            <div className="text-[10px] text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-500/30 px-2 py-1 rounded-lg line-clamp-1 italic font-medium flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3 text-red-600 dark:text-red-400 flex-shrink-0" />
+                              <span>Motivo: {order.cancelReason}</span>
+                            </div>
+                          )}
+
+                          {order.notes && !order.cancelReason && (
                             <div className="text-[10px] text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/25 px-2 py-1 rounded-lg line-clamp-1 italic font-medium flex items-center gap-1">
                               <AlertCircle className="h-3 w-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                               <span>{order.notes}</span>
@@ -463,7 +599,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                           )}
                         </div>
 
-                        {/* Rodapé do Card: Total e Status de Pagamento */}
+                        {/* Rodapé do Card: Total, Status de Pagamento e Impressão */}
                         <div className="pt-2 border-t border-purple-100 dark:border-white/10 flex items-center justify-between">
                           <div>
                             <span className="text-[10px] text-purple-600/70 dark:text-purple-300/60 block">Total</span>
@@ -473,10 +609,25 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                           </div>
 
                           <div className="flex items-center gap-1.5">
-                            {order.paymentStatus === 'PAID' ? (
-                              <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-black text-[9px] py-0.5 px-2 rounded-md">
-                                ✓ PAGO
+                            {isCancelled ? (
+                              <Badge className="bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border border-red-300 dark:border-red-500/40 font-black text-[9px] py-0.5 px-2 rounded-md">
+                                ESTORNADO
                               </Badge>
+                            ) : order.paymentStatus === 'PAID' ? (
+                              <>
+                                <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-black text-[9px] py-0.5 px-2 rounded-md">
+                                  PAGO
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => handlePrintOrder(e, order)}
+                                  title="Imprimir comanda de montagem"
+                                  className="h-7 w-7 p-0 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white rounded-lg cursor-pointer"
+                                >
+                                  <Printer className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
                             ) : (
                               <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 font-black text-[9px] py-0.5 px-2 rounded-md">
                                 AGUARDANDO PGTO
@@ -494,53 +645,45 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         })}
       </div>
 
-      {/* 3. Modal de Histórico e Auditoria do Pedido (Ao Clicar no Card) */}
+      {/* 4. Modal de Histórico e Auditoria do Pedido */}
       <OrderHistoryAuditModal
         order={selectedOrderForAudit}
         open={!!selectedOrderForAudit}
-        onOpenChange={(open) => {
-          if (!open) setSelectedOrderForAudit(null)
-        }}
-        onUpdateStatus={updateOrderStatus}
-        onEditOrder={(order) => {
+        onOpenChange={(open: boolean) => !open && setSelectedOrderForAudit(null)}
+        onEditOrder={(order: Order) => {
           setSelectedOrderForAudit(null)
           setSelectedOrderForEdit(order)
         }}
-        onRequestCancel={(order) => {
+        onRequestCancel={(order: Order) => {
           setOrderToCancel(order)
           setCancelConfirmOpen(true)
         }}
+        onUpdateStatus={updateOrderStatus}
       />
 
-      {/* 4. Modal de Edição Completa da Comanda */}
+      {/* 5. Modal de Edição Completa do Pedido */}
       <OrderEditDialog
         order={selectedOrderForEdit}
         open={!!selectedOrderForEdit}
-        onOpenChange={(open) => {
-          if (!open) setSelectedOrderForEdit(null)
-        }}
+        onOpenChange={(open) => !open && setSelectedOrderForEdit(null)}
         onSave={handleSaveEditedOrder}
       />
 
-      {/* 5. Modal de Abertura de Nova Comanda Manual */}
+      {/* 6. Modal de Nova Comanda Manual */}
       <NewOrderManualModal
-        tenantId={tenantId}
         open={newOrderModalOpen}
         onOpenChange={setNewOrderModalOpen}
+        tenantId={tenantId}
         onCreateOrder={handleCreateOrder}
       />
 
-      {/* 6. Modal de Confirmação Seguro para Cancelamento */}
-      <SafeConfirmDialog
+      {/* 7. Dialog de Cancelamento com Motivo */}
+      <CancelReasonDialog
         open={cancelConfirmOpen}
         onOpenChange={setCancelConfirmOpen}
-        title="Cancelar Comanda Definitivamente?"
-        description={`Tem a certeza que deseja cancelar a comanda #${orderToCancel?.orderNumber || 100}? Esta ação não poderá ser desfeita e o pedido será removido do painel ativo.`}
-        confirmText="Sim, Cancelar Comanda"
-        cancelText="Voltar"
-        variant="danger"
+        order={orderToCancel}
+        onConfirmCancel={handleConfirmCancel}
         loading={cancelLoading}
-        onConfirm={handleConfirmCancel}
       />
     </div>
   )

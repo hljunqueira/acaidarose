@@ -52,6 +52,23 @@ export async function createOrder(payload: any): Promise<Order> {
     createdAt: new Date().toISOString(),
   }
 
+  // Sincronizar mesa física no salão se for pedido de mesa
+  if (newOrder.tableNumber && newOrder.isTableOrder !== false) {
+    const tableDigits = newOrder.tableNumber.replace(/\D/g, '')
+    const tableNum = parseInt(tableDigits)
+    if (!isNaN(tableNum)) {
+      const targetTable = store.tables.find(
+        (t) => t.tenantId === payload.tenantId && t.number === tableNum
+      )
+      if (targetTable) {
+        targetTable.status = 'OCCUPIED'
+        targetTable.items = newOrder.items || []
+        targetTable.total = total
+        targetTable.activatedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    }
+  }
+
   store.orders.unshift(newOrder)
   return newOrder
 }

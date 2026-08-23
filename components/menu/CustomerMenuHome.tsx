@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
 import CustomerPromoCarousel from '@/components/menu/CustomerPromoCarousel'
 import CustomerIngredientsGuide from '@/components/menu/CustomerIngredientsGuide'
+import { useOffersStore } from '@/lib/stores/offersStore'
 import { 
   Plus, 
   Heart, 
@@ -24,11 +25,14 @@ import {
   Award,
   CheckCircle2, 
   Utensils,
-  Sparkles
+  Sparkles,
+  Tag,
+  Clock,
 } from 'lucide-react'
 
 interface CustomerMenuHomeProps {
   catalog: CatalogData
+  tenantId?: string
   onSelectContainer: (c: ProductContainer) => void
   isTable?: boolean
 }
@@ -43,9 +47,14 @@ const CUP_IMAGES: Record<number, string> = {
 
 export default function CustomerMenuHome({
   catalog,
+  tenantId = 'tenant-torres-novas',
   onSelectContainer,
   isTable = false,
 }: CustomerMenuHomeProps) {
+  const { getActiveOffersForTenant } = useOffersStore()
+  const activeOffers = useMemo(() => {
+    return getActiveOffersForTenant(tenantId)
+  }, [getActiveOffersForTenant, tenantId])
   // Filtra itens visíveis e ordenados
   const containers = useMemo(() => {
     return (catalog.containers || [])
@@ -158,6 +167,92 @@ export default function CustomerMenuHome({
 
 
       {/* ========================================================
+          2.5 SEÇÃO DE OFERTAS & PROMOÇÕES DA LOJA (SE HOUVER)
+      ======================================================== */}
+      {activeOffers.length > 0 && (
+        <section id="ofertas-loja" className="max-w-6xl mx-auto px-4 md:px-8 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 text-pink-400" />
+              <span className="text-xs font-black uppercase tracking-wider text-pink-400">
+                Ofertas & Promoções do Dia
+              </span>
+            </div>
+            <span className="text-[11px] text-purple-200/70 font-semibold">
+              {activeOffers.length} promoção(ões) ativa(s)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {activeOffers.map((off) => {
+              const matchedContainer = containers.find(
+                (c) =>
+                  c.id === off.productId ||
+                  c.name.toLowerCase().includes(off.productName?.toLowerCase() || '')
+              )
+
+              return (
+                <div
+                  key={off.id}
+                  onClick={() => {
+                    if (matchedContainer) {
+                      onSelectContainer(matchedContainer)
+                    } else if (containers[0]) {
+                      onSelectContainer(containers[0])
+                    }
+                  }}
+                  className="p-5 rounded-3xl bg-gradient-to-br from-[#2c044e] to-[#17012a] border border-pink-500/40 hover:border-pink-400 transition-all shadow-xl flex flex-col justify-between cursor-pointer group"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white">
+                        -{off.discountPercent}% OFF
+                      </span>
+                      {off.couponCode && (
+                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/10 text-pink-300 border border-white/15">
+                          {off.couponCode}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3 className="font-black text-base text-white group-hover:text-pink-200 transition-colors">
+                        {off.title}
+                      </h3>
+                      <p className="text-xs text-purple-200/70 mt-1 leading-relaxed line-clamp-2">
+                        {off.description}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-purple-300/80 pt-1">
+                      <Clock className="h-3.5 w-3.5 text-pink-400" />
+                      <span>{off.validDays} · {off.validHours}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
+                    <div>
+                      <div className="text-[10px] text-purple-300/60 line-through font-mono">
+                        De {formatCurrency(off.originalPrice)}
+                      </div>
+                      <div className="text-lg font-black text-pink-300 font-mono">
+                        Por {formatCurrency(off.discountedPrice)}
+                      </div>
+                    </div>
+
+                    <span className="h-9 px-3.5 rounded-xl bg-pink-600 group-hover:bg-pink-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-pink-600/30 transition-all">
+                      <span>Aproveitar</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ========================================================
           3. SHOWCASE INTERATIVO DOS AÇAÍS (SCROLL ANIMATIONS)
       ======================================================== */}
       <section id="cardapio-acai" className="max-w-6xl mx-auto px-4 md:px-8 space-y-6 pt-4">
@@ -166,7 +261,6 @@ export default function CustomerMenuHome({
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-white/10 pb-4">
           <div>
             <div className="flex items-center gap-2 text-pink-400 text-xs font-bold uppercase tracking-wider">
-              <span>🍨</span>
               <span>Catálogo Oficial & Personalizável</span>
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight mt-1">
@@ -190,6 +284,18 @@ export default function CustomerMenuHome({
             const isFree = c.weightGrams >= 500
             const img = CUP_IMAGES[c.weightGrams] || c.image || '/images/official/acai_copo_500g.jpg'
 
+            // Encontra se existe oferta ativa para este produto
+            const matchingOffer = activeOffers.find(
+              (off) =>
+                off.productId === c.id ||
+                off.productName?.toLowerCase().trim() === c.name.toLowerCase().trim() ||
+                (c.name.includes('250') && off.productName?.includes('250')) ||
+                (c.name.includes('350') && off.productName?.includes('350')) ||
+                (c.name.includes('500') && off.productName?.includes('500')) ||
+                (c.name.includes('750') && off.productName?.includes('750')) ||
+                (c.name.includes('1') && off.productName?.includes('1'))
+            )
+
             return (
               <motion.div
                 key={c.id}
@@ -210,8 +316,12 @@ export default function CustomerMenuHome({
                       className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                     
-                    {/* Badge de Destaque */}
-                    {isFree ? (
+                    {/* Badge de Destaque / Oferta */}
+                    {matchingOffer ? (
+                      <Badge className="absolute top-2.5 right-2.5 bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black text-[9px] py-0.5 px-2.5 rounded-full border-0 shadow-lg animate-pulse">
+                        -{matchingOffer.discountPercent}% OFF
+                      </Badge>
+                    ) : isFree ? (
                       <Badge className="absolute top-2.5 right-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-[9px] py-0.5 px-2.5 rounded-full border-0 shadow-lg">
                         Frutas & Toppings Livres
                       </Badge>
@@ -246,10 +356,23 @@ export default function CustomerMenuHome({
                 {/* Preço e Botão de Montar */}
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
                   <div>
-                    <div className="text-[10px] text-purple-300 font-bold">A partir de</div>
-                    <div className="text-lg font-black text-pink-300 font-mono">
-                      {formatCurrency(c.precoBase)}
-                    </div>
+                    {matchingOffer ? (
+                      <div>
+                        <div className="text-[10px] text-purple-300/60 font-mono line-through">
+                          De {formatCurrency(c.precoBase)}
+                        </div>
+                        <div className="text-lg font-black text-pink-300 font-mono">
+                          {formatCurrency(matchingOffer.discountedPrice)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-[10px] text-purple-300 font-bold">A partir de</div>
+                        <div className="text-lg font-black text-pink-300 font-mono">
+                          {formatCurrency(c.precoBase)}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <span className="h-10 px-4 rounded-xl bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 group-hover:from-pink-500 group-hover:to-purple-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-pink-600/30 transition-all">

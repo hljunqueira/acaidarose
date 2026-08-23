@@ -58,11 +58,17 @@ export async function DELETE(
   const idx = store.orders.findIndex((o) => o.id === id)
   if (idx === -1) return errorResponse('Comanda não encontrada', 404)
 
-  // Soft delete or mark as CANCELLED
-  const deletedOrder = store.orders[idx]
-  deletedOrder.status = 'CANCELLED'
-  deletedOrder.deletedAt = new Date().toISOString()
-  deletedOrder.updatedAt = new Date().toISOString()
+  let cancelReason = 'Cancelado pelo operador'
+  try {
+    const body = await request.json()
+    if (body.reason) cancelReason = body.reason
+  } catch {}
 
-  return jsonResponse({ success: true, message: 'Pedido cancelado com sucesso', order: deletedOrder })
+  const order = store.orders[idx]
+  order.status = 'CANCELLED'
+  order.cancelReason = cancelReason
+  order.cancelledAt = new Date().toISOString()
+  order.updatedAt = new Date().toISOString()
+
+  return jsonResponse({ success: true, message: 'Pedido cancelado com sucesso', order })
 }

@@ -1,19 +1,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { 
   Bell, 
   Utensils, 
-  Droplets, 
-  Heart, 
-  Sparkles, 
-  CreditCard, 
-  CheckCircle2, 
   HelpCircle,
-  Clock
+  CheckCircle2, 
+  Loader2,
+  Printer
 } from 'lucide-react'
 
 interface CallWaiterModalProps {
@@ -23,48 +20,22 @@ interface CallWaiterModalProps {
   tenantId: string
 }
 
-const WAITER_OPTIONS = [
+const QUICK_CALL_OPTIONS = [
   {
-    id: 'colher_guardanapo',
-    title: 'Colher & Guardanapos Extras',
-    desc: 'Talheres para partilhar o açaí na mesa',
-    icon: Utensils,
-    color: 'fuchsia',
-  },
-  {
-    id: 'gelo_agua',
-    title: 'Copo com Gelo / Água Fresca',
-    desc: 'Copos e gelo para se refrescar',
-    icon: Droplets,
-    color: 'cyan',
-  },
-  {
-    id: 'caldas_extra',
-    title: 'Caldas / Mel Extra',
-    desc: 'Um toque doce a mais no seu copo',
-    icon: Heart,
-    color: 'amber',
-  },
-  {
-    id: 'limpar_mesa',
-    title: 'Limpar Mesa',
-    desc: 'Retirar descartáveis e higienizar a mesa',
-    icon: CheckCircle2,
-    color: 'emerald',
-  },
-  {
-    id: 'pedir_conta',
-    title: 'Pedir a Conta',
-    desc: 'Pagamento na mesa (MB Way / Multibanco / Numerário)',
-    icon: CreditCard,
-    color: 'purple',
-  },
-  {
-    id: 'atendimento_geral',
-    title: 'Chamar Atendente',
-    desc: 'Tirar dúvidas ou fazer pedido presencial',
+    id: 'atendimento_duvida',
+    title: 'Atendimento / Dúvida',
+    desc: 'Tirar dúvidas sobre o cardápio ou falar com o atendente',
     icon: HelpCircle,
-    color: 'pink',
+    color: 'from-pink-600 to-rose-600',
+    borderColor: 'border-pink-500/40 hover:border-pink-400',
+  },
+  {
+    id: 'talheres_guardanapos',
+    title: 'Talheres / Guardanapos',
+    desc: 'Colheres extras, guardanapos e copos para a mesa',
+    icon: Utensils,
+    color: 'from-purple-600 to-fuchsia-600',
+    borderColor: 'border-purple-500/40 hover:border-purple-400',
   },
 ]
 
@@ -74,18 +45,13 @@ export default function CallWaiterModal({
   tableLabel,
   tenantId,
 }: CallWaiterModalProps) {
-  const [selectedOption, setSelectedOption] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [callingId, setCallingId] = useState<string | null>(null)
   const [sentSuccess, setSentSuccess] = useState(false)
+  const [sentReason, setSentReason] = useState('')
 
-  const handleCallWaiter = async () => {
-    if (!selectedOption) {
-      toast.error('Selecione uma opção de atendimento')
-      return
-    }
-
-    setSubmitting(true)
-    const opt = WAITER_OPTIONS.find((o) => o.id === selectedOption)
+  const handleCallOption = async (opt: typeof QUICK_CALL_OPTIONS[0]) => {
+    setCallingId(opt.id)
+    setSentReason(opt.title)
 
     try {
       await fetch('/api/call-waiter', {
@@ -94,28 +60,28 @@ export default function CallWaiterModal({
         body: JSON.stringify({
           tenantId,
           tableLabel,
-          reason: opt?.title || 'Atendimento de Mesa',
+          reason: opt.title,
           timestamp: new Date().toISOString(),
         }),
       })
 
       setSentSuccess(true)
-      toast.success('Chamado enviado ao balcão!')
+      toast.success(`Chamado de "${opt.title}" enviado ao balcão!`)
       setTimeout(() => {
         setSentSuccess(false)
-        setSelectedOption(null)
+        setCallingId(null)
         onOpenChange(false)
-      }, 2000)
+      }, 2500)
     } catch {
-      toast.success('Chamado enviado ao balcão!')
       setSentSuccess(true)
+      toast.success(`Chamado de "${opt.title}" enviado ao balcão!`)
       setTimeout(() => {
         setSentSuccess(false)
-        setSelectedOption(null)
+        setCallingId(null)
         onOpenChange(false)
-      }, 2000)
+      }, 2500)
     } finally {
-      setSubmitting(false)
+      setCallingId(null)
     }
   }
 
@@ -125,15 +91,15 @@ export default function CallWaiterModal({
         <DialogHeader className="text-left space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-pink-600/30 border border-pink-500/40 text-pink-300">
-              Atendimento · {tableLabel}
+              {tableLabel} · Chamado Rápido
             </span>
             <Bell className="h-4 w-4 text-pink-400 animate-bounce" />
           </div>
           <DialogTitle className="text-xl font-black text-white">
-            Como podemos ajudar?
+            Chamar Atendente
           </DialogTitle>
           <p className="text-xs text-purple-200/70">
-            Selecione o que precisa e a nossa equipa irá até à sua mesa:
+            Selecione a opção com 1 toque e a equipa irá até à sua mesa:
           </p>
         </DialogHeader>
 
@@ -144,52 +110,59 @@ export default function CallWaiterModal({
             </div>
             <h3 className="text-lg font-black text-white">Chamado Enviado!</h3>
             <p className="text-xs text-purple-200/80 max-w-xs mx-auto">
-              O nosso colaborador já recebeu o alerta no balcão e está a caminho da {tableLabel}.
+              A equipa já recebeu o alerta de <strong>{sentReason}</strong> para a <strong>{tableLabel}</strong> e o ticket foi enviado para o atendimento.
             </p>
           </div>
         ) : (
-          <div className="space-y-2.5 my-3">
-            {WAITER_OPTIONS.map((opt) => {
+          <div className="space-y-3 my-3">
+            {QUICK_CALL_OPTIONS.map((opt) => {
               const Icon = opt.icon
-              const isSelected = selectedOption === opt.id
+              const isCalling = callingId === opt.id
 
               return (
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => setSelectedOption(opt.id)}
-                  className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center gap-3.5 cursor-pointer ${
-                    isSelected
-                      ? 'border-pink-500 bg-pink-600/25 shadow-lg shadow-pink-600/20 scale-[1.01]'
-                      : 'border-white/10 bg-white/5 hover:bg-white/10'
-                  }`}
+                  disabled={Boolean(callingId)}
+                  onClick={() => handleCallOption(opt)}
+                  className={`w-full p-4 rounded-2xl bg-white/[0.04] border ${opt.borderColor} hover:bg-white/[0.08] transition-all flex items-center justify-between text-left cursor-pointer group hover:scale-[1.02] active:scale-[0.98]`}
                 >
-                  <div
-                    className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      isSelected ? 'bg-pink-600 text-white' : 'bg-white/10 text-pink-300'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
+                  <div className="flex items-center gap-3.5">
+                    <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${opt.color} text-white flex items-center justify-center shadow-lg`}>
+                      {isCalling ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : (
+                        <Icon className="h-6 w-6" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-white group-hover:text-pink-300 transition-colors">
+                        {opt.title}
+                      </div>
+                      <div className="text-[11px] text-purple-200/70 mt-0.5">
+                        {opt.desc}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-black text-white">{opt.title}</div>
-                    <div className="text-[10px] text-purple-200/70 truncate">{opt.desc}</div>
-                  </div>
-
-                  {isSelected && (
-                    <CheckCircle2 className="h-4 w-4 text-pink-400 flex-shrink-0" />
-                  )}
+                  <span className="text-xs font-bold text-pink-400 group-hover:translate-x-1 transition-transform">
+                    {isCalling ? 'Enviando...' : 'Chamar ›'}
+                  </span>
                 </button>
               )
             })}
+          </div>
+        )}
 
+        {!sentSuccess && (
+          <div className="pt-3 border-t border-white/10 flex justify-end">
             <Button
-              onClick={handleCallWaiter}
-              disabled={!selectedOption || submitting}
-              className="w-full h-11 rounded-2xl bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-black text-xs shadow-lg shadow-pink-600/30 mt-3 cursor-pointer"
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="text-xs text-purple-300 hover:text-white"
             >
-              {submitting ? 'A enviar chamado...' : 'Chamar Atendente Agora →'}
+              Cancelar
             </Button>
           </div>
         )}

@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
     // Normalização para aceitar aliases conhecidos de demonstração
     let lookupEmail = cleanEmail
     if (cleanEmail === 'super@acairose.pt') lookupEmail = 'franqueadora@acairose.pt'
-    if (cleanEmail === 'admin@acairose.pt') lookupEmail = 'torresnovas@acairose.pt'
-    if (cleanEmail === 'caixa@acairose.pt') lookupEmail = 'caixa1.torresnovas@acairose.pt'
+    if (cleanEmail === 'admin@acairose.pt') lookupEmail = 'lisboa@acairose.pt'
+    if (cleanEmail === 'caixa@acairose.pt') lookupEmail = 'caixa1.lisboa@acairose.pt'
 
     let found = store.users.find(
       (u: any) =>
@@ -65,11 +65,11 @@ export async function POST(request: NextRequest) {
           role: 'SUPER_ADMIN' as UserRole,
           active: true,
         } as any
-      } else if (cleanEmail === 'admin@acairose.pt' || cleanEmail === 'torresnovas@acairose.pt') {
+      } else if (cleanEmail === 'admin@acairose.pt' || cleanEmail === 'lisboa@acairose.pt') {
         found = {
-          id: 'usr-gerente-torres',
-          tenantId: 'tenant-torres-novas',
-          name: 'Gerente Torres Novas',
+          id: 'usr-gerente-lisboa',
+          tenantId: 'tenant-lisboa',
+          name: 'Gerente Loja 1 (Lisboa)',
           email: cleanEmail,
           password: '123456',
           passwordHash: '123456',
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         found = {
           id: 'usr-gerente-santarem',
           tenantId: 'tenant-santarem',
-          name: 'Gerente Santarém',
+          name: 'Gerente Loja 2 (Santarém)',
           email: cleanEmail,
           password: '123456',
           passwordHash: '123456',
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         found = {
           id: 'usr-gerente-aveiro',
           tenantId: 'tenant-aveiro',
-          name: 'Gerente Aveiro',
+          name: 'Gerente Loja 3 (Aveiro)',
           email: cleanEmail,
           password: '123456',
           passwordHash: '123456',
@@ -100,9 +100,9 @@ export async function POST(request: NextRequest) {
         } as any
       } else if (cleanEmail === 'caixa@acairose.pt' || cleanEmail.startsWith('caixa')) {
         found = {
-          id: 'usr-caixa1-torres',
-          tenantId: 'tenant-torres-novas',
-          name: 'Operador de Caixa',
+          id: 'usr-caixa1-lisboa',
+          tenantId: 'tenant-lisboa',
+          name: 'Operador de Caixa Lisboa',
           email: cleanEmail,
           password: '123456',
           passwordHash: '123456',

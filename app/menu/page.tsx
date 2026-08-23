@@ -225,6 +225,7 @@ function MenuContent() {
           {activeTab === 'menu' && (
             <CustomerMenuHome
               catalog={catalog}
+              tenantId={tenant?.id || 'tenant-torres-novas'}
               onSelectContainer={(c) => setSelectedContainer(c)}
               isTable={isTable}
             />
@@ -279,6 +280,7 @@ function MenuContent() {
         <CustomerProductDetail
           container={selectedContainer}
           catalog={catalog}
+          tenantId={tenant?.id || 'tenant-torres-novas'}
           onClose={() => setSelectedContainer(null)}
           onAddToCart={handleAddToCart}
           viewOnly={qrConfig?.mode === 'VIEW_ONLY'}

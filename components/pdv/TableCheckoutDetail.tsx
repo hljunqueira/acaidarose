@@ -136,7 +136,12 @@ export default function TableCheckoutDetail({
         body: JSON.stringify({ action: 'CLOSE' }),
       })
 
-      toast.success(`Mesa ${table.number} recebida e desocupada com sucesso!`)
+      // 3. Disparo automático da comanda para a impressora térmica pós-pagamento
+      try {
+        window.print()
+      } catch {}
+
+      toast.success(`Mesa ${table.number} recebida e comanda enviada para a impressora!`)
       setPaymentOpen(false)
       onTableUpdated()
       onBack()

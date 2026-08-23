@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { useAuthStore } from '@/lib/stores/authStore'
-import { ReplicateStoreDialog, DuplicateItemDialog, DeleteItemDialog, ActiveHoursDialog, PromoHoursDialog, PairingDialog } from './ActionDialogs'
+import { ReplicateStoreDialog, DuplicateItemDialog, DeleteItemDialog } from './ActionDialogs'
 import { toast } from 'sonner'
 import {
   RefreshCw,
   Edit2,
   Copy,
-  Clock,
-  Wine,
   Trash2,
   Eye,
   EyeOff,
@@ -215,22 +213,6 @@ export default function ProductRowItem({
           >
             <Copy className="h-3 w-3" />
           </button>
-          <button
-            type="button"
-            onClick={() => setHoursOpen(true)}
-            title="Horários Ativos"
-            className="p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
-          >
-            <Clock className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setPairingOpen(true)}
-            title="Harmonização"
-            className="p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
-          >
-            <Wine className="h-3 w-3" />
-          </button>
           {isSuperAdmin && (
             <button
               type="button"
@@ -252,9 +234,6 @@ export default function ProductRowItem({
       {isSuperAdmin && (
         <DeleteItemDialog open={deleteOpen} onOpenChange={setDeleteOpen} product={product} tenantId={tenantId} onSuccess={() => onDelete(product)} />
       )}
-      <ActiveHoursDialog open={hoursOpen} onOpenChange={setHoursOpen} product={product} tenantId={tenantId} />
-      <PromoHoursDialog open={promoOpen} onOpenChange={setPromoOpen} product={product} tenantId={tenantId} />
-      <PairingDialog open={pairingOpen} onOpenChange={setPairingOpen} product={product} tenantId={tenantId} />
     </div>
   )
 }

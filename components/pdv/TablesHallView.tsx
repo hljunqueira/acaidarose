@@ -10,7 +10,7 @@ import TableCheckoutDetail from './TableCheckoutDetail'
 import QuickProductSearchDialog from './QuickProductSearchDialog'
 import CashierOperationsDialog from './CashierOperationsDialog'
 import PDVView from './PDVView'
-import { Store, ShoppingBag, Plus, RefreshCw } from 'lucide-react'
+import { Store, ShoppingBag, Plus, RefreshCw, Printer } from 'lucide-react'
 
 interface TablesHallViewProps {
   tenantId: string
@@ -32,8 +32,8 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
     createdAt: string
   }>>([])
 
-  // Mesa Selecionada para Detalhes / Fechamento
-  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null)
+  // ID da Mesa Selecionada (ID estável evita loops de re-render)
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
 
   // Mesa Inicial para Montador
   const [montadorTable, setMontadorTable] = useState<RestaurantTable | null>(null)
@@ -54,12 +54,8 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
       const dataCatalog = await resCatalog.json()
       const dataCalls = await resCalls.json()
 
-      if (dataTables.tables) {
+      if (dataTables?.tables) {
         setTables(dataTables.tables)
-        if (selectedTable) {
-          const updated = dataTables.tables.find((t: RestaurantTable) => t.id === selectedTable.id)
-          if (updated) setSelectedTable(updated)
-        }
       }
       if (dataCatalog) setCatalog(dataCatalog)
       if (dataCalls?.calls) setWaiterCalls(dataCalls.calls)
@@ -68,7 +64,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
     } finally {
       setLoading(false)
     }
-  }, [tenantId, selectedTable])
+  }, [tenantId])
 
   const handleResolveCall = async (callId: string) => {
     try {
@@ -91,10 +87,11 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
     return () => clearInterval(timer)
   }, [fetchTables])
 
+  const selectedTable = tables.find((t) => t.id === selectedTableId) || null
   const activeTablesCount = tables.filter((t) => t.status === 'OCCUPIED').length
 
   const handleSelectTable = (t: RestaurantTable) => {
-    setSelectedTable(t)
+    setSelectedTableId(t.id)
   }
 
   const handleOpenFreeTable = (t: RestaurantTable) => {
@@ -110,18 +107,15 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
         allTables={tables}
         storePhone={storePhone}
         onBack={() => {
-          setSelectedTable(null)
-          fetchTables()
+          setSelectedTableId(null)
         }}
-        onSelectOtherTable={(other) => setSelectedTable(other)}
+        onSelectOtherTable={(other) => setSelectedTableId(other.id)}
         onAddMoreItems={() => {
           setMontadorTable(selectedTable)
           setActiveTab('BALCAO')
-          setSelectedTable(null)
+          setSelectedTableId(null)
         }}
-        onTableUpdated={() => {
-          fetchTables()
-        }}
+        onTableUpdated={fetchTables}
       />
     )
   }
@@ -136,6 +130,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             onClick={() => {
               setActiveTab('MESAS')
               setMontadorTable(null)
+              setSelectedTableId(null)
             }}
             className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'MESAS'
@@ -170,31 +165,31 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCashierOpsOpen(true)}
-            className="text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer rounded-xl h-9 shadow-xs"
-          >
-            Troco & Sangria
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => setSearchOpen(true)}
             className="text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer rounded-xl h-9 shadow-xs"
           >
             Lista de Produtos
           </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCashierOpsOpen(true)}
+            className="text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer rounded-xl h-9 shadow-xs"
+          >
+            Troco & Sangria
+          </Button>
         </div>
       </div>
 
-      {/* 🔔 BANNER DE CHAMADOS DE MESA / GARÇOM (OIMENU) */}
+      {/* BANNER DE CHAMADOS DE MESA / ATENDENTE */}
       {waiterCalls.length > 0 && (
         <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-500/40 animate-pulse space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-amber-500 animate-ping" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-ping" />
               <span className="text-xs font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider">
-                🔔 {waiterCalls.length} Chamado(s) de Mesa Ativo(s)
+                {waiterCalls.length} Chamado(s) de Mesa Ativo(s)
               </span>
             </div>
             <span className="text-[10px] text-amber-700 dark:text-amber-200 font-bold">Autoatendimento QR Code</span>
@@ -215,13 +210,27 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                   </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  onClick={() => handleResolveCall(call.id)}
-                  className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded-lg cursor-pointer"
-                >
-                  ✓ Atendido
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      window.print()
+                      toast.success(`Ticket da ${call.tableLabel} impresso!`)
+                    }}
+                    title="Imprimir ticket do chamado"
+                    className="h-8 w-8 p-0 border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 rounded-lg cursor-pointer"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleResolveCall(call.id)}
+                    className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded-lg cursor-pointer"
+                  >
+                    Atendido
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -244,7 +253,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* ========================================================= */}
-          {/* 🪑 SALÃO DE MESAS (LIVRES vs OCUPADAS)                     */}
+          {/* SALÃO DE MESAS (LIVRES vs OCUPADAS)                       */}
           {/* ========================================================= */}
           <div className="lg:col-span-8 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-6 shadow-xs dark:shadow-xl">
             <div className="flex items-center justify-between mb-5 pb-3 border-b border-purple-100 dark:border-white/10">
@@ -254,7 +263,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
               <div className="flex items-center gap-4 text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-md bg-purple-700 dark:bg-pink-600 shadow-xs"></span>
-                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Ocupada (Clique p/ Detalhes)</span>
+                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Ocupada (Clique p/ Ver Pedido)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-md bg-purple-50 dark:bg-white/10 border border-purple-200 dark:border-white/20"></span>
@@ -284,27 +293,48 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                         if (isOccupied) handleSelectTable(t)
                         else handleOpenFreeTable(t)
                       }}
-                      className={`h-24 rounded-2xl border flex flex-col items-center justify-center p-2 text-center transition-all duration-150 cursor-pointer ${
+                      className={`min-h-[110px] rounded-2xl border flex flex-col items-center justify-between p-3 text-center transition-all duration-150 cursor-pointer ${
                         isOccupied
-                          ? 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-pink-950/80 dark:to-purple-950/90 border-purple-400 dark:border-pink-500 text-purple-950 dark:text-white shadow-md dark:shadow-pink-600/20 hover:scale-[1.03]'
+                          ? 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-pink-950/80 dark:to-purple-950/90 border-purple-400 dark:border-pink-500 text-purple-950 dark:text-white shadow-md dark:shadow-pink-600/20 hover:scale-[1.02]'
                           : 'bg-purple-50/50 dark:bg-white/[0.04] text-purple-950 dark:text-white border-purple-200 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50 hover:bg-purple-100/60 dark:hover:bg-white/10 hover:scale-[1.02]'
                       }`}
                     >
-                      <div className="text-2xl font-black text-purple-950 dark:text-white">
-                        {t.number}
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xl font-black text-purple-950 dark:text-white">
+                          {t.number}
+                        </span>
+                        {isOccupied ? (
+                          <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0">
+                            € {t.total?.toFixed(2) || '0.00'}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] font-bold border-purple-200 dark:border-white/20 text-purple-700 dark:text-purple-300 py-0 px-1.5">
+                            Livre
+                          </Badge>
+                        )}
                       </div>
-                      <div
-                        className={`text-[10px] font-semibold truncate max-w-[120px] ${
-                          isOccupied ? 'text-purple-800 dark:text-pink-200 font-bold' : 'text-purple-700/70 dark:text-purple-200/70'
-                        }`}
-                      >
-                        {t.nickname || (isOccupied ? 'Em Consumo' : 'Disponível')}
-                      </div>
-                      {isOccupied && (
-                        <div className="text-[10px] text-purple-800 dark:text-pink-300 font-mono font-black mt-0.5">
-                          € {t.total?.toFixed(2) || '0.00'}
+
+                      <div className="py-1">
+                        <div
+                          className={`text-xs font-bold truncate max-w-[130px] ${
+                            isOccupied ? 'text-purple-900 dark:text-pink-200' : 'text-purple-700/80 dark:text-purple-200/70'
+                          }`}
+                        >
+                          {t.nickname || (isOccupied ? 'Em Consumo' : 'Disponível')}
                         </div>
-                      )}
+                      </div>
+
+                      <div className="w-full pt-1 border-t border-purple-200/60 dark:border-white/10 text-[10px] font-black">
+                        {isOccupied ? (
+                          <span className="text-purple-800 dark:text-pink-300 flex items-center justify-center gap-1">
+                            Ver Pedido & Receber ›
+                          </span>
+                        ) : (
+                          <span className="text-purple-600/70 dark:text-purple-300/60">
+                            + Abrir Mesa
+                          </span>
+                        )}
+                      </div>
                     </button>
                   )
                 })}
@@ -313,7 +343,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           </div>
 
           {/* ========================================================= */}
-          {/* 📊 PAINEL LATERAL "STATUS CAIXA"                          */}
+          {/* PAINEL LATERAL "STATUS CAIXA"                             */}
           {/* ========================================================= */}
           <div className="lg:col-span-4 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-6 shadow-xs dark:shadow-xl flex flex-col justify-between space-y-4">
             <div>
@@ -364,13 +394,14 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
         </div>
       )}
 
-      {/* Modais */}
+      {/* Dialogs Auxiliares */}
       <QuickProductSearchDialog
         open={searchOpen}
         onOpenChange={setSearchOpen}
         catalog={catalog}
-        onSelectProduct={(item) => {
-          toast.info(`Selecionado: ${item.name}`)
+        onSelectProduct={() => {
+          setSearchOpen(false)
+          setActiveTab('BALCAO')
         }}
       />
 
@@ -378,8 +409,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
         open={cashierOpsOpen}
         onOpenChange={setCashierOpsOpen}
         tenantId={tenantId}
-        operatorName={currentUser?.name || 'Operador'}
-        onSuccess={fetchTables}
+        operatorName={currentUser?.name || 'Operador Caixa'}
       />
     </div>
   )

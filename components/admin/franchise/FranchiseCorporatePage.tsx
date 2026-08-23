@@ -499,7 +499,7 @@ export default function FranchiseCorporatePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-purple-100 dark:border-white/10">
               <div>
                 <h3 className="font-black text-base text-purple-950 dark:text-white flex items-center gap-2">
-                  <span>⚡ Central de Replicação Master do Cardápio</span>
+                  <span>Central de Replicação Master do Cardápio</span>
                   <Badge className="bg-amber-400 text-purple-950 font-black text-[10px] py-0.5 px-2 border-0">
                     Franqueadora Global
                   </Badge>
