@@ -290,9 +290,9 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   return (
     <div className="space-y-4">
       {/* 1. Header do Módulo & Botão Publicar Alterações */}
-      <div className="flex items-center justify-between gap-4 pb-2 border-b border-purple-100 dark:border-white/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-purple-100 dark:border-white/10">
         <div>
-          <h2 className="text-lg font-black text-purple-950 dark:text-white tracking-tight">Itens do cardápio</h2>
+          <h2 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">Itens do cardápio</h2>
           <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
             Açaí da Rose · Produtos, Tamanhos e Regras de Complementos
           </p>
@@ -302,7 +302,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           type="button"
           onClick={handlePublishChanges}
           disabled={publishing}
-          className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
+          className="w-full sm:w-auto h-10 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${publishing ? 'animate-spin' : ''}`} />
           <span>
@@ -315,15 +315,15 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         </button>
       </div>
 
-      {/* 2. NÍVEL 1: LISTA DE MENUS (FILTRO 'Todos os Menus' + Menus Reais) */}
-      <div className="flex flex-wrap items-center gap-2 pt-1">
+      {/* 2. NÍVEL 1: LISTA DE MENUS (FILTRO 'Todos os Menus' + Menus Reais com Scroll Horizontal) */}
+      <div className="flex items-center gap-2 pt-1 overflow-x-auto no-scrollbar max-w-full pb-1">
         <button
           type="button"
           onClick={() => {
             setSelectedMainMenu('all_menus')
             setSelectedCategory('all_cats')
           }}
-          className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
             selectedMainMenu === 'all_menus'
               ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
               : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
@@ -344,7 +344,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
                   setSelectedMainMenu(m.id)
                   setSelectedCategory('all_cats')
                 }}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                   isSelected
                     ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
                     : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
@@ -356,16 +356,16 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           })}
       </div>
 
-      <hr className="border-t border-purple-100 dark:border-white/10 my-2" />
+      <hr className="border-t border-purple-100 dark:border-white/10 my-1" />
 
       {/* 3. NÍVEL 2: CATEGORIAS & BARRA DE AÇÕES */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pt-1">
-        {/* Pílulas de Categorias */}
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-2.5 pt-1">
+        {/* Pílulas de Categorias com Scroll Horizontal */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1">
           <button
             type="button"
             onClick={() => setSelectedCategory('all_cats')}
-            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               selectedCategory === 'all_cats'
                 ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
                 : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
@@ -383,7 +383,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                     isSelected
                       ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
                       : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
@@ -399,7 +399,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             <button
               type="button"
               onClick={() => setAddCatDialogOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-100 dark:bg-pink-950/40 border border-purple-200 dark:border-pink-500/30 text-purple-900 dark:text-pink-300 hover:bg-purple-200/70 dark:hover:bg-pink-900/40 flex items-center gap-1 transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-100 dark:bg-pink-950/40 border border-purple-200 dark:border-pink-500/30 text-purple-900 dark:text-pink-300 hover:bg-purple-200/70 dark:hover:bg-pink-900/40 flex items-center gap-1 transition cursor-pointer shrink-0 whitespace-nowrap"
             >
               <PlusCircle className="h-3 w-3" />
               <span>Adicionar Categoria</span>
@@ -408,13 +408,13 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         </div>
 
         {/* Barra de Ações Integrada */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full pb-1">
           {/* Solicitar à Franqueadora (Para Franqueados) */}
           {!isSuperAdmin && (
             <button
               type="button"
               onClick={() => setFranchiseReqOpen(true)}
-              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
             >
               <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
               <span>Solicitar à Franqueadora</span>
@@ -426,7 +426,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             <button
               type="button"
               onClick={handleOpenNew}
-              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
             >
               <PlusCircle className="h-3.5 w-3.5" />
               <span>Novo Item</span>
@@ -438,7 +438,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             <button
               type="button"
               onClick={() => setOptionModelOpen(true)}
-              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
               <span>Modelos</span>
@@ -449,7 +449,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           <button
             type="button"
             onClick={() => setFilterDialogOpen(true)}
-            className={`h-8 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs ${
+            className={`h-8 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs shrink-0 whitespace-nowrap ${
               hasActiveFilters
                 ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
                 : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'

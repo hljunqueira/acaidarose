@@ -56,7 +56,7 @@ export default function MenuFilterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 bg-white rounded-md border border-zinc-200 shadow-2xl overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-2xl border border-zinc-200 dark:border-white/15 shadow-2xl flex flex-col">
         <div className="p-4 border-b border-zinc-100 flex items-center gap-2">
           <Filter className="h-4 w-4 text-purple-700" />
           <DialogTitle className="text-base font-bold text-zinc-800">

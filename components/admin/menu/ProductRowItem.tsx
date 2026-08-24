@@ -89,69 +89,85 @@ export default function ProductRowItem({
   const price = product.precoBase ?? product.precoCobrado ?? product.price ?? 0
 
   return (
-    <div className={`py-3.5 px-4 rounded-2xl bg-white dark:bg-[#160228]/95 border transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 select-none text-slate-900 dark:text-white shadow-xs dark:shadow-md ${
-      isVisible ? 'border-purple-150 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50' : 'border-red-300 dark:border-red-500/40 bg-red-50/50 dark:bg-red-950/20 opacity-80'
-    }`}>
-      {/* 1. ESQUERDA: GRIP + IMAGEM + TÍTULO/DESCRIÇÃO */}
-      <div className="flex items-center gap-3 min-w-[240px] max-w-sm">
-        <div className="text-purple-400 dark:text-purple-300/40 hover:text-purple-700 dark:hover:text-pink-400 cursor-grab">
-          <GripVertical className="h-4 w-4" />
+    <div
+      className={`p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#160228]/95 border transition-all flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-4 select-none text-slate-900 dark:text-white shadow-xs dark:shadow-md ${
+        isVisible
+          ? 'border-purple-150 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50'
+          : 'border-red-300 dark:border-red-500/40 bg-red-50/50 dark:bg-red-950/20 opacity-80'
+      }`}
+    >
+      {/* 1. TOPO (Mobile) / ESQUERDA (Desktop): GRIP + IMAGEM + TÍTULO/DESCRIÇÃO + PREÇO NO MOBILE */}
+      <div className="flex items-start md:items-center justify-between gap-3 flex-1 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+          <div className="text-purple-400 dark:text-purple-300/40 hover:text-purple-700 dark:hover:text-pink-400 cursor-grab shrink-0">
+            <GripVertical className="h-4 w-4" />
+          </div>
+
+          <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden bg-purple-50 dark:bg-white/5 shrink-0 border border-purple-150 dark:border-white/10 relative">
+            {product.image ? (
+              <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-xs font-bold text-purple-700 dark:text-pink-300">
+                {product.name.slice(0, 2)}
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h4 className="font-extrabold text-sm text-purple-950 dark:text-white leading-tight truncate">
+              {product.name}
+            </h4>
+            <p className="text-[11px] text-purple-700 dark:text-purple-200/70 font-medium line-clamp-1 mt-0.5">
+              {product.description ||
+                (product.weightGrams
+                  ? `${product.weightGrams}g com regras de personalização.`
+                  : 'Produto oficial Açaí da Rose')}
+            </p>
+          </div>
         </div>
 
-        <div className="h-14 w-14 rounded-xl overflow-hidden bg-purple-50 dark:bg-white/5 flex-shrink-0 border border-purple-150 dark:border-white/10 relative">
-          {product.image ? (
-            <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center text-xs font-bold text-purple-700 dark:text-pink-300">
-              {product.name.slice(0, 2)}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h4 className="font-extrabold text-sm text-purple-950 dark:text-white leading-tight">{product.name}</h4>
-          <p className="text-[11px] text-purple-700 dark:text-purple-200/70 font-medium line-clamp-1 mt-0.5">
-            {product.description || (product.weightGrams ? `${product.weightGrams}g com regras de personalização.` : 'Produto oficial Açaí da Rose')}
-          </p>
+        {/* Preço no Mobile (fica na linha superior alinhado à direita) */}
+        <div className="md:hidden shrink-0">
+          <span className="font-mono font-black text-sm text-purple-950 dark:text-white bg-purple-50/80 dark:bg-white/10 px-2.5 py-1 rounded-xl border border-purple-150 dark:border-white/10 whitespace-nowrap inline-block">
+            {formatCurrency(price)}
+          </span>
         </div>
       </div>
 
-      {/* 2. CENTRO: RESUMO DAS REGRAS (OPCIONAIS VINCULADOS) */}
-      <div className="flex-1 px-2 hidden lg:block text-[11px] text-purple-900/80 dark:text-purple-200/80 font-medium space-y-0.5 max-w-md">
+      {/* 2. CENTRO (Apenas telas grandes): RESUMO DAS REGRAS */}
+      <div className="hidden lg:block flex-1 px-2 text-[11px] text-purple-900/80 dark:text-purple-200/80 font-medium space-y-0.5 max-w-xs">
         <div className="text-purple-950 dark:text-white font-bold truncate">
-          Escolha suas bases / cremes preferidos:
+          Regras e adicionais configurados
         </div>
-        <div className="text-purple-700 dark:text-purple-300/80 truncate">
-          Deseja adicionar frutas frescas?
-        </div>
-        <div className="text-purple-700 dark:text-purple-300/80 truncate">
-          Quais toppings & crocantes?
-        </div>
-        <div className="text-purple-700 dark:text-purple-300/80 truncate">
-          Deseja adicionar caldas nobres?
+        <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
+          Bases, frutas frescas e toppings do produto
         </div>
       </div>
 
-      {/* 3. DIREITA: PREÇO + STATUS RÁPIDOS + AÇÕES */}
-      <div className="flex items-center gap-4 self-end md:self-center flex-shrink-0">
-        {/* Preço de Tabela */}
-        <div className="text-right">
-          <div className="font-black text-sm text-purple-950 dark:text-white font-mono">
+      {/* 3. BASE (Mobile) / DIREITA (Desktop): PREÇO DESKTOP + STATUS + AÇÕES */}
+      <div className="flex items-center justify-between md:justify-end gap-3 pt-2.5 md:pt-0 border-t md:border-t-0 border-purple-100 dark:border-white/10 shrink-0 flex-wrap sm:flex-nowrap">
+        {/* Preço no Desktop (oculto no mobile porque já está no topo) */}
+        <div className="hidden md:block text-right pr-2">
+          <div className="font-black text-sm text-purple-950 dark:text-white font-mono whitespace-nowrap">
             {formatCurrency(price)}
           </div>
         </div>
 
         {/* Pílulas de Status */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
             onClick={handleToggleVisibility}
             className="cursor-pointer"
             title="Clique para alternar Visibilidade no QR Code"
           >
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition ${
-              isVisible ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30' : 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-500/30'
-            }`}>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition whitespace-nowrap ${
+                isVisible
+                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
+                  : 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-500/30'
+              }`}
+            >
               {isVisible ? 'Visível' : 'Invisível'}
             </span>
           </button>
@@ -162,9 +178,13 @@ export default function ProductRowItem({
             className="cursor-pointer"
             title="Clique para alternar Disponibilidade"
           >
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition ${
-              isAvailable ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30' : 'bg-zinc-200 dark:bg-zinc-700/50 text-zinc-800 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-600'
-            }`}>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition whitespace-nowrap ${
+                isAvailable
+                  ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30'
+                  : 'bg-zinc-200 dark:bg-zinc-700/50 text-zinc-800 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-600'
+              }`}
+            >
               {isAvailable ? 'Disponível' : 'Indisponível'}
             </span>
           </button>
@@ -175,52 +195,54 @@ export default function ProductRowItem({
             className="cursor-pointer"
             title="Clique para alternar recomendação no cardápio"
           >
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition ${
-              isRecommended
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                : 'bg-purple-50 dark:bg-white/5 text-purple-900/70 dark:text-purple-200/70 border border-purple-200 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
-            }`}>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition whitespace-nowrap ${
+                isRecommended
+                  ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                  : 'bg-purple-50 dark:bg-white/5 text-purple-900/70 dark:text-purple-200/70 border border-purple-200 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
+              }`}
+            >
               {isRecommended ? 'Recomendado' : 'Recomendar'}
             </span>
           </button>
         </div>
 
         {/* Caixa de Ícones de Ações */}
-        <div className="flex items-center border border-purple-200 dark:border-white/15 rounded-xl overflow-hidden divide-x divide-purple-200 dark:divide-white/15 bg-white dark:bg-white/5 shadow-xs">
+        <div className="flex items-center border border-purple-200 dark:border-white/15 rounded-xl overflow-hidden divide-x divide-purple-200 dark:divide-white/15 bg-white dark:bg-white/5 shadow-xs shrink-0">
           {isSuperAdmin && (
             <button
               type="button"
               onClick={() => setReplicateOpen(true)}
               title="Replicar para Filiais (Franqueadora)"
-              className="p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
+              className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
             >
-              <RefreshCw className="h-3 w-3" />
+              <RefreshCw className="h-3.5 w-3.5" />
             </button>
           )}
           <button
             type="button"
             onClick={() => onEdit(product)}
             title="Editar Produto & Complementos"
-            className="p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
+            className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
           >
-            <Edit2 className="h-3 w-3" />
+            <Edit2 className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
             onClick={() => setDuplicateOpen(true)}
             title="Duplicar Item"
-            className="p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
+            className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
           >
-            <Copy className="h-3 w-3" />
+            <Copy className="h-3.5 w-3.5" />
           </button>
           {isSuperAdmin && (
             <button
               type="button"
               onClick={() => setDeleteOpen(true)}
               title="Excluir Item"
-              className="p-2 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 transition cursor-pointer"
+              className="p-1.5 sm:p-2 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 transition cursor-pointer"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
         </div>

@@ -61,7 +61,7 @@ export function ReplicateStoreDialog({ open, onOpenChange, product }: ActionDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 bg-white rounded-md border border-zinc-200 shadow-2xl overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-2xl border border-zinc-200 dark:border-white/15 shadow-2xl flex flex-col">
         <div className="p-5 border-b border-zinc-100">
           <DialogTitle className="text-lg font-bold text-zinc-800">
             Atualizar esse produto nas filiais
@@ -149,7 +149,7 @@ export function DuplicateItemDialog({ open, onOpenChange, product }: ActionDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 bg-white rounded-md border border-zinc-200 shadow-2xl overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-2xl border border-zinc-200 dark:border-white/15 shadow-2xl flex flex-col">
         <div className="p-4 border-b border-zinc-100">
           <DialogTitle className="text-base font-bold text-zinc-800">
             Duplicar Item
@@ -226,7 +226,7 @@ export function DeleteItemDialog({ open, onOpenChange, product, onSuccess }: Act
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 bg-white rounded-md border border-zinc-200 shadow-2xl overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-2xl border border-zinc-200 dark:border-white/15 shadow-2xl flex flex-col">
         <div className="p-4 border-b border-zinc-100">
           <DialogTitle className="text-base font-bold text-zinc-800">
             Excluir Item
@@ -306,7 +306,7 @@ export function ActiveHoursDialog({ open, onOpenChange, product }: ActionDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 bg-white rounded-md border border-zinc-200 shadow-2xl overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-2xl border border-zinc-200 dark:border-white/15 shadow-2xl flex flex-col">
         <div className="p-4 border-b border-zinc-100">
           <DialogTitle className="text-base font-bold text-zinc-800">
             Horários ativos do produto
@@ -391,7 +391,7 @@ export function PairingDialog({ open, onOpenChange, product }: ActionDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 bg-white rounded-md border border-zinc-200 shadow-2xl overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-2xl border border-zinc-200 dark:border-white/15 shadow-2xl flex flex-col">
         <div className="p-4 border-b border-zinc-100">
           <DialogTitle className="text-base font-bold text-zinc-800">
             Harmoniza com
@@ -492,7 +492,7 @@ export function PromoHoursDialog({ open, onOpenChange, product }: ActionDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 bg-white rounded-md border border-zinc-200 shadow-2xl overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-2xl border border-zinc-200 dark:border-white/15 shadow-2xl flex flex-col">
         <div className="p-4 border-b border-zinc-100">
           <DialogTitle className="text-base font-bold text-zinc-800">
             Horário Promocional / Happy Hour
