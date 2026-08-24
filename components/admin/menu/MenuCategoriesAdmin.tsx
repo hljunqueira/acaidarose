@@ -239,7 +239,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
 
       {/* Modal Criar/Editar */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] border-purple-200 dark:border-white/15 text-slate-900 dark:text-white shadow-xl">
+        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] border-purple-200 dark:border-white/15 text-slate-900 dark:text-white rounded-3xl shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
               {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
@@ -313,7 +313,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
 
       {/* Modal Confirmar Exclusão */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="max-w-sm bg-[#160228] p-5 rounded-2xl border border-white/15 text-white">
+        <DialogContent className="w-[95vw] sm:w-full max-w-sm max-h-[90vh] overflow-y-auto bg-[#160228] p-4 sm:p-5 rounded-2xl border border-white/15 text-white">
           <div className="flex items-center gap-3 text-red-400 mb-2">
             <div className="p-2 rounded-xl bg-red-500/20">
               <AlertTriangle className="h-5 w-5" />

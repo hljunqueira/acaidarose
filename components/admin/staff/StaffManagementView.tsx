@@ -224,7 +224,7 @@ export default function StaffManagementView({ tenantId }: StaffManagementViewPro
 
       {/* Modal de Cadastro / Edição */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] border-purple-200 dark:border-white/15 text-slate-900 dark:text-white shadow-xl">
+        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] border-purple-200 dark:border-white/15 text-slate-900 dark:text-white shadow-xl rounded-3xl">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
               {editingStaff ? 'Editar Atendente' : 'Novo Garçom / Atendente'}

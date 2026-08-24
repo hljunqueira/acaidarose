@@ -129,7 +129,7 @@ export default function OptionModelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl sm:max-w-3xl p-0 bg-white rounded-md border border-zinc-200 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <DialogContent className="w-[95vw] sm:w-full max-w-2xl sm:max-w-3xl p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-2xl border border-zinc-200 dark:border-white/15 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-zinc-200 flex items-center gap-2">
           <Layers className="h-4 w-4 text-purple-700" />

@@ -133,7 +133,7 @@ export default function NewOrderManualModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 bg-white border border-purple-100 rounded-3xl shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-5xl max-h-[90vh] overflow-y-auto p-3 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-100 dark:border-white/15 rounded-3xl shadow-2xl">
         {/* Topo do Modal */}
         <DialogHeader className="pb-3 border-b border-purple-100 text-left">
           <div className="flex items-center justify-between">

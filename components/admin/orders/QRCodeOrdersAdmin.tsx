@@ -470,54 +470,56 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
       </div>
 
       {/* Linha 2: Filtros de Origem Segmentados */}
-      <div className="flex items-center gap-1.5 bg-purple-50/80 dark:bg-white/5 p-1 rounded-2xl border border-purple-150 dark:border-white/10 w-fit">
-        <button
-          type="button"
-          onClick={() => setOriginFilter('ALL')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            originFilter === 'ALL'
-              ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
-              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-          }`}
-        >
-          <Layers className="h-3.5 w-3.5" />
-          <span>Todos os Pedidos</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
-            {orders.length}
-          </span>
-        </button>
+      <div className="max-w-full overflow-x-auto no-scrollbar py-1">
+        <div className="flex items-center gap-1.5 bg-purple-50/80 dark:bg-white/5 p-1 rounded-2xl border border-purple-150 dark:border-white/10 w-fit shrink-0">
+          <button
+            type="button"
+            onClick={() => setOriginFilter('ALL')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              originFilter === 'ALL'
+                ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            <span>Todos os Pedidos</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
+              {orders.length}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setOriginFilter('TABLES')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            originFilter === 'TABLES'
-              ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
-              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-          }`}
-        >
-          <Smartphone className="h-3.5 w-3.5" />
-          <span>Mesas / QR Code</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
-            {countTables}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setOriginFilter('TABLES')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              originFilter === 'TABLES'
+                ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+            }`}
+          >
+            <Smartphone className="h-3.5 w-3.5" />
+            <span>Mesas / QR Code</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
+              {countTables}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setOriginFilter('COUNTER')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            originFilter === 'COUNTER'
-              ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
-              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-          }`}
-        >
-          <Store className="h-3.5 w-3.5" />
-          <span>Balcão / Take-Away</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
-            {countCounter}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setOriginFilter('COUNTER')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              originFilter === 'COUNTER'
+                ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+            }`}
+          >
+            <Store className="h-3.5 w-3.5" />
+            <span>Balcão / Take-Away</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
+              {countCounter}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Colunas do Kanban com Arraste do Mouse e Cards Largos */}

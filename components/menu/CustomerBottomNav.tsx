@@ -26,7 +26,7 @@ export default function CustomerBottomNav({
   onCallWaiter,
 }: CustomerBottomNavProps) {
   return (
-    <div className="fixed bottom-0 inset-x-0 z-40 bg-[#160228]/95 backdrop-blur-xl border-t border-white/15 shadow-2xl">
+    <div className="fixed bottom-0 inset-x-0 z-40 bg-[#160228]/95 backdrop-blur-xl border-t border-white/15 shadow-2xl pb-[max(0.25rem,env(safe-area-inset-bottom))]">
       {/* Botão Flutuante da Comanda / Carrinho (se houver itens) */}
       {cartCount > 0 && (
         <div className="max-w-xl mx-auto px-4 pt-2.5">

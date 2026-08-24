@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Heart, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Heart, CheckCircle2 } from 'lucide-react'
 
 export default function LandingSpecials() {
   return (

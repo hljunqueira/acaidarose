@@ -258,7 +258,7 @@ export default function ProductEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-100 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl [&>button]:hidden">
+      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[90vh] flex flex-col p-0 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-100 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl [&>button]:hidden">
         <div className="p-4 px-6 border-b border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <DialogTitle className="text-sm font-black text-purple-950 dark:text-white tracking-tight">

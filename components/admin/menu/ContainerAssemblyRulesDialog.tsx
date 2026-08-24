@@ -71,7 +71,7 @@ export default function ContainerAssemblyRulesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-6 bg-white rounded-3xl border border-purple-100 shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white rounded-3xl border border-purple-100 dark:border-white/15 shadow-2xl">
         <DialogHeader className="space-y-1.5 pb-2 border-b border-purple-100">
           <div className="flex items-center gap-2">
             <div className="p-2.5 rounded-2xl bg-purple-100 text-purple-700">
@@ -140,7 +140,7 @@ export default function ContainerAssemblyRulesDialog({
                     </div>
                     {isFrutasLivres ? (
                       <div className="h-9 rounded-xl bg-emerald-100/70 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center">
-                        Frutas Livres ✨
+                        Frutas Livres
                       </div>
                     ) : (
                       <Input
@@ -168,7 +168,7 @@ export default function ContainerAssemblyRulesDialog({
                     </div>
                     {isToppingsLivres ? (
                       <div className="h-9 rounded-xl bg-emerald-100/70 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center">
-                        Toppings Livres ✨
+                        Toppings Livres
                       </div>
                     ) : (
                       <Input

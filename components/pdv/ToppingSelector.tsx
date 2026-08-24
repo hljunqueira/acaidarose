@@ -152,7 +152,7 @@ export default function ToppingSelector({
                 className={`h-10 w-10 rounded-2xl flex items-center justify-center text-2xl transition-transform ${isSpecial ? 'bg-amber-100 shadow-inner' : 'bg-purple-100 shadow-inner'
                   }`}
               >
-                {t.emoji || '✨'}
+                {t.emoji || '🫐'}
               </div>
 
               {/* Nome */}

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useHighlightsStore } from '@/lib/stores/highlightsStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
 
-import { ChevronLeft, ChevronRight, Sparkles, ArrowRight, ChevronDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowRight, ChevronDown } from 'lucide-react'
 
 export default function CustomerPromoCarousel({ onSelectPromo }: { onSelectPromo?: (id: string) => void }) {
   const { highlights } = useHighlightsStore()
@@ -37,10 +37,10 @@ export default function CustomerPromoCarousel({ onSelectPromo }: { onSelectPromo
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-8 select-none">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-8 select-none">
       <div
         onClick={() => onSelectPromo && onSelectPromo(banner.id)}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2c044e] via-[#3a065e] to-[#1a012c] border border-white/20 shadow-2xl p-6 sm:p-8 md:p-10 lg:p-12 min-h-[260px] md:min-h-[320px] lg:min-h-[360px] flex flex-col-reverse md:flex-row items-center justify-between gap-6 md:gap-10 cursor-pointer group transition-all duration-300 hover:border-pink-500/60 hover:shadow-[0_20px_50px_rgba(236,72,153,0.25)]"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2c044e] via-[#3a065e] to-[#1a012c] border border-white/20 shadow-2xl p-4 sm:p-6 md:p-10 lg:p-12 min-h-[220px] md:min-h-[320px] lg:min-h-[360px] flex flex-col-reverse md:flex-row items-center justify-between gap-4 sm:gap-6 md:gap-10 cursor-pointer group transition-all duration-300 hover:border-pink-500/60 hover:shadow-[0_20px_50px_rgba(236,72,153,0.25)]"
       >
         {/* Glows de Fundo */}
         <div className="absolute -top-24 -left-24 w-80 h-80 bg-pink-600/25 rounded-full blur-3xl pointer-events-none" />

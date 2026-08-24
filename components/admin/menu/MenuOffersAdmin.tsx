@@ -390,7 +390,7 @@ export default function MenuOffersAdmin({ tenantId }: MenuOffersAdminProps) {
 
       {/* Modal Criar / Editar Oferta */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg p-6 bg-white dark:bg-[#160228] border-purple-200 dark:border-white/15 text-slate-900 dark:text-white shadow-2xl rounded-2xl [&>button]:hidden">
+        <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] border-purple-200 dark:border-white/15 text-slate-900 dark:text-white shadow-2xl rounded-3xl [&>button]:hidden">
           <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
             <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
               {editingOffer ? 'Editar Oferta' : activeTab === 'GLOBAL' && isSuperAdmin ? 'Nova Campanha da Franqueadora' : 'Nova Promoção da Loja'}

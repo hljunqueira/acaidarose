@@ -87,7 +87,7 @@ export default function CallWaiterModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6 bg-[#160228] text-white border border-white/20 rounded-3xl shadow-2xl">
+      <DialogContent className="w-[92vw] sm:w-full max-w-md p-5 sm:p-6 bg-[#160228] text-white border border-white/20 rounded-3xl shadow-2xl">
         <DialogHeader className="text-left space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-pink-600/30 border border-pink-500/40 text-pink-300">

@@ -3,7 +3,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
-import { Heart, QrCode, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Heart, QrCode, CheckCircle2 } from 'lucide-react'
 
 const SIZES = [
   {

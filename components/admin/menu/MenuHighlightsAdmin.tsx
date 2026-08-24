@@ -227,7 +227,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
 
       {/* Modal de Criação / Edição */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] rounded-3xl border border-purple-200 dark:border-white/15 shadow-2xl text-slate-900 dark:text-white">
+        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] rounded-3xl border border-purple-200 dark:border-white/15 shadow-2xl text-slate-900 dark:text-white">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
               {editingItem ? 'Editar Destaque' : 'Novo Destaque'}

@@ -28,7 +28,6 @@ import {
   UserCheck,
   ArrowUpRight,
   Sliders,
-  Sparkles,
   Trash2,
 } from 'lucide-react'
 
@@ -383,13 +382,13 @@ export default function FranchiseCorporatePage() {
       </div>
 
       {/* 4 KPIs Globais */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-3.5">
         <Card className="p-4 bg-gradient-to-br from-purple-800 via-purple-900 to-fuchsia-950 text-white rounded-3xl shadow-md border border-purple-700/50">
           <div className="flex justify-between items-start">
             <div className="text-xs font-bold text-purple-100">Faturamento da Rede (Mês)</div>
             <div className="p-2 rounded-xl bg-white/10 text-pink-300"><TrendingUp className="h-4 w-4" /></div>
           </div>
-          <div className="text-2xl font-black mt-2 tracking-tight text-white font-mono">
+          <div className="text-xl sm:text-2xl font-black mt-2 tracking-tight text-white font-mono">
             {formatCurrency(totalNetworkRevenue)}
           </div>
           <div className="text-[10px] text-emerald-300 font-bold mt-1">
@@ -402,7 +401,7 @@ export default function FranchiseCorporatePage() {
             <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Royalties & Sistema</div>
             <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400"><DollarSign className="h-4 w-4" /></div>
           </div>
-          <div className="text-2xl font-black text-purple-950 dark:text-pink-300 mt-2 tracking-tight font-mono">
+          <div className="text-xl sm:text-2xl font-black text-purple-950 dark:text-pink-300 mt-2 tracking-tight font-mono">
             {formatCurrency(totalRoyalties + totalSystemFees)}
           </div>
           <div className="text-[10px] text-purple-600/70 dark:text-purple-200/60 mt-1 font-medium">
@@ -413,9 +412,9 @@ export default function FranchiseCorporatePage() {
         <Card className="p-4 bg-white dark:bg-[#160228]/95 text-slate-900 dark:text-white rounded-3xl shadow-xs dark:shadow-xl border border-purple-150 dark:border-white/15">
           <div className="flex justify-between items-start">
             <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Fundo de Marketing</div>
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400"><Sparkles className="h-4 w-4" /></div>
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400"><TrendingUp className="h-4 w-4" /></div>
           </div>
-          <div className="text-2xl font-black text-purple-950 dark:text-white mt-2 tracking-tight font-mono">
+          <div className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white mt-2 tracking-tight font-mono">
             {formatCurrency(totalMarketing)}
           </div>
           <div className="text-[10px] text-emerald-600 dark:text-emerald-300 font-bold mt-1">
@@ -428,7 +427,7 @@ export default function FranchiseCorporatePage() {
             <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">Equipa da Rede</div>
             <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400"><Users className="h-4 w-4" /></div>
           </div>
-          <div className="text-2xl font-black text-purple-950 dark:text-white mt-2 tracking-tight">
+          <div className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white mt-2 tracking-tight">
             12 <span className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">caixas</span>
           </div>
           <div className="text-[10px] text-purple-700 dark:text-pink-300 font-bold mt-1">
@@ -438,38 +437,40 @@ export default function FranchiseCorporatePage() {
       </div>
 
       {/* Seletor de Unidades em Pílulas */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-150 dark:border-white/10 w-fit">
-        <button
-          type="button"
-          onClick={() => setSelectedStoreFilter('ALL')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            selectedStoreFilter === 'ALL'
-              ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-          }`}
-        >
-          Todas as Unidades ({overview?.stores.length || 4})
-        </button>
+      <div className="max-w-full overflow-x-auto no-scrollbar py-1">
+        <div className="flex items-center gap-1.5 p-1 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-150 dark:border-white/10 w-fit shrink-0">
+          <button
+            type="button"
+            onClick={() => setSelectedStoreFilter('ALL')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              selectedStoreFilter === 'ALL'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+            }`}
+          >
+            Todas as Unidades ({overview?.stores.length || 4})
+          </button>
 
-        {overview?.stores.map((s) => {
-          const isSelected = selectedStoreFilter === s.tenant.id
-          return (
-            <button
-              key={s.tenant.id}
-              type="button"
-              onClick={() => setSelectedStoreFilter(s.tenant.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                isSelected
-                  ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                  : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-              }`}
-            >
-              <span>📍</span>
-              <span>{s.tenant.name.replace('Açaí da Rose — ', '')}</span>
-              {s.tenant.isHeadquarters && <span className="text-[9px] opacity-80">(Matriz)</span>}
-            </button>
-          )
-        })}
+          {overview?.stores.map((s) => {
+            const isSelected = selectedStoreFilter === s.tenant.id
+            return (
+              <button
+                key={s.tenant.id}
+                type="button"
+                onClick={() => setSelectedStoreFilter(s.tenant.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                    : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+                }`}
+              >
+                <span>📍</span>
+                <span>{s.tenant.name.replace('Açaí da Rose — ', '')}</span>
+                {s.tenant.isHeadquarters && <span className="text-[9px] opacity-80">(Matriz)</span>}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Se 'ALL', exibe grid com todos os 4 cards largos lado a lado */}

@@ -106,7 +106,6 @@ export default function CustomerIngredientsGuide({ catalog }: CustomerIngredient
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/10 pb-4 text-left">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-base">✨</span>
             <span className="text-xs font-black uppercase tracking-wider text-pink-400 font-['Outfit']">
               Guia Completo do Cardápio
             </span>

@@ -19,7 +19,7 @@ import CustomerMenuSearch from '@/components/menu/CustomerMenuSearch'
 import CustomerMenuMore from '@/components/menu/CustomerMenuMore'
 import CustomerProductDetail from '@/components/menu/CustomerProductDetail'
 import CallWaiterModal from '@/components/menu/CallWaiterModal'
-import { Bell, Smartphone, Clock, CheckCircle2, AlertCircle, Receipt, User, Sparkles, CreditCard, Banknote } from 'lucide-react'
+import { Bell, Smartphone, Clock, CheckCircle2, AlertCircle, Receipt, User, CreditCard, Banknote } from 'lucide-react'
 
 function MenuContent() {
   const searchParams = useSearchParams()

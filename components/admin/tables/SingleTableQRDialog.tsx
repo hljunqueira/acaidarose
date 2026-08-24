@@ -14,7 +14,6 @@ import {
   ExternalLink,
   Printer,
   QrCode,
-  Sparkles,
   Smartphone,
   CheckCircle2,
   Store,
@@ -82,7 +81,7 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">

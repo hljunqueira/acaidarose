@@ -89,14 +89,14 @@ export default function CustomerMenuHome({
       {/* ========================================================
           2. BENTO GRID: SELOS OFICIAIS & DIFERENCIAIS DE QUALIDADE
       ======================================================== */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <section className="max-w-6xl mx-auto px-3 sm:px-4 md:px-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
           
           <motion.div 
             whileHover={{ y: -4, scale: 1.02 }}
-            className="p-4 rounded-3xl bg-gradient-to-b from-[#230438] to-[#150122] border border-white/10 flex items-center gap-3 shadow-lg"
+            className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-b from-[#230438] to-[#150122] border border-white/10 flex items-center gap-3 shadow-lg"
           >
-            <div className="h-11 w-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 border border-emerald-500/30">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 border border-emerald-500/30">
               <Leaf className="h-5 w-5" />
             </div>
             <div>
@@ -107,9 +107,9 @@ export default function CustomerMenuHome({
 
           <motion.div 
             whileHover={{ y: -4, scale: 1.02 }}
-            className="p-4 rounded-3xl bg-gradient-to-b from-[#230438] to-[#150122] border border-white/10 flex items-center gap-3 shadow-lg"
+            className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-b from-[#230438] to-[#150122] border border-white/10 flex items-center gap-3 shadow-lg"
           >
-            <div className="h-11 w-11 rounded-2xl bg-purple-500/20 text-purple-300 flex items-center justify-center flex-shrink-0 border border-purple-500/30">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-purple-500/20 text-purple-300 flex items-center justify-center flex-shrink-0 border border-purple-500/30">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -120,9 +120,9 @@ export default function CustomerMenuHome({
 
           <motion.div 
             whileHover={{ y: -4, scale: 1.02 }}
-            className="p-4 rounded-3xl bg-gradient-to-b from-[#230438] to-[#150122] border border-white/10 flex items-center gap-3 shadow-lg"
+            className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-b from-[#230438] to-[#150122] border border-white/10 flex items-center gap-3 shadow-lg"
           >
-            <div className="h-11 w-11 rounded-2xl bg-pink-500/20 text-pink-300 flex items-center justify-center flex-shrink-0 border border-pink-500/30">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-pink-500/20 text-pink-300 flex items-center justify-center flex-shrink-0 border border-pink-500/30">
               <Award className="h-5 w-5" />
             </div>
             <div>
@@ -133,9 +133,9 @@ export default function CustomerMenuHome({
 
           <motion.div 
             whileHover={{ y: -4, scale: 1.02 }}
-            className="p-4 rounded-3xl bg-gradient-to-b from-[#230438] to-[#150122] border border-white/10 flex items-center gap-3 shadow-lg"
+            className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-b from-[#230438] to-[#150122] border border-white/10 flex items-center gap-3 shadow-lg"
           >
-            <div className="h-11 w-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center flex-shrink-0 border border-amber-500/30">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center flex-shrink-0 border border-amber-500/30">
               <Heart className="h-5 w-5" />
             </div>
             <div>

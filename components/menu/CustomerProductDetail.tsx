@@ -149,27 +149,27 @@ export default function CustomerProductDetail({
 
   return (
     <Dialog open={Boolean(container)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden p-0 bg-[#150226] text-white border border-white/20 rounded-3xl flex flex-col shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[90vh] overflow-hidden p-0 bg-[#150226] text-white border border-white/20 rounded-3xl flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-white/10 bg-[#1e0333]/90 pr-14">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/10 bg-[#1e0333]/90 pr-14">
           <DialogTitle className="text-base font-black text-white">
             {viewOnly ? `Conheça os Ingredientes: ${container.name}` : `Personalize o seu ${container.name}`}
           </DialogTitle>
         </div>
 
         {/* Corpo Principal com 2 Colunas no Desktop */}
-        <div className="overflow-y-auto p-5 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className="overflow-y-auto p-4 sm:p-5 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
           {/* Coluna Esquerda: Imagem & Resumo do Tamanho */}
           <div className="md:col-span-4 space-y-4">
             <div className="rounded-3xl overflow-hidden border border-white/15 bg-purple-950/40 shadow-lg">
               <img
                 src={CUP_IMAGES[container.weightGrams] || container.image || '/images/official/acai_copo_500g.jpg'}
                 alt={container.name}
-                className="w-full h-44 object-cover"
+                className="w-full h-36 sm:h-44 object-cover"
               />
             </div>
 
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-black text-sm text-white">{container.name}</span>
                 <span className="font-black text-fuchsia-300 font-mono text-sm">
@@ -178,7 +178,7 @@ export default function CustomerProductDetail({
               </div>
               <p className="text-[11px] text-purple-200/70">
                 {isUnlimited
-                  ? '✨ Tamanho Especial: Frutas frescas e acompanhamentos tradicionais à vontade!'
+                  ? 'Tamanho Especial: Frutas frescas e acompanhamentos tradicionais à vontade!'
                   : `Inclui até ${maxFrutas} frutas e até ${maxToppings} toppings tradicionais gratuitos.`}
               </p>
             </div>

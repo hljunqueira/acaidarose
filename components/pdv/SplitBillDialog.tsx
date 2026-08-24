@@ -56,7 +56,7 @@ export default function SplitBillDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6">
+      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl">
         <DialogHeader>
           <DialogTitle className="text-base font-black text-foreground">
             Divisão de Conta — Mesa {tableNumber}

@@ -588,7 +588,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       {/* 6. MODAL ADICIONAR NOVA CATEGORIA */}
       <Dialog open={addCatDialogOpen} onOpenChange={setAddCatDialogOpen}>
-        <DialogContent className="max-w-md bg-[#160228] p-5 rounded-2xl border border-white/15 shadow-2xl text-white">
+        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto bg-[#160228] p-4 sm:p-5 rounded-2xl border border-white/15 shadow-2xl text-white">
           <DialogTitle className="text-base font-black text-white flex items-center gap-2">
             <FolderPlus className="h-5 w-5 text-pink-400" />
             <span>Adicionar Nova Categoria</span>

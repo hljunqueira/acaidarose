@@ -75,7 +75,7 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
       </div>
 
       {/* Sub-Abas dos Relatórios Oficiais */}
-      <div className="flex items-center gap-1.5 overflow-x-auto bg-purple-50/70 dark:bg-white/5 p-1 rounded-2xl border border-purple-150 dark:border-white/10 w-fit">
+      <div className="flex items-center gap-1.5 max-w-full overflow-x-auto no-scrollbar bg-purple-50/70 dark:bg-white/5 p-1 rounded-2xl border border-purple-150 dark:border-white/10 w-fit">
         {[
           { id: 'overview', label: 'Visão Geral' },
           { id: 'sales', label: 'Relatório de Vendas' },

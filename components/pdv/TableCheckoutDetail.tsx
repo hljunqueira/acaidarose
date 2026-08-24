@@ -406,7 +406,7 @@ export default function TableCheckoutDetail({
 
       {/* Modal de Transferência */}
       <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-        <DialogContent className="max-w-md p-6">
+        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-black">
               Transferir Itens da Mesa {table.number}
@@ -463,7 +463,7 @@ export default function TableCheckoutDetail({
 
       {/* Modal de Detalhes do Item da Mesa (Raio-X de Ingredientes) */}
       <Dialog open={Boolean(selectedItemForDetail)} onOpenChange={(open) => !open && setSelectedItemForDetail(null)}>
-        <DialogContent className="max-w-md p-5 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl">
+        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-5 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl">
           <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
             <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
               {selectedItemForDetail?.containerName || selectedItemForDetail?.container?.name || 'Açaí Personalizado'}

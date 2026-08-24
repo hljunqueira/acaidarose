@@ -18,7 +18,6 @@ import {
   Printer,
   Trash2,
   CheckCircle2,
-  Sparkles,
   AlertCircle,
   CreditCard,
   Banknote,
@@ -51,7 +50,7 @@ export default function OrderItemsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-5 md:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-5 md:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         {/* Header com Ticket, Mesa e Nome */}
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
           <div className="flex items-center justify-between gap-2">

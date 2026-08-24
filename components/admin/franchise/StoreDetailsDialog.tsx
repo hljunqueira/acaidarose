@@ -54,7 +54,7 @@ export default function StoreDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-6 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/15 shadow-2xl text-slate-900 dark:text-white">
+      <DialogContent className="w-[95vw] sm:w-full max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/15 shadow-2xl text-slate-900 dark:text-white">
         {/* Header da Ficha 360 */}
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

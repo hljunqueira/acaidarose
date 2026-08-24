@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { User, Tenant } from '@/types'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, ChevronUp, Store, Utensils, Building2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Store, Utensils, Building2, X } from 'lucide-react'
 
 export type AppViewId =
   | 'qrcode'
@@ -142,7 +142,7 @@ export default function AppSidebar({
   const renderContent = () => (
     <div className="flex flex-col h-full justify-between">
       <div className="p-4 md:p-5 flex flex-col flex-1 overflow-y-auto">
-        {/* Logo Oficial do Açaí da Rose */}
+        {/* Logo Oficial do Açaí da Rose & Botão Fechar Mobile */}
         <div className="flex items-center justify-between pb-4 border-b border-purple-100 dark:border-white/10">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="Açaí da Rose" className="h-10 w-auto object-contain" />
@@ -153,6 +153,16 @@ export default function AppSidebar({
               </div>
             </div>
           </div>
+
+          {/* Botão de Fechar visível apenas no Drawer Mobile/Tablet */}
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="lg:hidden p-1.5 rounded-xl text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer"
+            aria-label="Fechar Menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Card da Loja Ativa com Seletor */}
@@ -441,18 +451,18 @@ export default function AppSidebar({
   return (
     <>
       {/* 1. Sidebar Desktop */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:flex-shrink-0 md:sticky md:top-0 md:h-screen bg-white dark:bg-[#150226] border-r border-purple-100 dark:border-white/10 z-30 shadow-xs transition-colors duration-150">
+      <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:flex-shrink-0 lg:sticky lg:top-0 lg:h-screen bg-white dark:bg-[#150226] border-r border-purple-100 dark:border-white/10 z-30 shadow-xs transition-colors duration-150">
         {renderContent()}
       </aside>
 
       {/* 2. Drawer Mobile com Backdrop */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
+        <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
             onClick={onCloseMobile}
             className="fixed inset-0 bg-purple-950/40 dark:bg-black/70 backdrop-blur-xs transition-opacity"
           />
-          <div className="relative w-64 max-w-[85vw] bg-white dark:bg-[#150226] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-purple-100 dark:border-white/10">
+          <div className="relative w-72 max-w-[85vw] bg-white dark:bg-[#150226] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-purple-100 dark:border-white/10">
             {renderContent()}
           </div>
         </div>

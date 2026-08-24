@@ -28,7 +28,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-6">
+      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-base font-black text-foreground">
             Folha de Impressão — Todas as Placas de Mesas ({tables.length})
@@ -38,7 +38,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
           </p>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 my-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-4">
           {tables.map((table) => {
             const lojaSlug = table.tenantId?.replace('tenant-', '') || 'torres-novas'
             const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${table.number.toString().padStart(2, '0')}&loja=${encodeURIComponent(lojaSlug)}`

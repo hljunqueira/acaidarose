@@ -7,7 +7,7 @@ import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import { Tenant, User } from '@/types'
 import { HQ_TENANT } from '@/lib/supabase/mockStore'
-import { LogOut, Globe } from 'lucide-react'
+import { LogOut, Globe, Menu } from 'lucide-react'
 
 // Componentes da Landing Page Oficial
 import LandingHeader from '@/components/landing/LandingHeader'
@@ -158,24 +158,37 @@ export default function HomePage() {
       {/* Área de Conteúdo Principal */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Bimodal (Light + Dark) */}
-        <div className="bg-white dark:bg-[#160228] border-b border-purple-100 dark:border-white/10 px-4 py-2.5 flex items-center justify-between shadow-xs transition-colors duration-150">
-          <div className="flex items-center gap-3">
+        <div className="bg-white dark:bg-[#160228] border-b border-purple-100 dark:border-white/10 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between shadow-xs transition-colors duration-150">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Botão de Menu Hambúrguer (Mobile & Tablets) */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden h-8 px-2.5 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/80 dark:bg-white/10 hover:bg-purple-100 dark:hover:bg-white/20 text-purple-950 dark:text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+              aria-label="Abrir Menu"
+            >
+              <Menu className="h-4 w-4 text-purple-700 dark:text-pink-400" />
+              <span>Menu</span>
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => setAppMode('LANDING')}
-              className="h-8 px-3 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/60 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-900 dark:text-pink-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+              className="h-8 px-2.5 sm:px-3 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/60 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-900 dark:text-pink-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <Globe className="h-3.5 w-3.5 text-purple-600 dark:text-pink-400" />
-              <span>Ver Site Oficial</span>
+              <span className="hidden xs:inline sm:inline">Ver Site Oficial</span>
+              <span className="xs:hidden sm:hidden">Site</span>
             </Button>
 
-            <span className="text-xs text-purple-900/80 dark:text-purple-200/80 hidden sm:inline-block">
+            <span className="text-xs text-purple-900/80 dark:text-purple-200/80 hidden sm:inline-block truncate">
               Unidade Ativa: <strong className="text-purple-950 dark:text-white font-black">{effectiveTenant.name}</strong>
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Seletor de Tema Bimodal no Nav */}
             <ThemeToggle />
 
@@ -189,7 +202,7 @@ export default function HomePage() {
                 logout()
                 setAppMode('LANDING')
               }}
-              className="h-8 px-2.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 text-xs rounded-xl font-bold cursor-pointer"
+              className="h-8 px-2 sm:px-2.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 text-xs rounded-xl font-bold cursor-pointer"
             >
               <LogOut className="h-3.5 w-3.5 mr-1" />
               <span>Sair</span>
@@ -198,7 +211,7 @@ export default function HomePage() {
         </div>
 
         {/* Conteúdo Dinâmico das Views do PDV / Admin */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#f8f6fc] dark:bg-[#0e0117] transition-colors duration-150">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-[#f8f6fc] dark:bg-[#0e0117] transition-colors duration-150">
           {view === 'qrcode' && <QRCodeOrdersAdmin tenantId={activeTenantId} />}
           {view === 'pdv' && (
             <TablesHallView

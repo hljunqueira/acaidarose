@@ -115,7 +115,7 @@ export default function EditRoyaltyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-5 md:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-5 md:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         {/* Header Compacto */}
         <DialogHeader className="text-left pb-2.5 border-b border-purple-100 dark:border-white/10 flex flex-row items-center justify-between">
           <div>
