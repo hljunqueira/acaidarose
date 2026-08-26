@@ -24,6 +24,7 @@ import FranchiseRequestDialog from './FranchiseRequestDialog'
 import ContainerAssemblyRulesDialog from './ContainerAssemblyRulesDialog'
 import OptionModelDialog from './OptionModelDialog'
 import MenuFilterDialog, { MenuFilterOptions } from './MenuFilterDialog'
+import ReplicateCatalogModal from './ReplicateCatalogModal'
 
 interface MenuHierarchyViewProps {
   tenantId: string
@@ -34,6 +35,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false)
+  const [replicateModalOpen, setReplicateModalOpen] = useState(false)
 
   // Menus e Categorias Oficiais do Store
   const { mainMenus, categories, addCategory } = useMenuConfigStore()
@@ -300,7 +302,13 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
         <button
           type="button"
-          onClick={handlePublishChanges}
+          onClick={() => {
+            if (isSuperAdmin) {
+              setReplicateModalOpen(true)
+            } else {
+              handlePublishChanges()
+            }
+          }}
           disabled={publishing}
           className="w-full sm:w-auto h-10 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
         >
@@ -680,6 +688,14 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         onOpenChange={setFilterDialogOpen}
         currentFilters={filterOptions}
         onApplyFilters={(opts: MenuFilterOptions) => setFilterOptions(opts)}
+      />
+
+      <ReplicateCatalogModal
+        open={replicateModalOpen}
+        onOpenChange={setReplicateModalOpen}
+        currentTenantId={tenantId}
+        catalog={catalog}
+        onSuccess={fetchCatalog}
       />
     </div>
   )

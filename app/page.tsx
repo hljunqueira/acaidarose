@@ -193,7 +193,7 @@ export default function HomePage() {
             <ThemeToggle />
 
             <span className="text-[11px] text-purple-950 dark:text-white font-bold hidden md:inline-block">
-              {loggedUser.name} <span className="text-pink-600 dark:text-pink-400">({loggedUser.role})</span>
+              {loggedUser.name}
             </span>
             <Button
               size="sm"

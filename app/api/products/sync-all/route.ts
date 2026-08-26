@@ -11,7 +11,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Apenas administradores podem sincronizar o cardápio' }, { status: 403 })
     }
 
-    const result = await syncAllStoresCatalog()
+    let body: any = {}
+    try {
+      body = await request.json()
+    } catch {
+      body = {}
+    }
+
+    const result = await syncAllStoresCatalog({
+      ...body,
+      userEmail: user?.email || 'super@acairose.pt',
+    })
     return NextResponse.json(result)
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Erro ao sincronizar cardápio' }, { status: 500 })

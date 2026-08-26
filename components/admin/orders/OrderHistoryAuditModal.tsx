@@ -45,10 +45,10 @@ export default function OrderHistoryAuditModal({
   if (!order) return null
 
   const isTable = order.isTableOrder !== false && !!order.tableNumber
-  const isNew = order.status === 'NEW' || !order.status
+  const isNew = order.status === 'NEW' || !order.status || order.status === 'WAITING_PAYMENT' || order.status === 'OPEN'
   const isPrep = order.status === 'PREPARING'
   const isReady = order.status === 'READY'
-  const isPaid = order.status === 'PAID'
+  const isPaid = order.status === 'PAID' || order.status === 'COMPLETED'
   const isCancelled = order.status === 'CANCELLED'
 
   const getStatusBadge = () => {
@@ -63,11 +63,16 @@ export default function OrderHistoryAuditModal({
   const getPaymentMethodLabel = () => {
     switch (order.paymentMethod) {
       case 'MB_WAY':
-        return 'MB Way'
+      case 'MBWAY':
+        return 'MB WAY'
       case 'MULTIBANCO':
+      case 'CARD':
         return 'Multibanco (TPA)'
       case 'NUMERARIO':
+      case 'CASH':
         return 'Numerário'
+      case 'COUNTER_CASH_OR_CARD':
+        return 'No Balcão / Caixa'
       default:
         return order.paymentMethod || 'A Definir'
     }

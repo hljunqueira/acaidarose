@@ -1,29 +1,26 @@
 # SCRATCHPAD
 
-## Status Atual: ✅ RESPONSIVIDADE FULL & CLEAN CONCLUÍDOS COM SUCESSO
+## Status Atual: ✅ REPLICAÇÃO MULTI-LOJA, POLIMENTO DE UI & FAVICON CONCLUÍDOS
 
 ### Tarefas Executadas nesta Rodada:
-1. **Shell Principal & Navegação Global**:
-   - Adicionado botão de menu hambúrguer no Top Header mobile (`app/page.tsx`) disparando o drawer.
-   - Drawer mobile ajustado (`AppSidebar.tsx`) com botão de fechar, largura responsiva `w-72 max-w-[85vw]` e rolagem interna independente.
+1. **Modal de Publicação & Replicação de Cardápio (`ReplicateCatalogModal.tsx`)**:
+   - Layout horizontal compacto em 2 colunas (`max-w-4xl`) sem rolagem excessiva.
+   - Removido o botão `X` duplicado (mantendo apenas o fechar nativo do Radix Dialog).
+   - Removido o ícone de sparkles da caixa de confirmação de produção.
+   - Coluna Esquerda: Seletor de Escopo (**🌐 Toda a Rede** vs **🏪 Lojas Específicas**) com checkboxes das filiais.
+   - Coluna Direita: Resumo dos valores dos 5 copos/tamanhos e aviso de aplicação imediata.
 
-2. **Cardápio Digital do Cliente (`/menu`)**:
-   - Carrossel de promoções por toque (`CustomerPromoCarousel.tsx`) com remoção de `Sparkles` e paddings fluidos.
-   - Bento grid de diferenciais e grid de tamanhos de açaí (`CustomerMenuHome.tsx`) adaptados para telas de 320px a 430px.
-   - Modal de detalhe/personalização do produto (`CustomerProductDetail.tsx`) com `w-[95vw] sm:w-full max-h-[90vh]` e remoção de `✨`.
-   - Barra de navegação inferior (`CustomerBottomNav.tsx`) com suporte a Safe Area Inset no iOS/Android.
-   - Modal de chamada de atendente (`CallWaiterModal.tsx`) adaptado para mobile.
+2. **Propagação Real de Preços no Backend (`productsRepository.ts` & `sync-all/route.ts`)**:
+   - Atualização persistente de preços canônicos (`store.containers`) quando publicado para toda a rede e em `storePriceOverrides[tenantId]` para lojas selecionadas.
+   - Sincronização imediata no PDV de cada unidade e nos menus públicos/QR Code (`/menu?loja=...`).
 
-3. **Painel Franqueadora Master & Telas Administrativas**:
-   - KPIs da Franqueadora (`FranchiseCorporatePage.tsx`) com grid responsivo (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`) e remoção de `Sparkles`.
-   - Seletor de lojas em pílulas com scroll horizontal suave (`overflow-x-auto no-scrollbar`).
-   - Kanban de pedidos QR Code (`QRCodeOrdersAdmin.tsx`) com filtros segmentados responsivos.
-   - Diálogos administrativos, tabelas de relatórios, equipe, mesas e utilizadores adaptados com salvaguarda `w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto` e wrappers `overflow-x-auto`.
+3. **Favicon e Ícones com a Logo Oficial (`app/layout.tsx` & `public/favicon.ico`)**:
+   - Configurado o favicon e apple-touch-icon oficiais com a logomarca da Açaí da Rose.
 
-4. **Limpeza Visual (Clean & Zero Sparkles)**:
-   - Remoção de 100% dos imports/usos de `Sparkles` e emojis `✨` em todo o projeto.
+4. **Correção de Pedidos QR Code no KDS & Limpeza de Header**:
+   - Pedidos com `WAITING_PAYMENT` e `OPEN` agora entram normalmente na coluna *Novos Pedidos*.
+   - Sufixo textual `(SUPER_ADMIN)` removido do cabeçalho.
 
-5. **Validação de Build de Produção (`npm run build`)**:
-   - `✓ Compiled successfully in 22.2s`
-   - `✓ 27 páginas e rotas compiladas`
-   - `✓ 0 erros de TypeScript / CSS`
+
+
+

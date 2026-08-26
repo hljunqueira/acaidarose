@@ -138,7 +138,9 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
       const data = await res.json()
       if (data.orders) {
         const newOrders: Order[] = data.orders
-        const newCount = newOrders.filter((o) => o.status === 'NEW' || !o.status).length
+        const newCount = newOrders.filter(
+          (o) => o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'OPEN'
+        ).length
         if (newCount > prevCount && prevCount > 0 && soundEnabled) {
           playOrderNotificationSound()
           toast.info('Novo pedido recebido via QR Code!')
@@ -378,7 +380,8 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
   // Agrupamento por coluna Kanban
   const getOrdersForColumn = (status: OrderStatus) => {
     return filteredOrders.filter((o) => {
-      if (status === 'NEW') return o.status === 'NEW' || !o.status
+      if (status === 'NEW') return o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'OPEN'
+      if (status === 'PAID') return o.status === 'PAID' || o.status === 'COMPLETED'
       return o.status === status
     })
   }

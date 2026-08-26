@@ -84,16 +84,87 @@ export async function toggleStoreItemAvailability(
   return { success: true, tenantId, productId, available }
 }
 
-export async function syncAllStoresCatalog(): Promise<{
+export async function syncAllStoresCatalog(payload?: {
+  applyToAll?: boolean
+  targetTenantIds?: string[]
+  prices?: Record<string, number>
+  containers?: any[]
+  userEmail?: string
+}): Promise<{
   success: boolean
   totalStores: number
   syncedAt: string
+  scope: 'ALL_NETWORK' | 'SELECTED_STORES'
+  targetStoresCount: number
   itemsCount: { containers: number; bases: number; toppings: number }
 }> {
-  const store = getMockStore()
-  store.tenants.forEach((t) => {
-    if (!store.storeProductOverrides[t.id]) {
-      store.storeProductOverrides[t.id] = {}
+  const store = getMockStore() as any
+  if (!store.storePriceOverrides) {
+    store.storePriceOverrides = {}
+  }
+
+  const applyToAll = payload?.applyToAll !== false && (!payload?.targetTenantIds || payload.targetTenantIds.length === 0)
+  const targetIds: string[] = applyToAll
+    ? store.tenants.map((t: any) => t.id)
+    : (payload?.targetTenantIds || [])
+
+  // 1. Se fornecido mapa de novos preços (productId -> number)
+  if (payload?.prices && Object.keys(payload.prices).length > 0) {
+    Object.entries(payload.prices).forEach(([prodId, newPrice]) => {
+      const numPrice = Number(newPrice)
+      if (isNaN(numPrice)) return
+
+      // Se for para Toda a Rede, atualiza também a tabela canônica master
+      if (applyToAll) {
+        store.containers.forEach((c: any) => {
+          if (
+            c.id === prodId ||
+            c.id === prodId.replace('cnt-', 'cont-') ||
+            c.id === prodId.replace('cont-', 'cnt-') ||
+            (prodId.includes('250') && c.weightGrams === 250) ||
+            (prodId.includes('350') && c.weightGrams === 350) ||
+            (prodId.includes('500') && c.weightGrams === 500) ||
+            (prodId.includes('750') && c.weightGrams === 750) ||
+            (prodId.includes('1000') && c.weightGrams === 1000)
+          ) {
+            c.precoBase = numPrice
+            c.price = numPrice
+          }
+        })
+      }
+
+      // Aplica nas lojas alvo (storePriceOverrides)
+      targetIds.forEach((tid) => {
+        if (!store.storePriceOverrides[tid]) {
+          store.storePriceOverrides[tid] = {}
+        }
+        store.storePriceOverrides[tid][prodId] = numPrice
+        if (prodId.startsWith('cnt-')) {
+          store.storePriceOverrides[tid][prodId.replace('cnt-', 'cont-')] = numPrice
+        } else if (prodId.startsWith('cont-')) {
+          store.storePriceOverrides[tid][prodId.replace('cont-', 'cnt-')] = numPrice
+        }
+
+        // Vincular também pelo ID oficial do container correspondente
+        const matchingContainer = store.containers.find((c: any) =>
+          c.id === prodId ||
+          (prodId.includes('250') && c.weightGrams === 250) ||
+          (prodId.includes('350') && c.weightGrams === 350) ||
+          (prodId.includes('500') && c.weightGrams === 500) ||
+          (prodId.includes('750') && c.weightGrams === 750) ||
+          (prodId.includes('1000') && c.weightGrams === 1000)
+        )
+        if (matchingContainer) {
+          store.storePriceOverrides[tid][matchingContainer.id] = numPrice
+        }
+      })
+    })
+  }
+
+  // Garantir inicialização de overrides para todas as lojas alvo
+  targetIds.forEach((tid) => {
+    if (!store.storeProductOverrides[tid]) {
+      store.storeProductOverrides[tid] = {}
     }
   })
 
@@ -102,9 +173,11 @@ export async function syncAllStoresCatalog(): Promise<{
   store.auditLogs.unshift({
     id: 'log-' + Date.now(),
     tenantId: 'tenant-torres-novas',
-    user: 'super@acairose.pt',
+    user: payload?.userEmail || 'super@acairose.pt',
     action: 'SINCRONIZACAO_CARDAPIO',
-    details: `Replicação Master disparada para ${store.tenants.length} unidades (${store.containers.length} copos, ${store.bases.length} bases, ${store.toppings.length} complementos)`,
+    details: applyToAll
+      ? `Replicação Master Global disparada para TODA A REDE (${store.tenants.length} lojas ativas).`
+      : `Replicação Seletiva aplicada em ${targetIds.length} lojas específicas (${targetIds.join(', ')}).`,
     timestamp: syncedAt,
   })
 
@@ -112,6 +185,8 @@ export async function syncAllStoresCatalog(): Promise<{
     success: true,
     totalStores: store.tenants.length,
     syncedAt,
+    scope: applyToAll ? 'ALL_NETWORK' : 'SELECTED_STORES',
+    targetStoresCount: targetIds.length,
     itemsCount: {
       containers: store.containers.length,
       bases: store.bases.length,

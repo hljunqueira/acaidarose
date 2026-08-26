@@ -5,6 +5,7 @@ export interface ProductContainer {
   description?: string | null
   weightGrams: number // 250, 350, 500, 750, 1000
   precoBase: number
+  price?: number
   limiteFrutas: number // 250g: 2, 350g: 3, 500g+: 999 (livre)
   limiteToppings: number // 250g: 3, 350g: 4, 500g+: 999 (livre)
   limiteCremes: number // 1 opcional
