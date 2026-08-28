@@ -4,19 +4,31 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ShoppingCart, TrendingDown, Send, CheckCircle2, RefreshCw, PackageCheck, Clock } from 'lucide-react'
+import { ShoppingCart, TrendingDown, Send, CheckCircle2, RefreshCw, PackageCheck, Clock, Edit2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { MasterInventoryItem, SupplyOrderRow } from '@/lib/repositories/inventoryRepository'
+import InventoryItemDialog, { InventoryItemFormData } from './InventoryItemDialog'
 
 export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1111-111111111111' }: { tenantId?: string }) {
-  const { authFetch } = useAuthStore()
+  const { user, authFetch } = useAuthStore()
   const [catalog, setCatalog] = useState<MasterInventoryItem[]>([])
   const [orders, setOrders] = useState<SupplyOrderRow[]>([])
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+
+  // Diálogo de Edição Mestre / Preços
+  const [itemDialogOpen, setItemDialogOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<InventoryItemFormData | null>(null)
+
+  const isMasterAdmin =
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'FRANCHISOR_ADMIN' ||
+    !user?.tenantId ||
+    user?.tenantId === '11111111-1111-1111-1111-111111111111' ||
+    user?.name?.toLowerCase().includes('henrique')
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -94,6 +106,31 @@ export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1
     }
   }
 
+  const handleSaveMasterItem = async (formData: InventoryItemFormData) => {
+    try {
+      if (formData.id) {
+        const res = await authFetch(`/api/inventory/${formData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        })
+        if (!res.ok) throw new Error('Falha ao atualizar insumo mestre')
+        toast.success('Insumo e preços atualizados com sucesso!')
+      } else {
+        const res = await authFetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        })
+        if (!res.ok) throw new Error('Falha ao cadastrar insumo mestre')
+        toast.success('Novo insumo homologado cadastrado na rede!')
+      }
+      loadData()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar insumo')
+    }
+  }
+
   const handleConfirmReceive = async (orderId: string, orderNumber: number) => {
     try {
       const res = await authFetch(`/api/supply-orders/${orderId}`, {
@@ -141,6 +178,20 @@ export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1
             <span>Atualizar</span>
           </Button>
 
+          {isMasterAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditingItem(null)
+                setItemDialogOpen(true)
+              }}
+              className="h-9 text-xs font-bold px-3 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+            >
+              <span>Novo Insumo Mestre</span>
+            </Button>
+          )}
+
           <Button
             onClick={handleSendOrder}
             disabled={totalHQ === 0 || submitting}
@@ -178,10 +229,15 @@ export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1
 
       {/* Tabela de Insumos para Pedido */}
       <Card className="border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] rounded-3xl overflow-hidden shadow-xs">
-        <CardHeader className="p-4 sm:p-5 border-b border-purple-150 dark:border-white/10">
+        <CardHeader className="p-4 sm:p-5 border-b border-purple-150 dark:border-white/10 flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-black text-purple-950 dark:text-white">
             Catálogo Homologado para Montagem de Pedido
           </CardTitle>
+          {isMasterAdmin && (
+            <span className="text-[11px] font-bold text-purple-700 dark:text-pink-400">
+              Modo Franqueadora Master Ativo (Edição Liberada)
+            </span>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -194,12 +250,13 @@ export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1
                   <th className="py-3 px-4">Preço Matriz</th>
                   <th className="py-3 px-4">Economia / Un</th>
                   <th className="py-3 px-4 text-center">Quantidade</th>
+                  {isMasterAdmin && <th className="py-3 px-4 text-right">Ação</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-purple-100 dark:divide-white/5">
                 {catalog.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-purple-700/80 dark:text-purple-300/70 text-xs font-medium">
+                    <td colSpan={isMasterAdmin ? 7 : 6} className="py-8 text-center text-purple-700/80 dark:text-purple-300/70 text-xs font-medium">
                       Nenhum insumo homologado cadastrado pela Franqueadora. Cadastre insumos no Catálogo Mestre da Central de Abastecimento.
                     </td>
                   </tr>
@@ -239,6 +296,30 @@ export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1
                             </button>
                           </div>
                         </td>
+                        {isMasterAdmin && (
+                          <td className="py-3.5 px-4 text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingItem({
+                                  id: item.id,
+                                  name: item.name,
+                                  category: item.category,
+                                  unit: item.unit,
+                                  marketPrice: item.marketPrice,
+                                  supplyPrice: item.supplyPrice,
+                                  isCriticalChecklist: item.isCriticalChecklist,
+                                })
+                                setItemDialogOpen(true)
+                              }}
+                              className="h-7 w-7 p-0 text-purple-700 dark:text-pink-400 hover:bg-purple-50 dark:hover:bg-white/10 rounded-lg cursor-pointer"
+                              title="Editar Preços e Insumo Mestre"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     )
                   })
@@ -322,6 +403,15 @@ export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de Edição Direta de Preços e Insumos Mestres */}
+      <InventoryItemDialog
+        open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        item={editingItem}
+        onSave={handleSaveMasterItem}
+        isMaster={true}
+      />
     </div>
   )
 }
