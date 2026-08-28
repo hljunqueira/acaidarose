@@ -100,11 +100,18 @@ const DEFAULT_NETWORK_OVERVIEW: FranchiseNetworkOverview = {
         maxOperators: 4,
         mbwaySharePercent: 76,
       },
+      manager: {
+        id: 'usr-1',
+        name: 'Henrique Linhares Junqueira',
+        email: 'henrique@acaidarose.pt',
+        role: 'SUPER_ADMIN',
+        active: true,
+      },
       operators: [
-        { id: 'op-1', name: 'Rui Fernandes (Caixa 1)', email: 'rui.aveiro@acaidarose.pt', active: true },
-        { id: 'op-2', name: 'Marta Neves (Caixa 2)', email: 'marta.aveiro@acaidarose.pt', active: true },
+        { id: 'usr-1', name: 'Henrique Junqueira', email: 'henrique@acaidarose.pt', role: 'SUPER_ADMIN', active: true },
+        { id: 'usr-2', name: 'Rosemeri Linhares', email: 'rose@acaidarose.pt', role: 'TENANT_ADMIN', active: true },
+        { id: 'usr-3', name: 'Operador Aveiro 1', email: 'caixa1.aveiro@acaidarose.pt', role: 'CASHIER', active: true },
       ],
-      manager: { id: 'mgr-1', name: 'Diretoria Franqueadora', email: 'franqueadora@acaidarose.pt' },
     },
     {
       tenant: {
@@ -116,8 +123,8 @@ const DEFAULT_NETWORK_OVERVIEW: FranchiseNetworkOverview = {
         address: 'Praça 5 de Outubro 12',
         postalCode: '2350-754',
         city: 'Torres Novas',
-        phone: '+351 911 050 264',
-        mbwayPhone: '+351 911 050 264',
+        phone: '+351 912 345 678',
+        mbwayPhone: '+351 912 345 678',
         currency: 'EUR',
         isHeadquarters: false,
         active: true,
@@ -132,51 +139,47 @@ const DEFAULT_NETWORK_OVERVIEW: FranchiseNetworkOverview = {
         maxOperators: 3,
         mbwaySharePercent: 68,
       },
+      manager: {
+        id: 'usr-4',
+        name: 'Gerente Torres Novas',
+        email: 'gerente.tn@acaidarose.pt',
+        role: 'TENANT_ADMIN',
+        active: true,
+      },
       operators: [
-        { id: 'op-3', name: 'Ana Silva (Caixa 1)', email: 'ana.torresnovas@acaidarose.pt', active: true },
+        { id: 'usr-4', name: 'Gerente Torres Novas', email: 'gerente.tn@acaidarose.pt', role: 'TENANT_ADMIN', active: true },
+        { id: 'usr-5', name: 'Operador TN 1', email: 'caixa1.tn@acaidarose.pt', role: 'CASHIER', active: true },
       ],
-      manager: { id: 'mgr-2', name: 'Gerente Torres Novas', email: 'gerente.torresnovas@acaidarose.pt' },
     },
   ],
 }
 
 export default function FranchiseCorporateView() {
-  const [overview, setOverview] = useState<FranchiseNetworkOverview>(DEFAULT_NETWORK_OVERVIEW)
-  const [loading, setLoading] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [detailsStore, setDetailsStore] = useState<StoreOverview | null>(null)
   const { authFetch } = useAuthStore()
   const { currentTenant, setCurrentTenant } = useFranchiseStore()
-
-  // Gestão de Utilizador dentro do Contexto de Cada Unidade
-  const [userDialogOpen, setUserDialogOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [overview, setOverview] = useState<FranchiseNetworkOverview>(DEFAULT_NETWORK_OVERVIEW)
+  const [contracts, setContracts] = useState<FranchiseContractData[]>(INITIAL_CONTRACTS)
+  const [loading, setLoading] = useState(false)
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>('ALL')
 
-  // Gestão Dinâmica de Contratos & Royalties
-  const [contracts, setContracts] = useState<FranchiseContractData[]>(INITIAL_CONTRACTS)
+  // Modais de Controle
+  const [createOpen, setCreateOpen] = useState(false)
+  const [detailsStore, setDetailsStore] = useState<StoreOverview | null>(null)
   const [editingContract, setEditingContract] = useState<FranchiseContractData | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
-
-  const handleSaveContract = (updatedContract: FranchiseContractData) => {
-    setContracts((prev) =>
-      prev.map((c) => (c.id === updatedContract.id ? updatedContract : c))
-    )
-    toast.success(`Taxas de royalties atualizadas para: ${updatedContract.storeName}`)
-  }
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [userDialogOpen, setUserDialogOpen] = useState(false)
 
   const loadNetworkData = async () => {
     setLoading(true)
     try {
       const res = await authFetch('/api/franchise/overview')
-      const data = await res.json()
-      if (data && data.stores && data.stores.length > 0) {
-        setOverview(data)
-      } else if (data && data.overview && data.overview.stores) {
-        setOverview(data.overview)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.overview) setOverview(data.overview)
       }
     } catch {
-      // Mantém DEFAULT_NETWORK_OVERVIEW ativo
+      // Fallback gracioso para dados locais
     } finally {
       setLoading(false)
     }
@@ -186,47 +189,53 @@ export default function FranchiseCorporateView() {
     loadNetworkData()
   }, [])
 
-  const handleSaveUser = async (payload: any) => {
-    try {
-      const res = payload.id
-        ? await authFetch(`/api/users/${payload.id}`, { method: 'PUT', body: JSON.stringify(payload) })
-        : await authFetch('/api/users', { method: 'POST', body: JSON.stringify(payload) })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Erro ao guardar utilizador')
-      }
-
-      toast.success('Colaborador guardado com sucesso na unidade!')
-      loadNetworkData()
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao salvar utilizador')
-    }
-  }
-
-  const handleDeleteUser = async (id: string) => {
-    if (!confirm('Deseja desativar este colaborador desta unidade?')) return
-    try {
-      const res = await authFetch(`/api/users/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Erro ao desativar colaborador')
-      toast.success('Colaborador desativado com sucesso')
-      loadNetworkData()
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao desativar')
-    }
-  }
-
   const handleCreateStore = async (data: any) => {
     try {
       const res = await authFetch('/api/tenants', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
-      if (!res.ok) throw new Error('Erro ao criar loja')
+      if (!res.ok) throw new Error('Falha ao criar unidade')
       toast.success('Nova franquia criada com sucesso!')
       loadNetworkData()
-    } catch (e: any) {
-      toast.error(e.message || 'Erro')
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar franquia')
+    }
+  }
+
+  const handleSaveContract = (updated: FranchiseContractData) => {
+    setContracts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+    toast.success(`Contrato da unidade atualizado com sucesso!`)
+  }
+
+  const handleSaveUser = async (user: User) => {
+    try {
+      const method = user.id ? 'PUT' : 'POST'
+      const url = user.id ? `/api/users/${user.id}` : '/api/users'
+      const res = await authFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user),
+      })
+      if (!res.ok) throw new Error('Falha ao salvar utilizador')
+      toast.success(user.id ? 'Utilizador atualizado com sucesso!' : 'Novo operador cadastrado!')
+      setUserDialogOpen(false)
+      loadNetworkData()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar utilizador')
+    }
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Deseja realmente remover o acesso deste utilizador?')) return
+    try {
+      const res = await authFetch(`/api/users/${userId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Falha ao remover utilizador')
+      toast.success('Utilizador removido com sucesso!')
+      loadNetworkData()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao remover utilizador')
     }
   }
 
@@ -236,15 +245,15 @@ export default function FranchiseCorporateView() {
   const totalNetworkRevenue = contracts.reduce((acc, c) => acc + c.monthlyRevenue, 0)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Header Corporativo */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[#2A1E3D]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-purple-150 dark:border-white/15">
         <div>
-          <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-purple-400" />
+          <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white tracking-tight flex items-center gap-2.5">
+            <Building2 className="h-6 w-6 text-purple-700 dark:text-pink-400" />
             <span>Gestão Corporativa & Franqueadora</span>
           </h1>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 font-medium mt-0.5">
             Contratos, faturamento consolidado da rede, royalties progressivos e governança de unidades
           </p>
         </div>
@@ -254,7 +263,7 @@ export default function FranchiseCorporateView() {
             size="sm"
             variant="outline"
             onClick={loadNetworkData}
-            className="h-9 text-xs font-medium gap-1.5 rounded-lg border-[#2A1E3D] bg-[#160F24] hover:bg-[#2A1E3D] text-white cursor-pointer"
+            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
@@ -264,16 +273,16 @@ export default function FranchiseCorporateView() {
             size="sm"
             variant="outline"
             onClick={() => setReportOpen(true)}
-            className="h-9 text-xs font-medium gap-1.5 rounded-lg border-[#2A1E3D] bg-[#160F24] hover:bg-[#2A1E3D] text-white cursor-pointer"
+            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
           >
-            <FileText className="h-3.5 w-3.5 text-purple-400" />
+            <FileText className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
             <span>Mapa Contábil</span>
           </Button>
 
           <Button
             size="sm"
             onClick={() => setCreateOpen(true)}
-            className="h-9 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium gap-1.5 rounded-lg cursor-pointer transition"
+            className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white text-xs font-black gap-1.5 rounded-xl cursor-pointer transition shadow-xs"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>Nova Franquia</span>
@@ -282,55 +291,67 @@ export default function FranchiseCorporateView() {
       </div>
 
       {/* 4 KPIs Globais */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-3.5">
-        <Card className="p-4 bg-[#160F24] text-white rounded-2xl border border-[#2A1E3D]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1 */}
+        <Card className="p-5 bg-white dark:bg-[#160228] text-purple-950 dark:text-white rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs">
           <div className="flex justify-between items-start">
-            <div className="text-xs text-gray-400 font-medium">Faturamento da Rede (Mês)</div>
-            <div className="p-2 rounded-lg bg-purple-950/50 text-purple-300 border border-purple-800/30"><TrendingUp className="h-4 w-4" /></div>
+            <div className="text-xs text-purple-700/80 dark:text-purple-300/70 font-bold">Faturamento da Rede (Mês)</div>
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400 border border-purple-150 dark:border-white/10">
+              <TrendingUp className="h-4 w-4" />
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold mt-2 tracking-tight text-white font-mono">
+          <div className="text-2xl sm:text-3xl font-black mt-2 tracking-tight text-purple-950 dark:text-white font-mono">
             {formatCurrency(totalNetworkRevenue)}
           </div>
-          <div className="text-[11px] text-emerald-400 font-medium mt-1">
-            ↑ +18.4% vs mês anterior
+          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+            +18.4% vs mês anterior
           </div>
         </Card>
 
-        <Card className="p-4 bg-[#160F24] text-white rounded-2xl border border-[#2A1E3D]">
+        {/* KPI 2 */}
+        <Card className="p-5 bg-white dark:bg-[#160228] text-purple-950 dark:text-white rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs">
           <div className="flex justify-between items-start">
-            <div className="text-xs text-gray-400 font-medium">Royalties & Sistema</div>
-            <div className="p-2 rounded-lg bg-purple-950/50 text-purple-300 border border-purple-800/30"><DollarSign className="h-4 w-4" /></div>
+            <div className="text-xs text-purple-700/80 dark:text-purple-300/70 font-bold">Royalties & Sistema</div>
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400 border border-purple-150 dark:border-white/10">
+              <DollarSign className="h-4 w-4" />
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-white mt-2 tracking-tight font-mono">
+          <div className="text-2xl sm:text-3xl font-black text-purple-950 dark:text-white mt-2 tracking-tight font-mono">
             {formatCurrency(totalRoyalties + totalSystemFees)}
           </div>
-          <div className="text-[11px] text-gray-400 mt-1">
+          <div className="text-[11px] text-purple-600/80 dark:text-purple-200/70 font-medium mt-1">
             Royalties + Licença Sistema (€ {totalSystemFees}/mês)
           </div>
         </Card>
 
-        <Card className="p-4 bg-[#160F24] text-white rounded-2xl border border-[#2A1E3D]">
+        {/* KPI 3 */}
+        <Card className="p-5 bg-white dark:bg-[#160228] text-purple-950 dark:text-white rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs">
           <div className="flex justify-between items-start">
-            <div className="text-xs text-gray-400 font-medium">Fundo de Marketing</div>
-            <div className="p-2 rounded-lg bg-purple-950/50 text-purple-300 border border-purple-800/30"><TrendingUp className="h-4 w-4" /></div>
+            <div className="text-xs text-purple-700/80 dark:text-purple-300/70 font-bold">Fundo de Marketing</div>
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400 border border-purple-150 dark:border-white/10">
+              <TrendingUp className="h-4 w-4" />
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-white mt-2 tracking-tight font-mono">
+          <div className="text-2xl sm:text-3xl font-black text-purple-950 dark:text-white mt-2 tracking-tight font-mono">
             {formatCurrency(totalMarketing)}
           </div>
-          <div className="text-[11px] text-emerald-400 font-medium mt-1">
+          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
             1.0% arrecadado p/ campanhas
           </div>
         </Card>
 
-        <Card className="p-4 bg-[#160F24] text-white rounded-2xl border border-[#2A1E3D]">
+        {/* KPI 4 */}
+        <Card className="p-5 bg-white dark:bg-[#160228] text-purple-950 dark:text-white rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs">
           <div className="flex justify-between items-start">
-            <div className="text-xs text-gray-400 font-medium">Equipa da Rede</div>
-            <div className="p-2 rounded-lg bg-purple-950/50 text-purple-300 border border-purple-800/30"><Users className="h-4 w-4" /></div>
+            <div className="text-xs text-purple-700/80 dark:text-purple-300/70 font-bold">Equipa da Rede</div>
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400 border border-purple-150 dark:border-white/10">
+              <Users className="h-4 w-4" />
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-white mt-2 tracking-tight">
-            6 <span className="text-xs font-normal text-gray-400">colaboradores</span>
+          <div className="text-2xl sm:text-3xl font-black text-purple-950 dark:text-white mt-2 tracking-tight">
+            6 <span className="text-xs font-normal text-purple-700/70 dark:text-purple-300/60">colaboradores</span>
           </div>
-          <div className="text-[11px] text-purple-300 mt-1">
+          <div className="text-[11px] text-purple-600/80 dark:text-purple-200/70 font-medium mt-1">
             2 gerentes · 2 unidades ativas
           </div>
         </Card>
@@ -338,14 +359,14 @@ export default function FranchiseCorporateView() {
 
       {/* Seletor de Unidades em Pílulas */}
       <div className="max-w-full overflow-x-auto no-scrollbar py-1">
-        <div className="flex items-center gap-1.5 p-1 bg-[#160F24] rounded-xl border border-[#2A1E3D] w-fit shrink-0">
+        <div className="flex items-center gap-1.5 p-1 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-150 dark:border-white/10 w-fit shrink-0">
           <button
             type="button"
             onClick={() => setSelectedStoreFilter('ALL')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer shrink-0 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
               selectedStoreFilter === 'ALL'
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-300 hover:text-white'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 text-white shadow-xs'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/50 dark:hover:bg-white/5'
             }`}
           >
             Todas as Unidades ({overview?.stores.length || 2})
@@ -358,14 +379,13 @@ export default function FranchiseCorporateView() {
                 key={s.tenant.id}
                 type="button"
                 onClick={() => setSelectedStoreFilter(s.tenant.id)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   isSelected
-                    ? 'bg-purple-600 text-white'
-                    : 'text-gray-300 hover:text-white'
+                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 text-white shadow-xs'
+                    : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/50 dark:hover:bg-white/5'
                 }`}
               >
                 <span>{s.tenant.name.replace('Açaí da Rose — ', '')}</span>
-                {s.tenant.isHeadquarters && <span className="text-[10px] opacity-80">(Matriz)</span>}
               </button>
             )
           })}
@@ -397,22 +417,22 @@ export default function FranchiseCorporateView() {
           const storeContract = contracts.find((c) => c.storeName.includes(tenant.city || '') || c.id.includes(tenant.slug || '')) || contracts[0]
 
           return (
-            <div className="p-6 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-6 text-white">
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 space-y-6 text-purple-950 dark:text-white shadow-xs">
               {/* Topo da Unidade */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#2A1E3D]">
-                <div className="flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-xl bg-purple-950 border border-purple-800/40 text-purple-300 flex items-center justify-center">
-                    {tenant.isHeadquarters ? <ShieldCheck className="h-5 w-5" /> : <Store className="h-5 w-5" />}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-purple-150 dark:border-white/10">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-12 w-12 rounded-2xl bg-purple-50 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-700 dark:text-pink-400 flex items-center justify-center shadow-xs">
+                    {tenant.isHeadquarters ? <ShieldCheck className="h-6 w-6" /> : <Store className="h-6 w-6" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-white">{tenant.name}</h2>
-                      <Badge className="bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 text-[10px] font-semibold">
+                      <h2 className="text-base sm:text-lg font-black text-purple-950 dark:text-white">{tenant.name}</h2>
+                      <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[10px] font-bold">
                         {tenant.isHeadquarters ? 'Matriz Sede' : 'Franquia Ativa'}
                       </Badge>
                     </div>
-                    <div className="text-xs text-gray-400">
-                      {tenant.city || 'Portugal'} · NIF: <b className="text-white">{tenant.nif || '500123456'}</b> · MB WAY: <b className="text-purple-300">{tenant.mbwayPhone || '+351 913 550 770'}</b>
+                    <div className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-0.5">
+                      {tenant.city || 'Portugal'} · NIF: <b className="text-purple-950 dark:text-white">{tenant.nif || '500123456'}</b> · MB WAY: <b className="text-purple-700 dark:text-pink-400">{tenant.mbwayPhone || '+351 913 550 770'}</b>
                     </div>
                   </div>
                 </div>
@@ -424,7 +444,7 @@ export default function FranchiseCorporateView() {
                       setCurrentTenant(tenant)
                       toast.success(`Loja ativa: ${tenant.name}`)
                     }}
-                    className="h-9 bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs rounded-lg transition"
+                    className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
                   >
                     <span>Aceder ao PDV desta Loja</span>
                     <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
@@ -435,24 +455,24 @@ export default function FranchiseCorporateView() {
               {/* 3 Blocos de Informação */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Bloco 1: Vendas Hoje */}
-                <div className="p-4 rounded-xl bg-[#0A0612] border border-[#2A1E3D] space-y-3">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
+                  <div className="text-xs font-bold text-purple-700/80 dark:text-purple-300/70 uppercase tracking-wider">
                     Vendas & Faturamento Hoje
                   </div>
-                  <div className="text-2xl font-bold text-white font-mono">
+                  <div className="text-2xl font-black text-purple-950 dark:text-white font-mono">
                     {formatCurrency(metrics.todayRevenue)}
                   </div>
-                  <div className="text-xs text-gray-400 space-y-1">
-                    <div>Comandas Emitidas: <b className="text-white">{metrics.todayOrdersCount}</b></div>
-                    <div>Mix MB WAY: <b className="text-white">{metrics.mbwaySharePercent}%</b></div>
-                    <div>Royalties da Loja: <b className="text-white">{storeContract ? `${storeContract.royaltyPercent}%` : '5.0%'}</b></div>
+                  <div className="text-xs text-purple-700/80 dark:text-purple-200/70 space-y-1 font-medium">
+                    <div>Comandas Emitidas: <b className="text-purple-950 dark:text-white">{metrics.todayOrdersCount}</b></div>
+                    <div>Mix MB WAY: <b className="text-purple-950 dark:text-white">{metrics.mbwaySharePercent}%</b></div>
+                    <div>Royalties da Loja: <b className="text-purple-950 dark:text-white">{storeContract ? `${storeContract.royaltyPercent}%` : '5.0%'}</b></div>
                   </div>
                 </div>
 
                 {/* Bloco 2: Equipa da Loja */}
-                <div className="p-4 rounded-xl bg-[#0A0612] border border-[#2A1E3D] space-y-3">
+                <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <div className="text-xs font-bold text-purple-700/80 dark:text-purple-300/70 uppercase tracking-wider">
                       Equipa da Unidade
                     </div>
                     <Button
@@ -461,21 +481,21 @@ export default function FranchiseCorporateView() {
                         setEditingUser({ id: '', name: '', email: '', role: 'CASHIER', active: true, tenantId: tenant.id } as any)
                         setUserDialogOpen(true)
                       }}
-                      className="h-6 px-2 text-[10px] font-medium rounded-md bg-purple-600 hover:bg-purple-700 text-white gap-1"
+                      className="h-7 px-2.5 text-[10px] font-bold rounded-lg bg-purple-700 hover:bg-purple-800 text-white gap-1 cursor-pointer"
                     >
-                      <Plus className="h-2.5 w-2.5" />
+                      <Plus className="h-3 w-3" />
                       <span>Adicionar</span>
                     </Button>
                   </div>
                   <div className="text-xs space-y-2">
                     {/* Gerente */}
-                    <div className="p-2.5 rounded-lg bg-[#160F24] border border-[#2A1E3D] flex items-center justify-between">
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-between shadow-2xs">
                       <div>
-                        <div className="font-semibold text-white flex items-center gap-1">
+                        <div className="font-bold text-purple-950 dark:text-white flex items-center gap-1.5">
                           <span>{manager?.name || 'Gerente Titular'}</span>
-                          <Badge className="bg-purple-950 text-purple-300 border border-purple-800 text-[9px] py-0 font-medium">GERENTE</Badge>
+                          <Badge className="bg-purple-100 dark:bg-pink-500/20 text-purple-800 dark:text-pink-300 text-[8px] py-0 font-bold">GERENTE</Badge>
                         </div>
-                        <div className="text-[10px] text-gray-400 font-mono">{manager?.email || `gerente.${tenant.slug}@acaidarose.pt`}</div>
+                        <div className="text-[10px] text-purple-700/80 dark:text-purple-200/70 font-mono">{manager?.email || `gerente.${tenant.slug}@acaidarose.pt`}</div>
                       </div>
                       <Button
                         size="sm"
@@ -484,21 +504,21 @@ export default function FranchiseCorporateView() {
                           setEditingUser({ ...manager, role: 'TENANT_ADMIN', tenantId: tenant.id } as any)
                           setUserDialogOpen(true)
                         }}
-                        className="h-6 w-6 p-0 text-purple-300 hover:bg-purple-950 rounded-md"
+                        className="h-7 w-7 p-0 text-purple-700 dark:text-pink-400 hover:bg-purple-50 dark:hover:bg-white/10 rounded-lg cursor-pointer"
                       >
-                        <UserCheck className="h-3 w-3" />
+                        <UserCheck className="h-3.5 w-3.5" />
                       </Button>
                     </div>
 
                     {/* Caixas */}
                     {operators.map((op, idx) => (
-                      <div key={op.id} className="p-2 rounded-lg bg-[#160F24] border border-[#2A1E3D] flex justify-between items-center text-xs">
+                      <div key={op.id} className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-purple-150 dark:border-white/10 flex justify-between items-center text-xs shadow-2xs">
                         <div>
-                          <div className="font-medium text-white flex items-center gap-1">
+                          <div className="font-bold text-purple-950 dark:text-white flex items-center gap-1.5">
                             <span>{idx + 1}. {op.name}</span>
-                            <Badge className="bg-emerald-950 text-emerald-300 border border-emerald-800 text-[9px] py-0">Caixa</Badge>
+                            <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[8px] py-0 font-bold">Caixa</Badge>
                           </div>
-                          <div className="text-[10px] text-gray-400 font-mono">{op.email}</div>
+                          <div className="text-[10px] text-purple-700/80 dark:text-purple-200/70 font-mono">{op.email}</div>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -508,17 +528,17 @@ export default function FranchiseCorporateView() {
                               setEditingUser({ ...op, role: 'CASHIER', tenantId: tenant.id } as any)
                               setUserDialogOpen(true)
                             }}
-                            className="h-6 w-6 p-0 text-purple-300 hover:bg-purple-950 rounded-md"
+                            className="h-7 w-7 p-0 text-purple-700 dark:text-pink-400 hover:bg-purple-50 dark:hover:bg-white/10 rounded-lg cursor-pointer"
                           >
-                            <UserCheck className="h-3 w-3" />
+                            <UserCheck className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleDeleteUser(op.id)}
-                            className="h-6 w-6 p-0 text-red-400 hover:bg-red-950 rounded-md"
+                            className="h-7 w-7 p-0 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
@@ -527,15 +547,15 @@ export default function FranchiseCorporateView() {
                 </div>
 
                 {/* Bloco 3: Dados Fiscais & Morada */}
-                <div className="p-4 rounded-xl bg-[#0A0612] border border-[#2A1E3D] space-y-3">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
+                  <div className="text-xs font-bold text-purple-700/80 dark:text-purple-300/70 uppercase tracking-wider">
                     Identificação Fiscal & Morada
                   </div>
-                  <div className="text-xs space-y-1.5 text-gray-300">
-                    <div><b>Empresa:</b> {tenant.companyName || 'Rose & Vavá Portugal Lda'}</div>
-                    <div><b>Morada:</b> {tenant.address || 'Avenida Dr. Lourenço Peixinho 85'}</div>
-                    <div><b>Localidade:</b> {tenant.postalCode || '3800-165'} {tenant.city || 'Aveiro'}</div>
-                    <div><b>Telefone:</b> {tenant.phone || '+351 913 550 770'}</div>
+                  <div className="text-xs space-y-2 text-purple-800 dark:text-purple-200 font-medium">
+                    <div><b className="text-purple-950 dark:text-white">Empresa:</b> {tenant.companyName || 'Rose & Vavá Portugal Lda'}</div>
+                    <div><b className="text-purple-950 dark:text-white">Morada:</b> {tenant.address || 'Avenida Dr. Lourenço Peixinho 85'}</div>
+                    <div><b className="text-purple-950 dark:text-white">Localidade:</b> {tenant.postalCode || '3800-165'} {tenant.city || 'Aveiro'}</div>
+                    <div><b className="text-purple-950 dark:text-white">Telefone:</b> {tenant.phone || '+351 913 550 770'}</div>
                   </div>
                 </div>
               </div>

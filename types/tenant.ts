@@ -45,8 +45,8 @@ export interface TenantMetrics {
 export interface StoreOverview {
   tenant: Tenant
   metrics: TenantMetrics
-  operators: { id: string; name: string; email: string; active: boolean }[]
-  manager?: { id: string; name: string; email: string }
+  operators: { id: string; name: string; email: string; active: boolean; role?: string }[]
+  manager?: { id: string; name: string; email: string; role?: string; active?: boolean }
 }
 
 export interface FranchiseNetworkOverview {

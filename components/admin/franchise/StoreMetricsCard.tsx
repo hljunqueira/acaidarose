@@ -64,7 +64,7 @@ export default function StoreMetricsCard({
           <div>
             <div className="text-[10px] font-bold text-purple-700/80 dark:text-purple-200/70 uppercase">Comandas / MB Way</div>
             <div className="font-black text-sm text-purple-950 dark:text-white font-mono mt-0.5">
-              {metrics.todayOrdersCount} <span className="text-[10px] text-purple-600/80 dark:text-purple-200/60 font-semibold">({metrics.mbwaySharePercent}%)</span>
+              {metrics.todayOrdersCount} <span className="text-[10px] text-purple-600/80 dark:text-purple-200/60 font-semibold">{metrics.mbwaySharePercent}%</span>
             </div>
           </div>
         </div>
