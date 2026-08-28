@@ -12,6 +12,7 @@ export interface Tenant {
   currency?: string
   royaltyPercentage?: number
   marketingFundPercentage?: number
+  systemFeeMonthly?: number
   wifiNetwork?: string | null
   wifiPassword?: string | null
   openingHours?: Record<string, { open: string; close: string; closed?: boolean }> | null

@@ -90,7 +90,7 @@ export default function FranchiseCorporateView() {
             const rev = s.metrics?.todayRevenue || 0
             const royaltyPct = s.tenant.royaltyPercentage !== undefined ? s.tenant.royaltyPercentage : (isHq ? 0 : 5)
             const mktPct = s.tenant.marketingFundPercentage !== undefined ? s.tenant.marketingFundPercentage : 1
-            const sysFee = isHq ? 0 : 49
+            const sysFee = s.tenant.systemFeeMonthly !== undefined ? Number(s.tenant.systemFeeMonthly) : 0
 
             return {
               id: `cont-${s.tenant.id.slice(0, 8)}`,
@@ -204,7 +204,7 @@ export default function FranchiseCorporateView() {
   }
 
   const totalRoyalties = contracts.reduce((acc, c) => acc + (c.monthlyRevenue * (c.royaltyPercent / 100)), 0)
-  const totalSystemFees = contracts.reduce((acc, c) => acc + (c.systemFeeMonthly ?? 49), 0)
+  const totalSystemFees = contracts.reduce((acc, c) => acc + (Number(c.systemFeeMonthly) || 0), 0)
   const totalMarketing = contracts.reduce((acc, c) => acc + (c.monthlyRevenue * (c.marketingPercent / 100)), 0)
   const totalNetworkRevenue = contracts.reduce((acc, c) => acc + c.monthlyRevenue, 0)
 
