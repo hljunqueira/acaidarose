@@ -1,61 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMockStore } from '@/lib/supabase/mockStore'
-import { Order } from '@/types'
+import { query } from '@/lib/db/postgres'
+
+export const dynamic = 'force-dynamic'
 
 /**
  * Webhook Oficial da Ifthenpay para confirmação em tempo real de pagamentos MB WAY
- * Docs: https://www.ifthenpay.com/docs/en/
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { id, amount, status, requestId } = body
+    const { id, status, requestId } = body
 
     if (status === '000' && id) {
-      const store = getMockStore()
-      const order = store.orders.find((o: Order) => o.id === id)
-
-      if (order) {
-        order.paymentStatus = 'PAID'
-        order.status = 'NEW'
-        order.paymentReference = requestId || order.paymentReference || 'IFTHENPAY-MBWAY'
-        order.updatedAt = new Date().toISOString()
-
-        // Sincronizar mesa física acumulando os itens
-        if (order.tableNumber && order.isTableOrder !== false) {
-          const tableDigits = order.tableNumber.replace(/\D/g, '')
-          const tableNum = parseInt(tableDigits)
-          if (!isNaN(tableNum)) {
-            const targetTable = store.tables.find(
-              (t) => t.tenantId === order.tenantId && t.number === tableNum
-            )
-            if (targetTable) {
-              const currentItems = targetTable.items || []
-              const newItems = (order.items || []).map((it: any) => ({
-                ...it,
-                customerName: order.customerName || 'Cliente',
-                orderedAt: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
-                orderNumber: order.orderNumber,
-                paymentStatus: 'PAID',
-                paymentMethod: 'MBWAY',
-              }))
-
-              // Verifica se já não foram adicionados
-              const existingIds = new Set(currentItems.map((i) => i.id))
-              const itemsToAdd = newItems.filter((i: any) => !existingIds.has(i.id))
-
-              if (itemsToAdd.length > 0) {
-                targetTable.items = [...currentItems, ...itemsToAdd]
-                targetTable.total = +(targetTable.items.reduce((s, i) => s + (Number(i.lineTotal) || 0), 0)).toFixed(2)
-                targetTable.status = 'OCCUPIED'
-                if (!targetTable.activatedAt) {
-                  targetTable.activatedAt = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-                }
-              }
-            }
-          }
-        }
-      }
+      await query(
+        `UPDATE orders 
+         SET payment_status = 'PAID', 
+             status = 'NEW', 
+             notes = COALESCE(notes, '') || ' [MBWAY Ref: ' || $2 || ']',
+             updated_at = timezone('utc'::text, now())
+         WHERE id::text = $1`,
+        [id, requestId || 'IFTHENPAY-CONFIRMED']
+      )
 
       return NextResponse.json({ success: true, message: 'Pagamento confirmado e comanda despachada.' })
     }
@@ -67,20 +32,17 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  // Suporte a callback GET da Ifthenpay (query params)
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
   const status = searchParams.get('status')
-  const amount = searchParams.get('amount')
 
   if (status === '000' && id) {
-    const store = getMockStore()
-    const order = store.orders.find((o: Order) => o.id === id)
-    if (order) {
-      order.paymentStatus = 'PAID'
-      order.status = 'NEW'
-      order.updatedAt = new Date().toISOString()
-    }
+    await query(
+      `UPDATE orders 
+       SET payment_status = 'PAID', status = 'NEW', updated_at = timezone('utc'::text, now())
+       WHERE id::text = $1`,
+      [id]
+    )
     return new NextResponse('OK', { status: 200 })
   }
 

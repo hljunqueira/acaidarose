@@ -4,9 +4,8 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Toaster, toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/lib/stores/authStore'
-import { useFranchiseStore } from '@/lib/stores/franchiseStore'
+import { DEFAULT_AVEIRO_TENANT, useFranchiseStore } from '@/lib/stores/franchiseStore'
 import { Tenant, User } from '@/types'
-import { HQ_TENANT } from '@/lib/supabase/mockStore'
 import { LogOut, Globe, Menu } from 'lucide-react'
 
 // Componentes da Landing Page Oficial
@@ -142,8 +141,8 @@ export default function HomePage() {
 
   // Determinar a loja ativa efetiva (sempre a da filial para gerentes/caixas)
   const effectiveTenant: Tenant = (isSuperAdmin || isFranchisorAdmin)
-    ? currentTenant || HQ_TENANT
-    : (tenantsList.find((t) => t.id === loggedUser.tenantId) || (currentTenant?.id === loggedUser.tenantId ? currentTenant : HQ_TENANT))
+    ? currentTenant || DEFAULT_AVEIRO_TENANT
+    : (tenantsList.find((t) => t.id === loggedUser.tenantId) || (currentTenant?.id === loggedUser.tenantId ? currentTenant : DEFAULT_AVEIRO_TENANT))
 
   const activeTenantId = effectiveTenant.id
 

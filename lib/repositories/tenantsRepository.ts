@@ -2,9 +2,12 @@ import { Tenant, FranchiseNetworkOverview, StoreOverview } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
 
+export const AVEIRO_HQ_ID = '11111111-1111-1111-1111-111111111111'
+export const TORRES_NOVAS_ID = '22222222-2222-2222-2222-222222222222'
+
 export async function getTenants(): Promise<Tenant[]> {
   const res = await query(
-    `SELECT id, name, slug, nif, address, phone, mbway_phone, 
+    `SELECT id, name, slug, nif, address, city, postal_code, phone, mbway_phone, 
             currency, royalty_percentage, marketing_fund_percentage, 
             is_headquarters, active, created_at, updated_at, deleted_at
      FROM tenants 
@@ -18,6 +21,8 @@ export async function getTenants(): Promise<Tenant[]> {
     slug: t.slug,
     nif: t.nif,
     address: t.address,
+    city: t.city,
+    postalCode: t.postal_code,
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
     currency: t.currency || 'EUR',
@@ -30,14 +35,30 @@ export async function getTenants(): Promise<Tenant[]> {
 }
 
 export async function getTenantById(id: string): Promise<Tenant | null> {
+  return await getTenantByIdOrSlug(id)
+}
+
+export async function getTenantByIdOrSlug(identifier: string): Promise<Tenant | null> {
+  if (!identifier) return null
+
+  const clean = String(identifier).trim().toLowerCase()
+
+  // 1. Resolução inteligente de aliases: Loja 1 (Aveiro) e Loja 2 (Torres Novas)
+  let targetIdOrSlug = clean
+  if (clean === '1' || clean === 'aveiro-1' || clean === 'matriz' || clean === 'matriz-aveiro' || clean === 'aveiro') {
+    targetIdOrSlug = AVEIRO_HQ_ID
+  } else if (clean === '2' || clean === 'torres-novas-2' || clean === 'torres-novas' || clean === 'filial-2' || clean === 'filial-torres-novas') {
+    targetIdOrSlug = TORRES_NOVAS_ID
+  }
+
   const res = await query(
-    `SELECT id, name, slug, nif, address, phone, mbway_phone, 
+    `SELECT id, name, slug, nif, address, city, postal_code, phone, mbway_phone, 
             currency, royalty_percentage, marketing_fund_percentage, 
             is_headquarters, active, created_at, updated_at, deleted_at
      FROM tenants 
-     WHERE (id::text = $1 OR slug = $1) AND deleted_at IS NULL 
+     WHERE (id::text = $1 OR LOWER(slug) = $1 OR LOWER(slug) = $2) AND deleted_at IS NULL 
      LIMIT 1`,
-    [id]
+    [targetIdOrSlug, clean]
   )
 
   if (!res.rows || res.rows.length === 0) return null
@@ -49,6 +70,8 @@ export async function getTenantById(id: string): Promise<Tenant | null> {
     slug: t.slug,
     nif: t.nif,
     address: t.address,
+    city: t.city,
+    postalCode: t.postal_code,
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
     currency: t.currency || 'EUR',
@@ -152,8 +175,8 @@ export async function createTenant(payload: Partial<Tenant>): Promise<Tenant> {
   const slug = payload.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
   const res = await query(
-    `INSERT INTO tenants (id, name, slug, nif, address, phone, mbway_phone, currency, is_headquarters, active)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO tenants (id, name, slug, nif, address, city, postal_code, phone, mbway_phone, currency, is_headquarters, active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
     [
       id,
@@ -161,6 +184,8 @@ export async function createTenant(payload: Partial<Tenant>): Promise<Tenant> {
       slug,
       payload.nif || null,
       payload.address || null,
+      payload.city || null,
+      payload.postalCode || null,
       payload.phone || null,
       payload.mbwayPhone || null,
       payload.currency || 'EUR',
@@ -176,6 +201,8 @@ export async function createTenant(payload: Partial<Tenant>): Promise<Tenant> {
     slug: t.slug,
     nif: t.nif,
     address: t.address,
+    city: t.city,
+    postalCode: t.postal_code,
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
     currency: t.currency,
@@ -192,9 +219,11 @@ export async function updateTenant(id: string, payload: Partial<Tenant>): Promis
      SET name = COALESCE($2, name),
          nif = COALESCE($3, nif),
          address = COALESCE($4, address),
-         phone = COALESCE($5, phone),
-         mbway_phone = COALESCE($6, mbway_phone),
-         active = COALESCE($7, active),
+         city = COALESCE($5, city),
+         postal_code = COALESCE($6, postal_code),
+         phone = COALESCE($7, phone),
+         mbway_phone = COALESCE($8, mbway_phone),
+         active = COALESCE($9, active),
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING *`,
@@ -203,6 +232,8 @@ export async function updateTenant(id: string, payload: Partial<Tenant>): Promis
       payload.name || null,
       payload.nif || null,
       payload.address || null,
+      payload.city || null,
+      payload.postalCode || null,
       payload.phone || null,
       payload.mbwayPhone || null,
       payload.active,
@@ -218,6 +249,8 @@ export async function updateTenant(id: string, payload: Partial<Tenant>): Promis
     slug: t.slug,
     nif: t.nif,
     address: t.address,
+    city: t.city,
+    postalCode: t.postal_code,
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
     currency: t.currency,

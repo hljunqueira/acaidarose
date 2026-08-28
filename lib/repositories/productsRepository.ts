@@ -1,9 +1,13 @@
 import { CatalogData, ProductContainer, ProductBase, ProductTopping } from '@/types'
 import { query } from '@/lib/db/postgres'
-import { getMockStore, DEFAULT_TENANT } from '@/lib/supabase/mockStore'
+import { AVEIRO_HQ_ID } from '@/lib/repositories/tenantsRepository'
 import { v4 as uuidv4 } from 'uuid'
 
-export async function getCatalogByTenant(tenantId: string = DEFAULT_TENANT.id): Promise<CatalogData> {
+export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<CatalogData> {
+  const containers: ProductContainer[] = []
+  const bases: ProductBase[] = []
+  const toppings: ProductTopping[] = []
+
   try {
     const res = await query(
       `SELECT p.id, p.name, p.description, p.base_price, p.image_url, p.is_available, p.display_order,
@@ -16,10 +20,6 @@ export async function getCatalogByTenant(tenantId: string = DEFAULT_TENANT.id): 
     )
 
     if (res && res.rows && res.rows.length > 0) {
-      const containers: ProductContainer[] = []
-      const bases: ProductBase[] = []
-      const toppings: ProductTopping[] = []
-
       res.rows.forEach((row: any) => {
         const item: any = {
           id: row.id,
@@ -30,35 +30,49 @@ export async function getCatalogByTenant(tenantId: string = DEFAULT_TENANT.id): 
           imageUrl: row.image_url,
           isAvailableInStore: row.is_available,
           displayOrder: row.display_order,
+          limiteCremes: 1,
+          limiteFrutas: 2,
+          limiteToppings: 3,
+          emoji: '',
+          active: true,
         }
 
-        if (row.category_slug === 'copos' || row.category_slug === 'tacas' || row.name.toLowerCase().includes('copo') || row.name.toLowerCase().includes('taça')) {
+        if (
+          row.category_slug === 'copos' ||
+          row.category_slug === 'tacas' ||
+          row.name.toLowerCase().includes('copo') ||
+          row.name.toLowerCase().includes('taça') ||
+          row.name.toLowerCase().includes('açaí')
+        ) {
           containers.push(item)
-        } else if (row.category_slug === 'bases' || row.name.toLowerCase().includes('açaí') || row.name.toLowerCase().includes('pitaya')) {
+        } else if (
+          row.category_slug === 'bases' ||
+          row.name.toLowerCase().includes('pitaya') ||
+          row.name.toLowerCase().includes('cupuaçu')
+        ) {
           bases.push(item)
         } else {
           toppings.push(item)
         }
       })
-
-      if (containers.length > 0 || bases.length > 0 || toppings.length > 0) {
-        return {
-          containers: containers.length > 0 ? containers : getMockStore().containers,
-          bases: bases.length > 0 ? bases : getMockStore().bases,
-          toppings: toppings.length > 0 ? toppings : getMockStore().toppings,
-        }
-      }
     }
   } catch (err) {
     console.error('Erro ao consultar catálogo no PostgreSQL:', err)
   }
 
-  // Fallback canônico
-  const store = getMockStore()
+  // Tamanhos canônicos caso a categoria ainda não esteja semeada no banco
+  const defaultContainers: ProductContainer[] = [
+    { id: 'cnt-250', name: 'Açaí 250g', precoBase: 6.90, weightGrams: 250, limiteCremes: 1, limiteFrutas: 2, limiteToppings: 3, isAvailableInStore: true, emoji: '', active: true },
+    { id: 'cnt-350', name: 'Açaí 350g', precoBase: 8.90, weightGrams: 350, limiteCremes: 1, limiteFrutas: 2, limiteToppings: 3, isAvailableInStore: true, emoji: '', active: true },
+    { id: 'cnt-500', name: 'Açaí 500g', precoBase: 12.90, weightGrams: 500, limiteCremes: 1, limiteFrutas: 99, limiteToppings: 99, isAvailableInStore: true, emoji: '', active: true },
+    { id: 'cnt-750', name: 'Açaí 750g', precoBase: 17.90, weightGrams: 750, limiteCremes: 1, limiteFrutas: 99, limiteToppings: 99, isAvailableInStore: true, emoji: '', active: true },
+    { id: 'cnt-1000', name: 'Açaí 1kg', precoBase: 22.90, weightGrams: 1000, limiteCremes: 1, limiteFrutas: 99, limiteToppings: 99, isAvailableInStore: true, emoji: '', active: true },
+  ]
+
   return {
-    containers: store.containers,
-    bases: store.bases,
-    toppings: store.toppings,
+    containers: containers.length > 0 ? containers : defaultContainers,
+    bases,
+    toppings,
   }
 }
 

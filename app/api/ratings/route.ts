@@ -1,53 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMockStore } from '@/lib/supabase/mockStore'
+import { query } from '@/lib/db/postgres'
+import { getTenantByIdOrSlug } from '@/lib/repositories/tenantsRepository'
 import { v4 as uuidv4 } from 'uuid'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
-    const tenantId = searchParams.get('tenantId') || 'tenant-torres-novas'
-    const store = getMockStore()
+    const rawTenant =
+      req.nextUrl.searchParams.get('loja') ||
+      req.nextUrl.searchParams.get('tenantId') ||
+      req.nextUrl.searchParams.get('tenant')
 
-    const reviews = (store.reviews || []).filter((r: any) => r.tenantId === tenantId)
+    let tenantId: string | null = null
+    if (rawTenant) {
+      const t = await getTenantByIdOrSlug(rawTenant)
+      if (t) tenantId = t.id
+    }
+
+    const res = await query(
+      `SELECT id, tenant_id, stars, comment, customer_name, created_at 
+       FROM order_ratings 
+       WHERE (tenant_id::text = $1 OR $1 IS NULL) 
+       ORDER BY created_at DESC LIMIT 50`,
+      [tenantId]
+    )
+
+    const reviews = res.rows || []
     return NextResponse.json({ success: true, reviews })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erro ao carregar avaliações' }, { status: 500 })
+    return NextResponse.json(
+      { error: err.message || 'Erro ao carregar avaliações' },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { tenantId = 'tenant-torres-novas', stars = 5, comment = '', customerName = 'Cliente Anónimo' } = body
+    const id = uuidv4()
 
-    const store = getMockStore()
-    if (!store.reviews) {
-      store.reviews = []
+    let tenantId = body.tenantId || '11111111-1111-1111-1111-111111111111'
+    if (body.loja) {
+      const t = await getTenantByIdOrSlug(body.loja)
+      if (t) tenantId = t.id
     }
 
-    const newReview = {
-      id: `rev-${uuidv4().slice(0, 8)}`,
-      tenantId,
-      stars: Math.max(1, Math.min(5, Number(stars) || 5)),
-      comment: comment.trim(),
-      customerName,
-      createdAt: new Date().toISOString(),
-    }
+    const stars = Math.max(1, Math.min(5, Number(body.stars) || 5))
+    const comment = String(body.comment || '').trim()
+    const customerName = String(body.customerName || 'Cliente Anónimo').trim()
 
-    store.reviews.unshift(newReview)
+    await query(
+      `INSERT INTO order_ratings (id, tenant_id, stars, comment, customer_name)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [id, tenantId, stars, comment, customerName]
+    )
 
-    // Atualizar média da loja
-    const tenantReviews = store.reviews.filter((r: any) => r.tenantId === tenantId)
-    const avg = tenantReviews.reduce((sum: number, r: any) => sum + r.stars, 0) / tenantReviews.length
-
-    const tenant = store.tenants.find((t: any) => t.id === tenantId)
-    if (tenant) {
-      tenant.ratingAverage = +avg.toFixed(1)
-      tenant.reviewsCount = tenantReviews.length
-    }
-
-    return NextResponse.json({ success: true, review: newReview, ratingAverage: +avg.toFixed(1), reviewsCount: tenantReviews.length })
+    return NextResponse.json({
+      success: true,
+      review: { id, tenantId, stars, comment, customerName, createdAt: new Date().toISOString() },
+    })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erro ao registar avaliação' }, { status: 500 })
+    return NextResponse.json(
+      { error: err.message || 'Erro ao registar avaliação' },
+      { status: 500 }
+    )
   }
 }

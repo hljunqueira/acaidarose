@@ -6,7 +6,6 @@ import { formatCurrency } from '@/lib/i18n/formatters'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { getMockStore } from '@/lib/supabase/mockStore'
 
 interface ReportsModuleViewProps {
   tenantId: string
@@ -37,14 +36,9 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
     fetchReport()
   }, [fetchReport])
 
-  const store = getMockStore()
-  const auditLogs = (store.auditLogs || []).filter((l) => l.tenantId === tenantId || isSuperAdmin)
+  const auditLogs = (report as any)?.auditLogs || []
   const orders = report?.orders || []
-  const invisibleProducts = [
-    ...(store.containers || []).filter((c) => c.active === false || c.isAvailableInStore === false).map((c) => ({ ...c, type: 'Recipiente / Tamanho' })),
-    ...(store.bases || []).filter((b) => b.active === false || b.isAvailableInStore === false).map((b) => ({ ...b, type: 'Creme Gelado' })),
-    ...(store.toppings || []).filter((t) => t.active === false || t.isAvailableInStore === false).map((t) => ({ ...t, type: 'Topping' })),
-  ]
+  const invisibleProducts: any[] = []
 
   return (
     <div className="w-full space-y-4">
@@ -248,7 +242,7 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
               </div>
 
               <div className="divide-y divide-purple-100 dark:divide-white/10 text-xs">
-                {auditLogs.map((log) => (
+                {auditLogs.map((log: any) => (
                   <div key={log.id} className="p-4 hover:bg-purple-50/50 dark:hover:bg-white/5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <div className="font-bold text-purple-950 dark:text-white">{log.details}</div>

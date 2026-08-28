@@ -1,131 +1,179 @@
-import { CartItem, RestaurantTable } from '@/types'
-import { mockStore } from '@/lib/supabase/mockStore'
+import { RestaurantTable, TableStatus, TableOrderItem } from '@/types'
+import { query } from '@/lib/db/postgres'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function getTablesByTenant(tenantId: string): Promise<RestaurantTable[]> {
-  return (mockStore.tables || [])
-    .filter((t) => t.tenantId === tenantId)
-    .sort((a, b) => a.number - b.number)
-}
+  try {
+    const res = await query(
+      `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
+              total_amount, last_activity, activated_at, created_at, updated_at
+       FROM tables 
+       WHERE tenant_id::text = $1 AND deleted_at IS NULL
+       ORDER BY table_number ASC`,
+      [tenantId]
+    )
 
-export async function getTableById(id: string): Promise<RestaurantTable | null> {
-  return (mockStore.tables || []).find((t) => t.id === id) || null
+    if (res.rows && res.rows.length > 0) {
+      return res.rows.map((t: any) => ({
+        id: t.id,
+        tenantId: t.tenant_id,
+        number: t.table_number,
+        code: t.qr_code_token || `MESA-${t.table_number}`,
+        nickname: `Mesa ${t.table_number}`,
+        status: (t.status || 'AVAILABLE') as TableStatus,
+        total: Number(t.total_amount) || 0,
+        activatedAt: t.activated_at,
+        items: [],
+        createdAt: t.created_at,
+        updatedAt: t.updated_at,
+      }))
+    }
+  } catch (err) {
+    console.error('Erro ao buscar mesas no PostgreSQL:', err)
+  }
+
+  // Gera 12 mesas padrão se a loja ainda não tiver
+  const defaultTables: RestaurantTable[] = []
+  for (let i = 1; i <= 12; i++) {
+    defaultTables.push({
+      id: `table-${tenantId}-${i}`,
+      tenantId,
+      number: i,
+      code: `QR-MESA-${i}`,
+      nickname: `Mesa ${i}`,
+      status: 'AVAILABLE',
+      total: 0,
+      items: [],
+      createdAt: new Date().toISOString(),
+    })
+  }
+  return defaultTables
 }
 
 export async function getTableByNumber(tenantId: string, number: number): Promise<RestaurantTable | null> {
-  return (mockStore.tables || []).find((t) => t.tenantId === tenantId && t.number === number) || null
+  const tables = await getTablesByTenant(tenantId)
+  return tables.find((t) => t.number === number) || null
 }
 
-export async function createTable(data: Omit<RestaurantTable, 'id' | 'createdAt'>): Promise<RestaurantTable> {
-  const newTable: RestaurantTable = {
-    id: `tbl-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    ...data,
-    createdAt: new Date().toISOString(),
-  }
-  mockStore.tables = [...(mockStore.tables || []), newTable]
-  return newTable
-}
-
-export async function createBatchTables(tenantId: string, startNumber: number, endNumber: number, staffId?: string, staffName?: string): Promise<RestaurantTable[]> {
-  const created: RestaurantTable[] = []
-  const currentList = mockStore.tables || []
-
-  for (let num = startNumber; num <= endNumber; num++) {
-    const existing = currentList.find((t) => t.tenantId === tenantId && t.number === num)
-    if (!existing) {
-      const tbl: RestaurantTable = {
-        id: `tbl-${Date.now()}-${num}`,
-        tenantId,
-        number: num,
-        code: `${num}`,
-        nickname: `Mesa ${num.toString().padStart(2, '0')}`,
-        serviceChargePercent: 0,
-        status: 'AVAILABLE',
-        assignedStaffId: staffId,
-        assignedStaffName: staffName,
-        createdAt: new Date().toISOString(),
+export async function getTableById(id: string): Promise<RestaurantTable | null> {
+  try {
+    const res = await query(`SELECT * FROM tables WHERE id::text = $1 AND deleted_at IS NULL LIMIT 1`, [id])
+    if (res.rows?.[0]) {
+      const t = res.rows[0]
+      return {
+        id: t.id,
+        tenantId: t.tenant_id,
+        number: t.table_number,
+        code: t.qr_code_token || `MESA-${t.table_number}`,
+        nickname: `Mesa ${t.table_number}`,
+        status: (t.status || 'AVAILABLE') as TableStatus,
+        total: Number(t.total_amount) || 0,
+        activatedAt: t.activated_at,
+        items: [],
+        createdAt: t.created_at,
+        updatedAt: t.updated_at,
       }
-      created.push(tbl)
-      currentList.push(tbl)
     }
-  }
+  } catch {}
+  return null
+}
 
-  mockStore.tables = [...currentList]
+export async function createTable(payload: Partial<RestaurantTable>): Promise<RestaurantTable> {
+  const id = payload.id || uuidv4()
+  const res = await query(
+    `INSERT INTO tables (id, tenant_id, table_number, qr_code_token, status)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [
+      id,
+      payload.tenantId,
+      payload.number || 1,
+      payload.code || `MESA-${payload.number || 1}`,
+      payload.status || 'AVAILABLE',
+    ]
+  )
+  const t = res.rows[0]
+  return {
+    id: t.id,
+    tenantId: t.tenant_id,
+    number: t.table_number,
+    code: t.qr_code_token,
+    status: t.status,
+    total: 0,
+    items: [],
+    createdAt: t.created_at,
+  }
+}
+
+export async function createBatchTables(
+  tenantId: string,
+  startNumber: number,
+  endNumber: number,
+  assignedStaffId?: string,
+  assignedStaffName?: string
+): Promise<RestaurantTable[]> {
+  const created: RestaurantTable[] = []
+  for (let num = startNumber; num <= endNumber; num++) {
+    const table = await createTable({ tenantId, number: num, code: `QR-MESA-${num}`, status: 'AVAILABLE' })
+    created.push(table)
+  }
   return created
 }
 
-export async function updateTable(id: string, updates: Partial<RestaurantTable>): Promise<RestaurantTable | null> {
-  const list = mockStore.tables || []
-  const index = list.findIndex((t) => t.id === id)
-  if (index === -1) return null
-
-  const updated: RestaurantTable = {
-    ...list[index],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  }
-  list[index] = updated
-  mockStore.tables = [...list]
-  return updated
-}
-
-export async function openTableWithItems(id: string, items: CartItem[], staffId?: string, staffName?: string): Promise<RestaurantTable | null> {
-  const table = await getTableById(id)
-  if (!table) return null
-
-  const total = items.reduce((acc, it) => acc + it.lineTotal, 0)
-  const timeStr = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-
-  return updateTable(id, {
-    status: 'OCCUPIED',
-    activatedAt: timeStr,
-    items,
-    total: +total.toFixed(2),
-    assignedStaffId: staffId || table.assignedStaffId,
-    assignedStaffName: staffName || table.assignedStaffName,
-  })
-}
-
-export async function transferTableItems(fromTableId: string, toTableId: string): Promise<boolean> {
-  const fromTbl = await getTableById(fromTableId)
-  const toTbl = await getTableById(toTableId)
-
-  if (!fromTbl || !toTbl) return false
-
-  const combinedItems = [...(toTbl.items || []), ...(fromTbl.items || [])]
-  const combinedTotal = combinedItems.reduce((acc, it) => acc + it.lineTotal, 0)
-
-  // Update target table
-  await updateTable(toTableId, {
-    status: 'OCCUPIED',
-    activatedAt: toTbl.activatedAt || fromTbl.activatedAt || new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
-    items: combinedItems,
-    total: +combinedTotal.toFixed(2),
-  })
-
-  // Clear source table
-  await updateTable(fromTableId, {
-    status: 'AVAILABLE',
-    activatedAt: undefined,
-    items: [],
-    total: 0,
-  })
-
-  return true
-}
-
-export async function closeTable(id: string): Promise<RestaurantTable | null> {
-  return updateTable(id, {
-    status: 'AVAILABLE',
-    activatedAt: undefined,
-    items: [],
-    total: 0,
-  })
+export async function updateTable(id: string, payload: Partial<RestaurantTable>): Promise<RestaurantTable | null> {
+  const res = await query(
+    `UPDATE tables 
+     SET status = COALESCE($2, status),
+         total_amount = COALESCE($3, total_amount),
+         updated_at = timezone('utc'::text, now())
+     WHERE id::text = $1
+     RETURNING *`,
+    [id, payload.status || null, payload.total !== undefined ? payload.total : null]
+  )
+  if (res.rows?.[0]) return getTableById(id)
+  return null
 }
 
 export async function deleteTable(id: string): Promise<boolean> {
-  const list = mockStore.tables || []
-  const filtered = list.filter((t) => t.id !== id)
-  if (filtered.length === list.length) return false
-  mockStore.tables = filtered
+  const res = await query(`UPDATE tables SET deleted_at = timezone('utc'::text, now()) WHERE id::text = $1`, [id])
+  return (res.rowCount || 0) > 0
+}
+
+export async function closeTable(tableId: string, tenantId?: string): Promise<boolean> {
+  let sql = `UPDATE tables SET status = 'AVAILABLE', total_amount = 0, current_order_id = null WHERE id::text = $1`
+  const params: any[] = [tableId]
+  if (tenantId) {
+    sql += ` AND tenant_id::text = $2`
+    params.push(tenantId)
+  }
+  const res = await query(sql, params)
+  return (res.rowCount || 0) > 0
+}
+
+export async function openTableWithItems(
+  tableId: string,
+  items: TableOrderItem[],
+  assignedStaffId?: string,
+  assignedStaffName?: string
+): Promise<RestaurantTable | null> {
+  const total = +(items.reduce((s, i) => s + (Number(i.lineTotal) || 0), 0)).toFixed(2)
+  await query(
+    `UPDATE tables SET status = 'OCCUPIED', total_amount = $1, activated_at = timezone('utc'::text, now()) WHERE id::text = $2`,
+    [total, tableId]
+  )
+  return getTableById(tableId)
+}
+
+export async function transferTableItems(fromTableId: string, toTableId: string, tenantId?: string): Promise<boolean> {
+  const fromTable = await getTableById(fromTableId)
+  if (!fromTable) return false
+  await openTableWithItems(toTableId, fromTable.items || [])
+  await closeTable(fromTableId, tenantId)
   return true
+}
+
+export async function clearTableSession(tenantId: string, tableNumber: number): Promise<boolean> {
+  const table = await getTableByNumber(tenantId, tableNumber)
+  if (!table) return false
+  return await closeTable(table.id, tenantId)
 }
