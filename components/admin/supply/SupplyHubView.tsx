@@ -44,7 +44,7 @@ interface StoreSupplyCardData {
 const INITIAL_STORES: StoreSupplyCardData[] = [
   {
     id: '11111111-1111-1111-1111-111111111111',
-    name: 'Açaí da Rose — Sede Franqueadora & Matriz Aveiro',
+    name: 'Loja 1 — Sede Franqueadora & Matriz Aveiro',
     nif: '500123456',
     city: 'Aveiro',
     address: 'Avenida Dr. Lourenço Peixinho 85',
@@ -53,7 +53,7 @@ const INITIAL_STORES: StoreSupplyCardData[] = [
   },
   {
     id: '22222222-2222-2222-2222-222222222222',
-    name: 'Açaí da Rose — Filial Torres Novas',
+    name: 'Loja 2 — Filial Torres Novas',
     nif: '500789012',
     city: 'Torres Novas',
     address: 'Praça 5 de Outubro 12',

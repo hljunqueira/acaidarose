@@ -86,7 +86,7 @@ export default function UsersAdmin({ tenantId = 'tenant-torres-novas', currentUs
   }>({
     open: false,
     title: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   })
 
   const handleDelete = (id: string) => {
@@ -234,16 +234,6 @@ export default function UsersAdmin({ tenantId = 'tenant-torres-novas', currentUs
         tenantId={tenantId}
         mode={dialogMode}
         onSave={handleSave}
-      />
-
-      <ConfirmActionDialog
-        open={confirmState.open}
-        onOpenChange={(o) => setConfirmState((prev) => ({ ...prev, open: o }))}
-        title={confirmState.title}
-        description={confirmState.description}
-        confirmLabel="Desativar Utilizador"
-        variant="destructive"
-        onConfirm={confirmState.onConfirm}
       />
     </div>
   )

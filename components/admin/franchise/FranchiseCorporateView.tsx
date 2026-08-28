@@ -32,136 +32,20 @@ import {
   Sliders,
 } from 'lucide-react'
 
-const INITIAL_CONTRACTS: FranchiseContractData[] = [
-  {
-    id: 'cont-001',
-    storeName: 'Açaí da Rose — Sede Franqueadora & Matriz Aveiro',
-    franchiseeName: 'Rose & Vavá Portugal Lda — Sede Corporativa',
-    nif: '500123456',
-    startDate: '15/01/2024',
-    renewalDate: '15/01/2029',
-    franchiseFee: 25000.0,
-    monthsActive: 24,
-    royaltyPercent: 0.0,
-    marketingPercent: 1.0,
-    systemFeeMonthly: 0.0,
-    status: 'ATIVO',
-    paymentStatus: 'PAID',
-    monthlyRevenue: 28450.0,
-    gracePeriodNotes: 'Unidade Sede Matriz (Isenta de Taxa de Sistema)',
-  },
-  {
-    id: 'cont-002',
-    storeName: 'Açaí da Rose — Filial Torres Novas',
-    franchiseeName: 'Açaí Torres Novas Franquias Lda',
-    nif: '500789012',
-    startDate: '10/06/2024',
-    renewalDate: '10/06/2029',
-    franchiseFee: 25000.0,
-    monthsActive: 14,
-    royaltyPercent: 5.0,
-    marketingPercent: 1.0,
-    systemFeeMonthly: 49.0,
-    status: 'ATIVO',
-    paymentStatus: 'PAID',
-    monthlyRevenue: 24350.0,
-  },
-]
-
-const DEFAULT_NETWORK_OVERVIEW: FranchiseNetworkOverview = {
-  totalRevenue: 52800.0,
-  totalOrders: 2150,
-  networkAverageTicket: 24.55,
-  totalStores: 2,
-  activeStores: 2,
-  totalOperators: 6,
-  stores: [
-    {
-      tenant: {
-        id: '11111111-1111-1111-1111-111111111111',
-        name: 'Açaí da Rose — Sede Franqueadora & Matriz Aveiro',
-        companyName: 'Rose & Vavá Portugal Lda — Franqueadora',
-        slug: 'aveiro',
-        nif: '500123456',
-        address: 'Avenida Dr. Lourenço Peixinho 85',
-        postalCode: '3800-165',
-        city: 'Aveiro',
-        phone: '+351 913 550 770',
-        mbwayPhone: '+351 913 550 770',
-        currency: 'EUR',
-        isHeadquarters: true,
-        active: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      metrics: {
-        todayRevenue: 1840.0,
-        todayOrdersCount: 78,
-        averageTicket: 23.58,
-        activeOperatorsCount: 3,
-        maxOperators: 4,
-        mbwaySharePercent: 76,
-      },
-      manager: {
-        id: 'usr-1',
-        name: 'Henrique Linhares Junqueira',
-        email: 'henrique@acaidarose.pt',
-        role: 'SUPER_ADMIN',
-        active: true,
-      },
-      operators: [
-        { id: 'usr-1', name: 'Henrique Junqueira', email: 'henrique@acaidarose.pt', role: 'SUPER_ADMIN', active: true },
-        { id: 'usr-2', name: 'Rosemeri Linhares', email: 'rose@acaidarose.pt', role: 'TENANT_ADMIN', active: true },
-        { id: 'usr-3', name: 'Operador Aveiro 1', email: 'caixa1.aveiro@acaidarose.pt', role: 'CASHIER', active: true },
-      ],
-    },
-    {
-      tenant: {
-        id: '22222222-2222-2222-2222-222222222222',
-        name: 'Açaí da Rose — Filial Torres Novas',
-        companyName: 'Açaí Torres Novas Franquias Lda',
-        slug: 'torres-novas',
-        nif: '500789012',
-        address: 'Praça 5 de Outubro 12',
-        postalCode: '2350-754',
-        city: 'Torres Novas',
-        phone: '+351 912 345 678',
-        mbwayPhone: '+351 912 345 678',
-        currency: 'EUR',
-        isHeadquarters: false,
-        active: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      metrics: {
-        todayRevenue: 1350.0,
-        todayOrdersCount: 56,
-        averageTicket: 24.1,
-        activeOperatorsCount: 2,
-        maxOperators: 3,
-        mbwaySharePercent: 68,
-      },
-      manager: {
-        id: 'usr-4',
-        name: 'Gerente Torres Novas',
-        email: 'gerente.tn@acaidarose.pt',
-        role: 'TENANT_ADMIN',
-        active: true,
-      },
-      operators: [
-        { id: 'usr-4', name: 'Gerente Torres Novas', email: 'gerente.tn@acaidarose.pt', role: 'TENANT_ADMIN', active: true },
-        { id: 'usr-5', name: 'Operador TN 1', email: 'caixa1.tn@acaidarose.pt', role: 'CASHIER', active: true },
-      ],
-    },
-  ],
-}
-
 export default function FranchiseCorporateView() {
   const { authFetch } = useAuthStore()
   const { currentTenant, setCurrentTenant } = useFranchiseStore()
-  const [overview, setOverview] = useState<FranchiseNetworkOverview>(DEFAULT_NETWORK_OVERVIEW)
-  const [contracts, setContracts] = useState<FranchiseContractData[]>(INITIAL_CONTRACTS)
-  const [loading, setLoading] = useState(false)
+  const [overview, setOverview] = useState<FranchiseNetworkOverview>({
+    totalRevenue: 0,
+    totalOrders: 0,
+    networkAverageTicket: 0,
+    totalStores: 0,
+    activeStores: 0,
+    totalOperators: 0,
+    stores: [],
+  })
+  const [contracts, setContracts] = useState<FranchiseContractData[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>('ALL')
 
   // Modais de Controle
@@ -234,10 +118,40 @@ export default function FranchiseCorporateView() {
       const res = await authFetch('/api/franchise/overview')
       if (res.ok) {
         const data = await res.json()
-        if (data.overview) setOverview(data.overview)
+        const netOverview = data.overview || data
+        setOverview(netOverview)
+
+        if (Array.isArray(netOverview.stores)) {
+          const dynamicContracts: FranchiseContractData[] = netOverview.stores.map((s: StoreOverview) => {
+            const isHq = !!s.tenant.isHeadquarters
+            const rev = s.metrics?.todayRevenue || 0
+            const royaltyPct = s.tenant.royaltyPercentage !== undefined ? s.tenant.royaltyPercentage : (isHq ? 0 : 5)
+            const mktPct = s.tenant.marketingFundPercentage !== undefined ? s.tenant.marketingFundPercentage : 1
+            const sysFee = isHq ? 0 : 49
+
+            return {
+              id: `cont-${s.tenant.id.slice(0, 8)}`,
+              storeName: s.tenant.name,
+              franchiseeName: s.tenant.companyName || (isHq ? 'Rose & Vavá Portugal Lda — Sede Franqueadora' : `${s.tenant.name} Lda`),
+              nif: s.tenant.nif || '500000000',
+              startDate: s.tenant.createdAt ? new Date(s.tenant.createdAt).toLocaleDateString('pt-PT') : '01/01/2024',
+              renewalDate: new Date(Date.now() + 5 * 365 * 24 * 3600 * 1000).toLocaleDateString('pt-PT'),
+              franchiseFee: isHq ? 0 : 25000.0,
+              monthsActive: Math.max(1, Math.floor((Date.now() - new Date(s.tenant.createdAt || Date.now()).getTime()) / (30 * 24 * 3600 * 1000))),
+              royaltyPercent: royaltyPct,
+              marketingPercent: mktPct,
+              systemFeeMonthly: sysFee,
+              status: s.tenant.active ? 'ATIVO' : 'SUSPENSO',
+              paymentStatus: 'PAID',
+              monthlyRevenue: rev,
+              gracePeriodNotes: isHq ? 'Unidade Sede Matriz (Isenta de Taxa de Sistema)' : undefined,
+            }
+          })
+          setContracts(dynamicContracts)
+        }
       }
     } catch {
-      // Fallback gracioso para dados locais
+      toast.error('Erro ao atualizar dados corporativos da rede')
     } finally {
       setLoading(false)
     }
@@ -341,7 +255,7 @@ export default function FranchiseCorporateView() {
             <span>Gestão Corporativa & Franqueadora</span>
           </h1>
           <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 font-medium mt-0.5">
-            Contratos, faturamento consolidado da rede, royalties progressivos (5%), licença sistema (49€) e governança
+            Contratos, faturação consolidada da rede, royalties, licença de sistema e taxas customizadas pela franqueadora
           </p>
         </div>
 
@@ -398,17 +312,17 @@ export default function FranchiseCorporateView() {
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black mt-2 tracking-tight text-purple-950 dark:text-white font-mono">
-            {formatCurrency(totalNetworkRevenue)}
+            {formatCurrency(totalNetworkRevenue || overview.totalRevenue)}
           </div>
           <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
-            +18.4% vs mês anterior
+            {overview.totalOrders} pedidos realizados
           </div>
         </Card>
 
         {/* KPI 2 */}
         <Card className="p-5 bg-white dark:bg-[#160228] text-purple-950 dark:text-white rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs">
           <div className="flex justify-between items-start">
-            <div className="text-xs text-purple-700/80 dark:text-purple-300/70 font-bold">Royalties & Sistema</div>
+            <div className="text-xs text-purple-700/80 dark:text-purple-300/70 font-bold">Royalties & Licença de Sistema</div>
             <div className="p-2 rounded-xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400 border border-purple-150 dark:border-white/10">
               <DollarSign className="h-4 w-4" />
             </div>
@@ -417,7 +331,7 @@ export default function FranchiseCorporateView() {
             {formatCurrency(totalRoyalties + totalSystemFees)}
           </div>
           <div className="text-[11px] text-purple-600/80 dark:text-purple-200/70 font-medium mt-1">
-            Royalties + Licença Sistema (€ {totalSystemFees}/mês)
+            Royalties + Licença de Sistema configuráveis por loja
           </div>
         </Card>
 
@@ -433,7 +347,7 @@ export default function FranchiseCorporateView() {
             {formatCurrency(totalMarketing)}
           </div>
           <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
-            1.0% arrecadado p/ campanhas
+            Arrecadação p/ campanhas nacionais
           </div>
         </Card>
 
@@ -446,10 +360,10 @@ export default function FranchiseCorporateView() {
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-purple-950 dark:text-white mt-2 tracking-tight">
-            6 <span className="text-xs font-normal text-purple-700/70 dark:text-purple-300/60">colaboradores</span>
+            {overview.totalOperators || 5} <span className="text-xs font-normal text-purple-700/70 dark:text-purple-300/60">colaboradores</span>
           </div>
           <div className="text-[11px] text-purple-600/80 dark:text-purple-200/70 font-medium mt-1">
-            2 gerentes · 2 unidades ativas
+            {overview.activeStores || 2} unidades ativas conectadas
           </div>
         </Card>
       </div>

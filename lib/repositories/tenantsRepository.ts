@@ -26,6 +26,8 @@ export async function getTenants(): Promise<Tenant[]> {
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
     currency: t.currency || 'EUR',
+    royaltyPercentage: Number(t.royalty_percentage) || 0,
+    marketingFundPercentage: Number(t.marketing_fund_percentage) || 0,
     isHeadquarters: !!t.is_headquarters,
     active: t.active,
     createdAt: t.created_at,
@@ -75,6 +77,8 @@ export async function getTenantByIdOrSlug(identifier: string): Promise<Tenant | 
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
     currency: t.currency || 'EUR',
+    royaltyPercentage: Number(t.royalty_percentage) || 0,
+    marketingFundPercentage: Number(t.marketing_fund_percentage) || 0,
     isHeadquarters: !!t.is_headquarters,
     active: t.active,
     createdAt: t.created_at,
@@ -86,14 +90,14 @@ export async function getTenantByIdOrSlug(identifier: string): Promise<Tenant | 
 export async function getNetworkOverview(): Promise<FranchiseNetworkOverview> {
   const tenants = await getTenants()
 
-  // Consulta faturamento de hoje e contagem de pedidos por loja
+  // Consulta faturamento e contagem de pedidos reais por loja
   const ordersRes = await query(
     `SELECT tenant_id, 
             COUNT(id) as orders_count, 
-            COALESCE(SUM(total_amount), 0) as revenue,
+            COALESCE(SUM(total), 0) as revenue,
             COUNT(CASE WHEN payment_method = 'MBWAY' THEN 1 END) as mbway_count
      FROM orders 
-     WHERE payment_status = 'PAID' AND deleted_at IS NULL
+     WHERE (status != 'CANCELLED' OR status IS NULL)
      GROUP BY tenant_id`
   )
 
