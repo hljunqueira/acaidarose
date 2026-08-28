@@ -61,8 +61,8 @@ export function announceTVCall(ticket: string, customerName?: string) {
 
       const cleanTicket = ticket.replace('#', '')
       const textToSpeak = customerName
-        ? `Senha ${cleanTicket}, ${customerName}. Seu açaí está pronto!`
-        : `Senha ${cleanTicket}. Seu açaí está pronto!`
+        ? `Senha ${cleanTicket}, ${customerName}`
+        : `Senha ${cleanTicket}`
 
       const utterance = new SpeechSynthesisUtterance(textToSpeak)
       utterance.lang = 'pt-PT'

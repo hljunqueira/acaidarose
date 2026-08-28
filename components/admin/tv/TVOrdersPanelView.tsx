@@ -29,6 +29,8 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
 
+  const storeSlug = tenantId === '22222222-2222-2222-2222-222222222222' ? 'torres-novas' : 'aveiro'
+
   // 1. Carregamento de pedidos reais da loja ativa
   const fetchLiveOrders = useCallback(async () => {
     try {
@@ -280,7 +282,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       {/* Footer da TV */}
       <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-purple-300/60 font-bold z-10">
         <span>Açaí da Rose · Experiência Premium</span>
-        <span>Aponte a câmara do seu telemóvel ao QR Code para ver o menu</span>
+        <span>Aceda ao menu digital: acaidarose.pt/menu?loja={storeSlug}</span>
       </div>
     </div>
   )

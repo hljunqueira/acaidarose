@@ -47,7 +47,7 @@ import DevMasterView from '@/components/admin/dev/DevMasterView'
 import PreventionCenterView from '@/components/admin/dev/PreventionCenterView'
 import AuditLogsView from '@/components/admin/dev/AuditLogsView'
 import SupplyHubView from '@/components/admin/supply/SupplyHubView'
-import TVOrdersPanelView from '@/components/admin/tv/TVOrdersPanelView'
+import TVOrdersControlView from '@/components/admin/tv/TVOrdersControlView'
 import InventoryManagementView from '@/components/admin/inventory/InventoryManagementView'
 import StoreSupplyOrdersView from '@/components/admin/inventory/StoreSupplyOrdersView'
 
@@ -250,7 +250,7 @@ export default function HomePage() {
             />
           )}
           {view === 'qrcode' && <QRCodeOrdersAdmin tenantId={activeTenantId} />}
-          {view === 'tv_panel' && <TVOrdersPanelView tenantId={activeTenantId} />}
+          {view === 'tv_panel' && <TVOrdersControlView tenantId={activeTenantId} />}
           {view === 'tables' && isAdmin && <TablesManagementView tenantId={activeTenantId} />}
 
           {/* 4. GESTÃO DE ESTOQUE & SUPPLY CHAIN */}
