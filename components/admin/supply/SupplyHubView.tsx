@@ -13,7 +13,6 @@ import {
   Eye,
   FileText,
   Check,
-  Plus,
   RefreshCw,
   Search,
   Edit2,
@@ -164,9 +163,8 @@ export default function SupplyHubView() {
                 setItemDialogOpen(true)
               }}
               size="sm"
-              className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-xl text-xs font-black gap-1.5 cursor-pointer shadow-xs"
+              className="h-9 px-3.5 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-xl text-xs font-black cursor-pointer shadow-xs"
             >
-              <Plus className="h-3.5 w-3.5" />
               <span>Novo Insumo Mestre</span>
             </Button>
           )}
@@ -328,22 +326,29 @@ export default function SupplyHubView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-purple-100 dark:divide-white/5">
-                    {filteredMasterItems.map((item) => {
-                      const diff = item.marketPrice - item.supplyPrice
-                      const diffPercent = item.marketPrice > 0 ? (diff / item.marketPrice) * 100 : 0
+                    {filteredMasterItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-purple-700/80 dark:text-purple-300/70 text-xs font-medium">
+                          Nenhum insumo mestre cadastrado no catálogo corporativo. Clique em <b>Novo Insumo Mestre</b> para cadastrar.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredMasterItems.map((item) => {
+                        const diff = item.marketPrice - item.supplyPrice
+                        const diffPercent = item.marketPrice > 0 ? (diff / item.marketPrice) * 100 : 0
 
-                      return (
-                        <tr key={item.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
-                          <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
-                            <div className="flex items-center gap-2">
-                              <span>{item.name}</span>
-                              {item.isCriticalChecklist && (
-                                <Badge className="bg-purple-100 dark:bg-pink-500/20 text-purple-800 dark:text-pink-300 text-[8px] py-0 font-bold">
-                                  Checklist
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
+                        return (
+                          <tr key={item.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
+                            <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
+                              <div className="flex items-center gap-2">
+                                <span>{item.name}</span>
+                                {item.isCriticalChecklist && (
+                                  <Badge className="bg-purple-100 dark:bg-pink-500/20 text-purple-800 dark:text-pink-300 text-[8px] py-0 font-bold">
+                                    Checklist
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
                           <td className="py-3.5 px-4">
                             <Badge variant="outline" className="border-purple-200 dark:border-white/10 text-[10px] font-semibold text-purple-900 dark:text-purple-200">
                               {item.category}
@@ -397,7 +402,7 @@ export default function SupplyHubView() {
                           </td>
                         </tr>
                       )
-                    })}
+                    }))}
                   </tbody>
                 </table>
               </div>

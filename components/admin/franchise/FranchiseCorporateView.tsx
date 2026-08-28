@@ -20,7 +20,6 @@ import {
   TrendingUp,
   Store,
   Users,
-  Plus,
   RefreshCw,
   FileText,
   DollarSign,
@@ -282,9 +281,8 @@ export default function FranchiseCorporateView() {
           <Button
             size="sm"
             onClick={() => setCreateOpen(true)}
-            className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white text-xs font-black gap-1.5 rounded-xl cursor-pointer transition shadow-xs"
+            className="h-9 px-3.5 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white text-xs font-black rounded-xl cursor-pointer transition shadow-xs"
           >
-            <Plus className="h-3.5 w-3.5" />
             <span>Nova Franquia</span>
           </Button>
         </div>
@@ -481,10 +479,9 @@ export default function FranchiseCorporateView() {
                         setEditingUser({ id: '', name: '', email: '', role: 'CASHIER', active: true, tenantId: tenant.id } as any)
                         setUserDialogOpen(true)
                       }}
-                      className="h-7 px-2.5 text-[10px] font-bold rounded-lg bg-purple-700 hover:bg-purple-800 text-white gap-1 cursor-pointer"
+                      className="h-7 px-2.5 text-[10px] font-bold rounded-lg bg-purple-700 hover:bg-purple-800 text-white cursor-pointer"
                     >
-                      <Plus className="h-3 w-3" />
-                      <span>Adicionar</span>
+                      <span>Adicionar Operador</span>
                     </Button>
                   </div>
                   <div className="text-xs space-y-2">

@@ -17,7 +17,6 @@ import {
   ChefHat,
   Bell,
   RefreshCw,
-  Plus,
   Search,
   Volume2,
   VolumeX,
@@ -477,9 +476,8 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
           <Button
             size="sm"
             onClick={() => setNewOrderModalOpen(true)}
-            className="h-8 text-xs font-black bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white gap-1 shadow-sm rounded-xl cursor-pointer px-3"
+            className="h-8 text-xs font-black bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white shadow-sm rounded-xl cursor-pointer px-3.5"
           >
-            <Plus className="h-3.5 w-3.5" />
             <span>Nova Comanda</span>
           </Button>
         </div>

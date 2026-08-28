@@ -19,7 +19,6 @@ import {
   Mail,
   Building2,
   Calendar,
-  Plus,
 } from 'lucide-react'
 
 import EditRoyaltyDialog, { FranchiseContractData } from './EditRoyaltyDialog'
@@ -209,10 +208,9 @@ export default function StoreDetailsDialog({
                     <Button
                       size="sm"
                       onClick={() => onAddUserForStore(tenant.id)}
-                      className="h-7 px-2.5 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-[10px] rounded-lg shadow-xs cursor-pointer gap-1"
+                      className="h-7 px-3 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-[10px] rounded-lg shadow-xs cursor-pointer"
                     >
-                      <Plus className="h-3 w-3" />
-                      <span>Adicionar</span>
+                      <span>Adicionar Operador</span>
                     </Button>
                   )}
                 </div>

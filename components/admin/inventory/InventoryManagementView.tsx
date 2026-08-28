@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Search,
-  Plus,
   ClipboardCheck,
   RefreshCw,
   SlidersHorizontal,
@@ -183,9 +182,8 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
             }}
             size="sm"
             variant="outline"
-            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+            className="h-9 text-xs font-bold px-3 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
           >
-            <Plus className="h-3.5 w-3.5" />
             <span>Novo Insumo</span>
           </Button>
 

@@ -197,44 +197,52 @@ export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1
                 </tr>
               </thead>
               <tbody className="divide-y divide-purple-100 dark:divide-white/5">
-                {catalog.map((item) => {
-                  const savings = item.marketPrice - item.supplyPrice
-                  const qty = quantities[item.id] || 0
-                  return (
-                    <tr key={item.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">{item.name}</td>
-                      <td className="py-3.5 px-4 font-medium text-purple-700/80 dark:text-purple-300/70">{item.unit}</td>
-                      <td className="py-3.5 px-4 text-purple-700/70 dark:text-purple-300/60 line-through font-mono">
-                        {formatCurrency(item.marketPrice)}
-                      </td>
-                      <td className="py-3.5 px-4 font-black text-purple-950 dark:text-pink-300 font-mono text-sm">
-                        {formatCurrency(item.supplyPrice)}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">
-                        -{formatCurrency(savings)}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setQuantities((prev) => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
-                            className="h-8 w-8 rounded-xl bg-purple-100 dark:bg-white/10 font-black hover:bg-purple-200 text-purple-950 dark:text-white cursor-pointer transition flex items-center justify-center"
-                          >
-                            -
-                          </button>
-                          <span className="w-8 text-center font-mono font-black text-purple-950 dark:text-white text-sm">{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => setQuantities((prev) => ({ ...prev, [item.id]: qty + 1 }))}
-                            className="h-8 w-8 rounded-xl bg-purple-100 dark:bg-white/10 font-black hover:bg-purple-200 text-purple-950 dark:text-white cursor-pointer transition flex items-center justify-center"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {catalog.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-purple-700/80 dark:text-purple-300/70 text-xs font-medium">
+                      Nenhum insumo homologado cadastrado pela Franqueadora. Cadastre insumos no Catálogo Mestre da Central de Abastecimento.
+                    </td>
+                  </tr>
+                ) : (
+                  catalog.map((item) => {
+                    const savings = item.marketPrice - item.supplyPrice
+                    const qty = quantities[item.id] || 0
+                    return (
+                      <tr key={item.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">{item.name}</td>
+                        <td className="py-3.5 px-4 font-medium text-purple-700/80 dark:text-purple-300/70">{item.unit}</td>
+                        <td className="py-3.5 px-4 text-purple-700/70 dark:text-purple-300/60 line-through font-mono">
+                          {formatCurrency(item.marketPrice)}
+                        </td>
+                        <td className="py-3.5 px-4 font-black text-purple-950 dark:text-pink-300 font-mono text-sm">
+                          {formatCurrency(item.supplyPrice)}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">
+                          -{formatCurrency(savings)}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setQuantities((prev) => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
+                              className="h-8 w-8 rounded-xl bg-purple-100 dark:bg-white/10 font-black hover:bg-purple-200 text-purple-950 dark:text-white cursor-pointer transition flex items-center justify-center"
+                            >
+                              -
+                            </button>
+                            <span className="w-8 text-center font-mono font-black text-purple-950 dark:text-white text-sm">{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => setQuantities((prev) => ({ ...prev, [item.id]: qty + 1 }))}
+                              className="h-8 w-8 rounded-xl bg-purple-100 dark:bg-white/10 font-black hover:bg-purple-200 text-purple-950 dark:text-white cursor-pointer transition flex items-center justify-center"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
               </tbody>
             </table>
           </div>

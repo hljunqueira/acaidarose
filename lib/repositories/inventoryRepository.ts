@@ -37,41 +37,10 @@ export interface SupplyOrderRow {
   createdAt: string
 }
 
-const DEFAULT_SEEDS: Omit<MasterInventoryItem, 'id' | 'createdAt'>[] = [
-  { name: 'Açaí Tradicional (Balde 10kg)', unit: 'Baldes', category: 'BASE', marketPrice: 38.0, supplyPrice: 32.0, isCriticalChecklist: true },
-  { name: 'Nutella Original (Balde 3kg)', unit: 'Baldes', category: 'TOPPING', marketPrice: 24.5, supplyPrice: 22.5, isCriticalChecklist: true },
-  { name: 'Morangos Frescos Selecionados', unit: 'Kg', category: 'FRUTA', marketPrice: 4.5, supplyPrice: 3.8, isCriticalChecklist: true },
-  { name: 'Copos Biodegradáveis 500ml (Cx 500un)', unit: 'Centenas', category: 'EMBALAGEM', marketPrice: 45.0, supplyPrice: 39.0, isCriticalChecklist: true },
-  { name: 'Leite Condensado Nestlé (Lata 5kg)', unit: 'Latas', category: 'TOPPING', marketPrice: 18.9, supplyPrice: 16.5, isCriticalChecklist: false },
-  { name: 'Granola Artesanal Crocante', unit: 'Kg', category: 'TOPPING', marketPrice: 14.5, supplyPrice: 12.0, isCriticalChecklist: false },
-]
-
-/**
- * Garante que o catálogo mestre de insumos tenha os itens iniciais se a tabela estiver vazia
- */
-export async function seedDefaultInventoryIfEmpty() {
-  try {
-    const check = await query('SELECT COUNT(*) as cnt FROM inventory_items')
-    const count = Number(check?.rows?.[0]?.cnt || 0)
-    if (count === 0) {
-      for (const item of DEFAULT_SEEDS) {
-        await query(
-          `INSERT INTO inventory_items (id, name, unit, category, market_benchmark_price, franchise_supply_price, is_critical_checklist)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [uuidv4(), item.name, item.unit, item.category, item.marketPrice, item.supplyPrice, item.isCriticalChecklist ?? false]
-        )
-      }
-    }
-  } catch (err) {
-    console.error('Erro ao semear inventory_items:', err)
-  }
-}
-
 /**
  * Retorna todos os insumos do catálogo mestre (Franqueadora)
  */
 export async function getAllMasterItems(): Promise<MasterInventoryItem[]> {
-  await seedDefaultInventoryIfEmpty()
   try {
     const res = await query(
       `SELECT id, name, unit, category, 
@@ -197,7 +166,6 @@ export async function deleteMasterItem(id: string): Promise<boolean> {
  * Consulta o inventário de uma loja específica
  */
 export async function getStoreInventory(tenantId: string): Promise<InventoryItemRow[]> {
-  await seedDefaultInventoryIfEmpty()
   try {
     const res = await query(
       `SELECT ii.id, ii.name, ii.unit, ii.category, 
