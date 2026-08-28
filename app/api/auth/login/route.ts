@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
 import { User, UserRole } from '@/types'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanEmail = String(email).toLowerCase().trim()
+    const cleanPass = String(password).trim()
 
     // 1. Consulta usuário ativo no PostgreSQL 16 da VPS
     const res = await query(
@@ -32,10 +34,17 @@ export async function POST(request: NextRequest) {
 
     const userRow = res.rows[0]
 
-    // 2. Validação da palavra-passe
-    const isMatch =
-      userRow.password_hash === password ||
-      userRow.password_hash === String(password).trim()
+    // 2. Validação segura da palavra-passe (bcrypt ou plain text fallback)
+    let isMatch = false
+    if (userRow.password_hash?.startsWith('$2')) {
+      try {
+        isMatch = bcrypt.compareSync(cleanPass, userRow.password_hash)
+      } catch {
+        isMatch = false
+      }
+    } else {
+      isMatch = userRow.password_hash === cleanPass
+    }
 
     if (!isMatch) {
       return NextResponse.json(
