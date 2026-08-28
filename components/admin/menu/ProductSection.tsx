@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { formatCurrency } from '@/lib/i18n/formatters'
-import { Plus, Pencil, Trash2, CheckCircle2, PauseCircle } from 'lucide-react'
+import { Pencil, Trash2, CheckCircle2, PauseCircle } from 'lucide-react'
 
 interface ProductSectionProps {
   title: string
@@ -42,8 +42,8 @@ export default function ProductSection({
         </div>
 
         {isSuperAdmin && (
-          <Button size="sm" variant="outline" onClick={() => onNew(collection)} className="text-xs gap-1 h-8 rounded-xl font-bold border-purple-200 hover:bg-purple-50">
-            <Plus className="h-3.5 w-3.5" /> Adicionar Item Master
+          <Button size="sm" variant="outline" onClick={() => onNew(collection)} className="text-xs h-8 px-3 rounded-xl font-bold border-purple-200 hover:bg-purple-50">
+            <span>Adicionar Item Master</span>
           </Button>
         )}
       </div>

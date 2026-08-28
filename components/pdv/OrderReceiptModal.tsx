@@ -5,7 +5,7 @@ import { Order } from '@/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatOrderNumber } from '@/lib/i18n/formatters'
-import { CheckCircle2, Printer, Plus } from 'lucide-react'
+import { CheckCircle2, Printer } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { generateOrderReceiptUrl } from '@/lib/services/qrCodeService'
 
@@ -56,8 +56,7 @@ export default function OrderReceiptModal({
             <Printer className="h-3.5 w-3.5" />
             <span>Imprimir Talão</span>
           </Button>
-          <Button size="sm" onClick={onNewOrder} className="w-full text-xs font-bold bg-purple-600 hover:bg-purple-700 gap-1.5">
-            <Plus className="h-3.5 w-3.5" />
+          <Button size="sm" onClick={onNewOrder} className="w-full text-xs font-bold bg-purple-600 hover:bg-purple-700 cursor-pointer">
             <span>Novo Pedido</span>
           </Button>
         </DialogFooter>

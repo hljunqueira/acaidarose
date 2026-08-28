@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Plus, Edit2, Trash2, Tag, Percent, Calendar, Clock, Gift, ShieldCheck, Store, CheckCircle, PauseCircle } from 'lucide-react'
+import { Edit2, Trash2, Tag, Percent, Calendar, Clock, Gift, ShieldCheck, Store, CheckCircle, PauseCircle } from 'lucide-react'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useOffersStore, OfferItem } from '@/lib/stores/offersStore'
@@ -198,9 +198,8 @@ export default function MenuOffersAdmin({ tenantId }: MenuOffersAdminProps) {
 
         <Button
           onClick={handleOpenNew}
-          className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-10 px-4 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 flex items-center gap-1.5 cursor-pointer"
+          className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-10 px-4 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer"
         >
-          <Plus className="h-4 w-4" />
           <span>{activeTab === 'GLOBAL' && isSuperAdmin ? 'Nova Campanha da Rede' : 'Nova Promoção da Loja'}</span>
         </Button>
       </div>

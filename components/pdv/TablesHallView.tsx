@@ -10,7 +10,7 @@ import TableCheckoutDetail from './TableCheckoutDetail'
 import QuickProductSearchDialog from './QuickProductSearchDialog'
 import CashierOperationsDialog from './CashierOperationsDialog'
 import PDVView from './PDVView'
-import { Store, ShoppingBag, Plus, RefreshCw, Printer } from 'lucide-react'
+import { Store, ShoppingBag, RefreshCw, Printer } from 'lucide-react'
 
 interface TablesHallViewProps {
   tenantId: string
@@ -385,9 +385,8 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             <Button
               type="button"
               onClick={() => setActiveTab('BALCAO')}
-              className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer gap-1.5"
+              className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer"
             >
-              <Plus className="h-4 w-4" />
               <span>Novo Pedido / Montar Açaí</span>
             </Button>
           </div>

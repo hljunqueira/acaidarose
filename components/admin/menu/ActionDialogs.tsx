@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/i18n/formatters'
-import { Plus, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
 interface ActionDialogProps {
   open: boolean
@@ -450,9 +450,8 @@ export function PairingDialog({ open, onOpenChange, product }: ActionDialogProps
             <button
               type="button"
               onClick={handleAddItem}
-              className="px-3 py-1.5 rounded-sm bg-[#0066ff] hover:bg-[#0052cc] text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs mt-2"
+              className="px-3 py-1.5 rounded-sm bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs cursor-pointer shadow-xs mt-2"
             >
-              <Plus className="h-3.5 w-3.5" />
               <span>Adicionar outro item</span>
             </button>
           </div>

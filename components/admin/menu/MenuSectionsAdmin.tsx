@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner'
 import {
   LayoutGrid,
-  Plus,
   Edit2,
   Trash2,
   AlertTriangle,
@@ -153,9 +152,8 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
         {isSuperAdmin && (
           <Button
             onClick={handleOpenNew}
-            className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-9 px-4 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 flex items-center gap-1.5 cursor-pointer"
+            className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-9 px-4 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
             <span>Novo Menu</span>
           </Button>
         )}

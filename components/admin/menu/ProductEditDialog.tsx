@@ -12,7 +12,6 @@ import {
   EyeOff,
   Edit2,
   Trash2,
-  Plus,
   Camera,
   Lock,
   Info,
@@ -318,7 +317,7 @@ export default function ProductEditDialog({
                   onClick={() => setShowImageInput(true)}
                   className="h-20 flex-1 border border-dashed border-purple-200 dark:border-white/20 rounded-xl flex flex-col items-center justify-center gap-1 text-[10px] font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50/50 dark:hover:bg-white/5 cursor-pointer text-center p-2 transition"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Camera className="h-4 w-4" />
                   <span>PERSONALIZAR FOTO</span>
                 </div>
               </div>

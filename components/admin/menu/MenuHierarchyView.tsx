@@ -11,7 +11,6 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useMenuConfigStore, CustomCategoryItem } from '@/lib/stores/menuConfigStore'
 import {
-  PlusCircle,
   RefreshCw,
   Filter,
   Building2,
@@ -402,14 +401,13 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
               )
             })}
 
-          {/* Botão + Adicionar Categoria */}
+          {/* Botão Adicionar Categoria */}
           {isSuperAdmin && (
             <button
               type="button"
               onClick={() => setAddCatDialogOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-100 dark:bg-pink-950/40 border border-purple-200 dark:border-pink-500/30 text-purple-900 dark:text-pink-300 hover:bg-purple-200/70 dark:hover:bg-pink-900/40 flex items-center gap-1 transition cursor-pointer shrink-0 whitespace-nowrap"
+              className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-100 dark:bg-pink-950/40 border border-purple-200 dark:border-pink-500/30 text-purple-900 dark:text-pink-300 hover:bg-purple-200/70 dark:hover:bg-pink-900/40 transition cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <PlusCircle className="h-3 w-3" />
               <span>Adicionar Categoria</span>
             </button>
           )}
@@ -429,14 +427,13 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             </button>
           )}
 
-          {/* + Adicionar Novo Item (Verde - Apenas Franqueadora Master) */}
+          {/* Adicionar Novo Item (Verde - Apenas Franqueadora Master) */}
           {isSuperAdmin && (
             <button
               type="button"
               onClick={handleOpenNew}
-              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
+              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <PlusCircle className="h-3.5 w-3.5" />
               <span>Novo Item</span>
             </button>
           )}

@@ -9,7 +9,6 @@ import {
   GripVertical,
   Eye,
   Trash2,
-  Plus,
   HelpCircle,
   Camera,
   Layers,
@@ -225,9 +224,8 @@ export default function OptionModelDialog({
               <button
                 type="button"
                 onClick={handleAddOption}
-                className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-0.5 cursor-pointer"
+                className="text-purple-600 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer"
               >
-                <Plus className="h-3.5 w-3.5" />
                 <span>Adicionar Item</span>
               </button>
             </div>

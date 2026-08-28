@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, ShoppingBag, Check, Star, AlertCircle, Utensils, CreditCard } from 'lucide-react'
+import { ShoppingBag, Check, Star, AlertCircle, Utensils, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { CONTAINERS, BASES, TOPPINGS } from '@/lib/catalog'
@@ -298,7 +298,7 @@ export default function NewOrderManualModal({
                       {isSelected ? (
                         <Check className="h-4 w-4 flex-shrink-0" />
                       ) : (
-                        <Plus className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
+                        <div className="h-3.5 w-3.5 rounded-full border border-amber-600/40 flex-shrink-0" />
                       )}
                     </button>
                   )
@@ -451,9 +451,9 @@ export default function NewOrderManualModal({
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 h-10 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-black text-xs gap-1.5 shadow-sm"
+                  className="flex-1 h-10 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-black text-xs gap-1.5 shadow-sm cursor-pointer"
                 >
-                  <Plus className="h-4 w-4" />
+                  <ShoppingBag className="h-4 w-4" />
                   <span>{loading ? 'A registar...' : 'Abrir Comanda'}</span>
                 </Button>
               </div>

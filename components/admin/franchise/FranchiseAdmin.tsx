@@ -14,7 +14,6 @@ import StoreDetailsDialog from './StoreDetailsDialog'
 import CreateStoreDialog from './CreateStoreDialog'
 import {
   Building2,
-  Plus,
   TrendingUp,
   ShoppingBag,
   Users,
@@ -87,9 +86,8 @@ export default function FranchiseAdmin() {
         <Button
           size="sm"
           onClick={() => setCreateOpen(true)}
-          className="bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-800 hover:to-fuchsia-800 text-white font-extrabold text-xs rounded-xl shadow-md gap-1.5 h-10 px-4"
+          className="bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-800 hover:to-fuchsia-800 text-white font-extrabold text-xs rounded-xl shadow-md h-10 px-4 cursor-pointer"
         >
-          <Plus className="h-4 w-4" />
           <span>Cadastrar Nova Franquia</span>
         </Button>
       </div>

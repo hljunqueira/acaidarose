@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import UserTable from './UserTable'
 import UserEditDialog from './UserEditDialog'
-import { Users, Plus, ShieldCheck, ShieldAlert, KeyRound, UserCheck } from 'lucide-react'
+import { Users, ShieldCheck, ShieldAlert, KeyRound, UserCheck } from 'lucide-react'
 
 interface UsersAdminProps {
   tenantId?: string
@@ -136,10 +136,9 @@ export default function UsersAdmin({ tenantId = 'tenant-torres-novas', currentUs
             <Button
               size="sm"
               onClick={handleOpenNew}
-              className="h-9 text-xs font-bold bg-purple-900 hover:bg-purple-950 dark:bg-pink-600 dark:hover:bg-pink-700 text-white gap-1.5 rounded-xl shadow-xs cursor-pointer px-3.5"
+              className="h-9 text-xs font-bold bg-purple-900 hover:bg-purple-950 dark:bg-pink-600 dark:hover:bg-pink-700 text-white rounded-xl shadow-xs cursor-pointer px-3.5"
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{isSuperAdmin ? '+ Novo Utilizador' : '+ Novo Operador de Caixa'}</span>
+              <span>{isSuperAdmin ? 'Novo Utilizador' : 'Novo Operador de Caixa'}</span>
             </Button>
           ) : (
             <Badge className="bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border-amber-300 text-xs py-1.5 px-3 rounded-xl font-bold">
