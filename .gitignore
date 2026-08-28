@@ -1,34 +1,69 @@
-# Dependencies
-/node_modules
-/.pnp
+# =============================================================================
+# Açaí da Rose — Regras Estritas de Segurança & GitIgnore
+# Proteção total contra vazamento de credenciais, certificados e dados locais
+# =============================================================================
+
+# Dependências
+node_modules/
+.pnp
 .pnp.js
 
-# Testing
-/coverage
-
-# Next.js
-/.next/
-/out/
+# Build & Compilação
+.next/
+out/
+build/
+dist/
 next-env.d.ts
 *.tsbuildinfo
 
-# Production builds
-/build
-dist/
-
-# Environment files
-.env*
+# Variáveis de Ambiente & Credenciais (PROIBIDO SUBIR NO GITHUB)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+.env*.local
+*.env
 !.env.example
 
-# Logs and debug files
+# Vercel & Deploy
+.vercel
+
+# Chaves de Criptografia, Certificados e SSH
+*.pem
+*.key
+*.cert
+*.crt
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.keystore
+
+# Backups e Dumps do Banco de Dados
+*.sql.gz
+*.dump
+*.tar
+*.tar.gz
+backups/
+data/
+
+# Logs e Telemetria de Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
-# System and IDE files
+# Arquivos de Sistema e IDEs
 .DS_Store
+Thumbs.db
 .idea/
-*.pem
+.vscode/
+*.swp
+*.swo
 
-.vercel
+# Diretórios Temporários de Scratch
+scratch/
+.system_generated/

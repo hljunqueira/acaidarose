@@ -1,59 +1,57 @@
 /**
  * Script de Automação de Variáveis de Ambiente na Vercel
- * Executa: node scripts/set-vercel-env.js [token-opcional]
+ * Lê dinamicamente do arquivo local .env.local e sincroniza com a Vercel
+ * Executa: npm run env:sync
  */
 
 const { execSync } = require('child_process')
+const fs = require('fs')
+const path = require('path')
 
-const envVars = {
-  DATABASE_URL: 'postgresql://acai_admin:da9d329d3252f5b61a2d810b4b765ce9@198.50.117.110:5432/acaidarose_prod',
-  DIRECT_URL: 'postgresql://acai_admin:da9d329d3252f5b61a2d810b4b765ce9@198.50.117.110:5432/acaidarose_prod',
-  JWT_SECRET: 'ca90799f2d1e2e604f32c3f8fba3bceb3b27be30058ec0ffad8a23053bbef50a',
-  AUTH_SECRET: 'ca90799f2d1e2e604f32c3f8fba3bceb3b27be30058ec0ffad8a23053bbef50a',
-  NEXT_PUBLIC_APP_URL: 'https://acaidarose.vercel.app',
-  NEXT_PUBLIC_API_URL: 'https://acaidarose.vercel.app/api',
-  NEXT_PUBLIC_APP_ENV: 'production',
-}
+console.log('🚀 Iniciando sincronização segura de variáveis com a Vercel...\n')
 
-const environments = ['production', 'preview', 'development']
+// 1. Carrega o arquivo .env.local
+const envLocalPath = path.join(process.cwd(), '.env.local')
 
-console.log('🚀 Iniciando sincronização de variáveis com a Vercel (CLI 59.9.1)...\n')
-
-// Testa se está autenticado
-try {
-  execSync('npx vercel whoami', { stdio: 'pipe' })
-} catch (e) {
-  console.error('\n⚠️ VOCÊ PRECISA DE FAZER LOGIN NA VERCEL PRIMEIRO:')
-  console.error('👉 Execute no terminal: npx vercel login')
-  console.error('Depois de autenticar no navegador, execute novamente: npm run env:sync\n')
+if (!fs.existsSync(envLocalPath)) {
+  console.error('❌ Arquivo .env.local não encontrado!')
+  console.error('Crie o arquivo .env.local com base no .env.example antes de sincronizar.')
   process.exit(1)
 }
 
-const tokenArg = process.argv[2] ? `--token ${process.argv[2]}` : ''
+const envContent = fs.readFileSync(envLocalPath, 'utf8')
+const envVars = {}
 
-for (const [key, value] of Object.entries(envVars)) {
-  for (const env of environments) {
-    try {
-      console.log(`⏳ Configurando ${key} em [${env}]...`)
-      
-      try {
-        execSync(`npx vercel env rm ${key} ${env} --yes ${tokenArg}`, {
-          stdio: 'ignore',
-        })
-      } catch {
-        // Ignora se não existir
-      }
-
-      execSync(`echo "${value}" | npx vercel env add ${key} ${env} --force ${tokenArg}`, {
-        stdio: 'pipe',
-        shell: true,
-      })
-
-      console.log(`✅ ${key} configurado com sucesso em [${env}]`)
-    } catch (err) {
-      console.error(`⚠️ Erro ao adicionar ${key} em [${env}]:`, err.message || err)
+envContent.split('\n').forEach((line) => {
+  const trimmed = line.trim()
+  if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+    const idx = trimmed.indexOf('=')
+    const key = trimmed.slice(0, idx).trim()
+    const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
+    if (key && val) {
+      envVars[key] = val
     }
+  }
+})
+
+// 2. Sincroniza cada variável em Production
+for (const [key, value] of Object.entries(envVars)) {
+  try {
+    console.log(`⏳ Gravando ${key} em Production...`)
+
+    try {
+      execSync(`npx vercel env rm ${key} production --yes`, { stdio: 'ignore' })
+    } catch {}
+
+    execSync(`npx vercel env add ${key} production --force`, {
+      input: Buffer.from(value),
+      stdio: ['pipe', 'inherit', 'inherit'],
+    })
+
+    console.log(`✅ ${key} sincronizado com sucesso!\n`)
+  } catch (err) {
+    console.error(`⚠️ Erro ao adicionar ${key}:`, err.message || err)
   }
 }
 
-console.log('\n🎉 Todas as variáveis de ambiente foram sincronizadas na Vercel!')
+console.log('🎉 Todas as variáveis do .env.local foram sincronizadas na Vercel!')

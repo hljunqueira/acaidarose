@@ -1,9 +1,9 @@
 import { Pool } from 'pg'
 
-// Conexão direta com PostgreSQL 16 na VPS (198.50.117.110:5432/acaidarose_prod)
-const connectionString =
-  process.env.DATABASE_URL ||
-  'postgresql://acai_admin:da9d329d3252f5b61a2d810b4b765ce9@198.50.117.110:5432/acaidarose_prod'
+const rawConnectionString = process.env.DATABASE_URL || ''
+
+// Sanitiza para remover aspas acidentais inseridas por CLIs
+const connectionString = rawConnectionString.trim().replace(/^["']|["']$/g, '').trim()
 
 let pool: Pool
 
@@ -13,16 +13,16 @@ declare global {
 
 if (process.env.NODE_ENV === 'production') {
   pool = new Pool({
-    connectionString,
+    connectionString: connectionString || undefined,
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
-    ssl: false, // Conexão direta de rede com VPS ou via SSL se configurado
+    ssl: false,
   })
 } else {
   if (!global.__postgres_pool) {
     global.__postgres_pool = new Pool({
-      connectionString,
+      connectionString: connectionString || undefined,
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
@@ -33,13 +33,10 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 export async function query(text: string, params?: any[]) {
-  const start = Date.now()
-  const res = await pool.query(text, params)
-  const duration = Date.now() - start
-  if (process.env.NODE_ENV !== 'production') {
-    // Log leve de consulta em desenvolvimento
-    // console.log('executed query', { text, duration, rows: res.rowCount })
+  if (!connectionString) {
+    throw new Error('DATABASE_URL não configurada nas variáveis de ambiente.')
   }
+  const res = await pool.query(text, params)
   return res
 }
 

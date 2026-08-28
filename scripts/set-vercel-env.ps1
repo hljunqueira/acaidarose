@@ -1,35 +1,29 @@
-# Script PowerShell para Sincronização de Variáveis na Vercel
-# Uso: .\scripts\set-vercel-env.ps1
+# Script PowerShell para Sincronização Segura de Variáveis na Vercel
+# Lê dinamicamente do .env.local
 
-$envVars = @{
-    "DATABASE_URL"        = "postgresql://acai_admin:da9d329d3252f5b61a2d810b4b765ce9@198.50.117.110:5432/acaidarose_prod"
-    "DIRECT_URL"          = "postgresql://acai_admin:da9d329d3252f5b61a2d810b4b765ce9@198.50.117.110:5432/acaidarose_prod"
-    "JWT_SECRET"          = "ca90799f2d1e2e604f32c3f8fba3bceb3b27be30058ec0ffad8a23053bbef50a"
-    "AUTH_SECRET"         = "ca90799f2d1e2e604f32c3f8fba3bceb3b27be30058ec0ffad8a23053bbef50a"
-    "NEXT_PUBLIC_APP_URL" = "https://acaidarose.vercel.app"
-    "NEXT_PUBLIC_API_URL" = "https://acaidarose.vercel.app/api"
-    "NEXT_PUBLIC_APP_ENV" = "production"
+$envFile = Join-Path $PSScriptRoot "..\.env.local"
+
+if (-not (Test-Path $envFile)) {
+    Write-Host "❌ Arquivo .env.local não encontrado!" -ForegroundColor Red
+    exit 1
 }
 
-$environments = @("production", "preview", "development")
+Write-Host "🚀 Sincronizando variáveis do .env.local com a Vercel..." -ForegroundColor Cyan
 
-Write-Host "🚀 Iniciando sincronização de variáveis com a Vercel..." -ForegroundColor Cyan
+Get-Content $envFile | ForEach-Object {
+    $line = $_.Trim()
+    if ($line -and -not $line.StartsWith("#") -and $line.Contains("=")) {
+        $parts = $line.Split("=", 2)
+        $key = $parts[0].Trim()
+        $value = $parts[1].Trim().Trim('"').Trim("'")
 
-foreach ($item in $envVars.GetEnumerator()) {
-    $key = $item.Key
-    $value = $item.Value
-
-    foreach ($env in $environments) {
-        Write-Host "⏳ Configurando $key ($env)..." -ForegroundColor Yellow
-
-        # Remove se existir
-        npx vercel env rm $key $env --yes 2>$null
-
-        # Adiciona
-        $value | npx vercel env add $key $env --force
-
-        Write-Host "✅ $key configurado em [$env]" -ForegroundColor Green
+        if ($key -and $value) {
+            Write-Host "⏳ Configurando $key em Production..." -ForegroundColor Yellow
+            npx vercel env rm $key production --yes 2>$null
+            $value | npx vercel env add $key production --force
+            Write-Host "✅ $key configurado!" -ForegroundColor Green
+        }
     }
 }
 
-Write-Host "`n🎉 Todas as variáveis foram enviadas para a Vercel!" -ForegroundColor Green
+Write-Host "`n🎉 Todas as variáveis foram sincronizadas na Vercel com sucesso!" -ForegroundColor Green
