@@ -104,8 +104,17 @@ export default function ProductRowItem({
           </div>
 
           <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden bg-purple-50 dark:bg-white/5 shrink-0 border border-purple-150 dark:border-white/10 relative">
-            {product.image ? (
-              <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+            {product.videoUrl ? (
+              <video
+                src={product.videoUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="h-full w-full object-cover"
+              />
+            ) : (product.image || product.videoPoster) ? (
+              <img src={product.image || product.videoPoster} alt={product.name} className="h-full w-full object-cover" />
             ) : (
               <div className="h-full w-full flex items-center justify-center text-xs font-bold text-purple-700 dark:text-pink-300">
                 {product.name.slice(0, 2)}

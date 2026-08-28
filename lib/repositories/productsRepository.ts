@@ -50,7 +50,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           limiteCremes: row.limite_bases,
           limiteFrutas: limiteFrutas,
           emoji: '',
-          image: row.image_url,
+          image: row.image_url || row.video_poster,
           videoUrl: row.video_url,
           videoPoster: row.video_poster,
           availableHours: row.available_hours,
