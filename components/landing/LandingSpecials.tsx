@@ -9,7 +9,7 @@ export default function LandingSpecials() {
     <section id="especiais" className="max-w-[1536px] mx-auto px-6 sm:px-12 lg:px-16 py-12 space-y-8">
       <div className="border-b border-white/10 pb-4 text-left">
         <span className="text-pink-400 text-xs font-black uppercase tracking-wider">
-          Além da Tigela Tradicional
+          Além da Taça Tradicional
         </span>
         <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight mt-1">
           Especialidades da Casa

@@ -11,6 +11,7 @@ export interface HighlightItem {
   badgeColor: string
   price: number
   imageUrl: string
+  videoUrl?: string
   active: boolean
   displayOrder: number
 }
@@ -24,17 +25,19 @@ const DEFAULT_HIGHLIGHTS: HighlightItem[] = [
     badgeColor: 'bg-pink-600',
     price: 9.50,
     imageUrl: '/images/official/acai_copo_500g.jpg',
+    videoUrl: '/videos/hero_cup_rotation.mp4',
     active: true,
     displayOrder: 1,
   },
   {
     id: 'hl-2',
-    title: 'Tigela Artesanal 750g',
-    subtitle: 'Apresentação nobre em tigela com morangos frescos, kiwi, banana e sementes',
+    title: 'Taça Artesanal 750g',
+    subtitle: 'Apresentação nobre em taça com morangos frescos, kiwi, banana e sementes',
     badgeLabel: 'EXPERIÊNCIA SUPREMA',
     badgeColor: 'bg-fuchsia-600',
     price: 13.50,
     imageUrl: '/images/official/acai_tigela_750g.jpg',
+    videoUrl: '/videos/hero_revealing_cup.mp4',
     active: true,
     displayOrder: 2,
   },
@@ -46,6 +49,7 @@ const DEFAULT_HIGHLIGHTS: HighlightItem[] = [
     badgeColor: 'bg-purple-600',
     price: 18.00,
     imageUrl: '/images/official/acai_balde_1kg.jpg',
+    videoUrl: '/videos/hero_orbiting_cup.mp4',
     active: true,
     displayOrder: 3,
   },
@@ -57,6 +61,7 @@ const DEFAULT_HIGHLIGHTS: HighlightItem[] = [
     badgeColor: 'bg-emerald-600',
     price: 4.50,
     imageUrl: '/images/official/milkshake_acai.png',
+    videoUrl: '/videos/hero_gliding_texture.mp4',
     active: true,
     displayOrder: 4,
   },

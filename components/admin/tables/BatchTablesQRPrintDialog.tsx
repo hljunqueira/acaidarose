@@ -12,11 +12,14 @@ interface BatchTablesQRPrintDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+const STORE_SLUGS: Record<string, string> = {
+  '11111111-1111-1111-1111-111111111111': 'aveiro',
+  '22222222-2222-2222-2222-222222222222': 'torres-novas',
+}
+
 const STORE_LABELS: Record<string, string> = {
-  'tenant-aveiro': 'Filial Aveiro',
-  'tenant-lisboa': 'Filial Lisboa',
-  'tenant-santarem': 'Filial Santarém',
-  'tenant-torres-novas': 'Matriz Torres Novas',
+  '11111111-1111-1111-1111-111111111111': 'Matriz Aveiro',
+  '22222222-2222-2222-2222-222222222222': 'Filial Torres Novas',
 }
 
 export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }: BatchTablesQRPrintDialogProps) {
@@ -40,8 +43,8 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-4">
           {tables.map((table) => {
-            const lojaSlug = table.tenantId?.replace('tenant-', '') || 'torres-novas'
-            const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${table.number.toString().padStart(2, '0')}&loja=${encodeURIComponent(lojaSlug)}`
+            const lojaSlug = STORE_SLUGS[table.tenantId] || 'aveiro'
+            const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${table.number.toString().padStart(2, '0')}&loja=${lojaSlug}`
             const branchLabel = STORE_LABELS[table.tenantId] || 'Açaí da Rose'
 
             return (

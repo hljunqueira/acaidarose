@@ -162,11 +162,22 @@ export default function CustomerProductDetail({
           {/* Coluna Esquerda: Imagem & Resumo do Tamanho */}
           <div className="md:col-span-4 space-y-4">
             <div className="rounded-3xl overflow-hidden border border-white/15 bg-purple-950/40 shadow-lg">
-              <img
-                src={CUP_IMAGES[container.weightGrams] || container.image || '/images/official/acai_copo_500g.jpg'}
-                alt={container.name}
-                className="w-full h-36 sm:h-44 object-cover"
-              />
+              {container.videoUrl ? (
+                <video
+                  src={container.videoUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-36 sm:h-44 object-cover"
+                />
+              ) : (
+                <img
+                  src={CUP_IMAGES[container.weightGrams] || container.image || '/images/official/acai_copo_500g.jpg'}
+                  alt={container.name}
+                  className="w-full h-36 sm:h-44 object-cover"
+                />
+              )}
             </div>
 
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 sm:space-y-2">

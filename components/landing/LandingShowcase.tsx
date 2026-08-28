@@ -33,7 +33,7 @@ const SIZES = [
   },
   {
     weight: 750,
-    name: 'Tigela 750gr',
+    name: 'Taça 750gr',
     desc: 'Frutas & Toppings livres à vontade + 1 creme especial opcional',
     img: '/images/official/acai_tigela_750g.jpg',
     rule: 'Frutas & Toppings Livres',
@@ -58,7 +58,7 @@ export default function LandingShowcase() {
           Catálogo Oficial
         </span>
         <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight mt-1.5">
-          Copos & Tigelas Artesanais
+          Copos & Taças Artesanais
         </h2>
         <p className="text-sm sm:text-base text-purple-200/80 mt-2 max-w-2xl">
           Monte a sua combinação ideal com frutas frescas cortadas na hora, cremes artesanais e toppings selecionados.

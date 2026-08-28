@@ -38,7 +38,7 @@ export default function LandingFooter() {
           <ul className="space-y-1.5 text-xs text-purple-200/70">
             <li>
               <a href="#produtos" className="hover:text-pink-300 transition">
-                Copos & Tigelas Artesanais
+                Copos & Taças Artesanais
               </a>
             </li>
             <li>

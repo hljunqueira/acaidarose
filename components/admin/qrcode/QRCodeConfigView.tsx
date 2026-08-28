@@ -25,7 +25,7 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
   const [customerPhoneRule, setCustomerPhoneRule] = useState<'REQUIRED' | 'OPTIONAL' | 'NONE'>('REQUIRED')
   const [customerNifRule, setCustomerNifRule] = useState<'OPTIONAL' | 'REQUIRED' | 'NONE'>('OPTIONAL')
 
-  const storeSlug = tenantId?.startsWith('11111111') ? 'aveiro-1' : 'torres-novas-2'
+  const storeSlug = tenantId?.startsWith('11111111') ? 'aveiro' : 'torres-novas'
   const publicUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/menu?loja=${storeSlug}`
     : `https://acaidarose.vercel.app/menu?loja=${storeSlug}`

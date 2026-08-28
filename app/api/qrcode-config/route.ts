@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       bannerUrl: '',
       tenantId,
       storeNumber: tenantId.startsWith('11111111') ? 1 : 2,
-      storeSlug: tenantId.startsWith('11111111') ? 'aveiro-1' : 'torres-novas-2',
+      storeSlug: tenantId.startsWith('11111111') ? 'aveiro' : 'torres-novas',
     }
 
     return NextResponse.json({ config })

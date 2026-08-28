@@ -26,18 +26,19 @@ interface SingleTableQRDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+const STORE_SLUGS: Record<string, string> = {
+  '11111111-1111-1111-1111-111111111111': 'aveiro',
+  '22222222-2222-2222-2222-222222222222': 'torres-novas',
+}
+
 const STORE_LABELS: Record<string, string> = {
-  'tenant-aveiro': 'Filial Aveiro',
-  'tenant-lisboa': 'Filial Lisboa (Parque das Nações)',
-  'tenant-santarem': 'Filial Santarém',
-  'tenant-torres-novas': 'Matriz Central (Torres Novas)',
+  '11111111-1111-1111-1111-111111111111': 'Matriz Aveiro',
+  '22222222-2222-2222-2222-222222222222': 'Filial Torres Novas',
 }
 
 const getStoreCityLabel = (tId?: string) => {
   if (!tId) return 'Açaí da Rose'
-  if (STORE_LABELS[tId]) return STORE_LABELS[tId]
-  const clean = tId.replace('tenant-', '').replace(/-/g, ' ')
-  return `Filial ${clean.charAt(0).toUpperCase() + clean.slice(1)}`
+  return STORE_LABELS[tId] || 'Açaí da Rose'
 }
 
 export default function SingleTableQRDialog({ table, tenantId, open, onOpenChange }: SingleTableQRDialogProps) {
@@ -53,12 +54,12 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
     }
   }, [])
 
-  const effectiveTenantId = table.tenantId || tenantId || 'tenant-aveiro'
+  const effectiveTenantId = table.tenantId || tenantId || '11111111-1111-1111-1111-111111111111'
   const activeOrigin = (customOrigin.trim() || detectedOrigin).replace(/\/$/, '')
-  const lojaSlug = effectiveTenantId.replace('tenant-', '')
+  const lojaSlug = STORE_SLUGS[effectiveTenantId] || 'aveiro'
   const storeTitle = getStoreCityLabel(effectiveTenantId)
   const formattedTableNumber = table.number.toString().padStart(2, '0')
-  const tableUrl = `${activeOrigin}/menu?tipo=mesa&numero=${formattedTableNumber}&loja=${encodeURIComponent(lojaSlug)}`
+  const tableUrl = `${activeOrigin}/menu?tipo=mesa&numero=${formattedTableNumber}&loja=${lojaSlug}`
 
   const handleCopyLink = async () => {
     try {

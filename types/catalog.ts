@@ -13,6 +13,9 @@ export interface ProductContainer {
   limiteComplementosGratis?: number // retrocompatibilidade
   emoji: string
   image?: string | null
+  videoUrl?: string | null
+  videoPoster?: string | null
+  availableHours?: any
   displayOrder?: number
   active: boolean
   isAvailableInStore?: boolean
@@ -24,6 +27,9 @@ export interface ProductBase {
   name: string
   description?: string
   emoji?: string
+  videoUrl?: string | null
+  videoPoster?: string | null
+  availableHours?: any
   displayOrder?: number
   active: boolean
   isAvailableInStore?: boolean
@@ -46,6 +52,9 @@ export interface ProductTopping {
   priceTierLow?: number // até 500g (ex: +1€ ou +2€)
   priceTierHigh?: number // acima de 500g (ex: +2€ ou +4€)
   emoji: string
+  videoUrl?: string | null
+  videoPoster?: string | null
+  availableHours?: any
   displayOrder?: number
   active: boolean
   isAvailableInStore?: boolean

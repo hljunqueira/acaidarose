@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
 import CustomerPromoCarousel from '@/components/menu/CustomerPromoCarousel'
 import { Plus, Heart, Info } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface CustomerMenuHomeProps {
   catalog: CatalogData
@@ -22,6 +23,30 @@ const CUP_IMAGES: Record<number, string> = {
   500: '/images/official/acai_copo_500g.jpg',
   750: '/images/official/acai_tigela_750g.jpg',
   1000: '/images/official/acai_balde_1kg.jpg',
+}
+
+export function isProductTimeAvailable(availableHours: any): boolean {
+  if (!availableHours) return true
+  try {
+    const hours = typeof availableHours === 'string' ? JSON.parse(availableHours) : availableHours
+    if (!hours || !Array.isArray(hours.days)) return true
+    
+    // Pegar o dia da semana local (0 = Domingo, 1 = Segunda, etc.)
+    const now = new Date()
+    const currentDay = now.getDay()
+    if (!hours.days.includes(currentDay)) return false
+
+    const [startH, startM] = hours.startTime.split(':').map(Number)
+    const [endH, endM] = hours.endTime.split(':').map(Number)
+
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const startMinutes = startH * 60 + startM
+    const endMinutes = endH * 60 + endM
+
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+  } catch {
+    return true
+  }
 }
 
 export default function CustomerMenuHome({
@@ -71,7 +96,7 @@ export default function CustomerMenuHome({
             <p className="text-xs sm:text-sm text-purple-200/70 mt-1 max-w-xl">
               {isCatalogOnly
                 ? 'Consulte os tamanhos e bases disponíveis na nossa unidade.'
-                : 'Selecione o tamanho para personalizar as suas bases geladas, frutas frescas e acompanhamentos.'}
+                : 'Selecione o tamanho para personalizar as suas bases, frutas frescas e acompanhamentos.'}
             </p>
           </div>
 
@@ -87,6 +112,7 @@ export default function CustomerMenuHome({
           {containers.map((c, index) => {
             const isFree = c.weightGrams >= 500
             const img = CUP_IMAGES[c.weightGrams] || c.image || '/images/official/acai_copo_500g.jpg'
+            const isTimeAvailable = isProductTimeAvailable(c.availableHours)
 
             return (
               <motion.div
@@ -94,25 +120,54 @@ export default function CustomerMenuHome({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
-                onClick={() => onSelectContainer(c)}
-                className="p-4 rounded-3xl bg-gradient-to-b from-[#24043b]/90 to-[#160226]/90 border border-white/15 hover:border-pink-500/60 transition-all cursor-pointer flex flex-col justify-between group shadow-xl hover:shadow-2xl hover:shadow-pink-600/20"
+                onClick={() => {
+                  if (!isTimeAvailable) {
+                    toast.error('Este produto não está disponível neste horário!')
+                    return
+                  }
+                  onSelectContainer(c)
+                }}
+                className={`p-4 rounded-3xl bg-gradient-to-b from-[#24043b]/90 to-[#160226]/90 border border-white/15 hover:border-pink-500/60 transition-all cursor-pointer flex flex-col justify-between group shadow-xl hover:shadow-2xl hover:shadow-pink-600/20 ${
+                  !isTimeAvailable ? 'opacity-40 cursor-not-allowed border-red-500/30' : ''
+                }`}
               >
                 <div>
                   <div className="relative h-48 w-full rounded-2xl overflow-hidden bg-purple-950/50 mb-3 border border-white/10">
-                    <img
-                      src={img}
-                      alt={c.name}
-                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-
-                    {isFree ? (
-                      <Badge className="absolute top-2.5 right-2.5 bg-emerald-600 text-white font-black text-[9px] py-0.5 px-2.5 rounded-full border-0">
-                        Frutas & Toppings Livres
-                      </Badge>
+                    {c.videoUrl ? (
+                      <video
+                        src={c.videoUrl}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                     ) : (
-                      <Badge className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-pink-300 font-black text-[9px] py-0.5 px-2 rounded-full border border-pink-500/30">
-                        Até {c.limiteFrutas || 2} Frutas
-                      </Badge>
+                      <img
+                        src={img}
+                        alt={c.name}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
+
+                    {!isTimeAvailable && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 text-center">
+                        <span className="text-[10px] font-black text-red-400 uppercase tracking-wider">
+                          Fora de Horário
+                        </span>
+                      </div>
+                    )}
+
+                    {isTimeAvailable && (
+                      isFree ? (
+                        <Badge className="absolute top-2.5 right-2.5 bg-emerald-600 text-white font-black text-[9px] py-0.5 px-2.5 rounded-full border-0">
+                          Frutas & Complementos Livres
+                        </Badge>
+                      ) : (
+                        <Badge className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-pink-300 font-black text-[9px] py-0.5 px-2 rounded-full border border-pink-500/30">
+                          Até {c.limiteFrutas || 2} Frutas
+                        </Badge>
+                      )
                     )}
 
                     <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white">
@@ -126,14 +181,9 @@ export default function CustomerMenuHome({
 
                   <p className="text-[11px] text-purple-200/70 mt-1 line-clamp-2 leading-relaxed">
                     {isFree
-                      ? 'Açaí cremoso batido na hora com frutas frescas e acompanhamentos.'
+                      ? 'Açaí cremoso batido na hora com frutas frescas e complementos.'
                       : `Inclui 1 base gelada, até ${c.limiteFrutas || 2} frutas e ${c.limiteToppings || 3} complementos.`}
                   </p>
-
-                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-pink-400 font-semibold">
-                    <Heart className="h-3 w-3 fill-pink-400" />
-                    <span>Açaí da Rose Portugal</span>
-                  </div>
                 </div>
 
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
@@ -150,7 +200,11 @@ export default function CustomerMenuHome({
                       <span>Detalhes</span>
                     </span>
                   ) : (
-                    <span className="h-10 px-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-pink-600/30 transition-all">
+                    <span className={`h-10 px-4 rounded-xl text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all ${
+                      isTimeAvailable 
+                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 shadow-lg shadow-pink-600/30' 
+                        : 'bg-white/10 text-white/50 cursor-not-allowed'
+                    }`}>
                       <Plus className="h-4 w-4" />
                       <span>{isTable ? 'Pedir na Mesa' : 'Personalizar'}</span>
                     </span>

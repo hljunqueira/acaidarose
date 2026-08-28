@@ -126,6 +126,8 @@ export default function ProductEditDialog({
     price: 12.9,
     code: '2885',
     image: '',
+    videoUrl: '',
+    availableHours: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
   })
   const [saving, setSaving] = useState(false)
   const [optionModelOpen, setOptionModelOpen] = useState(false)
@@ -150,7 +152,9 @@ export default function ProductEditDialog({
         category: getInitialCategory(item),
         price: item.precoBase || item.price || 12.9,
         code: item.code || '2885',
-        image: item.image || '',
+        image: item.image || item.imageUrl || '',
+        videoUrl: item.videoUrl || '',
+        availableHours: item.availableHours || { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
       })
     }
   }, [item])
@@ -174,6 +178,8 @@ export default function ProductEditDialog({
         code: form.code,
         precoBase: Number(form.price),
         category: form.category,
+        videoUrl: form.videoUrl,
+        availableHours: form.availableHours,
         optionGroups: linkedOptionGroups,
       })
       toast.success(`"${form.name}" salvo com sucesso!`)
@@ -389,6 +395,83 @@ export default function ProductEditDialog({
                   <option value="CALDAS PREMIUM">CALDAS NOBRES</option>
                 </optgroup>
               </select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">Link de Vídeo (MenuVid):</Label>
+              <Input
+                value={form.videoUrl}
+                onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+                placeholder="Ex: /videos/hero_cup_rotation.mp4"
+                className="h-9 text-xs rounded-lg border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">Horário de Disponibilidade:</Label>
+              <div className="flex flex-wrap gap-1">
+                {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((dayName, idx) => {
+                  const active = form.availableHours?.days?.includes(idx)
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        const currentDays = form.availableHours?.days || []
+                        const nextDays = currentDays.includes(idx)
+                          ? currentDays.filter((d: number) => d !== idx)
+                          : [...currentDays, idx]
+                        setForm({
+                          ...form,
+                          availableHours: {
+                            ...form.availableHours,
+                            days: nextDays
+                          }
+                        })
+                      }}
+                      className={`h-7 w-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        active
+                          ? 'bg-purple-600 text-white font-black'
+                          : 'bg-purple-50 dark:bg-white/5 text-purple-900 dark:text-purple-300 border border-purple-200 dark:border-white/10'
+                      }`}
+                    >
+                      {dayName}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 space-y-0.5">
+                  <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">Início</span>
+                  <input
+                    type="time"
+                    value={form.availableHours?.startTime || '00:00'}
+                    onChange={(e) => setForm({
+                      ...form,
+                      availableHours: {
+                        ...form.availableHours,
+                        startTime: e.target.value
+                      }
+                    })}
+                    className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none"
+                  />
+                </div>
+                <div className="flex-1 space-y-0.5">
+                  <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">Fim</span>
+                  <input
+                    type="time"
+                    value={form.availableHours?.endTime || '23:59'}
+                    onChange={(e) => setForm({
+                      ...form,
+                      availableHours: {
+                        ...form.availableHours,
+                        endTime: e.target.value
+                      }
+                    })}
+                    className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

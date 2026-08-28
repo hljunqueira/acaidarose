@@ -82,11 +82,22 @@ export default function CustomerPromoCarousel({ onSelectPromo }: { onSelectPromo
 
         {/* Coluna Imagem Oficial 8K Ampliada */}
         <div className="relative z-10 flex-shrink-0 w-48 h-48 sm:w-60 sm:h-60 md:w-72 md:h-72 lg:w-84 lg:h-84 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-purple-950/40">
-          <img
-            src={banner.imageUrl}
-            alt={banner.title}
-            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
-          />
+          {banner.videoUrl ? (
+            <video
+              src={banner.videoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
+            />
+          ) : (
+            <img
+              src={banner.imageUrl}
+              alt={banner.title}
+              className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
+            />
+          )}
         </div>
 
         {/* Botões Laterais de Navegação (Desktop) */}
