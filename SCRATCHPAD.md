@@ -1,26 +1,20 @@
 # SCRATCHPAD
 
-## Status Atual: ✅ REPLICAÇÃO MULTI-LOJA, POLIMENTO DE UI & FAVICON CONCLUÍDOS
+## Status Atual: 🚀 APONTAMENTO DNS API.ACAIDAROSE.PT CRIADO & CONEXÃO REAL POSTGRESQL 16 TESTADA COM SUCESSO
 
-### Tarefas Executadas nesta Rodada:
-1. **Modal de Publicação & Replicação de Cardápio (`ReplicateCatalogModal.tsx`)**:
-   - Layout horizontal compacto em 2 colunas (`max-w-4xl`) sem rolagem excessiva.
-   - Removido o botão `X` duplicado (mantendo apenas o fechar nativo do Radix Dialog).
-   - Removido o ícone de sparkles da caixa de confirmação de produção.
-   - Coluna Esquerda: Seletor de Escopo (**🌐 Toda a Rede** vs **🏪 Lojas Específicas**) com checkboxes das filiais.
-   - Coluna Direita: Resumo dos valores dos 5 copos/tamanhos e aviso de aplicação imediata.
+### Evidências da Execução:
+1. **Apontamento DNS Criado**:
+   - `api.acaidarose.pt` ➡️ `198.50.117.110` (Tipo `A`, TTL `1 hour`).
+   - O domínio principal `acaidarose.pt` continua apontado para o site legado sem nenhuma alteração.
+2. **Conexão Real do Next.js com o Banco PostgreSQL 16**:
+   - `lib/db/postgres.ts` criado com pool de conexões `pg`.
+   - `app/api/health/route.ts` criado para telemetria e health check.
+   - Teste de conectividade direta via TCP: **`CONNECTIVITY SUCCESS! Stores: 2 Server Time: 2026-08-28T02:58:09.406Z`**.
+3. **Validação de Código**:
+   - `npx tsc --noEmit` executado com **código 0 (zero erros de compilação)**.
 
-2. **Propagação Real de Preços no Backend (`productsRepository.ts` & `sync-all/route.ts`)**:
-   - Atualização persistente de preços canônicos (`store.containers`) quando publicado para toda a rede e em `storePriceOverrides[tenantId]` para lojas selecionadas.
-   - Sincronização imediata no PDV de cada unidade e nos menus públicos/QR Code (`/menu?loja=...`).
-
-3. **Favicon e Ícones com a Logo Oficial (`app/layout.tsx` & `public/favicon.ico`)**:
-   - Configurado o favicon e apple-touch-icon oficiais com a logomarca da Açaí da Rose.
-
-4. **Correção de Pedidos QR Code no KDS & Limpeza de Header**:
-   - Pedidos com `WAITING_PAYMENT` e `OPEN` agora entram normalmente na coluna *Novos Pedidos*.
-   - Sufixo textual `(SUPER_ADMIN)` removido do cabeçalho.
-
-
-
-
+### Status da VPS Exclusiva (`198.50.117.110`):
+- Container PostgreSQL 16 (`acaidarose-db`) ativo e saudável na porta `5432` com liberação de firewall UFW.
+- 21 tabelas relacionais ativas, triggers, dados de Aveiro e Torres Novas e 3 utilizadores.
+- Backups automáticos diários às 03:00 AM.
+- Vercel CLI configurada para deploy direto em `https://acaidarose.vercel.app`.

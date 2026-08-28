@@ -35,7 +35,7 @@ import MenuHighlightsAdmin from '@/components/admin/menu/MenuHighlightsAdmin'
 import ReportsModuleView from '@/components/admin/reports/ReportsModuleView'
 import QRCodeConfigView from '@/components/admin/qrcode/QRCodeConfigView'
 import QRCodeOrdersAdmin from '@/components/admin/orders/QRCodeOrdersAdmin'
-import FranchiseCorporatePage from '@/components/admin/franchise/FranchiseCorporatePage'
+import FranchiseCorporateView from '@/components/admin/franchise/FranchiseCorporateView'
 import FranchiseRequestsView from '@/components/admin/franchise/FranchiseRequestsView'
 import StoreCompanySettingsView from '@/components/admin/company/StoreCompanySettingsView'
 import UsersAdmin from '@/components/admin/users/UsersAdmin'
@@ -226,7 +226,7 @@ export default function HomePage() {
           {view === 'menu_categories' && isAdmin && <MenuCategoriesAdmin tenantId={activeTenantId} />}
           {view === 'menu_menus' && isAdmin && <MenuSectionsAdmin tenantId={activeTenantId} />}
           {view === 'menu_highlights' && isAdmin && <MenuHighlightsAdmin tenantId={activeTenantId} />}
-          {view === 'franchise' && isSuperAdmin && <FranchiseCorporatePage />}
+          {view === 'franchise' && (isSuperAdmin || loggedUser?.role === 'FRANCHISOR_ADMIN') && <FranchiseCorporateView />}
           {view === 'franchise_requests' && isAdmin && (
             <FranchiseRequestsView
               tenantId={activeTenantId}

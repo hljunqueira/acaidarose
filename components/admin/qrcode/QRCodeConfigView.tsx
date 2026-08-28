@@ -15,18 +15,19 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // Config State (100% QR Code Salão & Balcão - Sem Delivery)
-  const [mode, setMode] = useState<'DISABLED' | 'VIEW_ONLY' | 'ORDER_EMISSION'>('ORDER_EMISSION')
+  // Config State
+  const [mode, setMode] = useState<'ORDER_EMISSION' | 'VIEW_ONLY'>('ORDER_EMISSION')
+  const [pickupModel, setPickupModel] = useState<'TV_CALL' | 'TABLE_SERVICE'>('TV_CALL')
+  const [allowTableTransfer, setAllowTableTransfer] = useState(true)
   const [allowMbwayPayment, setAllowMbwayPayment] = useState(true)
-  const [tableMode, setTableMode] = useState<'FIXED_QR' | 'TYPED_TABLE'>('FIXED_QR')
-  const [customerNameRule, setCustomerNameRule] = useState<'NONE' | 'OPTIONAL' | 'REQUIRED'>('OPTIONAL')
-  const [customerPhoneRule, setCustomerPhoneRule] = useState<'NONE' | 'OPTIONAL' | 'REQUIRED'>('REQUIRED')
-  const [customerNifRule, setCustomerNifRule] = useState<'NONE' | 'OPTIONAL' | 'REQUIRED'>('OPTIONAL')
   const [allowInternationalPhone, setAllowInternationalPhone] = useState(true)
+  const [customerNameRule, setCustomerNameRule] = useState<'REQUIRED' | 'OPTIONAL'>('REQUIRED')
+  const [customerPhoneRule, setCustomerPhoneRule] = useState<'REQUIRED' | 'OPTIONAL' | 'NONE'>('REQUIRED')
+  const [customerNifRule, setCustomerNifRule] = useState<'OPTIONAL' | 'REQUIRED' | 'NONE'>('OPTIONAL')
 
   const publicUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/menu?tenantId=${tenantId}`
-    : `https://acairose.pt/menu?tenantId=${tenantId}`
+    : `https://acaidarose.pt/menu?tenantId=${tenantId}`
 
   const fetchConfig = useCallback(async () => {
     setLoading(true)
@@ -35,16 +36,17 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
       const data = await res.json()
       if (data.config) {
         const c = data.config
-        setMode(c.mode || 'ORDER_EMISSION')
+        setMode(c.mode === 'VIEW_ONLY' ? 'VIEW_ONLY' : 'ORDER_EMISSION')
+        setPickupModel(c.pickupModel || 'TV_CALL')
+        setAllowTableTransfer(c.allowTableTransfer ?? true)
         setAllowMbwayPayment(c.allowMbwayPayment ?? true)
-        setTableMode(c.tableMode || 'FIXED_QR')
-        setCustomerNameRule(c.customerNameRule || 'OPTIONAL')
+        setAllowInternationalPhone(c.allowInternationalPhone ?? true)
+        setCustomerNameRule(c.customerNameRule === 'OPTIONAL' ? 'OPTIONAL' : 'REQUIRED')
         setCustomerPhoneRule(c.customerPhoneRule || 'REQUIRED')
         setCustomerNifRule(c.customerNifRule || 'OPTIONAL')
-        setAllowInternationalPhone(c.allowInternationalPhone ?? true)
       }
     } catch {
-      toast.error('Erro ao carregar configurações de QR Code')
+      toast.error('Erro ao carregar as configurações do QR Code')
     } finally {
       setLoading(false)
     }
@@ -64,18 +66,19 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
           tenantId,
           config: {
             mode,
+            pickupModel,
+            allowTableTransfer,
             allowMbwayPayment,
-            tableMode,
+            allowInternationalPhone,
             customerNameRule,
             customerPhoneRule,
             customerNifRule,
-            allowInternationalPhone,
           },
         }),
       })
 
-      if (!res.ok) throw new Error('Falha ao guardar configurações')
-      toast.success('Configurações de QR Code guardadas com sucesso!')
+      if (!res.ok) throw new Error('Falha ao guardar as configurações')
+      toast.success('Configurações do QR Code guardadas com sucesso!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao gravar')
     } finally {
@@ -86,20 +89,20 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
   const handleCopyLink = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(publicUrl)
-      toast.success('Link do cardápio copiado para a área de transferência!')
+      toast.success('Link copiado para a área de transferência!')
     }
   }
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-5 text-white">
       {/* Header Minimalista */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-purple-100 dark:border-white/10">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-[#2A1E3D]">
         <div>
-          <h1 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">
-            Configurações do QR Code & Cardápio
+          <h1 className="text-lg font-semibold tracking-tight text-white">
+            Configurações do QR Code & Ementa Digital
           </h1>
-          <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
-            Regras de autoatendimento na mesa, pagamento MB WAY e identificação dos clientes
+          <p className="text-xs text-gray-400 mt-0.5">
+            Definições de atendimento na mesa, pagamento MB WAY e regras de chamada na Smart TV
           </p>
         </div>
 
@@ -107,140 +110,185 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
           size="sm"
           onClick={handleSave}
           disabled={saving || loading}
-          className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer px-4"
+          className="h-9 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs rounded-lg transition"
         >
           {saving ? 'A guardar...' : 'Guardar Alterações'}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Coluna 1: Link Oficial + Modos de Operação e Mesa (6 colunas) */}
+        {/* Coluna 1: Link & Modos de Atendimento (6 Colunas) */}
         <div className="lg:col-span-6 space-y-5">
-          {/* Card: Link Oficial de Divulgação */}
-          <div className="p-5 rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228]/95 space-y-3 shadow-xs dark:shadow-xl text-slate-900 dark:text-white">
-            <div className="text-xs font-black text-purple-700 dark:text-pink-300 uppercase tracking-wider border-b border-purple-100 dark:border-white/10 pb-2.5">
-              🔗 Link Oficial do Cardápio Digital
-            </div>
+          {/* Card: Link Oficial da Ementa */}
+          <div className="p-5 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-3">
+            <h2 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              Link Oficial da Ementa Digital
+            </h2>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex gap-2">
                 <Input
                   value={publicUrl}
                   readOnly
-                  className="bg-purple-50/70 dark:bg-white/5 border-purple-200 dark:border-white/15 rounded-xl text-xs font-mono text-purple-950 dark:text-pink-300 font-bold h-9 select-all"
+                  className="bg-[#0A0612] border-[#2A1E3D] rounded-lg text-xs font-mono text-purple-300 h-9 select-all"
                 />
                 <Button
                   type="button"
                   onClick={handleCopyLink}
-                  className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white text-xs font-bold px-3.5 h-9 rounded-xl shadow-xs cursor-pointer shrink-0"
+                  className="bg-[#2A1E3D] hover:bg-[#382852] text-white text-xs font-medium px-3.5 h-9 rounded-lg shrink-0 transition"
                 >
-                  Copiar Link
+                  Copiar
                 </Button>
               </div>
-              <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
-                Utilize este link para a bio do Instagram, redes sociais e materiais publicitários da loja.
+              <p className="text-[11px] text-gray-400">
+                Utilize este link para redes sociais, bio do Instagram e campanhas de marketing.
               </p>
             </div>
           </div>
 
-          {/* Card: Modos de Utilização & Mesas */}
-          <div className="p-5 rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228]/95 space-y-4 shadow-xs dark:shadow-xl text-slate-900 dark:text-white">
-            <div className="text-xs font-black text-purple-700 dark:text-pink-300 uppercase tracking-wider border-b border-purple-100 dark:border-white/10 pb-2.5">
-              ⚙️ Modo de Operação & Identificação da Mesa
-            </div>
+          {/* Card: Modo de Operação & Retirada */}
+          <div className="p-5 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-4">
+            <h2 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              Modo de Operação & Retirada
+            </h2>
 
-            {/* Dropdown Modo */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-purple-900 dark:text-purple-200">Modo de Utilização do QR Code</Label>
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-300">Modo de Utilização</Label>
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value as any)}
-                className="w-full h-10 px-3.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600 dark:focus:ring-pink-500 [&>option]:bg-white dark:[&>option]:bg-[#160228] [&>option]:text-purple-950 dark:[&>option]:text-white"
+                className="w-full h-9 px-3 rounded-lg border border-[#2A1E3D] bg-[#0A0612] text-xs text-white focus:outline-none focus:border-purple-500"
               >
-                <option value="ORDER_EMISSION">Emissão de Pedido (Cardápio Interativo Completo com Envio para a Cozinha)</option>
-                <option value="VIEW_ONLY">Visualização (Apenas Consulta de Fotos e Preços - Sem Envio de Comanda)</option>
-                <option value="DISABLED">Desativado (QR Code Temporariamente Desligado)</option>
+                <option value="ORDER_EMISSION">Emissão de Pedidos (Envia diretamente para o KDS da Cozinha)</option>
+                <option value="VIEW_ONLY">Apenas Consulta (Visualização de fotos e preços sem envio de comanda)</option>
               </select>
             </div>
 
-            {/* Identificação de Mesa */}
-            <div className="space-y-2 pt-3 border-t border-purple-100 dark:border-white/10">
-              <Label className="text-xs font-bold text-purple-900 dark:text-purple-200">Identificação da Mesa no QR Code</Label>
+            <div className="space-y-2 pt-3 border-t border-[#2A1E3D]">
+              <Label className="text-xs text-gray-300">Modelo de Entrega</Label>
               <div className="space-y-2 text-xs">
-                <label className="flex items-center gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-purple-50/50 dark:hover:bg-white/5 transition">
+                <label className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D] hover:border-purple-500 transition">
                   <input
                     type="radio"
-                    name="tableMode"
-                    checked={tableMode === 'FIXED_QR'}
-                    onChange={() => setTableMode('FIXED_QR')}
-                    className="accent-purple-700 dark:accent-pink-600"
+                    name="pickupModel"
+                    checked={pickupModel === 'TV_CALL'}
+                    onChange={() => setPickupModel('TV_CALL')}
+                    className="accent-purple-600"
                   />
-                  <span className="font-semibold text-purple-950 dark:text-white">QR Code Fixo na Mesa (Placa física numerada na mesa)</span>
+                  <div>
+                    <div className="font-medium text-white">Chamada na Smart TV (Fast-Casual)</div>
+                    <div className="text-[11px] text-gray-400">O cliente retira o açaí no balcão quando o seu número toca na TV</div>
+                  </div>
                 </label>
-                <label className="flex items-center gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-purple-50/50 dark:hover:bg-white/5 transition">
+                <label className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D] hover:border-purple-500 transition">
                   <input
                     type="radio"
-                    name="tableMode"
-                    checked={tableMode === 'TYPED_TABLE'}
-                    onChange={() => setTableMode('TYPED_TABLE')}
-                    className="accent-purple-700 dark:accent-pink-600"
+                    name="pickupModel"
+                    checked={pickupModel === 'TABLE_SERVICE'}
+                    onChange={() => setPickupModel('TABLE_SERVICE')}
+                    className="accent-purple-600"
                   />
-                  <span className="font-semibold text-purple-950 dark:text-white">Mesa digitada pelo próprio cliente no telemóvel</span>
+                  <div>
+                    <div className="font-medium text-white">Serviço de Mesa</div>
+                    <div className="text-[11px] text-gray-400">O empregado de mesa leva o pedido diretamente à mesa numerada</div>
+                  </div>
                 </label>
               </div>
+            </div>
+
+            {/* Troca Inteligente de Mesa */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-[#0A0612] border border-[#2A1E3D] pt-3">
+              <div>
+                <div className="text-xs font-medium text-white">Troca Inteligente de Mesa</div>
+                <div className="text-[11px] text-gray-400">Transfere o pedido automaticamente caso o cliente leia outro QR Code</div>
+              </div>
+              <Switch checked={allowTableTransfer} onCheckedChange={setAllowTableTransfer} />
             </div>
           </div>
         </div>
 
-        {/* Coluna 2: Pagamentos + Dados Obrigatórios do Cliente (6 colunas) */}
+        {/* Coluna 2: Pagamento & Dados do Cliente (6 Colunas) */}
         <div className="lg:col-span-6 space-y-5">
-          {/* Card: Opções de Pagamento */}
-          <div className="p-5 rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228]/95 space-y-4 shadow-xs dark:shadow-xl text-slate-900 dark:text-white">
-            <div className="text-xs font-black text-purple-700 dark:text-pink-300 uppercase tracking-wider border-b border-purple-100 dark:border-white/10 pb-2.5">
-              💳 Pagamento MB WAY & Opções de Atendimento
-            </div>
+          {/* Card: Pagamento MB WAY */}
+          <div className="p-5 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-4">
+            <h2 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              Pagamento no Telemóvel
+            </h2>
 
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between p-2 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100/60 dark:border-white/10">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
                 <div>
-                  <div className="text-xs font-bold text-purple-950 dark:text-pink-300">Pagamento MB WAY Instantâneo</div>
-                  <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">O cliente paga direto no telemóvel antes do preparo</div>
+                  <div className="text-xs font-medium text-white">Pagamento MB WAY Instantâneo</div>
+                  <div className="text-[11px] text-gray-400">O cliente paga diretamente no telemóvel antes do preparo</div>
                 </div>
                 <Switch checked={allowMbwayPayment} onCheckedChange={setAllowMbwayPayment} />
               </div>
 
-              <div className="flex items-center justify-between p-2 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100/60 dark:border-white/10">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
                 <div>
-                  <div className="text-xs font-bold text-purple-950 dark:text-white">Telemóveis Internacionais</div>
-                  <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">Aceita números estrangeiros de turistas em Portugal</div>
+                  <div className="text-xs font-medium text-white">Telemóveis Internacionais</div>
+                  <div className="text-[11px] text-gray-400">Aceita números estrangeiros com indicativo internacional para turistas</div>
                 </div>
                 <Switch checked={allowInternationalPhone} onCheckedChange={setAllowInternationalPhone} />
               </div>
             </div>
           </div>
 
-          {/* Card: Dados Obrigatórios do Cliente */}
-          <div className="p-5 rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228]/95 space-y-4 shadow-xs dark:shadow-xl text-slate-900 dark:text-white">
-            <div className="text-xs font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider border-b border-purple-100 dark:border-white/10 pb-2.5">
-              👤 Identificação do Cliente nos Pedidos
-            </div>
+          {/* Card: Identificação Fiscal & Atendimento */}
+          <div className="p-5 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-4">
+            <h2 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              Identificação nos Pedidos
+            </h2>
 
-            <div className="space-y-3.5">
-              {/* Nome */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-xl bg-purple-50/30 dark:bg-white/5">
-                <span className="text-xs font-bold text-purple-950 dark:text-white">Nome do Cliente:</span>
+            <div className="space-y-3">
+              {/* Nome do Cliente */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
+                <div>
+                  <div className="text-xs font-medium text-white">Nome do Cliente</div>
+                  <div className="text-[11px] text-gray-400">Para exibição na Smart TV e chamada no balcão</div>
+                </div>
                 <div className="flex gap-3 text-xs">
-                  {(['NONE', 'OPTIONAL', 'REQUIRED'] as const).map((r) => (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="nameRule"
+                      checked={customerNameRule === 'REQUIRED'}
+                      onChange={() => setCustomerNameRule('REQUIRED')}
+                      className="accent-purple-600"
+                    />
+                    <span className="text-gray-300">Obrigatório</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="nameRule"
+                      checked={customerNameRule === 'OPTIONAL'}
+                      onChange={() => setCustomerNameRule('OPTIONAL')}
+                      className="accent-purple-600"
+                    />
+                    <span className="text-gray-300">Opcional</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* NIF na Fatura */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
+                <div>
+                  <div className="text-xs font-medium text-white">NIF na Fatura</div>
+                  <div className="text-[11px] text-gray-400">Para emissão de Fatura Simplificada com contribuinte</div>
+                </div>
+                <div className="flex gap-3 text-xs">
+                  {(['OPTIONAL', 'REQUIRED', 'NONE'] as const).map((r) => (
                     <label key={r} className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="radio"
-                        name="nameRule"
-                        checked={customerNameRule === r}
-                        onChange={() => setCustomerNameRule(r)}
-                        className="accent-purple-700 dark:accent-pink-600"
+                        name="nifRule"
+                        checked={customerNifRule === r}
+                        onChange={() => setCustomerNifRule(r)}
+                        className="accent-purple-600"
                       />
-                      <span className="text-purple-900 dark:text-purple-200 font-medium">
-                        {r === 'NONE' ? 'Não pedir' : r === 'OPTIONAL' ? 'Opcional' : 'Obrigatório'}
+                      <span className="text-gray-300">
+                        {r === 'OPTIONAL' ? 'Opcional' : r === 'REQUIRED' ? 'Obrigatório' : 'Não pedir'}
                       </span>
                     </label>
                   ))}
@@ -248,41 +296,23 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
               </div>
 
               {/* Telemóvel */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-xl bg-purple-50/30 dark:bg-white/5">
-                <span className="text-xs font-bold text-purple-950 dark:text-white">Telemóvel do Cliente:</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
+                <div>
+                  <div className="text-xs font-medium text-white">Telemóvel de Contacto</div>
+                  <div className="text-[11px] text-gray-400">Para envio do comprovativo digital</div>
+                </div>
                 <div className="flex gap-3 text-xs">
-                  {(['NONE', 'OPTIONAL', 'REQUIRED'] as const).map((r) => (
+                  {(['REQUIRED', 'OPTIONAL', 'NONE'] as const).map((r) => (
                     <label key={r} className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="radio"
                         name="phoneRule"
                         checked={customerPhoneRule === r}
                         onChange={() => setCustomerPhoneRule(r)}
-                        className="accent-purple-700 dark:accent-pink-600"
+                        className="accent-purple-600"
                       />
-                      <span className="text-purple-900 dark:text-purple-200 font-medium">
-                        {r === 'NONE' ? 'Não pedir' : r === 'OPTIONAL' ? 'Opcional' : 'Obrigatório'}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* NIF */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-xl bg-purple-50/30 dark:bg-white/5">
-                <span className="text-xs font-bold text-purple-950 dark:text-white">NIF na Fatura:</span>
-                <div className="flex gap-3 text-xs">
-                  {(['NONE', 'OPTIONAL', 'REQUIRED'] as const).map((r) => (
-                    <label key={r} className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="nifRule"
-                        checked={customerNifRule === r}
-                        onChange={() => setCustomerNifRule(r)}
-                        className="accent-purple-700 dark:accent-pink-600"
-                      />
-                      <span className="text-purple-900 dark:text-purple-200 font-medium">
-                        {r === 'NONE' ? 'Não pedir' : r === 'OPTIONAL' ? 'Opcional' : 'Obrigatório'}
+                      <span className="text-gray-300">
+                        {r === 'REQUIRED' ? 'Obrigatório' : r === 'OPTIONAL' ? 'Opcional' : 'Não pedir'}
                       </span>
                     </label>
                   ))}
