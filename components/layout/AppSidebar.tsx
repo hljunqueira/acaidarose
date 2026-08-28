@@ -119,15 +119,35 @@ export default function AppSidebar({
     return () => window.removeEventListener('franchise_requests_updated', handleUpdate)
   }, [currentView])
 
-  // Controle de colapso dos grupos
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    devHub: true,
-    franchise: true,
-    salon: true,
-    menu: true,
-    inventory: true,
-    storeConfig: true,
-  })
+  const getGroupForView = (v: AppViewId): string => {
+    if (['dev_hub', 'prevention_center', 'audit_logs'].includes(v)) return 'devHub'
+    if (['franchise', 'franchise_candidates', 'store_requests', 'franchise_requests', 'supply_hub'].includes(v)) return 'franchise'
+    if (['pdv', 'qrcode', 'tv_panel', 'tables'].includes(v)) return 'salon'
+    if (['menu', 'menu_categories', 'menu_menus', 'menu_highlights'].includes(v)) return 'menu'
+    if (['inventory', 'supply_orders'].includes(v)) return 'inventory'
+    if (['company', 'qrcode_config', 'users', 'reports'].includes(v)) return 'storeConfig'
+    return 'salon'
+  }
+
+  // Inicialização inteligente: apenas o primeiro grupo relevante (ou o ativo) inicia aberto
+  const initialActiveGroup = getGroupForView(currentView) || (isSuperAdmin ? 'devHub' : isFranchisorAdmin ? 'franchise' : 'salon')
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
+    devHub: initialActiveGroup === 'devHub',
+    franchise: initialActiveGroup === 'franchise',
+    salon: initialActiveGroup === 'salon',
+    menu: initialActiveGroup === 'menu',
+    inventory: initialActiveGroup === 'inventory',
+    storeConfig: initialActiveGroup === 'storeConfig',
+  }))
+
+  // Auto-expande o grupo correspondente sempre que a view mudar
+  useEffect(() => {
+    const groupKey = getGroupForView(currentView)
+    if (groupKey) {
+      setOpenGroups((prev) => ({ ...prev, [groupKey]: true }))
+    }
+  }, [currentView])
 
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -234,10 +254,7 @@ export default function AppSidebar({
       },
     ]
   } else if (isFranchisorAdmin) {
-    // 🏢 2. FRANCHISOR_ADMIN (Sede Franqueadora & Gestão de Unidades)
-    const storeShortName = (currentTenant.name || 'Loja Ativa').replace('Açaí da Rose — ', '')
-    const isHq = !!currentTenant.isHeadquarters
-
+    // 🏢 2. FRANCHISOR_ADMIN (Franqueadora Master — Rose & José Valdair)
     navGroups = [
       {
         key: 'franchise',
@@ -271,42 +288,51 @@ export default function AppSidebar({
             subtitle: 'Catálogo B2B & Expedição por Loja',
             show: true,
           },
-          { id: 'menu_highlights', label: 'Destaques Nacionais', subtitle: 'Stories da Rede', show: true },
         ],
       },
       {
         key: 'salon',
-        title: `OPERAÇÃO · ${storeShortName.toUpperCase()}`,
+        title: 'OPERAÇÃO & ATENDIMENTO',
         icon: Store,
         accentClass: 'text-purple-700 dark:text-pink-400',
         items: [
-          { id: 'pdv', label: 'PDV Balcão & Montagem de Taça', subtitle: 'Operação Balcão', show: true },
+          { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
           { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
       {
+        key: 'menu',
+        title: 'CARDÁPIO, MÍDIAS & PREÇOS',
+        icon: Utensils,
+        accentClass: 'text-pink-600 dark:text-pink-400',
+        items: [
+          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Copos, Frutas & Toppings', show: true },
+          { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
+          { id: 'menu_menus', label: 'Menus & Horários', subtitle: 'Regras de Disponibilidade', show: true },
+          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Vídeos & Banners Promocionais', show: true },
+        ],
+      },
+      {
         key: 'inventory',
-        title: `ESTOQUE · ${storeShortName.toUpperCase()}`,
+        title: 'GESTÃO DE ESTOQUE & SUPPLY CHAIN',
         icon: Boxes,
         accentClass: 'text-emerald-600 dark:text-emerald-400',
         items: [
-          { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: `Controle Físico (${storeShortName})`, show: true },
-          ...(!isHq ? [{ id: 'supply_orders' as AppViewId, label: 'Reposição com a Matriz', subtitle: 'Pedidos B2B de Carga', show: true }] : []),
+          { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: 'Controle Físico & Auditoria', show: true },
+          { id: 'supply_orders', label: 'Reposição com a Matriz', subtitle: 'Pedidos B2B & Entrada de Carga', show: true },
         ],
       },
       {
         key: 'storeConfig',
-        title: `GESTÃO · ${storeShortName.toUpperCase()}`,
-        icon: Utensils,
+        title: 'CONFIGURAÇÕES DA UNIDADE',
+        icon: Store,
         accentClass: 'text-purple-600 dark:text-purple-400',
         items: [
-          { id: 'menu', label: 'Produtos do Cardápio', subtitle: `Cardápio (${storeShortName})`, show: true },
-          { id: 'menu_categories', label: 'Categorias & Menus', subtitle: 'Estruturação Visual', show: true },
           { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
           { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
-          { id: 'users', label: 'Utilizadores & Permissões', subtitle: `Equipa (${storeShortName})`, show: true },
+          { id: 'users', label: 'Utilizadores & Permissões', subtitle: 'Gerentes, Caixas & Acessos', show: true },
           { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
         ],
       },
