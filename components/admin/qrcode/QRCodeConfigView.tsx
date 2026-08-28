@@ -15,7 +15,7 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // Config State
+  // Configurações do QR Code & Ementa Digital
   const [mode, setMode] = useState<'ORDER_EMISSION' | 'VIEW_ONLY'>('ORDER_EMISSION')
   const [pickupModel, setPickupModel] = useState<'TV_CALL' | 'TABLE_SERVICE'>('TV_CALL')
   const [allowTableTransfer, setAllowTableTransfer] = useState(true)
@@ -95,14 +95,14 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
   }
 
   return (
-    <div className="w-full space-y-5 text-white">
-      {/* Header Minimalista */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-[#2A1E3D]">
+    <div className="w-full space-y-5">
+      {/* Header Minimalista Bimodal */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-white">
+          <h1 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">
             Configurações do QR Code & Ementa Digital
           </h1>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
             Definições de atendimento na mesa, pagamento MB WAY e regras de chamada na Smart TV
           </p>
         </div>
@@ -111,7 +111,7 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
           size="sm"
           onClick={handleSave}
           disabled={saving || loading}
-          className="h-9 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs rounded-lg transition"
+          className="h-9 px-4 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition"
         >
           {saving ? 'A guardar...' : 'Guardar Alterações'}
         </Button>
@@ -121,8 +121,8 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
         {/* Coluna 1: Link & Modos de Atendimento (6 Colunas) */}
         <div className="lg:col-span-6 space-y-5">
           {/* Card: Link Oficial da Ementa */}
-          <div className="p-5 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-3">
-            <h2 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs space-y-3">
+            <h2 className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
               Link Oficial da Ementa Digital
             </h2>
 
@@ -131,77 +131,77 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
                 <Input
                   value={publicUrl}
                   readOnly
-                  className="bg-[#0A0612] border-[#2A1E3D] rounded-lg text-xs font-mono text-purple-300 h-9 select-all"
+                  className="bg-purple-50/60 dark:bg-white/5 border-purple-200 dark:border-white/10 rounded-xl text-xs font-mono text-purple-900 dark:text-pink-300 h-9 select-all"
                 />
                 <Button
                   type="button"
                   onClick={handleCopyLink}
-                  className="bg-[#2A1E3D] hover:bg-[#382852] text-white text-xs font-medium px-3.5 h-9 rounded-lg shrink-0 transition"
+                  className="bg-purple-100 dark:bg-white/10 hover:bg-purple-200 dark:hover:bg-white/20 text-purple-950 dark:text-white text-xs font-bold px-3.5 h-9 rounded-xl shrink-0 cursor-pointer transition"
                 >
                   Copiar
                 </Button>
               </div>
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
                 Utilize este link para redes sociais, bio do Instagram e campanhas de marketing.
               </p>
             </div>
           </div>
 
           {/* Card: Modo de Operação & Retirada */}
-          <div className="p-5 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-4">
-            <h2 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs space-y-4">
+            <h2 className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
               Modo de Operação & Retirada
             </h2>
 
             <div className="space-y-2">
-              <Label className="text-xs text-gray-300">Modo de Utilização</Label>
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">Modo de Utilização</Label>
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value as any)}
-                className="w-full h-9 px-3 rounded-lg border border-[#2A1E3D] bg-[#0A0612] text-xs text-white focus:outline-none focus:border-purple-500"
+                className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 text-xs text-purple-950 dark:text-white font-medium focus:outline-none focus:border-purple-500"
               >
                 <option value="ORDER_EMISSION">Emissão de Pedidos (Envia diretamente para o KDS da Cozinha)</option>
                 <option value="VIEW_ONLY">Apenas Consulta (Visualização de fotos e preços sem envio de comanda)</option>
               </select>
             </div>
 
-            <div className="space-y-2 pt-3 border-t border-[#2A1E3D]">
-              <Label className="text-xs text-gray-300">Modelo de Entrega</Label>
+            <div className="space-y-2 pt-3 border-t border-purple-100 dark:border-white/10">
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">Modelo de Entrega</Label>
               <div className="space-y-2 text-xs">
-                <label className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D] hover:border-purple-500 transition">
+                <label className="flex items-center gap-2.5 cursor-pointer p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10 hover:border-purple-300 dark:hover:border-pink-500/50 transition">
                   <input
                     type="radio"
                     name="pickupModel"
                     checked={pickupModel === 'TV_CALL'}
                     onChange={() => setPickupModel('TV_CALL')}
-                    className="accent-purple-600"
+                    className="accent-purple-700 dark:accent-pink-500"
                   />
                   <div>
-                    <div className="font-medium text-white">Chamada na Smart TV (Fast-Casual)</div>
-                    <div className="text-[11px] text-gray-400">O cliente retira o açaí no balcão quando o seu número toca na TV</div>
+                    <div className="font-bold text-purple-950 dark:text-white">Chamada na Smart TV (Fast-Casual)</div>
+                    <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">O cliente retira o açaí no balcão quando o seu número toca na TV</div>
                   </div>
                 </label>
-                <label className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D] hover:border-purple-500 transition">
+                <label className="flex items-center gap-2.5 cursor-pointer p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10 hover:border-purple-300 dark:hover:border-pink-500/50 transition">
                   <input
                     type="radio"
                     name="pickupModel"
                     checked={pickupModel === 'TABLE_SERVICE'}
                     onChange={() => setPickupModel('TABLE_SERVICE')}
-                    className="accent-purple-600"
+                    className="accent-purple-700 dark:accent-pink-500"
                   />
                   <div>
-                    <div className="font-medium text-white">Serviço de Mesa</div>
-                    <div className="text-[11px] text-gray-400">O empregado de mesa leva o pedido diretamente à mesa numerada</div>
+                    <div className="font-bold text-purple-950 dark:text-white">Serviço de Mesa</div>
+                    <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">O empregado de mesa leva o pedido diretamente à mesa numerada</div>
                   </div>
                 </label>
               </div>
             </div>
 
             {/* Troca Inteligente de Mesa */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[#0A0612] border border-[#2A1E3D] pt-3">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
               <div>
-                <div className="text-xs font-medium text-white">Troca Inteligente de Mesa</div>
-                <div className="text-[11px] text-gray-400">Transfere o pedido automaticamente caso o cliente leia outro QR Code</div>
+                <div className="text-xs font-bold text-purple-950 dark:text-white">Troca Inteligente de Mesa</div>
+                <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">Transfere o pedido automaticamente caso o cliente leia outro QR Code</div>
               </div>
               <Switch checked={allowTableTransfer} onCheckedChange={setAllowTableTransfer} />
             </div>
@@ -211,24 +211,24 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
         {/* Coluna 2: Pagamento & Dados do Cliente (6 Colunas) */}
         <div className="lg:col-span-6 space-y-5">
           {/* Card: Pagamento MB WAY */}
-          <div className="p-5 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-4">
-            <h2 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs space-y-4">
+            <h2 className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
               Pagamento no Telemóvel
             </h2>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
                 <div>
-                  <div className="text-xs font-medium text-white">Pagamento MB WAY Instantâneo</div>
-                  <div className="text-[11px] text-gray-400">O cliente paga diretamente no telemóvel antes do preparo</div>
+                  <div className="text-xs font-bold text-purple-950 dark:text-white">Pagamento MB WAY Instantâneo</div>
+                  <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">O cliente paga diretamente no telemóvel antes do preparo</div>
                 </div>
                 <Switch checked={allowMbwayPayment} onCheckedChange={setAllowMbwayPayment} />
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
                 <div>
-                  <div className="text-xs font-medium text-white">Telemóveis Internacionais</div>
-                  <div className="text-[11px] text-gray-400">Aceita números estrangeiros com indicativo internacional para turistas</div>
+                  <div className="text-xs font-bold text-purple-950 dark:text-white">Telemóveis Internacionais</div>
+                  <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">Aceita números estrangeiros com indicativo internacional para turistas</div>
                 </div>
                 <Switch checked={allowInternationalPhone} onCheckedChange={setAllowInternationalPhone} />
               </div>
@@ -236,17 +236,17 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
           </div>
 
           {/* Card: Identificação Fiscal & Atendimento */}
-          <div className="p-5 rounded-2xl bg-[#160F24] border border-[#2A1E3D] space-y-4">
-            <h2 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs space-y-4">
+            <h2 className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
               Identificação nos Pedidos
             </h2>
 
             <div className="space-y-3">
               {/* Nome do Cliente */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
                 <div>
-                  <div className="text-xs font-medium text-white">Nome do Cliente</div>
-                  <div className="text-[11px] text-gray-400">Para exibição na Smart TV e chamada no balcão</div>
+                  <div className="text-xs font-bold text-purple-950 dark:text-white">Nome do Cliente</div>
+                  <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">Para exibição na Smart TV e chamada no balcão</div>
                 </div>
                 <div className="flex gap-3 text-xs">
                   <label className="flex items-center gap-1.5 cursor-pointer">
@@ -255,9 +255,9 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
                       name="nameRule"
                       checked={customerNameRule === 'REQUIRED'}
                       onChange={() => setCustomerNameRule('REQUIRED')}
-                      className="accent-purple-600"
+                      className="accent-purple-700 dark:accent-pink-500"
                     />
-                    <span className="text-gray-300">Obrigatório</span>
+                    <span className="text-purple-900 dark:text-purple-200 font-medium">Obrigatório</span>
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -265,18 +265,18 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
                       name="nameRule"
                       checked={customerNameRule === 'OPTIONAL'}
                       onChange={() => setCustomerNameRule('OPTIONAL')}
-                      className="accent-purple-600"
+                      className="accent-purple-700 dark:accent-pink-500"
                     />
-                    <span className="text-gray-300">Opcional</span>
+                    <span className="text-purple-900 dark:text-purple-200 font-medium">Opcional</span>
                   </label>
                 </div>
               </div>
 
               {/* NIF na Fatura */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
                 <div>
-                  <div className="text-xs font-medium text-white">NIF na Fatura</div>
-                  <div className="text-[11px] text-gray-400">Para emissão de Fatura Simplificada com contribuinte</div>
+                  <div className="text-xs font-bold text-purple-950 dark:text-white">NIF na Fatura</div>
+                  <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">Para emissão de Fatura Simplificada com contribuinte</div>
                 </div>
                 <div className="flex gap-3 text-xs">
                   {(['OPTIONAL', 'REQUIRED', 'NONE'] as const).map((r) => (
@@ -286,9 +286,9 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
                         name="nifRule"
                         checked={customerNifRule === r}
                         onChange={() => setCustomerNifRule(r)}
-                        className="accent-purple-600"
+                        className="accent-purple-700 dark:accent-pink-500"
                       />
-                      <span className="text-gray-300">
+                      <span className="text-purple-900 dark:text-purple-200 font-medium">
                         {r === 'OPTIONAL' ? 'Opcional' : r === 'REQUIRED' ? 'Obrigatório' : 'Não pedir'}
                       </span>
                     </label>
@@ -297,10 +297,10 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
               </div>
 
               {/* Telemóvel */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#0A0612] border border-[#2A1E3D]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
                 <div>
-                  <div className="text-xs font-medium text-white">Telemóvel de Contacto</div>
-                  <div className="text-[11px] text-gray-400">Para envio do comprovativo digital</div>
+                  <div className="text-xs font-bold text-purple-950 dark:text-white">Telemóvel de Contacto</div>
+                  <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">Para envio do comprovativo digital</div>
                 </div>
                 <div className="flex gap-3 text-xs">
                   {(['REQUIRED', 'OPTIONAL', 'NONE'] as const).map((r) => (
@@ -310,9 +310,9 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
                         name="phoneRule"
                         checked={customerPhoneRule === r}
                         onChange={() => setCustomerPhoneRule(r)}
-                        className="accent-purple-600"
+                        className="accent-purple-700 dark:accent-pink-500"
                       />
-                      <span className="text-gray-300">
+                      <span className="text-purple-900 dark:text-purple-200 font-medium">
                         {r === 'REQUIRED' ? 'Obrigatório' : r === 'OPTIONAL' ? 'Opcional' : 'Não pedir'}
                       </span>
                     </label>
