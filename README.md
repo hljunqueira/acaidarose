@@ -21,7 +21,7 @@
 O sistema opera sob uma **arquitetura híbrida desacoplada**, otimizada para máxima velocidade, alta disponibilidade e segurança:
 
 * **Frontend & Camada de Borda**: Hospedado na **Vercel Edge Network**, com renderização híbrida Next.js 15 (App Router).
-* **Backend & Banco de Dados Relacional**: Hospedado em **VPS Exclusiva de Produção**, operando **PostgreSQL 16 Alpine** com 21 tabelas relacionais, isolamento multi-tenant estrito e rotinas diárias de backup automatizado.
+* **Backend & Banco de Dados Relacional**: Hospedado em **Servidor Exclusivo de Produção**, operando **PostgreSQL 16 Alpine** com 21 tabelas relacionais, isolamento multi-tenant estrito e rotinas diárias de backup automatizado.
 * **Mídias & Vídeos**: Entrega otimizada de Stories e cardápios em vídeo de alta resolução para telemóveis e Smart TVs.
 
 ```mermaid
@@ -107,19 +107,6 @@ npm run dev
 | `npm run build` | Compila o bundle otimizado de produção |
 | `npm run deploy` | Executa deploy para o ambiente de produção |
 | `npm run env:sync` | Sincroniza de forma segura as variáveis do `.env.local` |
-
----
-
-## 6. Acervo de Documentação de Engenharia (`/docs`)
-
-O projeto conta com **25 Guias Técnicos Completos** documentando toda a operação, regras de negócio e infraestrutura:
-
-* [ARQUITETURA_LAYOUT_SIDEBAR_E_UX.md](docs/ARQUITETURA_LAYOUT_SIDEBAR_E_UX.md): Separação exaustiva dos 4 painéis e componentes por perfil.
-* [BRANDING_KIT_VISUAL_E_MANUAL_DE_MARCA.md](docs/BRANDING_KIT_VISUAL_E_MANUAL_DE_MARCA.md): Tokens de cor, tipografia e diretrizes da marca.
-* [PADROES_DE_CODIGO_ARQUITETURA_E_NOMENCLATURA.md](docs/PADROES_DE_CODIGO_ARQUITETURA_E_NOMENCLATURA.md): Convenções de Clean Architecture e diretórios.
-* [MANUAL_DE_MANUTENCAO_VPS_RUNBOOK_E_DISASTER_RECOVERY.md](docs/MANUAL_DE_MANUTENCAO_VPS_RUNBOOK_E_DISASTER_RECOVERY.md): Runbook operacional e recuperação de desastres.
-* [GOVERNANCA_CARDAPIO_E_SOLICITACOES_FRANQUIAS.md](docs/GOVERNANCA_CARDAPIO_E_SOLICITACOES_FRANQUIAS.md): Workflow de triagem de cardápio da Matriz.
-* [SISTEMA_NOTIFICACOES_DESKTOP_PC_E_AUDIO.md](docs/SISTEMA_NOTIFICACOES_DESKTOP_PC_E_AUDIO.md): Notificações em segundo plano e sintetizador de áudio.
 
 ---
 
