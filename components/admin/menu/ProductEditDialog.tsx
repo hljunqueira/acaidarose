@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -133,6 +133,34 @@ export default function ProductEditDialog({
   const [optionModelOpen, setOptionModelOpen] = useState(false)
   const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
   const [showImageInput, setShowImageInput] = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const fileUrl = URL.createObjectURL(file)
+    if (file.type.startsWith('video/')) {
+      setForm((prev: any) => ({
+        ...prev,
+        videoUrl: fileUrl,
+        image: '', // Prioridade para o vídeo recém-carregado
+      }))
+      toast.success('Vídeo de apresentação carregado localmente!')
+    } else if (file.type.startsWith('image/')) {
+      setForm((prev: any) => ({
+        ...prev,
+        image: fileUrl,
+        videoUrl: '', // Prioridade para a imagem recém-carregada
+      }))
+      toast.success('Imagem de apresentação carregada localmente!')
+    }
+  }
 
   // Estado para controlar quais grupos de opções estão expandidos (colapsáveis)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -298,46 +326,52 @@ export default function ProductEditDialog({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-purple-100 dark:divide-white/10 text-xs">
           {/* LADO ESQUERDO: FOTO, NOME, DESCRIÇÃO, CATEGORIA */}
           <div className="p-6 md:w-[46%] space-y-4">
+            {/* Seção Mídia de Apresentação Unificada (Sem Ícones) */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold text-purple-950 dark:text-white">Foto do Produto:</Label>
-                <button
-                  type="button"
-                  onClick={() => setShowImageInput(!showImageInput)}
-                  className="text-[11px] text-purple-700 dark:text-pink-400 hover:underline font-semibold cursor-pointer"
-                >
-                  {showImageInput ? 'Ocultar URL' : 'Alterar URL da foto'}
-                </button>
-              </div>
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                Mídia de Apresentação:
+              </Label>
               <div className="flex items-center gap-3">
+                {/* Preview Box */}
                 <div className="h-20 w-20 rounded-xl overflow-hidden bg-purple-50 dark:bg-white/5 border border-purple-200 dark:border-white/10 flex-shrink-0 relative">
-                  {form.image ? (
+                  {form.videoUrl ? (
+                    <video
+                      src={form.videoUrl}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="h-full w-full object-cover"
+                    />
+                  ) : form.image ? (
                     <img src={form.image} alt="Preview" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center text-purple-300 dark:text-purple-600">
-                      <Camera className="h-6 w-6" />
+                    <div className="h-full w-full flex items-center justify-center bg-purple-950/20 text-purple-300 dark:text-purple-600 font-bold text-[10px] uppercase tracking-widest text-center p-1">
+                      Sem Mídia
                     </div>
                   )}
                 </div>
+
+                {/* Dropzone de Upload Sóbrio (Sem ícones) */}
                 <div
-                  onClick={() => setShowImageInput(true)}
-                  className="h-20 flex-1 border border-dashed border-purple-200 dark:border-white/20 rounded-xl flex flex-col items-center justify-center gap-1 text-[10px] font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50/50 dark:hover:bg-white/5 cursor-pointer text-center p-2 transition"
+                  onClick={triggerFileSelect}
+                  className="h-20 flex-1 border border-dashed border-purple-200 dark:border-white/20 rounded-xl flex flex-col items-center justify-center text-center p-2 transition bg-purple-50/20 dark:bg-white/5 hover:bg-purple-50/40 dark:hover:bg-white/10 cursor-pointer"
                 >
-                  <Camera className="h-4 w-4" />
-                  <span>PERSONALIZAR FOTO</span>
-                </div>
-              </div>
-              {showImageInput && (
-                <div className="space-y-1 pt-1 animate-in fade-in duration-150">
-                  <Label className="text-[10px] font-bold text-purple-900 dark:text-purple-300">URL da Imagem:</Label>
-                  <Input
-                    value={form.image}
-                    onChange={(e) => setForm({ ...form, image: e.target.value })}
-                    placeholder="https://exemplo.com/foto-acai.jpg"
-                    className="h-8 text-xs border-purple-200 dark:border-white/15 rounded-lg font-mono bg-white dark:bg-white/5"
+                  <span className="text-[10px] font-black text-purple-950 dark:text-white uppercase tracking-wider">
+                    Carregar Ficheiro
+                  </span>
+                  <span className="text-[8px] text-purple-700/80 dark:text-purple-300/70 mt-0.5 leading-tight">
+                    Selecione um vídeo ou imagem da sua galeria
+                  </span>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="video/*,image/*"
+                    className="hidden"
                   />
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -397,15 +431,7 @@ export default function ProductEditDialog({
               </select>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-purple-950 dark:text-white">Link de Vídeo (MenuVid):</Label>
-              <Input
-                value={form.videoUrl}
-                onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-                placeholder="Ex: /videos/hero_cup_rotation.mp4"
-                className="h-9 text-xs rounded-lg border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white"
-              />
-            </div>
+
 
             <div className="space-y-2">
               <Label className="text-xs font-bold text-purple-950 dark:text-white">Horário de Disponibilidade:</Label>
