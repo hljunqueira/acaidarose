@@ -73,44 +73,7 @@ export default function FranchiseCorporateView() {
     onConfirm: () => {},
   })
 
-  const [customFees, setCustomFees] = useState<FranchiseFeeCharge[]>([
-    {
-      id: 'fee-sys-default',
-      storeId: 'ALL',
-      storeName: 'Todas as Unidades da Rede',
-      title: 'Licença do Sistema & PDV',
-      category: 'SISTEMA',
-      chargeType: 'FIXED_AMOUNT',
-      value: 49.0,
-      frequency: 'MENSAL',
-      status: 'ATIVO',
-      description: 'Cobrança padrão de 49€ por unidade ativa',
-    },
-    {
-      id: 'fee-roy-default',
-      storeId: 'ALL',
-      storeName: 'Todas as Unidades da Rede',
-      title: 'Royalties Operacionais',
-      category: 'ROYALTIES',
-      chargeType: 'PERCENTAGE',
-      value: 5.0,
-      frequency: 'MENSAL',
-      status: 'ATIVO',
-      description: '5% sobre o faturamento bruto mensal',
-    },
-    {
-      id: 'fee-mkt-default',
-      storeId: 'ALL',
-      storeName: 'Todas as Unidades da Rede',
-      title: 'Fundo de Marketing Nacional',
-      category: 'MARKETING',
-      chargeType: 'PERCENTAGE',
-      value: 1.0,
-      frequency: 'MENSAL',
-      status: 'ATIVO',
-      description: '1% destinado a tráfego pago e campanhas da marca',
-    },
-  ])
+  const [customFees, setCustomFees] = useState<FranchiseFeeCharge[]>([])
 
   const loadNetworkData = async () => {
     setLoading(true)

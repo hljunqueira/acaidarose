@@ -41,34 +41,13 @@ interface StoreSupplyCardData {
   active: boolean
 }
 
-const INITIAL_STORES: StoreSupplyCardData[] = [
-  {
-    id: '11111111-1111-1111-1111-111111111111',
-    name: 'Loja 1 — Sede Franqueadora & Matriz Aveiro',
-    nif: '500123456',
-    city: 'Aveiro',
-    address: 'Avenida Dr. Lourenço Peixinho 85',
-    isHeadquarters: true,
-    active: true,
-  },
-  {
-    id: '22222222-2222-2222-2222-222222222222',
-    name: 'Loja 2 — Filial Torres Novas',
-    nif: '500789012',
-    city: 'Torres Novas',
-    address: 'Praça 5 de Outubro 12',
-    isHeadquarters: false,
-    active: true,
-  },
-]
-
 export default function SupplyHubView() {
   const { authFetch } = useAuthStore()
   const [activeTab, setActiveTab] = useState<'STORES_ORDERS' | 'CATALOG'>('STORES_ORDERS')
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>('ALL')
   const [orders, setOrders] = useState<SupplyOrderRow[]>([])
   const [masterItems, setMasterItems] = useState<MasterInventoryItem[]>([])
-  const [stores, setStores] = useState<StoreSupplyCardData[]>(INITIAL_STORES)
+  const [stores, setStores] = useState<StoreSupplyCardData[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
 
