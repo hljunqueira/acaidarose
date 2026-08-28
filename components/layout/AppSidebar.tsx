@@ -354,13 +354,13 @@ export default function AppSidebar({
       },
       {
         key: 'menu',
-        title: 'CARDÁPIO LOCAL',
+        title: 'CARDÁPIO, MÍDIAS & PREÇOS',
         icon: Utensils,
         accentClass: 'text-pink-600 dark:text-pink-400',
         items: [
-          { id: 'menu', label: 'Produtos & Preços da Loja', show: true },
-          { id: 'menu_categories', label: 'Categorias & Menus', show: true },
-          { id: 'menu_highlights', label: 'Destaques da Loja', show: true },
+          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Consulta & Gramaturas', show: true },
+          { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
+          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Promoções da Loja', show: true },
           {
             id: 'store_requests',
             label: 'Solicitações à Franqueadora',
@@ -371,24 +371,24 @@ export default function AppSidebar({
       },
       {
         key: 'inventory',
-        title: 'ESTOQUE & ABASTECIMENTO',
+        title: 'GESTÃO DE ESTOQUE & SUPPLY CHAIN',
         icon: Boxes,
         accentClass: 'text-emerald-600 dark:text-emerald-400',
         items: [
-          { id: 'inventory', label: 'Estoque da Loja', subtitle: 'Controle Físico Local', show: true },
-          { id: 'supply_orders', label: 'Encomendar à Franqueadora', subtitle: 'Tabela Exclusiva B2B', show: true },
+          { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: 'Controle Físico & Auditoria', show: true },
+          { id: 'supply_orders', label: 'Encomendar à Franqueadora', subtitle: 'Reposição B2B Homologada', show: true },
         ],
       },
       {
         key: 'storeConfig',
-        title: 'CONFIGURAÇÕES DA LOJA',
+        title: 'CONFIGURAÇÕES DA UNIDADE',
         icon: Store,
         accentClass: 'text-purple-600 dark:text-purple-400',
         items: [
-          { id: 'company', label: 'Dados da Empresa', show: true },
-          { id: 'qrcode_config', label: 'Configurações QR Code', show: true },
-          { id: 'users', label: 'Operadores de Caixa', show: true },
-          { id: 'reports', label: 'Relatórios & Fecho de Caixa', show: true },
+          { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
+          { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
+          { id: 'users', label: 'Operadores de Caixa', subtitle: 'Equipa Local', show: true },
+          { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
         ],
       },
     ]
