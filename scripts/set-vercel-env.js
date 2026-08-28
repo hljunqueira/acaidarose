@@ -4,8 +4,6 @@
  */
 
 const { execSync } = require('child_process')
-const fs = require('fs')
-const path = require('path')
 
 const envVars = {
   DATABASE_URL: 'postgresql://acai_admin:da9d329d3252f5b61a2d810b4b765ce9@198.50.117.110:5432/acaidarose_prod',
@@ -19,16 +17,25 @@ const envVars = {
 
 const environments = ['production', 'preview', 'development']
 
-console.log('🚀 Iniciando sincronização de variáveis com a Vercel...\n')
+console.log('🚀 Iniciando sincronização de variáveis com a Vercel (CLI 59.9.1)...\n')
+
+// Testa se está autenticado
+try {
+  execSync('npx vercel whoami', { stdio: 'pipe' })
+} catch (e) {
+  console.error('\n⚠️ VOCÊ PRECISA DE FAZER LOGIN NA VERCEL PRIMEIRO:')
+  console.error('👉 Execute no terminal: npx vercel login')
+  console.error('Depois de autenticar no navegador, execute novamente: npm run env:sync\n')
+  process.exit(1)
+}
 
 const tokenArg = process.argv[2] ? `--token ${process.argv[2]}` : ''
 
 for (const [key, value] of Object.entries(envVars)) {
   for (const env of environments) {
     try {
-      console.log(`⏳ Configurando ${key} (${env})...`)
+      console.log(`⏳ Configurando ${key} em [${env}]...`)
       
-      // Remove se já existir para evitar conflito
       try {
         execSync(`npx vercel env rm ${key} ${env} --yes ${tokenArg}`, {
           stdio: 'ignore',
@@ -37,17 +44,16 @@ for (const [key, value] of Object.entries(envVars)) {
         // Ignora se não existir
       }
 
-      // Adiciona a variável via stdin
       execSync(`echo "${value}" | npx vercel env add ${key} ${env} --force ${tokenArg}`, {
         stdio: 'pipe',
         shell: true,
       })
 
-      console.log(`✅ ${key} adicionado em [${env}]`)
+      console.log(`✅ ${key} configurado com sucesso em [${env}]`)
     } catch (err) {
-      console.error(`⚠️ Aviso ao adicionar ${key} em [${env}]:`, err.message || err)
+      console.error(`⚠️ Erro ao adicionar ${key} em [${env}]:`, err.message || err)
     }
   }
 }
 
-console.log('\n🎉 Sincronização concluída com sucesso!')
+console.log('\n🎉 Todas as variáveis de ambiente foram sincronizadas na Vercel!')
