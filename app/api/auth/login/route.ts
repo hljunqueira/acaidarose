@@ -3,6 +3,8 @@ import { query } from '@/lib/db/postgres'
 import { User, UserRole } from '@/types'
 import bcrypt from 'bcryptjs'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
