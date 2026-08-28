@@ -44,3 +44,45 @@ export function playOrderNotificationSound() {
     // Ignorar se o navegador bloquear autoplay
   }
 }
+
+/**
+ * Anuncia a senha na TV com sino e sintetizador de voz
+ */
+export function announceTVCall(ticket: string, customerName?: string) {
+  if (typeof window === 'undefined') return
+
+  // 1. Toca o sino
+  playOrderNotificationSound()
+
+  // 2. Síntese de voz em português
+  try {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel() // cancela falas pendentes
+
+      const cleanTicket = ticket.replace('#', '')
+      const textToSpeak = customerName
+        ? `Senha ${cleanTicket}, ${customerName}. Seu açaí está pronto!`
+        : `Senha ${cleanTicket}. Seu açaí está pronto!`
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak)
+      utterance.lang = 'pt-PT'
+      utterance.rate = 0.95
+      utterance.pitch = 1.05
+
+      // Busca voz em português se disponível
+      const voices = window.speechSynthesis.getVoices()
+      const ptVoice = voices.find((v) => v.lang.startsWith('pt'))
+      if (ptVoice) {
+        utterance.voice = ptVoice
+      }
+
+      // Pequeno delay de 300ms para o sino soar antes da voz
+      setTimeout(() => {
+        window.speechSynthesis.speak(utterance)
+      }, 300)
+    }
+  } catch {
+    // fallback se não suportado
+  }
+}
+

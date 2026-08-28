@@ -32,6 +32,7 @@ interface OrderItemsModalProps {
   onConfirmPayment?: (order: Order) => void
   onDeleteOrder?: (order: Order) => void
   onPrintOrder?: (order: Order) => void
+  onCallTV?: (order: Order) => void
 }
 
 export default function OrderItemsModal({
@@ -41,6 +42,7 @@ export default function OrderItemsModal({
   onConfirmPayment,
   onDeleteOrder,
   onPrintOrder,
+  onCallTV,
 }: OrderItemsModalProps) {
   if (!order) return null
 
@@ -196,6 +198,17 @@ export default function OrderItemsModal({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {onCallTV && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onCallTV(order)}
+                className="h-8 bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+              >
+                <span>Chamar no Painel TV</span>
+              </Button>
+            )}
+
             {isWaitingPayment && onConfirmPayment && (
               <Button
                 type="button"

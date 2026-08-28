@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 
 import { playOrderNotificationSound } from '@/lib/utils/soundNotification'
+import { broadcastTVCall } from '@/lib/utils/tvBroadcast'
 import OrderHistoryAuditModal from './OrderHistoryAuditModal'
 import OrderEditDialog from './OrderEditDialog'
 import NewOrderManualModal from './NewOrderManualModal'
@@ -286,6 +287,18 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     } catch (err: any) {
       toast.error(err.message || 'Erro ao confirmar pagamento')
     }
+  }
+
+  // Transmissão de chamada de senha em tempo real para o Painel TV
+  const handleCallTicketOnTV = (order: Order) => {
+    const ticketNum = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`
+    const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+    broadcastTVCall({
+      ticket: ticketNum,
+      customerName: clientName,
+      status: order.status,
+    })
+    toast.success(`Senha ${ticketNum} (${clientName}) chamada no Painel TV!`)
   }
 
   // --- Handlers de Drag and Drop (Cards e Scroll com Mouse) ---
@@ -705,6 +718,19 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                             </Button>
 
                             <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCallTicketOnTV(order)
+                                }}
+                                className="h-8 px-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-[10.5px] font-bold cursor-pointer"
+                                title="Chamar senha na Smart TV"
+                              >
+                                <span>Chamar TV</span>
+                              </Button>
+
                               {order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && (
                                 <Button
                                   size="sm"
@@ -789,6 +815,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         onConfirmPayment={handleConfirmCounterPayment}
         onDeleteOrder={handleDeleteOrderPermanently}
         onPrintOrder={(o) => handlePrintOrder(null, o)}
+        onCallTV={handleCallTicketOnTV}
       />
 
       {/* 4. Modal de Histórico e Auditoria do Pedido */}

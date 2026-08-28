@@ -11,6 +11,7 @@ import SplitBillDialog from './SplitBillDialog'
 import PaymentModal from './PaymentModal'
 import TableThermalReceiptDialog from './TableThermalReceiptDialog'
 import { ArrowLeft, Printer, Utensils, Receipt, Split, CheckCircle2, Eye, Trash2 } from 'lucide-react'
+import { broadcastTVCall } from '@/lib/utils/tvBroadcast'
 
 interface TableCheckoutDetailProps {
   table: RestaurantTable
@@ -211,14 +212,34 @@ export default function TableCheckoutDetail({
                 </span>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setTransferOpen(true)}
-                className="text-xs border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white font-bold cursor-pointer rounded-xl h-8.5 shadow-xs"
-              >
-                ⇄ Transferir Itens
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    const ticket = `Mesa ${table.number.toString().padStart(2, '0')}`
+                    const firstCustomer = items.find((it: any) => it.customerName)?.customerName
+                    broadcastTVCall({
+                      ticket: `#M${table.number}`,
+                      customerName: firstCustomer || ticket,
+                      status: 'READY',
+                    })
+                    toast.success(`${ticket} chamada no Painel TV!`)
+                  }}
+                  className="text-xs bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold cursor-pointer rounded-xl h-8.5 shadow-xs"
+                >
+                  <span>Chamar na TV</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTransferOpen(true)}
+                  className="text-xs border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white font-bold cursor-pointer rounded-xl h-8.5 shadow-xs"
+                >
+                  <span>Transferir Itens</span>
+                </Button>
+              </div>
             </div>
 
             {/* Tabela de Itens Consumidos */}
