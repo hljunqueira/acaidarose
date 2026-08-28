@@ -141,7 +141,7 @@ export default function AppSidebar({
         icon: Server,
         accentClass: 'text-indigo-600 dark:text-indigo-400',
         items: [
-          { id: 'dev_hub', label: 'Central TI & Status VPS (95ms)', show: true },
+          { id: 'dev_hub', label: 'Central TI & Status VPS', show: true },
           { id: 'prevention_center', label: 'Prevenção & Diagnóstico', show: true },
           { id: 'audit_logs', label: 'Logs & Auditoria TI', show: true },
         ],
@@ -152,7 +152,7 @@ export default function AppSidebar({
         icon: Building2,
         accentClass: 'text-amber-600 dark:text-amber-400',
         items: [
-          { id: 'franchise', label: 'Franqueadora Master (DRE & Royalties)', show: true },
+          { id: 'franchise', label: 'Franqueadora Master', show: true },
           {
             id: 'franchise_requests',
             label: 'Solicitações da Rede',
@@ -193,7 +193,7 @@ export default function AppSidebar({
         accentClass: 'text-emerald-600 dark:text-emerald-400',
         items: [
           { id: 'inventory', label: 'Gestão de Estoque Local', show: true },
-          { id: 'supply_orders', label: 'Reposição com a Matriz (B2B)', show: true },
+          { id: 'supply_orders', label: 'Reposição com a Matriz', show: true },
         ],
       },
       {
@@ -218,7 +218,7 @@ export default function AppSidebar({
         icon: Building2,
         accentClass: 'text-amber-600 dark:text-amber-400',
         items: [
-          { id: 'franchise', label: 'Franqueadora Master (DRE & Royalties)', show: true },
+          { id: 'franchise', label: 'Franqueadora Master', show: true },
           {
             id: 'franchise_requests',
             label: 'Solicitações da Rede',

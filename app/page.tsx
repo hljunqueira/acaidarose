@@ -201,7 +201,7 @@ export default function HomePage() {
             <ThemeToggle />
 
             <span className="text-[11px] text-purple-950 dark:text-white font-bold hidden md:inline-block">
-              {loggedUser.name}
+              {loggedUser.name ? loggedUser.name.replace(/\s*\(.*?\)\s*/g, '').trim() : ''}
             </span>
             <Button
               size="sm"

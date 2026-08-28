@@ -55,10 +55,12 @@ export default function AppTopHeader({
           className="flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-purple-50 transition cursor-pointer"
         >
           <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-purple-700 to-fuchsia-700 text-white flex items-center justify-center text-xs font-black shadow-xs">
-            {user.name.slice(0, 1)}
+            {(user.name || 'U').slice(0, 1)}
           </div>
           <div className="hidden sm:block text-left text-xs">
-            <div className="font-bold text-foreground leading-tight">{user.name}</div>
+            <div className="font-bold text-foreground leading-tight">
+              {user.name ? user.name.replace(/\s*\(.*?\)\s*/g, '').trim() : ''}
+            </div>
             <div className="text-[10px] text-purple-700 font-semibold">{user.role}</div>
           </div>
         </button>
@@ -73,7 +75,9 @@ export default function AppTopHeader({
             <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-purple-100 shadow-xl z-50 p-2 text-xs space-y-1">
               {/* Header do Utilizador */}
               <div className="p-3 border-b border-purple-50 bg-purple-50/40 rounded-xl mb-1">
-                <div className="font-black text-foreground">{user.name}</div>
+                <div className="font-black text-foreground">
+                  {user.name ? user.name.replace(/\s*\(.*?\)\s*/g, '').trim() : ''}
+                </div>
                 <div className="text-[10px] text-purple-800 font-bold uppercase">{user.role}</div>
                 <div className="text-[11px] text-muted-foreground font-mono truncate mt-0.5">{user.email}</div>
               </div>
