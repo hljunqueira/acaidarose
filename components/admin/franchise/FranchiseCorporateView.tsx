@@ -13,6 +13,7 @@ import StoreMetricsCard from './StoreMetricsCard'
 import CreateStoreDialog from './CreateStoreDialog'
 import StoreDetailsDialog from './StoreDetailsDialog'
 import EditRoyaltyDialog, { FranchiseContractData } from './EditRoyaltyDialog'
+import FranchiseFeesManagerDialog, { FranchiseFeeCharge } from './FranchiseFeesManagerDialog'
 import FranchiseReportDialog from './FranchiseReportDialog'
 import UserEditDialog from '../users/UserEditDialog'
 import {
@@ -27,6 +28,7 @@ import {
   UserCheck,
   ArrowUpRight,
   Trash2,
+  Sliders,
 } from 'lucide-react'
 
 const INITIAL_CONTRACTS: FranchiseContractData[] = [
@@ -58,7 +60,7 @@ const INITIAL_CONTRACTS: FranchiseContractData[] = [
     monthsActive: 14,
     royaltyPercent: 5.0,
     marketingPercent: 1.0,
-    systemFeeMonthly: 99.0,
+    systemFeeMonthly: 49.0,
     status: 'ATIVO',
     paymentStatus: 'PAID',
     monthlyRevenue: 24350.0,
@@ -168,6 +170,46 @@ export default function FranchiseCorporateView() {
   const [reportOpen, setReportOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [userDialogOpen, setUserDialogOpen] = useState(false)
+  const [feesManagerOpen, setFeesManagerOpen] = useState(false)
+
+  const [customFees, setCustomFees] = useState<FranchiseFeeCharge[]>([
+    {
+      id: 'fee-sys-default',
+      storeId: 'ALL',
+      storeName: 'Todas as Unidades da Rede',
+      title: 'Licença do Sistema & PDV',
+      category: 'SISTEMA',
+      chargeType: 'FIXED_AMOUNT',
+      value: 49.0,
+      frequency: 'MENSAL',
+      status: 'ATIVO',
+      description: 'Cobrança padrão de 49€ por unidade ativa',
+    },
+    {
+      id: 'fee-roy-default',
+      storeId: 'ALL',
+      storeName: 'Todas as Unidades da Rede',
+      title: 'Royalties Operacionais',
+      category: 'ROYALTIES',
+      chargeType: 'PERCENTAGE',
+      value: 5.0,
+      frequency: 'MENSAL',
+      status: 'ATIVO',
+      description: '5% sobre o faturamento bruto mensal',
+    },
+    {
+      id: 'fee-mkt-default',
+      storeId: 'ALL',
+      storeName: 'Todas as Unidades da Rede',
+      title: 'Fundo de Marketing Nacional',
+      category: 'MARKETING',
+      chargeType: 'PERCENTAGE',
+      value: 1.0,
+      frequency: 'MENSAL',
+      status: 'ATIVO',
+      description: '1% destinado a tráfego pago e campanhas da marca',
+    },
+  ])
 
   const loadNetworkData = async () => {
     setLoading(true)
@@ -266,6 +308,16 @@ export default function FranchiseCorporateView() {
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setFeesManagerOpen(true)}
+            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+          >
+            <Sliders className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+            <span>Gerir Cobranças & Taxas</span>
           </Button>
 
           <Button
@@ -616,6 +668,14 @@ export default function FranchiseCorporateView() {
         open={reportOpen}
         onOpenChange={setReportOpen}
         contracts={contracts}
+      />
+
+      <FranchiseFeesManagerDialog
+        open={feesManagerOpen}
+        onOpenChange={setFeesManagerOpen}
+        fees={customFees}
+        onSaveFees={(updated) => setCustomFees(updated)}
+        stores={overview.stores.map((s) => ({ id: s.tenant.id, name: s.tenant.name }))}
       />
     </div>
   )

@@ -36,6 +36,8 @@ import ReportsModuleView from '@/components/admin/reports/ReportsModuleView'
 import QRCodeConfigView from '@/components/admin/qrcode/QRCodeConfigView'
 import QRCodeOrdersAdmin from '@/components/admin/orders/QRCodeOrdersAdmin'
 import FranchiseCorporateView from '@/components/admin/franchise/FranchiseCorporateView'
+import FranchiseCandidatesView from '@/components/admin/franchise/FranchiseCandidatesView'
+import StoreRequestsView from '@/components/admin/franchise/StoreRequestsView'
 import FranchiseRequestsView from '@/components/admin/franchise/FranchiseRequestsView'
 import StoreCompanySettingsView from '@/components/admin/company/StoreCompanySettingsView'
 import UsersAdmin from '@/components/admin/users/UsersAdmin'
@@ -80,7 +82,7 @@ export default function HomePage() {
               if (matched) setCurrentTenant(matched)
             }
           })
-          .catch(() => {})
+          .catch(() => { })
       }
     }
   }, [user, authFetch, setCurrentTenant])
@@ -199,7 +201,6 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            <PortugalLiveClock />
             <ThemeToggle />
 
             <span className="text-[11px] text-purple-950 dark:text-white font-bold hidden md:inline-block">
@@ -229,6 +230,8 @@ export default function HomePage() {
 
           {/* 2. FRANQUEADORA MASTER */}
           {view === 'franchise' && (isSuperAdmin || isFranchisorAdmin) && <FranchiseCorporateView />}
+          {view === 'franchise_candidates' && (isSuperAdmin || isFranchisorAdmin) && <FranchiseCandidatesView />}
+          {view === 'store_requests' && isAdmin && <StoreRequestsView tenantId={activeTenantId} />}
           {view === 'franchise_requests' && isAdmin && (
             <FranchiseRequestsView
               tenantId={activeTenantId}

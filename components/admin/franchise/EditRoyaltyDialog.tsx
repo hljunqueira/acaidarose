@@ -45,9 +45,9 @@ export default function EditRoyaltyDialog({
   contract,
   onSave,
 }: EditRoyaltyDialogProps) {
-  const [royaltyPercent, setRoyaltyPercent] = useState<number>(4.0)
-  const [marketingPercent, setMarketingPercent] = useState<number>(2.0)
-  const [systemFeeMonthly, setSystemFeeMonthly] = useState<number>(99.0)
+  const [royaltyPercent, setRoyaltyPercent] = useState<number>(5.0)
+  const [marketingPercent, setMarketingPercent] = useState<number>(1.0)
+  const [systemFeeMonthly, setSystemFeeMonthly] = useState<number>(49.0)
   const [modelType, setModelType] = useState<'STANDARD' | 'GRACE_0' | 'GROWTH_2' | 'CUSTOM'>('STANDARD')
   const [notes, setNotes] = useState<string>('')
   const [paymentStatus, setPaymentStatus] = useState<'PAID' | 'PENDING' | 'GRACE'>('PENDING')
@@ -56,11 +56,11 @@ export default function EditRoyaltyDialog({
     if (contract) {
       setRoyaltyPercent(contract.royaltyPercent)
       setMarketingPercent(contract.marketingPercent)
-      setSystemFeeMonthly(contract.systemFeeMonthly !== undefined ? contract.systemFeeMonthly : 99.0)
+      setSystemFeeMonthly(contract.systemFeeMonthly !== undefined ? contract.systemFeeMonthly : 49.0)
       setNotes(contract.gracePeriodNotes || '')
       setPaymentStatus(contract.paymentStatus || (contract.royaltyPercent === 0 ? 'GRACE' : 'PENDING'))
 
-      if (contract.royaltyPercent === 4.0 && contract.marketingPercent === 2.0) {
+      if (contract.royaltyPercent === 5.0 && contract.marketingPercent === 1.0) {
         setModelType('STANDARD')
       } else if (contract.royaltyPercent === 0.0) {
         setModelType('GRACE_0')
@@ -75,19 +75,19 @@ export default function EditRoyaltyDialog({
   const handleSelectModel = (type: 'STANDARD' | 'GRACE_0' | 'GROWTH_2' | 'CUSTOM') => {
     setModelType(type)
     if (type === 'STANDARD') {
-      setRoyaltyPercent(4.0)
-      setMarketingPercent(2.0)
-      setSystemFeeMonthly(99.0)
+      setRoyaltyPercent(5.0)
+      setMarketingPercent(1.0)
+      setSystemFeeMonthly(49.0)
       setPaymentStatus('PENDING')
     } else if (type === 'GRACE_0') {
       setRoyaltyPercent(0.0)
-      setMarketingPercent(2.0)
+      setMarketingPercent(1.0)
       setSystemFeeMonthly(0.0)
       setPaymentStatus('GRACE')
     } else if (type === 'GROWTH_2') {
       setRoyaltyPercent(2.0)
-      setMarketingPercent(2.0)
-      setSystemFeeMonthly(99.0)
+      setMarketingPercent(1.0)
+      setSystemFeeMonthly(49.0)
       setPaymentStatus('PENDING')
     }
   }
@@ -149,7 +149,7 @@ export default function EditRoyaltyDialog({
                     }`}
                   >
                     <div className="flex justify-between items-center text-[11px] font-black text-purple-950 dark:text-white">
-                      <span>Padrão 4%</span>
+                      <span>Padrão 5%</span>
                       {modelType === 'STANDARD' && <Check className="h-3 w-3 text-purple-700 dark:text-pink-400" />}
                     </div>
                     <div className="text-[9px] text-purple-700/80 dark:text-purple-200/60 mt-0.5">&gt; 12 meses</div>

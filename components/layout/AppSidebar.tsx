@@ -18,6 +18,8 @@ import {
   ShoppingCart,
   Truck,
   Sparkles,
+  Users,
+  FileText,
 } from 'lucide-react'
 
 export type AppViewId =
@@ -25,6 +27,8 @@ export type AppViewId =
   | 'prevention_center'
   | 'audit_logs'
   | 'franchise'
+  | 'franchise_candidates'
+  | 'store_requests'
   | 'franchise_requests'
   | 'supply_hub'
   | 'pdv'
@@ -80,33 +84,35 @@ export default function AppSidebar({
   const isSuperAdmin = user.role === 'SUPER_ADMIN'
   const isFranchisorAdmin = user.role === 'FRANCHISOR_ADMIN'
   const isTenantAdmin = user.role === 'TENANT_ADMIN'
-  const isCashier = user.role === 'CASHIER'
-  const canSwitchStore = isSuperAdmin || isFranchisorAdmin
 
-  const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0)
+  // Contagem de solicitações e candidaturas pendentes
+  const [candidatesCount, setCandidatesCount] = useState<number>(0)
+  const [storeRequestsCount, setStoreRequestsCount] = useState<number>(0)
 
   useEffect(() => {
-    const loadCount = () => {
+    const loadCounts = () => {
       fetch('/api/franchise-requests')
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.requests) {
-            const count = d.requests.filter((r: any) => r.status === 'PENDING').length
-            setPendingRequestsCount(count)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data.requests)) {
+            const candPending = data.requests.filter(
+              (r: any) => r.type === 'FRANCHISE_APPLICATION' && r.status === 'PENDING'
+            ).length
+            const storePending = data.requests.filter(
+              (r: any) => r.type !== 'FRANCHISE_APPLICATION' && r.status === 'PENDING'
+            ).length
+
+            setCandidatesCount(candPending)
+            setStoreRequestsCount(storePending)
           }
         })
         .catch(() => {})
     }
 
-    loadCount()
+    loadCounts()
 
-    const handleUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent
-      if (customEvent.detail?.count !== undefined) {
-        setPendingRequestsCount(customEvent.detail.count)
-      } else {
-        loadCount()
-      }
+    const handleUpdate = () => {
+      loadCounts()
     }
 
     window.addEventListener('franchise_requests_updated', handleUpdate)
@@ -133,7 +139,7 @@ export default function AppSidebar({
   let navGroups: NavGroup[] = []
 
   if (isSuperAdmin) {
-    // 👑 1. SUPER_ADMIN (Master TI)
+    // 👑 1. SUPER_ADMIN (Master TI & Franqueadora Holding)
     navGroups = [
       {
         key: 'devHub',
@@ -141,9 +147,9 @@ export default function AppSidebar({
         icon: Server,
         accentClass: 'text-indigo-600 dark:text-indigo-400',
         items: [
-          { id: 'dev_hub', label: 'Status & Telemetria VPS', show: true },
-          { id: 'prevention_center', label: 'Diagnóstico & Integridade', show: true },
-          { id: 'audit_logs', label: 'Logs & Auditoria TI', show: true },
+          { id: 'dev_hub', label: 'Status & Telemetria VPS', subtitle: 'PostgreSQL 16 & Vercel Edge', show: true },
+          { id: 'prevention_center', label: 'Diagnóstico & Integridade', subtitle: 'Gateways, KDS & Triggers', show: true },
+          { id: 'audit_logs', label: 'Logs & Auditoria TI', subtitle: 'Histórico Imutável de Eventos', show: true },
         ],
       },
       {
@@ -152,14 +158,32 @@ export default function AppSidebar({
         icon: Building2,
         accentClass: 'text-amber-600 dark:text-amber-400',
         items: [
-          { id: 'franchise', label: 'Franqueadora Master', show: true },
           {
-            id: 'franchise_requests',
-            label: 'Candidaturas & Solicitações',
-            badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
+            id: 'franchise',
+            label: 'Gestão da Rede & Lojas',
+            subtitle: 'Unidades, Contratos & Royalties',
             show: true,
           },
-          { id: 'supply_hub', label: 'Central de Abastecimento B2B', show: true },
+          {
+            id: 'franchise_candidates',
+            label: 'Candidaturas de Franquia',
+            subtitle: 'Leads do Site & Expansão',
+            badge: candidatesCount > 0 ? String(candidatesCount) : undefined,
+            show: true,
+          },
+          {
+            id: 'store_requests',
+            label: 'Solicitações das Lojas',
+            subtitle: 'Ajustes de Preço & Cardápio',
+            badge: storeRequestsCount > 0 ? String(storeRequestsCount) : undefined,
+            show: true,
+          },
+          {
+            id: 'supply_hub',
+            label: 'Central de Abastecimento',
+            subtitle: 'Catálogo Mestre B2B & Expedição',
+            show: true,
+          },
         ],
       },
       {
@@ -171,7 +195,7 @@ export default function AppSidebar({
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
           { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
-          { id: 'tables', label: 'Gestão de Mesas', show: true },
+          { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
       {
@@ -180,10 +204,10 @@ export default function AppSidebar({
         icon: Utensils,
         accentClass: 'text-pink-600 dark:text-pink-400',
         items: [
-          { id: 'menu', label: 'Produtos do Cardápio', show: true },
-          { id: 'menu_categories', label: 'Categorias', show: true },
-          { id: 'menu_menus', label: 'Menus', show: true },
-          { id: 'menu_highlights', label: 'Destaques & Stories', show: true },
+          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Copos, Frutas & Toppings', show: true },
+          { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
+          { id: 'menu_menus', label: 'Menus & Horários', subtitle: 'Regras de Disponibilidade', show: true },
+          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Vídeos & Banners Promocionais', show: true },
         ],
       },
       {
@@ -192,8 +216,8 @@ export default function AppSidebar({
         icon: Boxes,
         accentClass: 'text-emerald-600 dark:text-emerald-400',
         items: [
-          { id: 'inventory', label: 'Gestão de Estoque Local', show: true },
-          { id: 'supply_orders', label: 'Reposição com a Matriz', show: true },
+          { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: 'Controle Físico & Auditoria', show: true },
+          { id: 'supply_orders', label: 'Reposição com a Matriz', subtitle: 'Pedidos B2B & Entrada de Carga', show: true },
         ],
       },
       {
@@ -202,10 +226,10 @@ export default function AppSidebar({
         icon: Store,
         accentClass: 'text-purple-600 dark:text-purple-400',
         items: [
-          { id: 'company', label: 'Dados da Loja', show: true },
-          { id: 'qrcode_config', label: 'Configurações QR Code', show: true },
-          { id: 'users', label: 'Utilizadores & Permissões', show: true },
-          { id: 'reports', label: 'Relatórios & Fecho de Caixa', show: true },
+          { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
+          { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
+          { id: 'users', label: 'Utilizadores & Permissões', subtitle: 'Gerentes, Caixas & Acessos', show: true },
+          { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
         ],
       },
     ]
@@ -218,15 +242,33 @@ export default function AppSidebar({
         icon: Building2,
         accentClass: 'text-amber-600 dark:text-amber-400',
         items: [
-          { id: 'franchise', label: 'Franqueadora Master', show: true },
           {
-            id: 'franchise_requests',
-            label: 'Candidaturas & Solicitações',
-            badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
+            id: 'franchise',
+            label: 'Gestão da Rede & Lojas',
+            subtitle: 'Unidades, Contratos & Royalties',
             show: true,
           },
-          { id: 'supply_hub', label: 'Central de Abastecimento B2B', show: true },
-          { id: 'menu_highlights', label: 'Destaques & Stories Nacionais', show: true },
+          {
+            id: 'franchise_candidates',
+            label: 'Candidaturas de Franquia',
+            subtitle: 'Leads do Site & Expansão',
+            badge: candidatesCount > 0 ? String(candidatesCount) : undefined,
+            show: true,
+          },
+          {
+            id: 'store_requests',
+            label: 'Solicitações das Lojas',
+            subtitle: 'Ajustes de Preço & Cardápio',
+            badge: storeRequestsCount > 0 ? String(storeRequestsCount) : undefined,
+            show: true,
+          },
+          {
+            id: 'supply_hub',
+            label: 'Central de Abastecimento',
+            subtitle: 'Catálogo Mestre B2B & Expedição',
+            show: true,
+          },
+          { id: 'menu_highlights', label: 'Destaques Nacionais', subtitle: 'Stories da Rede', show: true },
         ],
       },
       {
@@ -272,10 +314,10 @@ export default function AppSidebar({
         icon: Store,
         accentClass: 'text-purple-700 dark:text-pink-400',
         items: [
-          { id: 'pdv', label: 'PDV Balcão & Mesas', show: true },
-          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', show: true },
-          { id: 'tv_panel', label: 'Painel TV de Senhas', show: true },
-          { id: 'tables', label: 'Gestão de Mesas', show: true },
+          { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
+          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
+          { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
+          { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
       {
@@ -288,9 +330,9 @@ export default function AppSidebar({
           { id: 'menu_categories', label: 'Categorias & Menus', show: true },
           { id: 'menu_highlights', label: 'Destaques da Loja', show: true },
           {
-            id: 'franchise_requests',
+            id: 'store_requests',
             label: 'Solicitações à Franqueadora',
-            badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
+            subtitle: 'Ajustes de Preço & Cardápio',
             show: true,
           },
         ],
@@ -301,53 +343,78 @@ export default function AppSidebar({
         icon: Boxes,
         accentClass: 'text-emerald-600 dark:text-emerald-400',
         items: [
-          { id: 'inventory', label: 'Gestão de Estoque Local', show: true },
-          { id: 'supply_orders', label: 'Reposição com a Matriz', show: true },
+          { id: 'inventory', label: 'Estoque da Loja', subtitle: 'Controle Físico Local', show: true },
+          { id: 'supply_orders', label: 'Encomendar à Franqueadora', subtitle: 'Tabela Exclusiva B2B', show: true },
         ],
       },
       {
         key: 'storeConfig',
-        title: 'GESTÃO & CONFIGURAÇÕES DA UNIDADE',
+        title: 'CONFIGURAÇÕES DA LOJA',
         icon: Store,
         accentClass: 'text-purple-600 dark:text-purple-400',
         items: [
-          { id: 'company', label: 'Dados da Loja', show: true },
+          { id: 'company', label: 'Dados da Empresa', show: true },
           { id: 'qrcode_config', label: 'Configurações QR Code', show: true },
-          { id: 'users', label: 'Caixas & Operadores da Loja', show: true },
-          { id: 'reports', label: 'Fecho de Caixa & Relatórios do Dia', show: true },
+          { id: 'users', label: 'Operadores de Caixa', show: true },
+          { id: 'reports', label: 'Relatórios & Fecho de Caixa', show: true },
         ],
       },
     ]
   } else {
-    // 💻 4. CASHIER (Operador de Caixa / Atendente)
+    // 👤 4. OPERATOR / CASHIER
     navGroups = [
       {
         key: 'salon',
-        title: 'OPERAÇÃO & ATENDIMENTO',
+        title: 'OPERAÇÃO DO TURNO',
         icon: Store,
         accentClass: 'text-purple-700 dark:text-pink-400',
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
-          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Status de Preparo', show: true },
-          { id: 'tv_panel', label: 'Painel TV de Senhas', show: true },
-          { id: 'inventory', label: 'Checklist Rápido de Estoque', show: true },
-          { id: 'reports', label: 'Fecho de Turno do Caixa', show: true },
+          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
+          { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
+          { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
+          { id: 'inventory', label: 'Estoque do Turno', subtitle: 'Checklist Rápido 2 min', show: true },
         ],
       },
     ]
   }
 
-  const renderContent = () => (
-    <div className="flex flex-col h-full justify-between">
-      <div className="p-4 md:p-5 flex flex-col flex-1 overflow-y-auto">
-        {/* Logo Oficial do Açaí da Rose & Botão Fechar Mobile */}
-        <div className="flex items-center justify-between pb-4 border-b border-purple-100 dark:border-white/10">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Açaí da Rose" className="h-10 w-auto object-contain" />
+  const isMasterSwitcherAllowed = isSuperAdmin || isFranchisorAdmin
+
+  return (
+    <>
+      {/* Overlay Mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden transition-opacity"
+          onClick={onCloseMobile}
+        />
+      )}
+
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-white dark:bg-[#120120] border-r border-purple-100 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out lg:static lg:z-auto ${
+          mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        {/* Topo do Sidebar: Logo Oficial */}
+        <div className="p-4 border-b border-purple-100 dark:border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <img
+                src="/images/logo.png"
+                alt="Açaí da Rose"
+                className="h-10 w-auto object-contain transition-transform hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            </div>
             <div>
-              <div className="font-black text-sm text-purple-950 dark:text-white leading-tight">Açaí da Rose</div>
-              <div className="text-[10px] text-purple-700 dark:text-pink-400 font-black uppercase tracking-wider">
-                PDV & Franqueadora
+              <div className="font-black text-sm text-purple-950 dark:text-white leading-tight">
+                Açaí da Rose
+              </div>
+              <div className="text-[10px] text-pink-600 dark:text-pink-400 font-bold uppercase tracking-wider">
+                PDV & FRANQUEADORA
               </div>
             </div>
           </div>
@@ -355,28 +422,31 @@ export default function AppSidebar({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="lg:hidden p-1.5 rounded-xl text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer"
-            aria-label="Fechar Menu"
+            className="p-1.5 rounded-xl text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-white/10 lg:hidden cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Card da Loja Ativa com Seletor */}
-        <div className="my-3.5">
-          {canSwitchStore ? (
+        {/* Seletor de Loja Ativa */}
+        <div className="p-3 border-b border-purple-100 dark:border-white/10 bg-purple-50/40 dark:bg-white/5">
+          {isMasterSwitcherAllowed ? (
             <button
               type="button"
               onClick={onOpenStoreSwitcher}
-              className="w-full text-left p-3 rounded-2xl border border-purple-200/80 dark:border-white/15 bg-purple-50/70 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 transition-all flex items-center justify-between cursor-pointer group shadow-xs"
-              title="Clique para alternar entre as lojas franqueadas"
+              className="w-full text-left p-2.5 rounded-2xl border border-purple-200/80 dark:border-white/15 bg-white dark:bg-[#160228] hover:border-purple-400 dark:hover:border-pink-500 transition-all shadow-xs group cursor-pointer"
             >
-              <div className="min-w-0">
-                <div className="text-xs font-black text-purple-950 dark:text-white truncate group-hover:text-purple-700 dark:group-hover:text-pink-300 transition">
-                  {currentTenant.name}
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 pr-1">
+                  <div className="text-xs font-black text-purple-950 dark:text-white truncate group-hover:text-purple-700 dark:group-hover:text-pink-300">
+                    {currentTenant.name}
+                  </div>
+                  <div className="text-[10px] text-purple-700 dark:text-purple-300/80 font-bold mt-0.5 flex items-center gap-1">
+                    <span>Trocar de Loja</span>
+                    <span className="text-[9px]">▾</span>
+                  </div>
                 </div>
-                <div className="text-[10px] text-pink-600 dark:text-pink-400 font-bold flex items-center gap-1 mt-0.5">
-                  <span>Trocar de Loja</span>
+                <div className="h-6 w-6 rounded-xl bg-purple-100 dark:bg-white/10 text-purple-700 dark:text-pink-400 flex items-center justify-center font-bold text-xs shrink-0">
                   <span className="text-xs">▾</span>
                 </div>
               </div>
@@ -394,7 +464,7 @@ export default function AppSidebar({
         </div>
 
         {/* Grupos Colapsáveis Dinâmicos */}
-        <nav className="space-y-3 flex-1">
+        <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
           {navGroups.map((group) => {
             const GroupIcon = group.icon
             const isGroupActive = group.items.some((it) => it.id === currentView)
@@ -443,7 +513,7 @@ export default function AppSidebar({
                             }`}
                           >
                             <div className="flex flex-col min-w-0 pr-2">
-                              <span className="font-bold text-xs leading-tight truncate">{item.label}</span>
+                              <span className="font-bold text-xs leading-tight">{item.label}</span>
                               {item.subtitle && (
                                 <span
                                   className={`text-[10px] font-semibold leading-tight mt-0.5 ${
@@ -454,10 +524,11 @@ export default function AppSidebar({
                                 </span>
                               )}
                             </div>
+
                             {item.badge && (
-                              <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-pink-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs shrink-0">
+                              <Badge className="bg-amber-400 text-purple-950 text-[10px] font-black py-0 px-1.5 shrink-0">
                                 {item.badge}
-                              </span>
+                              </Badge>
                             )}
                           </button>
                         )
@@ -468,34 +539,17 @@ export default function AppSidebar({
             )
           })}
         </nav>
-      </div>
 
-      {/* Rodapé da Sidebar */}
-      <div className="p-4 border-t border-purple-100 dark:border-white/10 bg-purple-50/40 dark:bg-black/20">
-        <div className="text-center text-[10px] text-purple-600 dark:text-purple-200/50 font-bold">
-          Açaí da Rose · Portugal
-        </div>
-      </div>
-    </div>
-  )
-
-  return (
-    <>
-      <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:flex-shrink-0 lg:sticky lg:top-0 lg:h-screen bg-white dark:bg-[#150226] border-r border-purple-100 dark:border-white/10 z-30 shadow-xs transition-colors duration-150">
-        {renderContent()}
-      </aside>
-
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div
-            onClick={onCloseMobile}
-            className="fixed inset-0 bg-purple-950/40 dark:bg-black/70 backdrop-blur-xs transition-opacity"
-          />
-          <div className="relative w-72 max-w-[85vw] bg-white dark:bg-[#150226] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-purple-100 dark:border-white/10">
-            {renderContent()}
+        {/* Rodapé do Sidebar */}
+        <div className="p-3 border-t border-purple-100 dark:border-white/10 text-center">
+          <div className="text-[11px] text-purple-700/80 dark:text-purple-300/70 font-bold">
+            Açaí da Rose · Portugal
+          </div>
+          <div className="text-[10px] text-purple-500 dark:text-purple-400 font-medium">
+            Versão Corporativa 2.5
           </div>
         </div>
-      )}
+      </aside>
     </>
   )
 }
