@@ -40,6 +40,15 @@ import FranchiseRequestsView from '@/components/admin/franchise/FranchiseRequest
 import StoreCompanySettingsView from '@/components/admin/company/StoreCompanySettingsView'
 import UsersAdmin from '@/components/admin/users/UsersAdmin'
 
+// Novos Módulos Especializados
+import DevMasterView from '@/components/admin/dev/DevMasterView'
+import PreventionCenterView from '@/components/admin/dev/PreventionCenterView'
+import AuditLogsView from '@/components/admin/dev/AuditLogsView'
+import SupplyHubView from '@/components/admin/supply/SupplyHubView'
+import TVOrdersPanelView from '@/components/admin/tv/TVOrdersPanelView'
+import InventoryManagementView from '@/components/admin/inventory/InventoryManagementView'
+import StoreSupplyOrdersView from '@/components/admin/inventory/StoreSupplyOrdersView'
+
 export default function HomePage() {
   const { user, logout, checkAuth, authFetch } = useAuthStore()
   const { currentTenant, setCurrentTenant } = useFranchiseStore()
@@ -127,11 +136,12 @@ export default function HomePage() {
   // =========================================================================
   const loggedUser: User = user
   const isSuperAdmin = loggedUser.role === 'SUPER_ADMIN'
+  const isFranchisorAdmin = loggedUser.role === 'FRANCHISOR_ADMIN'
   const isTenantAdmin = loggedUser.role === 'TENANT_ADMIN'
-  const isAdmin = isSuperAdmin || isTenantAdmin
+  const isAdmin = isSuperAdmin || isFranchisorAdmin || isTenantAdmin
 
   // Determinar a loja ativa efetiva (sempre a da filial para gerentes/caixas)
-  const effectiveTenant: Tenant = isSuperAdmin
+  const effectiveTenant: Tenant = (isSuperAdmin || isFranchisorAdmin)
     ? currentTenant || HQ_TENANT
     : (tenantsList.find((t) => t.id === loggedUser.tenantId) || (currentTenant?.id === loggedUser.tenantId ? currentTenant : HQ_TENANT))
 
@@ -189,7 +199,6 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Seletor de Tema Bimodal no Nav */}
             <ThemeToggle />
 
             <span className="text-[11px] text-purple-950 dark:text-white font-bold hidden md:inline-block">
@@ -212,21 +221,13 @@ export default function HomePage() {
 
         {/* Conteúdo Dinâmico das Views do PDV / Admin */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-[#f8f6fc] dark:bg-[#0e0117] transition-colors duration-150">
-          {view === 'qrcode' && <QRCodeOrdersAdmin tenantId={activeTenantId} />}
-          {view === 'pdv' && (
-            <TablesHallView
-              tenantId={activeTenantId}
-              storePhone={effectiveTenant.mbwayPhone || effectiveTenant.phone || ''}
-              currentUser={loggedUser}
-            />
-          )}
-          {view === 'tables' && isAdmin && <TablesManagementView tenantId={activeTenantId} />}
-          {view === 'staff' && isAdmin && <StaffManagementView tenantId={activeTenantId} />}
-          {view === 'menu' && isAdmin && <MenuHierarchyView tenantId={activeTenantId} />}
-          {view === 'menu_categories' && isAdmin && <MenuCategoriesAdmin tenantId={activeTenantId} />}
-          {view === 'menu_menus' && isAdmin && <MenuSectionsAdmin tenantId={activeTenantId} />}
-          {view === 'menu_highlights' && isAdmin && <MenuHighlightsAdmin tenantId={activeTenantId} />}
-          {view === 'franchise' && (isSuperAdmin || loggedUser?.role === 'FRANCHISOR_ADMIN') && <FranchiseCorporateView />}
+          {/* 1. CENTRAL MASTER TI */}
+          {view === 'dev_hub' && isSuperAdmin && <DevMasterView />}
+          {view === 'prevention_center' && isSuperAdmin && <PreventionCenterView />}
+          {view === 'audit_logs' && isSuperAdmin && <AuditLogsView />}
+
+          {/* 2. FRANQUEADORA MASTER */}
+          {view === 'franchise' && (isSuperAdmin || isFranchisorAdmin) && <FranchiseCorporateView />}
           {view === 'franchise_requests' && isAdmin && (
             <FranchiseRequestsView
               tenantId={activeTenantId}
@@ -234,14 +235,39 @@ export default function HomePage() {
               onNavigateToMenu={() => setView('menu')}
             />
           )}
+          {view === 'supply_hub' && (isSuperAdmin || isFranchisorAdmin) && <SupplyHubView />}
+
+          {/* 3. OPERAÇÃO & ATENDIMENTO */}
+          {view === 'pdv' && (
+            <TablesHallView
+              tenantId={activeTenantId}
+              storePhone={effectiveTenant.mbwayPhone || effectiveTenant.phone || ''}
+              currentUser={loggedUser}
+            />
+          )}
+          {view === 'qrcode' && <QRCodeOrdersAdmin tenantId={activeTenantId} />}
+          {view === 'tv_panel' && <TVOrdersPanelView tenantId={activeTenantId} />}
+          {view === 'tables' && isAdmin && <TablesManagementView tenantId={activeTenantId} />}
+
+          {/* 4. GESTÃO DE ESTOQUE & SUPPLY CHAIN */}
+          {view === 'inventory' && <InventoryManagementView tenantId={activeTenantId} />}
+          {view === 'supply_orders' && isAdmin && <StoreSupplyOrdersView tenantId={activeTenantId} />}
+
+          {/* 5. CARDÁPIO, MÍDIAS & PREÇOS */}
+          {view === 'menu' && isAdmin && <MenuHierarchyView tenantId={activeTenantId} />}
+          {view === 'menu_categories' && isAdmin && <MenuCategoriesAdmin tenantId={activeTenantId} />}
+          {view === 'menu_menus' && isAdmin && <MenuSectionsAdmin tenantId={activeTenantId} />}
+          {view === 'menu_highlights' && isAdmin && <MenuHighlightsAdmin tenantId={activeTenantId} />}
+
+          {/* 6. CONFIGURAÇÕES DA UNIDADE */}
           {view === 'company' && isAdmin && <StoreCompanySettingsView tenantId={activeTenantId} />}
-          {view === 'reports' && <ReportsModuleView tenantId={activeTenantId} currentUser={loggedUser} />}
           {view === 'qrcode_config' && isAdmin && <QRCodeConfigView tenantId={activeTenantId} />}
           {view === 'users' && isAdmin && <UsersAdmin tenantId={activeTenantId} currentUser={loggedUser} />}
+          {view === 'reports' && <ReportsModuleView tenantId={activeTenantId} currentUser={loggedUser} />}
         </main>
       </div>
 
-      {/* Modal Seletor de Filial (para SUPER_ADMIN) */}
+      {/* Modal Seletor de Filial (para SUPER_ADMIN e FRANCHISOR_ADMIN) */}
       <StoreSelectRadioDialog
         open={storeSwitcherOpen}
         onOpenChange={setStoreSwitcherOpen}

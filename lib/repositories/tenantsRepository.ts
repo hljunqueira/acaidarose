@@ -1,69 +1,119 @@
 import { Tenant, FranchiseNetworkOverview, StoreOverview } from '@/types'
-import { supabaseServer } from '@/lib/supabase/server'
-import { getMockStore } from '@/lib/supabase/mockStore'
+import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function getTenants(): Promise<Tenant[]> {
-  if (supabaseServer) {
-    const { data } = await supabaseServer
-      .from('tenants')
-      .select('*')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true })
+  const res = await query(
+    `SELECT id, name, slug, nif, address, city, postal_code, phone, mbway_phone, 
+            currency, is_headquarters, active, created_at, updated_at, deleted_at
+     FROM tenants 
+     WHERE deleted_at IS NULL 
+     ORDER BY is_headquarters DESC, created_at ASC`
+  )
 
-    if (data) {
-      return (data as any[]).map((t) => ({
-        id: t.id,
-        name: t.name,
-        slug: t.slug,
-        nif: t.nif,
-        address: t.address,
-        phone: t.phone,
-        mbwayPhone: t.mbway_phone,
-        currency: t.currency,
-        isHeadquarters: t.is_headquarters,
-        active: t.active,
-        createdAt: t.created_at,
-        updatedAt: t.updated_at,
-        deletedAt: t.deleted_at,
-      }))
-    }
-  }
-
-  const store = getMockStore()
-  return store.tenants.filter((t) => !t.deletedAt)
+  return (res.rows || []).map((t: any) => ({
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    nif: t.nif,
+    address: t.address,
+    city: t.city,
+    postalCode: t.postal_code,
+    phone: t.phone,
+    mbwayPhone: t.mbway_phone,
+    currency: t.currency || 'EUR',
+    isHeadquarters: !!t.is_headquarters,
+    active: t.active,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+    deletedAt: t.deleted_at,
+  }))
 }
 
 export async function getTenantById(id: string): Promise<Tenant | null> {
-  const tenants = await getTenants()
-  return tenants.find((t) => t.id === id) || null
+  const res = await query(
+    `SELECT id, name, slug, nif, address, city, postal_code, phone, mbway_phone, 
+            currency, is_headquarters, active, created_at, updated_at, deleted_at
+     FROM tenants 
+     WHERE (id::text = $1 OR slug = $1) AND deleted_at IS NULL 
+     LIMIT 1`,
+    [id]
+  )
+
+  if (!res.rows || res.rows.length === 0) return null
+  const t = res.rows[0]
+
+  return {
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    nif: t.nif,
+    address: t.address,
+    city: t.city,
+    postalCode: t.postal_code,
+    phone: t.phone,
+    mbwayPhone: t.mbway_phone,
+    currency: t.currency || 'EUR',
+    isHeadquarters: !!t.is_headquarters,
+    active: t.active,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+    deletedAt: t.deleted_at,
+  }
 }
 
 export async function getNetworkOverview(): Promise<FranchiseNetworkOverview> {
-  const store = getMockStore()
-  const allTenants = store.tenants.filter((t) => !t.deletedAt)
-  const allOrders = store.orders.filter((o) => !o.deletedAt)
-  const allUsers = store.users.filter((u) => !u.deletedAt && u.active)
+  const tenants = await getTenants()
+
+  // Consulta faturamento de hoje e contagem de pedidos por loja
+  const ordersRes = await query(
+    `SELECT tenant_id, 
+            COUNT(id) as orders_count, 
+            COALESCE(SUM(total_amount), 0) as revenue,
+            COUNT(CASE WHEN payment_method = 'MBWAY' THEN 1 END) as mbway_count
+     FROM orders 
+     WHERE payment_status = 'PAID' AND deleted_at IS NULL
+     GROUP BY tenant_id`
+  )
+
+  // Consulta operadores ativos por loja
+  const usersRes = await query(
+    `SELECT id, name, email, role, tenant_id, active 
+     FROM users 
+     WHERE active = true AND deleted_at IS NULL`
+  )
+
+  const ordersByTenant = new Map<string, any>()
+  ordersRes.rows.forEach((r: any) => ordersByTenant.set(r.tenant_id, r))
+
+  const usersByTenant = new Map<string, any[]>()
+  usersRes.rows.forEach((u: any) => {
+    if (u.tenant_id) {
+      const list = usersByTenant.get(u.tenant_id) || []
+      list.push(u)
+      usersByTenant.set(u.tenant_id, list)
+    }
+  })
 
   let totalRevenue = 0
   let totalOrders = 0
   let totalOperators = 0
 
-  const storeOverviews: StoreOverview[] = allTenants.map((t) => {
-    const storeOrders = allOrders.filter((o) => o.tenantId === t.id && o.paymentStatus === 'PAID')
-    const storeRevenue = +storeOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0).toFixed(2)
-    const storeOrderCount = storeOrders.length
-    const avgTicket = storeOrderCount > 0 ? +(storeRevenue / storeOrderCount).toFixed(2) : 0
+  const storeOverviews: StoreOverview[] = tenants.map((t) => {
+    const oData = ordersByTenant.get(t.id) || { orders_count: 0, revenue: 0, mbway_count: 0 }
+    const storeUsers = usersByTenant.get(t.id) || []
 
-    const mbwayOrders = storeOrders.filter((o) => o.paymentMethod === 'MBWAY').length
+    const storeRevenue = Number(oData.revenue) || 0
+    const storeOrderCount = Number(oData.orders_count) || 0
+    const avgTicket = storeOrderCount > 0 ? +(storeRevenue / storeOrderCount).toFixed(2) : 0
+    const mbwayOrders = Number(oData.mbway_count) || 0
     const mbwayShare = storeOrderCount > 0 ? Math.round((mbwayOrders / storeOrderCount) * 100) : 0
 
-    const storeUsers = allUsers.filter((u) => u.tenantId === t.id)
     const operators = storeUsers
-      .filter((u) => u.role === 'CASHIER')
-      .map((u) => ({ id: u.id, name: u.name, email: u.email, active: u.active }))
+      .filter((u: any) => u.role === 'CASHIER')
+      .map((u: any) => ({ id: u.id, name: u.name, email: u.email, active: u.active }))
 
-    const manager = storeUsers.find((u) => u.role === 'TENANT_ADMIN')
+    const manager = storeUsers.find((u: any) => u.role === 'TENANT_ADMIN')
 
     totalRevenue += storeRevenue
     totalOrders += storeOrderCount
@@ -91,40 +141,101 @@ export async function getNetworkOverview(): Promise<FranchiseNetworkOverview> {
     totalRevenue,
     totalOrders,
     networkAverageTicket: networkAvg,
-    totalStores: allTenants.length,
-    activeStores: allTenants.filter((t) => t.active).length,
+    totalStores: tenants.length,
+    activeStores: tenants.filter((t) => t.active).length,
     totalOperators,
     stores: storeOverviews,
   }
 }
 
 export async function createTenant(payload: Partial<Tenant>): Promise<Tenant> {
-  const store = getMockStore()
-  const newTenant: Tenant = {
-    id: payload.id || uuidv4(),
-    name: payload.name || 'Nova Loja Açaí da Rose',
-    slug: payload.slug || (payload.name || 'loja').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-    nif: payload.nif || null,
-    address: payload.address || null,
-    phone: payload.phone || null,
-    mbwayPhone: payload.mbwayPhone || null,
-    currency: payload.currency || 'EUR',
-    isHeadquarters: !!payload.isHeadquarters,
-    active: payload.active !== undefined ? payload.active : true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
+  const id = payload.id || uuidv4()
+  const name = payload.name || 'Nova Loja Açaí da Rose'
+  const slug = payload.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
-  store.tenants.push(newTenant)
-  return newTenant
+  const res = await query(
+    `INSERT INTO tenants (id, name, slug, nif, address, city, postal_code, phone, mbway_phone, currency, is_headquarters, active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     RETURNING *`,
+    [
+      id,
+      name,
+      slug,
+      payload.nif || null,
+      payload.address || null,
+      payload.city || null,
+      payload.postalCode || null,
+      payload.phone || null,
+      payload.mbwayPhone || null,
+      payload.currency || 'EUR',
+      !!payload.isHeadquarters,
+      payload.active !== undefined ? payload.active : true,
+    ]
+  )
+
+  const t = res.rows[0]
+  return {
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    nif: t.nif,
+    address: t.address,
+    city: t.city,
+    postalCode: t.postal_code,
+    phone: t.phone,
+    mbwayPhone: t.mbway_phone,
+    currency: t.currency,
+    isHeadquarters: !!t.is_headquarters,
+    active: t.active,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+  }
 }
 
 export async function updateTenant(id: string, payload: Partial<Tenant>): Promise<Tenant | null> {
-  const store = getMockStore()
-  const idx = store.tenants.findIndex((t) => t.id === id)
-  if (idx >= 0) {
-    store.tenants[idx] = { ...store.tenants[idx], ...payload, updatedAt: new Date().toISOString() }
-    return store.tenants[idx]
+  const res = await query(
+    `UPDATE tenants 
+     SET name = COALESCE($2, name),
+         nif = COALESCE($3, nif),
+         address = COALESCE($4, address),
+         city = COALESCE($5, city),
+         postal_code = COALESCE($6, postal_code),
+         phone = COALESCE($7, phone),
+         mbway_phone = COALESCE($8, mbway_phone),
+         active = COALESCE($9, active),
+         updated_at = timezone('utc'::text, now())
+     WHERE id::text = $1 AND deleted_at IS NULL
+     RETURNING *`,
+    [
+      id,
+      payload.name || null,
+      payload.nif || null,
+      payload.address || null,
+      payload.city || null,
+      payload.postalCode || null,
+      payload.phone || null,
+      payload.mbwayPhone || null,
+      payload.active,
+    ]
+  )
+
+  if (!res.rows || res.rows.length === 0) return null
+  const t = res.rows[0]
+
+  return {
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    nif: t.nif,
+    address: t.address,
+    city: t.city,
+    postalCode: t.postal_code,
+    phone: t.phone,
+    mbwayPhone: t.mbway_phone,
+    currency: t.currency,
+    isHeadquarters: !!t.is_headquarters,
+    active: t.active,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
   }
-  return null
 }

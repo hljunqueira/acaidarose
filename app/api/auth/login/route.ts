@@ -1,128 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase/server'
-import { getMockStore } from '@/lib/supabase/mockStore'
+import { query } from '@/lib/db/postgres'
 import { User, UserRole } from '@/types'
-import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email e palavra-passe são obrigatórios' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Email e palavra-passe são obrigatórios.' },
+        { status: 400 }
+      )
     }
 
     const cleanEmail = String(email).toLowerCase().trim()
 
-    // 1. Supabase lookup if available
-    if (supabaseServer) {
-      const { data, error } = await supabaseServer
-        .from('users')
-        .select('*')
-        .eq('email', cleanEmail)
-        .is('deleted_at', null)
-        .single()
-
-      if (data && !error && data.active) {
-        const token = data.id
-        const user: User = {
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          role: data.role as UserRole,
-          tenantId: data.tenant_id,
-          active: data.active,
-        }
-        return NextResponse.json({ token, user })
-      }
-    }
-
-    // 2. MockStore Fallback
-    const store = getMockStore()
-    
-    // Normalização para aceitar aliases conhecidos de demonstração
-    let lookupEmail = cleanEmail
-    if (cleanEmail === 'super@acairose.pt') lookupEmail = 'franqueadora@acairose.pt'
-    if (cleanEmail === 'admin@acairose.pt') lookupEmail = 'lisboa@acairose.pt'
-    if (cleanEmail === 'caixa@acairose.pt') lookupEmail = 'caixa1.lisboa@acairose.pt'
-
-    let found = store.users.find(
-      (u: any) =>
-        (u.email.toLowerCase() === cleanEmail || u.email.toLowerCase() === lookupEmail) &&
-        !u.deletedAt &&
-        u.active
+    // 1. Consulta usuário ativo no PostgreSQL 16 da VPS
+    const res = await query(
+      `SELECT id, email, name, password_hash, role, tenant_id, active, created_at, updated_at 
+       FROM users 
+       WHERE LOWER(email) = $1 AND active = true AND deleted_at IS NULL 
+       LIMIT 1`,
+      [cleanEmail]
     )
 
-    // Se ainda não encontrou no mock, fallback direto para os perfis demo padrão das 3 lojas
-    if (!found) {
-      if (cleanEmail === 'super@acairose.pt' || cleanEmail === 'franqueadora@acairose.pt') {
-        found = {
-          id: 'usr-franqueadora',
-          tenantId: 'tenant-torres-novas',
-          name: 'Açaí da Rose (Franqueadora)',
-          email: cleanEmail,
-          password: '123456',
-          passwordHash: '123456',
-          role: 'SUPER_ADMIN' as UserRole,
-          active: true,
-        } as any
-      } else if (cleanEmail === 'admin@acairose.pt' || cleanEmail === 'lisboa@acairose.pt') {
-        found = {
-          id: 'usr-gerente-lisboa',
-          tenantId: 'tenant-lisboa',
-          name: 'Gerente Loja 1 (Lisboa)',
-          email: cleanEmail,
-          password: '123456',
-          passwordHash: '123456',
-          role: 'TENANT_ADMIN' as UserRole,
-          active: true,
-        } as any
-      } else if (cleanEmail === 'santarem@acairose.pt') {
-        found = {
-          id: 'usr-gerente-santarem',
-          tenantId: 'tenant-santarem',
-          name: 'Gerente Loja 2 (Santarém)',
-          email: cleanEmail,
-          password: '123456',
-          passwordHash: '123456',
-          role: 'TENANT_ADMIN' as UserRole,
-          active: true,
-        } as any
-      } else if (cleanEmail === 'aveiro@acairose.pt') {
-        found = {
-          id: 'usr-gerente-aveiro',
-          tenantId: 'tenant-aveiro',
-          name: 'Gerente Loja 3 (Aveiro)',
-          email: cleanEmail,
-          password: '123456',
-          passwordHash: '123456',
-          role: 'TENANT_ADMIN' as UserRole,
-          active: true,
-        } as any
-      } else if (cleanEmail === 'caixa@acairose.pt' || cleanEmail.startsWith('caixa')) {
-        found = {
-          id: 'usr-caixa1-lisboa',
-          tenantId: 'tenant-lisboa',
-          name: 'Operador de Caixa Lisboa',
-          email: cleanEmail,
-          password: '123456',
-          passwordHash: '123456',
-          role: 'CASHIER' as UserRole,
-          active: true,
-        } as any
-      }
+    if (!res || !res.rows || res.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Credenciais inválidas. Verifique o seu e-mail e palavra-passe.' },
+        { status: 401 }
+      )
     }
 
-    if (!found || (found.password !== password && found.passwordHash !== password)) {
-      return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 })
+    const userRow = res.rows[0]
+
+    // 2. Validação da palavra-passe
+    const isMatch =
+      userRow.password_hash === password ||
+      userRow.password_hash === String(password).trim()
+
+    if (!isMatch) {
+      return NextResponse.json(
+        { error: 'Credenciais inválidas. Verifique o seu e-mail e palavra-passe.' },
+        { status: 401 }
+      )
     }
 
-    const token = 'token-' + uuidv4()
-    store.sessions = store.sessions || []
-    store.sessions.push({ token, userId: found.id, createdAt: new Date().toISOString() })
+    // 3. Monta o payload seguro do utilizador
+    const safeUser: User = {
+      id: userRow.id,
+      email: userRow.email,
+      name: userRow.name,
+      role: userRow.role as UserRole,
+      tenantId: userRow.tenant_id,
+      active: userRow.active,
+      createdAt: userRow.created_at,
+      updatedAt: userRow.updated_at,
+    }
 
-    const { password: _, passwordHash: __, ...safeUser } = found
-    return NextResponse.json({ token, user: safeUser })
+    // Utiliza o ID do usuário como token de sessão autenticada
+    const token = userRow.id
+
+    return NextResponse.json({
+      token,
+      user: safeUser,
+      message: 'Sessão iniciada com sucesso.',
+    })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erro interno de autenticação' }, { status: 500 })
+    console.error('Erro na rota de login PostgreSQL:', err)
+    return NextResponse.json(
+      { error: 'Erro ao conectar à base de dados. Por favor, tente novamente.' },
+      { status: 500 }
+    )
   }
 }

@@ -1,50 +1,59 @@
 import { NextRequest } from 'next/server'
-import { supabaseServer } from '@/lib/supabase/server'
-import { getMockStore } from '@/lib/supabase/mockStore'
+import { query } from '@/lib/db/postgres'
 import { User, UserRole } from '@/types'
 
 export async function getAuthUser(request: NextRequest): Promise<User | null> {
-  const token = request.headers.get('x-auth-token') || request.nextUrl.searchParams.get('token')
+  const token =
+    request.headers.get('x-auth-token') ||
+    request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
+    request.nextUrl.searchParams.get('token')
+
   if (!token) return null
 
-  // Supabase Auth or Session token lookup
-  if (supabaseServer) {
-    const { data } = await supabaseServer
-      .from('users')
-      .select('id, email, name, role, tenant_id, active, created_at, updated_at, deleted_at')
-      .eq('id', token)
-      .is('deleted_at', null)
-      .single()
+  // 1. Consulta direta no PostgreSQL 16 da VPS
+  try {
+    const res = await query(
+      `SELECT id, email, name, role, tenant_id, active, created_at, updated_at, deleted_at 
+       FROM users 
+       WHERE (id::text = $1 OR email = $1) AND active = true AND deleted_at IS NULL 
+       LIMIT 1`,
+      [token]
+    )
 
-    const user = data as any
-    if (user && user.active) {
+    if (res && res.rows && res.rows.length > 0) {
+      const row = res.rows[0]
       return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role as UserRole,
-        tenantId: user.tenant_id,
-        active: user.active,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-        deletedAt: user.deleted_at,
+        id: row.id,
+        email: row.email,
+        name: row.name,
+        role: row.role as UserRole,
+        tenantId: row.tenant_id,
+        active: row.active,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        deletedAt: row.deleted_at,
       }
     }
+  } catch (err) {
+    console.error('Erro ao autenticar usuário no PostgreSQL:', err)
   }
 
-  // Fallback to local session store
-  const store = getMockStore()
-  const session = (store.sessions || []).find((s: any) => s.token === token)
-  if (!session) return null
-
-  const user = store.users.find((u: any) => u.id === session.userId && !u.deletedAt && u.active)
-  if (!user) return null
-
-  const { password: _, passwordHash: __, ...safeUser } = user
-  return safeUser as User
+  return null
 }
 
 export function hasRole(user: User | null, allowedRoles: UserRole[]): boolean {
   if (!user) return false
   return allowedRoles.includes(user.role)
+}
+
+/**
+ * Tenant Isolation Guard: Garante que gerentes e caixas nunca acessem dados de outras lojas
+ */
+export function getAuthorizedTenantId(user: User | null, requestedTenantId?: string | null): string | null {
+  if (!user) return null
+  if (user.role === 'SUPER_ADMIN' || user.role === 'FRANCHISOR_ADMIN') {
+    return requestedTenantId || user.tenantId || null
+  }
+  // Para TENANT_ADMIN e CASHIER, sempre retorna estritamente a loja vinculada ao usuário
+  return user.tenantId || null
 }

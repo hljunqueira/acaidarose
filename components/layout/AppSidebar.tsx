@@ -3,24 +3,44 @@
 import React, { useState, useEffect } from 'react'
 import { User, Tenant } from '@/types'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, ChevronUp, Store, Utensils, Building2, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Store,
+  Utensils,
+  Building2,
+  X,
+  Server,
+  ShieldCheck,
+  Terminal,
+  Tv,
+  Boxes,
+  ShoppingCart,
+  Truck,
+  Sparkles,
+} from 'lucide-react'
 
 export type AppViewId =
-  | 'qrcode'
+  | 'dev_hub'
+  | 'prevention_center'
+  | 'audit_logs'
+  | 'franchise'
+  | 'franchise_requests'
+  | 'supply_hub'
   | 'pdv'
+  | 'qrcode'
+  | 'tv_panel'
   | 'tables'
-  | 'staff'
+  | 'inventory'
+  | 'supply_orders'
   | 'menu'
   | 'menu_categories'
   | 'menu_menus'
   | 'menu_highlights'
-  | 'menu_offers'
-  | 'franchise'
-  | 'franchise_requests'
-  | 'reports'
-  | 'qrcode_config'
   | 'company'
+  | 'qrcode_config'
   | 'users'
+  | 'reports'
 
 interface AppSidebarProps {
   currentView: AppViewId
@@ -30,6 +50,22 @@ interface AppSidebarProps {
   onOpenStoreSwitcher: () => void
   mobileOpen: boolean
   onCloseMobile: () => void
+}
+
+interface NavItem {
+  id: AppViewId
+  label: string
+  subtitle?: string
+  badge?: string
+  show: boolean
+}
+
+interface NavGroup {
+  key: string
+  title: string
+  icon: any
+  accentClass: string
+  items: NavItem[]
 }
 
 export default function AppSidebar({
@@ -42,8 +78,10 @@ export default function AppSidebar({
   onCloseMobile,
 }: AppSidebarProps) {
   const isSuperAdmin = user.role === 'SUPER_ADMIN'
+  const isFranchisorAdmin = user.role === 'FRANCHISOR_ADMIN'
   const isTenantAdmin = user.role === 'TENANT_ADMIN'
-  const isAdmin = isSuperAdmin || isTenantAdmin
+  const isCashier = user.role === 'CASHIER'
+  const canSwitchStore = isSuperAdmin || isFranchisorAdmin
 
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0)
 
@@ -75,11 +113,13 @@ export default function AppSidebar({
     return () => window.removeEventListener('franchise_requests_updated', handleUpdate)
   }, [currentView])
 
-  // Controle de colapso de cada grupo
+  // Controle de colapso dos grupos
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    devHub: true,
     franchise: true,
     salon: true,
     menu: true,
+    inventory: true,
     storeConfig: true,
   })
 
@@ -87,57 +127,215 @@ export default function AppSidebar({
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  // 1. GRUPO EXCLUSIVO: PAINEL DA FRANQUEADORA (Apenas SUPER_ADMIN)
-  const franchisorItems = [
-    {
-      id: 'franchise' as AppViewId,
-      label: 'Franqueadora Master',
-      subtitle: 'Holding, Lojas, Utilizadores & Contratos',
-      show: isSuperAdmin,
-    },
-  ]
+  // =========================================================================
+  // DEFINIÇÃO DOS GRUPOS CONFORME O PERFIL
+  // =========================================================================
+  let navGroups: NavGroup[] = []
 
-  // 2. GRUPO LOJA: ATENDIMENTO & SALÃO
-  const salonItems = [
-    {
-      id: 'qrcode' as AppViewId,
-      label: 'Pedidos & KDS',
-      subtitle: 'Mesas / Balcão',
-      show: true,
-    },
-    {
-      id: 'tables' as AppViewId,
-      label: 'Gestão de Mesas',
-      show: isAdmin,
-    },
-  ]
-
-  // 3. GRUPO LOJA: CARDÁPIO & PREÇOS
-  const menuItems = [
-    { id: 'menu' as AppViewId, label: 'Produtos do Cardápio', show: isAdmin },
-    { id: 'menu_categories' as AppViewId, label: 'Categorias', show: isAdmin },
-    { id: 'menu_menus' as AppViewId, label: 'Menus', show: isAdmin },
-    { id: 'menu_highlights' as AppViewId, label: 'Destaques', show: isAdmin },
-    {
-      id: 'franchise_requests' as AppViewId,
-      label: isSuperAdmin && currentTenant?.isHeadquarters ? 'Solicitações da Rede' : 'Solicitações à Franqueadora',
-      badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
-      show: isAdmin,
-    },
-  ]
-
-  // 4. GRUPO LOJA: CONFIGURAÇÕES DA LOJA
-  const storeConfigItems = [
-    { id: 'company' as AppViewId, label: 'Dados da Loja', show: isAdmin },
-    { id: 'qrcode_config' as AppViewId, label: 'Configurações QR Code', show: isAdmin },
-    { id: 'users' as AppViewId, label: 'Utilizadores & Permissões', show: isAdmin },
-    { id: 'reports' as AppViewId, label: 'Relatórios & Fecho de Caixa', show: true },
-  ]
-
-  const isFranchisorActive = franchisorItems.some((i) => i.id === currentView)
-  const isSalonActive = salonItems.some((i) => i.id === currentView)
-  const isMenuActive = menuItems.some((i) => i.id === currentView)
-  const isStoreConfigActive = storeConfigItems.some((i) => i.id === currentView)
+  if (isSuperAdmin) {
+    // 👑 1. SUPER_ADMIN (Master TI)
+    navGroups = [
+      {
+        key: 'devHub',
+        title: 'CENTRAL MASTER TI & INFRA',
+        icon: Server,
+        accentClass: 'text-indigo-600 dark:text-indigo-400',
+        items: [
+          { id: 'dev_hub', label: 'Central TI & Status VPS (95ms)', show: true },
+          { id: 'prevention_center', label: 'Prevenção & Diagnóstico', show: true },
+          { id: 'audit_logs', label: 'Logs & Auditoria TI', show: true },
+        ],
+      },
+      {
+        key: 'franchise',
+        title: 'FRANQUEADORA MASTER',
+        icon: Building2,
+        accentClass: 'text-amber-600 dark:text-amber-400',
+        items: [
+          { id: 'franchise', label: 'Franqueadora Master (DRE & Royalties)', show: true },
+          {
+            id: 'franchise_requests',
+            label: 'Solicitações da Rede',
+            badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
+            show: true,
+          },
+          { id: 'supply_hub', label: 'Central de Abastecimento B2B', show: true },
+        ],
+      },
+      {
+        key: 'salon',
+        title: 'OPERAÇÃO & ATENDIMENTO',
+        icon: Store,
+        accentClass: 'text-purple-700 dark:text-pink-400',
+        items: [
+          { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
+          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
+          { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
+          { id: 'tables', label: 'Gestão de Mesas', show: true },
+        ],
+      },
+      {
+        key: 'menu',
+        title: 'CARDÁPIO, MÍDIAS & PREÇOS',
+        icon: Utensils,
+        accentClass: 'text-pink-600 dark:text-pink-400',
+        items: [
+          { id: 'menu', label: 'Produtos do Cardápio', show: true },
+          { id: 'menu_categories', label: 'Categorias', show: true },
+          { id: 'menu_menus', label: 'Menus', show: true },
+          { id: 'menu_highlights', label: 'Destaques & Stories', show: true },
+        ],
+      },
+      {
+        key: 'inventory',
+        title: 'GESTÃO DE ESTOQUE & SUPPLY CHAIN',
+        icon: Boxes,
+        accentClass: 'text-emerald-600 dark:text-emerald-400',
+        items: [
+          { id: 'inventory', label: 'Gestão de Estoque Local', show: true },
+          { id: 'supply_orders', label: 'Reposição com a Matriz (B2B)', show: true },
+        ],
+      },
+      {
+        key: 'storeConfig',
+        title: 'CONFIGURAÇÕES DA UNIDADE',
+        icon: Store,
+        accentClass: 'text-purple-600 dark:text-purple-400',
+        items: [
+          { id: 'company', label: 'Dados da Loja', show: true },
+          { id: 'qrcode_config', label: 'Configurações QR Code', show: true },
+          { id: 'users', label: 'Utilizadores & Permissões', show: true },
+          { id: 'reports', label: 'Relatórios & Fecho de Caixa', show: true },
+        ],
+      },
+    ]
+  } else if (isFranchisorAdmin) {
+    // 🏢 2. FRANCHISOR_ADMIN (Sede Franqueadora Aveiro)
+    navGroups = [
+      {
+        key: 'franchise',
+        title: 'GESTÃO DA REDE & FRANQUIAS',
+        icon: Building2,
+        accentClass: 'text-amber-600 dark:text-amber-400',
+        items: [
+          { id: 'franchise', label: 'Franqueadora Master (DRE & Royalties)', show: true },
+          {
+            id: 'franchise_requests',
+            label: 'Solicitações da Rede',
+            badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
+            show: true,
+          },
+          { id: 'supply_hub', label: 'Central de Abastecimento B2B', show: true },
+          { id: 'menu_highlights', label: 'Destaques & Stories Nacionais', show: true },
+        ],
+      },
+      {
+        key: 'salon',
+        title: 'OPERAÇÃO LOJA AVEIRO',
+        icon: Store,
+        accentClass: 'text-purple-700 dark:text-pink-400',
+        items: [
+          { id: 'pdv', label: 'PDV Balcão & Montagem de Taça', show: true },
+          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', show: true },
+          { id: 'tv_panel', label: 'Painel TV de Senhas', show: true },
+          { id: 'tables', label: 'Gestão de Mesas', show: true },
+        ],
+      },
+      {
+        key: 'inventory',
+        title: 'ESTOQUE MATRIZ AVEIRO',
+        icon: Boxes,
+        accentClass: 'text-emerald-600 dark:text-emerald-400',
+        items: [{ id: 'inventory', label: 'Gestão de Estoque Matriz', show: true }],
+      },
+      {
+        key: 'storeConfig',
+        title: 'GESTÃO DA LOJA MATRIZ AVEIRO',
+        icon: Utensils,
+        accentClass: 'text-purple-600 dark:text-purple-400',
+        items: [
+          { id: 'menu', label: 'Produtos do Cardápio Aveiro', show: true },
+          { id: 'menu_categories', label: 'Categorias & Menus', show: true },
+          { id: 'company', label: 'Dados da Loja Aveiro', show: true },
+          { id: 'qrcode_config', label: 'Configurações QR Code Aveiro', show: true },
+          { id: 'users', label: 'Utilizadores Loja Aveiro', show: true },
+          { id: 'reports', label: 'Relatórios & Fecho de Caixa', show: true },
+        ],
+      },
+    ]
+  } else if (isTenantAdmin) {
+    // 🏬 3. TENANT_ADMIN (Gerente Loja Franqueada — ex: Torres Novas)
+    navGroups = [
+      {
+        key: 'salon',
+        title: 'OPERAÇÃO & ATENDIMENTO',
+        icon: Store,
+        accentClass: 'text-purple-700 dark:text-pink-400',
+        items: [
+          { id: 'pdv', label: 'PDV Balcão & Mesas', show: true },
+          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', show: true },
+          { id: 'tv_panel', label: 'Painel TV de Senhas', show: true },
+          { id: 'tables', label: 'Gestão de Mesas', show: true },
+        ],
+      },
+      {
+        key: 'menu',
+        title: 'CARDÁPIO LOCAL',
+        icon: Utensils,
+        accentClass: 'text-pink-600 dark:text-pink-400',
+        items: [
+          { id: 'menu', label: 'Produtos & Preços da Loja', show: true },
+          { id: 'menu_categories', label: 'Categorias & Menus', show: true },
+          { id: 'menu_highlights', label: 'Destaques da Loja', show: true },
+          {
+            id: 'franchise_requests',
+            label: 'Solicitações à Franqueadora',
+            badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
+            show: true,
+          },
+        ],
+      },
+      {
+        key: 'inventory',
+        title: 'ESTOQUE & ABASTECIMENTO',
+        icon: Boxes,
+        accentClass: 'text-emerald-600 dark:text-emerald-400',
+        items: [
+          { id: 'inventory', label: 'Gestão de Estoque Local', show: true },
+          { id: 'supply_orders', label: 'Reposição com a Matriz', show: true },
+        ],
+      },
+      {
+        key: 'storeConfig',
+        title: 'GESTÃO & CONFIGURAÇÕES DA UNIDADE',
+        icon: Store,
+        accentClass: 'text-purple-600 dark:text-purple-400',
+        items: [
+          { id: 'company', label: 'Dados da Loja', show: true },
+          { id: 'qrcode_config', label: 'Configurações QR Code', show: true },
+          { id: 'users', label: 'Caixas & Operadores da Loja', show: true },
+          { id: 'reports', label: 'Fecho de Caixa & Relatórios do Dia', show: true },
+        ],
+      },
+    ]
+  } else {
+    // 💻 4. CASHIER (Operador de Caixa / Atendente)
+    navGroups = [
+      {
+        key: 'salon',
+        title: 'OPERAÇÃO & ATENDIMENTO',
+        icon: Store,
+        accentClass: 'text-purple-700 dark:text-pink-400',
+        items: [
+          { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
+          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Status de Preparo', show: true },
+          { id: 'tv_panel', label: 'Painel TV de Senhas', show: true },
+          { id: 'inventory', label: 'Checklist Rápido de Estoque', show: true },
+          { id: 'reports', label: 'Fecho de Turno do Caixa', show: true },
+        ],
+      },
+    ]
+  }
 
   const renderContent = () => (
     <div className="flex flex-col h-full justify-between">
@@ -154,7 +352,6 @@ export default function AppSidebar({
             </div>
           </div>
 
-          {/* Botão de Fechar visível apenas no Drawer Mobile/Tablet */}
           <button
             type="button"
             onClick={onCloseMobile}
@@ -167,7 +364,7 @@ export default function AppSidebar({
 
         {/* Card da Loja Ativa com Seletor */}
         <div className="my-3.5">
-          {isSuperAdmin ? (
+          {canSwitchStore ? (
             <button
               type="button"
               onClick={onOpenStoreSwitcher}
@@ -190,252 +387,86 @@ export default function AppSidebar({
                 {currentTenant.name}
               </div>
               <div className="text-[10px] text-purple-700 dark:text-purple-200/60 font-semibold mt-0.5">
-                {currentTenant.city || 'Portugal'} · Loja Ativa
+                {currentTenant.city || 'Portugal'} · Loja Fixada
               </div>
             </div>
           )}
         </div>
 
-        {/* Grupos Colapsáveis de Navegação */}
+        {/* Grupos Colapsáveis Dinâmicos */}
         <nav className="space-y-3 flex-1">
-          {/* ========================================================= */}
-          {/* 0. GRUPO EXCLUSIVO: PAINEL DA FRANQUEADORA (SUPER_ADMIN)  */}
-          {/* ========================================================= */}
-          {isSuperAdmin && (
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => toggleGroup('franchise')}
-                className={`w-full px-3 py-2 rounded-2xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
-                  isFranchisorActive
-                    ? 'bg-amber-500/20 dark:bg-amber-500/20 text-amber-950 dark:text-amber-300 border border-amber-500/40 shadow-xs'
-                    : 'text-amber-800 dark:text-amber-300/80 hover:bg-amber-50 dark:hover:bg-white/5'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-amber-500" />
-                  <span className="text-xs uppercase tracking-tight">Painel Franqueadora</span>
-                </div>
-                {openGroups.franchise ? (
-                  <ChevronUp className="h-3.5 w-3.5 text-amber-500" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-amber-500/60" />
-                )}
-              </button>
+          {navGroups.map((group) => {
+            const GroupIcon = group.icon
+            const isGroupActive = group.items.some((it) => it.id === currentView)
+            const isOpen = openGroups[group.key] ?? true
 
-              {openGroups.franchise && (
-                <div className="pl-3.5 pr-1 py-1 space-y-1 border-l border-amber-400/40 dark:border-amber-500/30 ml-3 animate-in fade-in duration-150">
-                  {franchisorItems
-                    .filter((it) => it.show)
-                    .map((item) => {
-                      const active = currentView === item.id
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => {
-                            onSelectView(item.id)
-                            onCloseMobile()
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
-                            active
-                              ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold shadow-md shadow-amber-600/20'
-                              : 'text-amber-950 dark:text-amber-200/80 font-semibold hover:text-amber-900 dark:hover:text-white hover:bg-amber-500/10'
-                          }`}
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-bold text-xs leading-tight">{item.label}</span>
-                            {item.subtitle && (
-                              <span
-                                className={`text-[10px] font-semibold leading-tight mt-0.5 ${
-                                  active ? 'text-amber-100' : 'text-amber-700 dark:text-amber-300/70'
-                                }`}
-                              >
-                                {item.subtitle}
+            return (
+              <div key={group.key} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.key)}
+                  className={`w-full px-3 py-2 rounded-2xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
+                    isGroupActive
+                      ? 'bg-purple-100 dark:bg-white/10 text-purple-950 dark:text-white border border-purple-200 dark:border-pink-500/30'
+                      : 'text-purple-900 dark:text-purple-200/80 hover:bg-purple-50 dark:hover:bg-white/5 dark:hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <GroupIcon className={`h-4 w-4 ${group.accentClass}`} />
+                    <span className="text-xs uppercase tracking-tight">{group.title}</span>
+                  </div>
+                  {isOpen ? (
+                    <ChevronUp className="h-3.5 w-3.5 text-purple-500" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5 text-purple-400" />
+                  )}
+                </button>
+
+                {isOpen && (
+                  <div className="pl-3.5 pr-1 py-1 space-y-1 border-l border-purple-200 dark:border-white/10 ml-3 animate-in fade-in duration-150">
+                    {group.items
+                      .filter((it) => it.show)
+                      .map((item) => {
+                        const active = currentView === item.id
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              onSelectView(item.id)
+                              onCloseMobile()
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-between ${
+                              active
+                                ? 'bg-gradient-to-r from-purple-700 via-purple-800 to-pink-600 dark:from-pink-600 dark:via-fuchsia-600 dark:to-purple-600 text-white font-bold shadow-md shadow-purple-700/20'
+                                : 'text-purple-900 dark:text-purple-200/70 font-semibold hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            <div className="flex flex-col min-w-0 pr-2">
+                              <span className="font-bold text-xs leading-tight truncate">{item.label}</span>
+                              {item.subtitle && (
+                                <span
+                                  className={`text-[10px] font-semibold leading-tight mt-0.5 ${
+                                    active ? 'text-purple-100 dark:text-pink-100' : 'text-purple-600 dark:text-purple-300/80'
+                                  }`}
+                                >
+                                  {item.subtitle}
+                                </span>
+                              )}
+                            </div>
+                            {item.badge && (
+                              <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-pink-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs shrink-0">
+                                {item.badge}
                               </span>
                             )}
-                          </div>
-                        </button>
-                      )
-                    })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* 1. GRUPO: ATENDIMENTO & SALÃO                             */}
-          {/* ========================================================= */}
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => toggleGroup('salon')}
-              className={`w-full px-3 py-2 rounded-2xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
-                isSalonActive
-                  ? 'bg-purple-100 dark:bg-white/10 text-purple-950 dark:text-white border border-purple-200 dark:border-pink-500/30'
-                  : 'text-purple-900 dark:text-purple-200/80 hover:bg-purple-50 dark:hover:bg-white/5 dark:hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Store className="h-4 w-4 text-purple-700 dark:text-pink-400" />
-                <span className="text-xs uppercase tracking-tight">Atendimento & Salão</span>
-              </div>
-              {openGroups.salon ? (
-                <ChevronUp className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5 text-purple-400 dark:text-purple-300/60" />
-              )}
-            </button>
-
-            {openGroups.salon && (
-              <div className="pl-3.5 pr-1 py-1 space-y-1 border-l border-purple-200 dark:border-white/10 ml-3 animate-in fade-in duration-150">
-                {salonItems
-                  .filter((it) => it.show)
-                  .map((item) => {
-                    const active = currentView === item.id
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          onSelectView(item.id)
-                          onCloseMobile()
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
-                          active
-                            ? 'bg-gradient-to-r from-purple-700 via-purple-800 to-pink-600 dark:from-pink-600 dark:via-fuchsia-600 dark:to-purple-600 text-white font-bold shadow-md shadow-purple-700/20 dark:shadow-pink-600/20'
-                            : 'text-purple-900 dark:text-purple-200/70 font-semibold hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
-                        }`}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-bold text-xs leading-tight">{item.label}</span>
-                          {item.subtitle && (
-                            <span
-                              className={`text-[10px] font-semibold leading-tight mt-0.5 ${
-                                active ? 'text-purple-100 dark:text-pink-100' : 'text-purple-600 dark:text-purple-300/80'
-                              }`}
-                            >
-                              {item.subtitle}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-              </div>
-            )}
-          </div>
-
-          {/* ========================================================= */}
-          {/* 2. GRUPO: CARDÁPIO & PREÇOS                               */}
-          {/* ========================================================= */}
-          {isAdmin && (
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => toggleGroup('menu')}
-                className={`w-full px-3 py-2 rounded-2xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
-                  isMenuActive
-                    ? 'bg-amber-50 dark:bg-white/10 text-amber-950 dark:text-white border border-amber-200 dark:border-amber-500/30'
-                    : 'text-purple-900 dark:text-purple-200/80 hover:bg-purple-50 dark:hover:bg-white/5 dark:hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Utensils className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-xs uppercase tracking-tight">Cardápio & Preços</span>
-                </div>
-                {openGroups.menu ? (
-                  <ChevronUp className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-purple-400 dark:text-purple-300/60" />
+                          </button>
+                        )
+                      })}
+                  </div>
                 )}
-              </button>
-
-              {openGroups.menu && (
-                <div className="pl-3.5 pr-1 py-1 space-y-1 border-l border-purple-200 dark:border-white/10 ml-3 animate-in fade-in duration-150">
-                  {menuItems
-                    .filter((sub) => sub.show)
-                    .map((sub) => {
-                      const active = currentView === sub.id
-                      return (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          onClick={() => {
-                            onSelectView(sub.id)
-                            onCloseMobile()
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-between ${
-                            active
-                              ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-amber-600 dark:to-pink-600 text-white font-bold shadow-md'
-                              : 'text-purple-900 dark:text-purple-200/70 font-semibold hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
-                          }`}
-                        >
-                          <span className="font-bold text-xs leading-tight">{sub.label}</span>
-                          {(sub as any).badge && (
-                            <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-pink-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-                              {(sub as any).badge}
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* 3. GRUPO: CONFIGURAÇÕES DA LOJA                           */}
-          {/* ========================================================= */}
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => toggleGroup('storeConfig')}
-              className={`w-full px-3 py-2 rounded-2xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
-                isStoreConfigActive
-                  ? 'bg-purple-100 dark:bg-white/10 text-purple-950 dark:text-white border border-purple-200 dark:border-purple-500/30'
-                  : 'text-purple-900 dark:text-purple-200/80 hover:bg-purple-50 dark:hover:bg-white/5 dark:hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Store className="h-4 w-4 text-purple-700 dark:text-purple-400" />
-                <span className="text-xs uppercase tracking-tight">Configurações da Loja</span>
               </div>
-              {openGroups.storeConfig ? (
-                <ChevronUp className="h-3.5 w-3.5 text-purple-700 dark:text-purple-400" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5 text-purple-400 dark:text-purple-300/60" />
-              )}
-            </button>
-
-            {openGroups.storeConfig && (
-              <div className="pl-3.5 pr-1 py-1 space-y-1 border-l border-purple-200 dark:border-white/10 ml-3 animate-in fade-in duration-150">
-                {storeConfigItems
-                  .filter((it) => it.show)
-                  .map((item) => {
-                    const active = currentView === item.id
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          onSelectView(item.id)
-                          onCloseMobile()
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
-                          active
-                            ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-purple-600 dark:to-pink-600 text-white font-bold shadow-md'
-                            : 'text-purple-900 dark:text-purple-200/70 font-semibold hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
-                        }`}
-                      >
-                        <span className="font-bold text-xs leading-tight">{item.label}</span>
-                      </button>
-                    )
-                  })}
-              </div>
-            )}
-          </div>
+            )
+          })}
         </nav>
       </div>
 
@@ -450,12 +481,10 @@ export default function AppSidebar({
 
   return (
     <>
-      {/* 1. Sidebar Desktop */}
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:flex-shrink-0 lg:sticky lg:top-0 lg:h-screen bg-white dark:bg-[#150226] border-r border-purple-100 dark:border-white/10 z-30 shadow-xs transition-colors duration-150">
         {renderContent()}
       </aside>
 
-      {/* 2. Drawer Mobile com Backdrop */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div

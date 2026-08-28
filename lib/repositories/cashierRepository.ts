@@ -1,8 +1,33 @@
 import { CashierTransaction, CashierShiftSummary, CashierOperationType } from '@/types/cashier'
-import { mockStore } from '@/lib/supabase/mockStore'
+import { query } from '@/lib/db/postgres'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function getCashierTransactions(tenantId: string): Promise<CashierTransaction[]> {
-  return (mockStore.cashierTransactions || []).filter((tx) => tx.tenantId === tenantId)
+  try {
+    const res = await query(
+      `SELECT id, tenant_id, transaction_type as type, amount, reason, created_at as timestamp 
+       FROM cashier_transactions 
+       WHERE tenant_id::text = $1 
+       ORDER BY created_at DESC`,
+      [tenantId]
+    )
+
+    if (res.rows && res.rows.length > 0) {
+      return res.rows.map((r: any) => ({
+        id: r.id,
+        tenantId: r.tenant_id,
+        type: r.type as CashierOperationType,
+        amount: Number(r.amount) || 0,
+        reason: r.reason,
+        operatorName: 'Operador',
+        timestamp: r.timestamp,
+      }))
+    }
+  } catch (err) {
+    console.error('Erro ao consultar transações de caixa:', err)
+  }
+
+  return []
 }
 
 export async function addCashierTransaction(
@@ -12,44 +37,69 @@ export async function addCashierTransaction(
   reason: string,
   operatorName: string
 ): Promise<CashierTransaction> {
-  const tx: CashierTransaction = {
-    id: `tx-${Date.now()}`,
+  const id = uuidv4()
+  const numAmount = +amount.toFixed(2)
+
+  try {
+    await query(
+      `INSERT INTO cashier_transactions (id, tenant_id, transaction_type, amount, reason)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [id, tenantId, type, numAmount, reason]
+    )
+  } catch (err) {
+    console.error('Erro ao inserir transação de caixa no PostgreSQL:', err)
+  }
+
+  return {
+    id,
     tenantId,
     type,
-    amount: +amount.toFixed(2),
+    amount: numAmount,
     reason,
     operatorName,
     timestamp: new Date().toISOString(),
   }
-
-  mockStore.cashierTransactions = [tx, ...(mockStore.cashierTransactions || [])]
-  return tx
 }
 
 export async function getCashierShiftSummary(tenantId: string, dateStr?: string): Promise<CashierShiftSummary> {
   const targetDate = dateStr || new Date().toISOString().slice(0, 10)
-  const txs = (mockStore.cashierTransactions || []).filter(
-    (tx) => tx.tenantId === tenantId && tx.timestamp.slice(0, 10) === targetDate
-  )
+  const start = targetDate + 'T00:00:00.000Z'
+  const end = targetDate + 'T23:59:59.999Z'
 
-  const initialSupply = txs
-    .filter((t) => t.type === 'SUPPLY')
-    .reduce((acc, t) => acc + t.amount, 0)
+  let initialSupply = 0
+  let totalBleed = 0
+  let totalSalesCash = 0
 
-  const totalBleed = txs
-    .filter((t) => t.type === 'BLEED')
-    .reduce((acc, t) => acc + t.amount, 0)
+  try {
+    const txRes = await query(
+      `SELECT transaction_type, COALESCE(SUM(amount), 0) as total
+       FROM cashier_transactions
+       WHERE tenant_id::text = $1 AND created_at >= $2 AND created_at <= $3
+       GROUP BY transaction_type`,
+      [tenantId, start, end]
+    )
 
-  // Orders paid in cash today
-  const orders = (mockStore.orders || []).filter(
-    (o) =>
-      o.tenantId === tenantId &&
-      o.status !== 'CANCELLED' &&
-      new Date(o.createdAt).toISOString().slice(0, 10) === targetDate &&
-      ((o.paymentMethod as any) === 'DINHEIRO' || (o.paymentMethod as any) === 'NUMERARIO')
-  )
+    txRes.rows?.forEach((r: any) => {
+      if (r.transaction_type === 'SUPPLY') initialSupply = Number(r.total) || 0
+      if (r.transaction_type === 'BLEED') totalBleed = Number(r.total) || 0
+    })
 
-  const totalSalesCash = orders.reduce((acc, o) => acc + (o.total || o.totalAmount || 0), 0)
+    const salesRes = await query(
+      `SELECT COALESCE(SUM(total_amount), 0) as cash_total
+       FROM orders
+       WHERE tenant_id::text = $1 
+         AND payment_method IN ('NUMERARIO', 'CASH', 'DINHEIRO') 
+         AND payment_status = 'PAID'
+         AND status != 'CANCELLED'
+         AND created_at >= $2 AND created_at <= $3`,
+      [tenantId, start, end]
+    )
+
+    totalSalesCash = Number(salesRes.rows?.[0]?.cash_total) || 0
+  } catch (err) {
+    console.error('Erro ao calcular resumo de turno de caixa:', err)
+  }
+
   const expectedCash = +(initialSupply + totalSalesCash - totalBleed).toFixed(2)
 
   return {
@@ -59,6 +109,6 @@ export async function getCashierShiftSummary(tenantId: string, dateStr?: string)
     totalSales: +totalSalesCash.toFixed(2),
     totalBleed: +totalBleed.toFixed(2),
     expectedCash,
-    transactions: txs,
+    transactions: [],
   }
 }
