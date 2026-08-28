@@ -181,7 +181,7 @@ export default function AppSidebar({
           {
             id: 'supply_hub',
             label: 'Central de Abastecimento',
-            subtitle: 'Catálogo Mestre B2B & Expedição',
+            subtitle: 'Catálogo B2B & Expedição por Loja',
             show: true,
           },
         ],
@@ -265,7 +265,7 @@ export default function AppSidebar({
           {
             id: 'supply_hub',
             label: 'Central de Abastecimento',
-            subtitle: 'Catálogo Mestre B2B & Expedição',
+            subtitle: 'Catálogo B2B & Expedição por Loja',
             show: true,
           },
           { id: 'menu_highlights', label: 'Destaques Nacionais', subtitle: 'Stories da Rede', show: true },
