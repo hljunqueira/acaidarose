@@ -22,12 +22,25 @@ import { InventoryItemRow } from '@/lib/repositories/inventoryRepository'
 import InventoryItemDialog, { InventoryItemFormData } from './InventoryItemDialog'
 import StockAdjustDialog from './StockAdjustDialog'
 import ShiftChecklistDialog from './ShiftChecklistDialog'
+import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 
 export default function InventoryManagementView({ tenantId = '11111111-1111-1111-1111-111111111111' }: { tenantId?: string }) {
   const { authFetch } = useAuthStore()
   const [items, setItems] = useState<InventoryItemRow[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
+
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    description?: string
+    onConfirm: () => Promise<void> | void
+  }>({
+    open: false,
+    title: '',
+    onConfirm: () => {},
+  })
 
   // Modais de Controle
   const [itemDialogOpen, setItemDialogOpen] = useState(false)
@@ -36,25 +49,23 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
   const [adjustingItem, setAdjustingItem] = useState<InventoryItemRow | null>(null)
   const [checklistOpen, setChecklistOpen] = useState(false)
 
-  const loadInventory = useCallback(async () => {
+  const loadInventory = useCallback(async (isManual = false) => {
     setLoading(true)
     try {
       const res = await authFetch(`/api/inventory?tenantId=${tenantId}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (Array.isArray(data.items)) {
-          setItems(data.items)
-        }
-      }
+      if (!res.ok) throw new Error('Falha ao carregar estoque')
+      const data = await res.json()
+      setItems(data.items || [])
+      if (isManual) toast.success('Estoque sincronizado!')
     } catch {
-      toast.error('Erro ao conectar com o estoque local')
+      if (isManual) toast.error('Erro ao atualizar estoque')
     } finally {
       setLoading(false)
     }
-  }, [tenantId, authFetch])
+  }, [authFetch, tenantId])
 
   useEffect(() => {
-    loadInventory()
+    loadInventory(false)
   }, [loadInventory])
 
   const handleSaveItem = async (formData: InventoryItemFormData) => {
@@ -64,7 +75,7 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
         const res = await authFetch(`/api/inventory/${formData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...formData, tenantId }),
+          body: JSON.stringify(formData),
         })
         if (!res.ok) throw new Error('Falha ao atualizar insumo')
         toast.success('Insumo e limites atualizados com sucesso!')
@@ -84,16 +95,23 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
     }
   }
 
-  const handleDeleteItem = async (itemId: string, itemName: string) => {
-    if (!confirm(`Deseja realmente remover "${itemName}" do inventário?`)) return
-    try {
-      const res = await authFetch(`/api/inventory/${itemId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Falha ao excluir insumo')
-      toast.success('Insumo removido com sucesso!')
-      loadInventory()
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao excluir insumo')
-    }
+  const handleDeleteItem = (itemId: string, itemName: string) => {
+    setConfirmState({
+      open: true,
+      title: 'Remover Insumo do Inventário',
+      description: `Deseja realmente remover "${itemName}" do inventário desta unidade?`,
+      onConfirm: async () => {
+        try {
+          const res = await authFetch(`/api/inventory/${itemId}`, { method: 'DELETE' })
+          if (!res.ok) throw new Error('Falha ao excluir insumo')
+          toast.success('Insumo removido com sucesso!')
+          setConfirmState((prev) => ({ ...prev, open: false }))
+          loadInventory()
+        } catch (err: any) {
+          toast.error(err.message || 'Erro ao excluir insumo')
+        }
+      },
+    })
   }
 
   const handleConfirmAdjust = async (params: {
@@ -168,7 +186,7 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
           <Button
             size="sm"
             variant="outline"
-            onClick={loadInventory}
+            onClick={() => loadInventory(true)}
             className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -358,6 +376,16 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
         onOpenChange={setChecklistOpen}
         criticalItems={criticalItems.length > 0 ? criticalItems : items.slice(0, 5)}
         onSubmitChecklist={handleSubmitChecklist}
+      />
+
+      <ConfirmActionDialog
+        open={confirmState.open}
+        onOpenChange={(o) => setConfirmState((prev) => ({ ...prev, open: o }))}
+        title={confirmState.title}
+        description={confirmState.description}
+        confirmLabel="Excluir Insumo"
+        variant="destructive"
+        onConfirm={confirmState.onConfirm}
       />
     </div>
   )

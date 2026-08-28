@@ -25,6 +25,7 @@ import { useAuthStore } from '@/lib/stores/authStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { MasterInventoryItem, SupplyOrderRow } from '@/lib/repositories/inventoryRepository'
 import InventoryItemDialog, { InventoryItemFormData } from '../inventory/InventoryItemDialog'
+import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 
 export default function SupplyHubView() {
   const { authFetch } = useAuthStore()
@@ -107,16 +108,34 @@ export default function SupplyHubView() {
     }
   }
 
-  const handleDeleteMasterItem = async (id: string, name: string) => {
-    if (!confirm(`Deseja remover "${name}" do catálogo mestre oficial da rede?`)) return
-    try {
-      const res = await authFetch(`/api/inventory/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Falha ao excluir insumo mestre')
-      toast.success('Insumo mestre removido com sucesso!')
-      loadData()
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao remover insumo mestre')
-    }
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    description?: string
+    onConfirm: () => Promise<void> | void
+  }>({
+    open: false,
+    title: '',
+    onConfirm: () => {},
+  })
+
+  const handleDeleteMasterItem = (id: string, name: string) => {
+    setConfirmState({
+      open: true,
+      title: 'Remover Insumo do Catálogo Mestre',
+      description: `Deseja realmente excluir o insumo homologado "${name}"? As lojas não poderão mais requisitá-lo.`,
+      onConfirm: async () => {
+        try {
+          const res = await authFetch(`/api/inventory/${id}`, { method: 'DELETE' })
+          if (!res.ok) throw new Error('Falha ao excluir insumo mestre')
+          toast.success('Insumo mestre removido com sucesso!')
+          setConfirmState((prev) => ({ ...prev, open: false }))
+          loadData()
+        } catch (err: any) {
+          toast.error(err.message || 'Erro ao remover insumo mestre')
+        }
+      },
+    })
   }
 
   const filteredMasterItems = masterItems.filter(
@@ -418,6 +437,16 @@ export default function SupplyHubView() {
         item={editingItem}
         onSave={handleSaveMasterItem}
         isMaster={true}
+      />
+
+      <ConfirmActionDialog
+        open={confirmState.open}
+        onOpenChange={(o) => setConfirmState((prev) => ({ ...prev, open: o }))}
+        title={confirmState.title}
+        description={confirmState.description}
+        confirmLabel="Excluir Insumo Mestre"
+        variant="destructive"
+        onConfirm={confirmState.onConfirm}
       />
     </div>
   )

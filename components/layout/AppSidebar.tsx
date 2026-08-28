@@ -398,12 +398,12 @@ export default function AppSidebar({
       >
         {/* Topo do Sidebar: Logo Oficial */}
         <div className="p-4 border-b border-purple-100 dark:border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-purple-700 to-pink-600 p-0.5 shadow-md flex items-center justify-center shrink-0">
               <img
-                src="/images/logo.png"
+                src="/logo.png"
                 alt="Açaí da Rose"
-                className="h-10 w-auto object-contain transition-transform hover:scale-105"
+                className="h-full w-full object-cover rounded-[14px]"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none'
                 }}

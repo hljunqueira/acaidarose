@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import UserTable from './UserTable'
 import UserEditDialog from './UserEditDialog'
+import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 import { Users, ShieldCheck, ShieldAlert, KeyRound, UserCheck } from 'lucide-react'
 
 interface UsersAdminProps {
@@ -77,19 +78,37 @@ export default function UsersAdmin({ tenantId = 'tenant-torres-novas', currentUs
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja desativar este utilizador da loja?')) return
-    try {
-      const res = await authFetch(`/api/users/${id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Erro ao desativar utilizador')
-      }
-      toast.success('Utilizador desativado com sucesso!')
-      loadUsers()
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao remover utilizador')
-    }
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    description?: string
+    onConfirm: () => Promise<void> | void
+  }>({
+    open: false,
+    title: '',
+    onConfirm: () => {},
+  })
+
+  const handleDelete = (id: string) => {
+    setConfirmState({
+      open: true,
+      title: 'Desativar Utilizador da Loja',
+      description: 'Deseja realmente desativar este operador? O acesso ao sistema será revogado.',
+      onConfirm: async () => {
+        try {
+          const res = await authFetch(`/api/users/${id}`, { method: 'DELETE' })
+          if (!res.ok) {
+            const err = await res.json()
+            throw new Error(err.error || 'Erro ao desativar utilizador')
+          }
+          toast.success('Utilizador desativado com sucesso!')
+          setConfirmState((prev) => ({ ...prev, open: false }))
+          loadUsers()
+        } catch (e: any) {
+          toast.error(e.message || 'Erro ao remover utilizador')
+        }
+      },
+    })
   }
 
   const handleOpenNew = () => {
@@ -215,6 +234,16 @@ export default function UsersAdmin({ tenantId = 'tenant-torres-novas', currentUs
         tenantId={tenantId}
         mode={dialogMode}
         onSave={handleSave}
+      />
+
+      <ConfirmActionDialog
+        open={confirmState.open}
+        onOpenChange={(o) => setConfirmState((prev) => ({ ...prev, open: o }))}
+        title={confirmState.title}
+        description={confirmState.description}
+        confirmLabel="Desativar Utilizador"
+        variant="destructive"
+        onConfirm={confirmState.onConfirm}
       />
     </div>
   )

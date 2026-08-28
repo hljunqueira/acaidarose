@@ -10,9 +10,10 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import StoreMetricsCard from './StoreMetricsCard'
-import CreateStoreDialog from './CreateStoreDialog'
+import CreateStoreDialog, { CreateStoreFormData } from './CreateStoreDialog'
 import StoreDetailsDialog from './StoreDetailsDialog'
 import EditRoyaltyDialog, { FranchiseContractData } from './EditRoyaltyDialog'
+import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 import FranchiseFeesManagerDialog, { FranchiseFeeCharge } from './FranchiseFeesManagerDialog'
 import FranchiseReportDialog from './FranchiseReportDialog'
 import UserEditDialog from '../users/UserEditDialog'
@@ -172,6 +173,22 @@ export default function FranchiseCorporateView() {
   const [userDialogOpen, setUserDialogOpen] = useState(false)
   const [feesManagerOpen, setFeesManagerOpen] = useState(false)
 
+  // Diálogo de Confirmação Customizado (Sem janelas nativas Windows)
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    description?: string
+    confirmLabel?: string
+    cancelLabel?: string
+    variant?: 'destructive' | 'default' | 'success'
+    onConfirm: () => Promise<void> | void
+    loading?: boolean
+  }>({
+    open: false,
+    title: '',
+    onConfirm: () => {},
+  })
+
   const [customFees, setCustomFees] = useState<FranchiseFeeCharge[]>([
     {
       id: 'fee-sys-default',
@@ -230,7 +247,7 @@ export default function FranchiseCorporateView() {
     loadNetworkData()
   }, [])
 
-  const handleCreateStore = async (data: any) => {
+  const handleCreateStore = async (data: CreateStoreFormData) => {
     try {
       const res = await authFetch('/api/tenants', {
         method: 'POST',
@@ -238,7 +255,27 @@ export default function FranchiseCorporateView() {
         body: JSON.stringify(data),
       })
       if (!res.ok) throw new Error('Falha ao criar unidade')
-      toast.success('Nova franquia criada com sucesso!')
+
+      // Registar contrato imediatamente na tabela da Franqueadora
+      const newContract: FranchiseContractData = {
+        id: `cont-${Date.now()}`,
+        storeName: data.name,
+        franchiseeName: data.companyName,
+        nif: data.nif,
+        startDate: data.startDate,
+        renewalDate: new Date(Date.now() + data.renewalYears * 365 * 24 * 3600 * 1000).toLocaleDateString('pt-PT'),
+        franchiseFee: data.franchiseFee,
+        monthsActive: 1,
+        royaltyPercent: data.royaltyPercent,
+        marketingPercent: data.marketingPercent,
+        systemFeeMonthly: data.systemFeeMonthly,
+        status: 'ATIVO',
+        paymentStatus: 'PAID',
+        monthlyRevenue: 0.0,
+      }
+      setContracts((prev) => [...prev, newContract])
+
+      toast.success('Nova franquia criada e contrato homologado com sucesso!')
       loadNetworkData()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar franquia')
@@ -268,43 +305,53 @@ export default function FranchiseCorporateView() {
     }
   }
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Deseja realmente remover o acesso deste utilizador?')) return
-    try {
-      const res = await authFetch(`/api/users/${userId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Falha ao remover utilizador')
-      toast.success('Utilizador removido com sucesso!')
-      loadNetworkData()
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao remover utilizador')
-    }
+  const handleDeleteUser = (userId: string, userName?: string) => {
+    setConfirmState({
+      open: true,
+      title: 'Remover Utilizador da Filial',
+      description: `Deseja realmente revogar o acesso de ${userName || 'deste utilizador'}? Esta ação não pode ser desfeita.`,
+      confirmLabel: 'Sim, Remover Acesso',
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          const res = await authFetch(`/api/users/${userId}`, { method: 'DELETE' })
+          if (!res.ok) throw new Error('Falha ao remover utilizador')
+          toast.success('Utilizador removido com sucesso!')
+          setConfirmState((prev) => ({ ...prev, open: false }))
+          loadNetworkData()
+        } catch (err: any) {
+          toast.error(err.message || 'Erro ao remover utilizador')
+        }
+      },
+    })
   }
 
   const totalRoyalties = contracts.reduce((acc, c) => acc + (c.monthlyRevenue * (c.royaltyPercent / 100)), 0)
-  const totalSystemFees = contracts.reduce((acc, c) => acc + (c.systemFeeMonthly ?? 99), 0)
+  const totalSystemFees = contracts.reduce((acc, c) => acc + (c.systemFeeMonthly ?? 49), 0)
   const totalMarketing = contracts.reduce((acc, c) => acc + (c.monthlyRevenue * (c.marketingPercent / 100)), 0)
   const totalNetworkRevenue = contracts.reduce((acc, c) => acc + c.monthlyRevenue, 0)
 
   return (
     <div className="space-y-6">
-      {/* Header Corporativo */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-purple-150 dark:border-white/15">
-        <div>
+      {/* Header Corporativo com Alinhamento Perfeito dos Botões */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-purple-150 dark:border-white/15">
+        <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Building2 className="h-6 w-6 text-purple-700 dark:text-pink-400" />
+            <Building2 className="h-6 w-6 text-purple-700 dark:text-pink-400 shrink-0" />
             <span>Gestão Corporativa & Franqueadora</span>
           </h1>
           <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 font-medium mt-0.5">
-            Contratos, faturamento consolidado da rede, royalties progressivos e governança de unidades
+            Contratos, faturamento consolidado da rede, royalties progressivos (5%), licença sistema (49€) e governança
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Barra Unificada e Alinhada de Ações */}
+        <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap shrink-0">
           <Button
             size="sm"
             variant="outline"
             onClick={loadNetworkData}
-            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+            className="h-9 px-3 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
@@ -314,7 +361,7 @@ export default function FranchiseCorporateView() {
             size="sm"
             variant="outline"
             onClick={() => setFeesManagerOpen(true)}
-            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+            className="h-9 px-3 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
           >
             <Sliders className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
             <span>Gerir Cobranças & Taxas</span>
@@ -324,7 +371,7 @@ export default function FranchiseCorporateView() {
             size="sm"
             variant="outline"
             onClick={() => setReportOpen(true)}
-            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+            className="h-9 px-3 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
           >
             <FileText className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
             <span>Mapa Contábil</span>
@@ -333,7 +380,7 @@ export default function FranchiseCorporateView() {
           <Button
             size="sm"
             onClick={() => setCreateOpen(true)}
-            className="h-9 px-3.5 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white text-xs font-black rounded-xl cursor-pointer transition shadow-xs"
+            className="h-9 px-4 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white text-xs font-black rounded-xl cursor-pointer transition shadow-md"
           >
             <span>Nova Franquia</span>
           </Button>
@@ -676,6 +723,18 @@ export default function FranchiseCorporateView() {
         fees={customFees}
         onSaveFees={(updated) => setCustomFees(updated)}
         stores={overview.stores.map((s) => ({ id: s.tenant.id, name: s.tenant.name }))}
+      />
+
+      <ConfirmActionDialog
+        open={confirmState.open}
+        onOpenChange={(o) => setConfirmState((prev) => ({ ...prev, open: o }))}
+        title={confirmState.title}
+        description={confirmState.description}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel={confirmState.cancelLabel}
+        variant={confirmState.variant}
+        onConfirm={confirmState.onConfirm}
+        loading={confirmState.loading}
       />
     </div>
   )
