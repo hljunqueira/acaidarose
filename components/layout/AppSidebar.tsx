@@ -137,12 +137,12 @@ export default function AppSidebar({
     navGroups = [
       {
         key: 'devHub',
-        title: 'CENTRAL MASTER TI & INFRA',
+        title: 'CENTRAL MASTER TI & INFRAESTRUTURA',
         icon: Server,
         accentClass: 'text-indigo-600 dark:text-indigo-400',
         items: [
-          { id: 'dev_hub', label: 'Central TI & Status VPS', show: true },
-          { id: 'prevention_center', label: 'Prevenção & Diagnóstico', show: true },
+          { id: 'dev_hub', label: 'Status & Telemetria VPS', show: true },
+          { id: 'prevention_center', label: 'Diagnóstico & Integridade', show: true },
           { id: 'audit_logs', label: 'Logs & Auditoria TI', show: true },
         ],
       },
