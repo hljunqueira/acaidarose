@@ -5,7 +5,10 @@ import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const body = await request.json()
+    const email = body?.email
+    const password = body?.password
+
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email e palavra-passe são obrigatórios.' },
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
   } catch (err: any) {
     console.error('Erro na rota de login PostgreSQL:', err)
     return NextResponse.json(
-      { error: 'Erro ao conectar à base de dados. Por favor, tente novamente.' },
+      { error: err?.message || 'Erro ao conectar à base de dados. Por favor, tente novamente.' },
       { status: 500 }
     )
   }
