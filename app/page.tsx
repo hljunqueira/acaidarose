@@ -20,6 +20,7 @@ import LandingLocation from '@/components/landing/LandingLocation'
 import LandingFooter from '@/components/landing/LandingFooter'
 
 import ThemeToggle from '@/components/layout/ThemeToggle'
+import PortugalLiveClock from '@/components/layout/PortugalLiveClock'
 
 // Componentes do PDV & Admin
 import AppSidebar, { AppViewId } from '@/components/layout/AppSidebar'
@@ -198,6 +199,7 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <PortugalLiveClock />
             <ThemeToggle />
 
             <span className="text-[11px] text-purple-950 dark:text-white font-bold hidden md:inline-block">

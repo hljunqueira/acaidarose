@@ -236,7 +236,7 @@ export default function SupplyHubView() {
                         {order.tenantName || 'Filial Franquiada'}
                       </td>
                       <td className="py-3.5 px-4 text-purple-700/80 dark:text-purple-300/70 text-[11px]">
-                        {new Date(order.createdAt).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })}
+                        {new Date(order.createdAt).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon', dateStyle: 'short', timeStyle: 'short' })}
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-purple-950 dark:text-white">
                         {order.items?.length || 0} artigos

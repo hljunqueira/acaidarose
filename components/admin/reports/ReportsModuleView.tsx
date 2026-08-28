@@ -251,7 +251,7 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
                       </div>
                     </div>
                     <div className="text-[11px] font-mono text-purple-600/80 dark:text-purple-200/80 flex-shrink-0">
-                      {new Date(log.timestamp).toLocaleString('pt-PT')}
+                      {new Date(log.timestamp).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })}
                     </div>
                   </div>
                 ))}

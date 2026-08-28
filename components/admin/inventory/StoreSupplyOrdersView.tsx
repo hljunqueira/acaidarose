@@ -358,7 +358,7 @@ export default function StoreSupplyOrdersView({ tenantId = '11111111-1111-1111-1
                         #{o.orderNumber}
                       </td>
                       <td className="py-3.5 px-4 text-purple-700/80 dark:text-purple-300/70">
-                        {new Date(o.createdAt).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })}
+                        {new Date(o.createdAt).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon', dateStyle: 'short', timeStyle: 'short' })}
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-purple-950 dark:text-white">
                         {o.items?.length || 0} artigos

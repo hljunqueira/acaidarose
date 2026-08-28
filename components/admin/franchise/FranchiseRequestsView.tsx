@@ -356,7 +356,7 @@ export default function FranchiseRequestsView({
                           {cand.investment}
                         </td>
                         <td className="py-3.5 px-4 text-purple-700/80 dark:text-purple-300/70 text-[11px]">
-                          {new Date(cand.createdAt).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })}
+                          {new Date(cand.createdAt).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon', dateStyle: 'short', timeStyle: 'short' })}
                         </td>
                         <td className="py-3.5 px-4">
                           {cand.status === 'PENDING' && (
