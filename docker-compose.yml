@@ -1,0 +1,55 @@
+services:
+  # 1. Banco de Dados Relacional PostgreSQL 16
+  db:
+    image: postgres:16-alpine
+    container_name: acaidarose-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: >
+      postgres
+      -c shared_buffers=1GB
+      -c effective_cache_size=3GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c max_connections=100
+      -c wal_buffers=16MB
+      -c checkpoint_completion_target=0.9
+      -c log_timezone=Europe/Lisbon
+      -c timezone=Europe/Lisbon
+    volumes:
+      - ./data/postgresql:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acaidarose-net
+
+  # 2. Reverse Proxy com SSL Automático Let's Encrypt (Caddy)
+  caddy:
+    image: caddy:2-alpine
+    container_name: acaidarose-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./data/caddy_data:/data
+      - ./data/caddy_config:/config
+    networks:
+      - acaidarose-net
+    depends_on:
+      - db
+
+networks:
+  acaidarose-net:
+    name: acaidarose-net
+    driver: bridge

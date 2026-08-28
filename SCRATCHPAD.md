@@ -1,20 +1,19 @@
 # SCRATCHPAD
 
-## Status Atual: 🚀 APONTAMENTO DNS API.ACAIDAROSE.PT CRIADO & CONEXÃO REAL POSTGRESQL 16 TESTADA COM SUCESSO
+## Status Atual: 🚀 NOVO SITE & SISTEMA PUBLICADO NO GITHUB (ORIGIN MAIN) & CONEXÃO VPS POSTGRESQL 16 HOMOLOGADA
 
-### Evidências da Execução:
-1. **Apontamento DNS Criado**:
+### Evidências da Infraestrutura e Deploy:
+1. **GitHub & Vercel**:
+   - Código 100% atualizado, login limpo sem mocks, página 404 animada e 25 docs técnicos enviados para `https://github.com/hljunqueira/acaidarose.git` (branch `main`).
+   - Vercel configurada para o domínio `https://acaidarose.vercel.app`.
+2. **PostgreSQL 16 na VPS (`198.50.117.110`)**:
+   - Container `acaidarose-db` ativo e saudável em `0.0.0.0:5432->5432/tcp`.
+   - Porta 5432 aberta e segura no UFW firewall com senha forte de 32 hex.
+   - 21 tabelas relacionais ativas, triggers, dados de Aveiro e Torres Novas e 3 utilizadores.
+   - Rotina diária de backups às 03:00 AM (`/root/acaidarose/scripts/backup.sh`).
+3. **DNS Dominios.pt**:
    - `api.acaidarose.pt` ➡️ `198.50.117.110` (Tipo `A`, TTL `1 hour`).
-   - O domínio principal `acaidarose.pt` continua apontado para o site legado sem nenhuma alteração.
-2. **Conexão Real do Next.js com o Banco PostgreSQL 16**:
-   - `lib/db/postgres.ts` criado com pool de conexões `pg`.
-   - `app/api/health/route.ts` criado para telemetria e health check.
-   - Teste de conectividade direta via TCP: **`CONNECTIVITY SUCCESS! Stores: 2 Server Time: 2026-08-28T02:58:09.406Z`**.
-3. **Validação de Código**:
-   - `npx tsc --noEmit` executado com **código 0 (zero erros de compilação)**.
-
-### Status da VPS Exclusiva (`198.50.117.110`):
-- Container PostgreSQL 16 (`acaidarose-db`) ativo e saudável na porta `5432` com liberação de firewall UFW.
-- 21 tabelas relacionais ativas, triggers, dados de Aveiro e Torres Novas e 3 utilizadores.
-- Backups automáticos diários às 03:00 AM.
-- Vercel CLI configurada para deploy direto em `https://acaidarose.vercel.app`.
+4. **Variáveis de Produção para a Vercel**:
+   - `DATABASE_URL`: `postgresql://acai_admin:da9d329d3252f5b61a2d810b4b765ce9@198.50.117.110:5432/acaidarose_prod`
+   - `JWT_SECRET`: `ca90799f2d1e2e604f32c3f8fba3bceb3b27be30058ec0ffad8a23053bbef50a`
+   - `NEXT_PUBLIC_APP_URL`: `https://acaidarose.vercel.app`

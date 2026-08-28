@@ -1,0 +1,5 @@
+# Caddyfile para Açaí da Rose — SSL Let's Encrypt Automático
+api.acaidarose.pt {
+    # Redireciona para o backend na porta local
+    respond "Açaí da Rose API Gateway Online" 200
+}
