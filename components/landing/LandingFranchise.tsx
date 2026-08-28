@@ -60,7 +60,7 @@ export default function LandingFranchise() {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.nome || !form.email || !form.telefone) {
       toast.error('Preencha os campos obrigatórios')
@@ -72,11 +72,24 @@ export default function LandingFranchise() {
     }
 
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      const res = await fetch('/api/franchise-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          type: 'FRANCHISE_APPLICATION',
+        }),
+      })
+
+      if (!res.ok) throw new Error('Falha ao enviar candidatura')
       setSubmitted(true)
-      toast.success('Candidatura enviada com sucesso!')
-    }, 1000)
+      toast.success('Candidatura enviada com sucesso! A equipa da Franqueadora entrará em contacto.')
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar candidatura')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

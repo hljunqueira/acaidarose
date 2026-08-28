@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,45 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { toast } from 'sonner'
 import { User, CatalogData } from '@/types'
+import {
+  FileText,
+  UserCheck,
+  Phone,
+  Mail,
+  MapPin,
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Search,
+  RefreshCw,
+  ExternalLink,
+  MessageSquare,
+  Building2,
+  Check,
+  X,
+  Sparkles,
+} from 'lucide-react'
+
+export interface FranchiseCandidate {
+  id: string
+  type: 'FRANCHISE_APPLICATION'
+  candidateName: string
+  email: string
+  phone: string
+  city: string
+  district: string
+  investment: string
+  reason: string
+  preferredContact: {
+    whatsapp: boolean
+    telefone: boolean
+    email: boolean
+  }
+  status: 'PENDING' | 'CONTACTED' | 'APPROVED' | 'REJECTED'
+  responseNotes?: string
+  createdAt: string
+}
 
 export interface FranchisePriceRequest {
   id: string
@@ -37,1019 +76,602 @@ interface FranchiseRequestsViewProps {
   onNavigateToMenu?: () => void
 }
 
-const STORE_NAMES: Record<string, string> = {
-  'tenant-aveiro': 'Açaí da Rose — Filial Aveiro',
-  'tenant-lisboa': 'Açaí da Rose — Filial Lisboa (Parque das Nações)',
-  'tenant-santarem': 'Açaí da Rose — Filial Santarém',
-  'tenant-torres-novas': 'Açaí da Rose — Matriz Central',
-}
-
 export default function FranchiseRequestsView({
-  tenantId = 'tenant-torres-novas',
+  tenantId = '11111111-1111-1111-1111-111111111111',
   currentUser,
-  onNavigateToMenu,
 }: FranchiseRequestsViewProps) {
-  const [requests, setRequests] = useState<FranchisePriceRequest[]>([])
+  const [activeTab, setActiveTab] = useState<'CANDIDATES' | 'STORE_REQUESTS'>('CANDIDATES')
+  const [candidates, setCandidates] = useState<FranchiseCandidate[]>([])
+  const [storeRequests, setStoreRequests] = useState<FranchisePriceRequest[]>([])
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL')
-  const [storeFilter, setStoreFilter] = useState<string>('ALL')
-  const [search, setSearch] = useState<string>('')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('ALL')
 
-  // Catálogo da loja para preenchimento inteligente
-  const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
-
-  // Apenas a Matriz Central (Holding) atua como Franqueadora Master deliberadora
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN'
-  const isMatriz = isSuperAdmin && (tenantId === 'tenant-torres-novas' || !tenantId)
-
-  // Modais
-  const [detailModalOpen, setDetailModalOpen] = useState(false)
-  const [rejectModalOpen, setRejectModalOpen] = useState(false)
-  const [newRequestModalOpen, setNewRequestModalOpen] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState<FranchisePriceRequest | null>(null)
-  
-  // Customização de Preço Aprovado pela Holding
-  const [customApprovedPrice, setCustomApprovedPrice] = useState<string>('')
-  const [rejectReason, setRejectReason] = useState('Não compatível com a política de preços da rede no momento.')
+  // Modais de Gestão
+  const [selectedCandidate, setSelectedCandidate] = useState<FranchiseCandidate | null>(null)
+  const [notesModalOpen, setNotesModalOpen] = useState(false)
+  const [candidateNotes, setCandidateNotes] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
 
-  // Formulário de Nova Solicitação para Filiais
-  const [requestMode, setRequestMode] = useState<'REAJUSTE' | 'NOVO_PRODUTO'>('REAJUSTE')
-  const [selectedProductId, setSelectedProductId] = useState<string>('')
-  const [newReqProduct, setNewReqProduct] = useState('')
-  const [newReqCategory, setNewReqCategory] = useState('Copos Master')
-  const [newReqCurrentPrice, setNewReqCurrentPrice] = useState<number>(0)
-  const [newReqSuggestedPrice, setNewReqSuggestedPrice] = useState<string>('')
-  const [newReqReason, setNewReqReason] = useState('')
-  const [newReqManager, setNewReqManager] = useState(currentUser?.name || 'Gerente da Filial')
+  // Modais de Solicitações de Lojas
+  const [selectedStoreReq, setSelectedStoreReq] = useState<FranchisePriceRequest | null>(null)
+  const [deliberateModalOpen, setDeliberateModalOpen] = useState(false)
+  const [deliberateAction, setDeliberateAction] = useState<'APPROVE' | 'REJECT'>('APPROVE')
+  const [deliberateNotes, setDeliberateNotes] = useState('')
 
-  const notifyPendingCount = (list: FranchisePriceRequest[]) => {
-    if (typeof window !== 'undefined') {
-      const count = isMatriz
-        ? list.filter((r) => r.status === 'PENDING').length
-        : list.filter((r) => r.tenantId === tenantId && r.status === 'PENDING').length
-      window.dispatchEvent(new CustomEvent('franchise_requests_updated', { detail: { count } }))
-    }
-  }
+  const isMaster =
+    currentUser?.role === 'SUPER_ADMIN' ||
+    currentUser?.role === 'FRANCHISOR_ADMIN' ||
+    !currentUser?.tenantId ||
+    currentUser?.tenantId === '11111111-1111-1111-1111-111111111111'
 
-  const fetchRequests = useCallback(async () => {
+  const fetchData = useCallback(async () => {
+    setLoading(true)
     try {
       const res = await fetch('/api/franchise-requests')
       const data = await res.json()
-      if (data.requests) {
-        setRequests(data.requests)
-        notifyPendingCount(data.requests)
+      if (Array.isArray(data.requests)) {
+        const candList: FranchiseCandidate[] = []
+        const storeList: FranchisePriceRequest[] = []
+
+        data.requests.forEach((r: any) => {
+          if (r.type === 'FRANCHISE_APPLICATION') {
+            candList.push(r)
+          } else {
+            storeList.push(r)
+          }
+        })
+
+        setCandidates(candList)
+        setStoreRequests(storeList)
+
+        // Dispara evento para atualizar badge da sidebar
+        const pendingCount = candList.filter((c) => c.status === 'PENDING').length + storeList.filter((s) => s.status === 'PENDING').length
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('franchise_requests_updated', { detail: { count: pendingCount } }))
+        }
       }
     } catch {
-      toast.error('Erro ao carregar solicitações')
+      toast.error('Erro ao carregar candidaturas e solicitações')
     } finally {
       setLoading(false)
     }
-  }, [isMatriz, tenantId])
+  }, [])
 
-  // Carregar produtos da loja para vincular reajustes
   useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const res = await fetch(`/api/products?tenantId=${tenantId}`)
-        const data = await res.json()
-        if (data.containers) {
-          setCatalog(data)
-          if (data.containers.length > 0) {
-            const first = data.containers[0]
-            setSelectedProductId(first.id)
-            setNewReqProduct(first.name)
-            setNewReqCurrentPrice(first.precoBase || 0)
-            setNewReqCategory('Copos Master')
-          }
-        }
-      } catch {
-        // fallback
-      }
-    }
-    loadProducts()
-    fetchRequests()
-  }, [tenantId, fetchRequests])
+    fetchData()
+  }, [fetchData])
 
-  // Atualizar produto selecionado no dropdown
-  const handleSelectProduct = (prodId: string) => {
-    setSelectedProductId(prodId)
-    const prod = catalog.containers?.find((c) => c.id === prodId)
-    if (prod) {
-      setNewReqProduct(prod.name)
-      setNewReqCurrentPrice(prod.precoBase || 0)
-      setNewReqCategory('Copos Master')
-    }
-  }
-
-  // Filtragem inicial: No modo Filial, exibe SOMENTE as solicitações da própria loja!
-  const baseStoreRequests = useMemo(() => {
-    if (isMatriz) return requests
-    return requests.filter((r) => r.tenantId === tenantId)
-  }, [requests, isMatriz, tenantId])
-
-  const pendingCount = baseStoreRequests.filter((r) => r.status === 'PENDING').length
-  const approvedCount = baseStoreRequests.filter((r) => r.status === 'APPROVED').length
-  const rejectedCount = baseStoreRequests.filter((r) => r.status === 'REJECTED').length
-
-  const handleOpenDetail = (req: FranchisePriceRequest) => {
-    setSelectedRequest(req)
-    setCustomApprovedPrice(String(req.suggestedPrice))
-    setDetailModalOpen(true)
-  }
-
-  // Aprovação com sincronização real (Apenas Franqueadora)
-  const handleApproveRequest = async (req: FranchisePriceRequest, finalPrice?: number) => {
+  const handleUpdateCandidateStatus = async (id: string, newStatus: 'PENDING' | 'CONTACTED' | 'APPROVED' | 'REJECTED', notes?: string) => {
     setActionLoading(true)
-    const approvedValue = finalPrice !== undefined ? finalPrice : req.suggestedPrice
-
     try {
       const res = await fetch('/api/franchise-requests', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: req.id,
-          action: 'APPROVE',
-          resolvedBy: 'Holding Açaí da Rose',
-          responseNotes: `Aprovado pela Holding. Preço de ${formatCurrency(approvedValue)} sincronizado com o cardápio da loja.`,
+          id,
+          status: newStatus,
+          responseNotes: notes,
         }),
       })
-
-      if (!res.ok) throw new Error('Falha ao aprovar reajuste')
-      const data = await res.json()
-
-      setRequests((prev) => {
-        const next = prev.map((r) => (r.id === req.id ? { ...data.request, suggestedPrice: approvedValue } : r))
-        notifyPendingCount(next)
-        return next
-      })
-      setDetailModalOpen(false)
-      toast.success(
-        `Preço atualizado para ${formatCurrency(approvedValue)} no cardápio de ${req.storeName}!`
-      )
+      if (!res.ok) throw new Error('Falha ao atualizar status')
+      toast.success(`Candidatura atualizada para: ${newStatus === 'CONTACTED' ? 'Contactado' : newStatus === 'APPROVED' ? 'Aprovado' : newStatus === 'REJECTED' ? 'Arquivado' : 'Pendente'}`)
+      setNotesModalOpen(false)
+      fetchData()
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao aprovar solicitação')
+      toast.error(err.message || 'Erro ao processar candidatura')
     } finally {
       setActionLoading(false)
     }
   }
 
-  // Recusa com justificativa (Apenas Franqueadora)
-  const handleRejectRequest = async () => {
-    if (!selectedRequest) return
+  const handleDeliberateStoreRequest = async () => {
+    if (!selectedStoreReq) return
     setActionLoading(true)
-
     try {
       const res = await fetch('/api/franchise-requests', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: selectedRequest.id,
-          action: 'REJECT',
-          resolvedBy: 'Holding Açaí da Rose',
-          responseNotes: rejectReason,
+          id: selectedStoreReq.id,
+          action: deliberateAction,
+          responseNotes: deliberateNotes,
         }),
       })
-
-      if (!res.ok) throw new Error('Falha ao recusar solicitação')
-      const data = await res.json()
-
-      setRequests((prev) => {
-        const next = prev.map((r) => (r.id === selectedRequest.id ? data.request : r))
-        notifyPendingCount(next)
-        return next
-      })
-      setRejectModalOpen(false)
-      setDetailModalOpen(false)
-      toast.info(`Solicitação recusada. A filial foi notificada da justificativa.`)
+      if (!res.ok) throw new Error('Falha ao processar solicitação')
+      toast.success(deliberateAction === 'APPROVE' ? 'Solicitação aprovada e preços sincronizados na loja!' : 'Solicitação recusada.')
+      setDeliberateModalOpen(false)
+      fetchData()
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao processar recusa')
+      toast.error(err.message || 'Erro ao deliberar solicitação')
     } finally {
       setActionLoading(false)
     }
   }
 
-  // Criar nova solicitação enviada pela filial
-  const handleCreateNewRequest = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setActionLoading(true)
-
-    const storeTenant = isMatriz ? 'tenant-aveiro' : tenantId
-    const storeLabel = STORE_NAMES[storeTenant] || 'Açaí da Rose — Filial'
-
-    try {
-      const res = await fetch('/api/franchise-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenantId: storeTenant,
-          storeName: storeLabel,
-          managerName: newReqManager || currentUser?.name || 'Gerente da Filial',
-          productId: requestMode === 'REAJUSTE' ? selectedProductId : `new-${Date.now()}`,
-          productName: newReqProduct,
-          category: newReqCategory,
-          currentPrice: requestMode === 'REAJUSTE' ? Number(newReqCurrentPrice) : 0,
-          suggestedPrice: Number(newReqSuggestedPrice),
-          type: requestMode === 'REAJUSTE' ? 'PRICE_CHANGE' : 'NEW_PRODUCT',
-          reason: newReqReason || 'Reajuste operacional solicitado pela loja.',
-        }),
-      })
-
-      if (!res.ok) throw new Error('Falha ao criar solicitação')
-      const data = await res.json()
-      setRequests((prev) => {
-        const next = [data.request, ...prev]
-        notifyPendingCount(next)
-        return next
-      })
-      setNewRequestModalOpen(false)
-      setNewReqReason('')
-      setNewReqSuggestedPrice('')
-      toast.success('Solicitação submetida com sucesso à Holding!')
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao enviar solicitação')
-    } finally {
-      setActionLoading(false)
-    }
+  const openWhatsApp = (phone: string, name: string) => {
+    const cleanPhone = phone.replace(/\D/g, '')
+    const finalPhone = cleanPhone.startsWith('351') ? cleanPhone : cleanPhone.length === 9 ? `351${cleanPhone}` : cleanPhone
+    const msg = encodeURIComponent(`Olá ${name}, agradecemos o seu interesse na franquia Açaí da Rose! Podemos conversar sobre a sua candidatura?`)
+    window.open(`https://wa.me/${finalPhone}?text=${msg}`, '_blank')
   }
 
-  const filteredRequests = baseStoreRequests.filter((r) => {
-    const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter
-    const matchesStore = !isMatriz || storeFilter === 'ALL' || r.tenantId === storeFilter
+  const filteredCandidates = candidates.filter((c) => {
     const matchesSearch =
-      r.productName.toLowerCase().includes(search.toLowerCase()) ||
-      r.storeName.toLowerCase().includes(search.toLowerCase()) ||
-      r.reason.toLowerCase().includes(search.toLowerCase()) ||
-      r.managerName.toLowerCase().includes(search.toLowerCase())
-    return matchesStatus && matchesStore && matchesSearch
+      c.candidateName.toLowerCase().includes(search.toLowerCase()) ||
+      c.city.toLowerCase().includes(search.toLowerCase()) ||
+      c.district.toLowerCase().includes(search.toLowerCase()) ||
+      c.email.toLowerCase().includes(search.toLowerCase())
+    const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter
+    return matchesSearch && matchesStatus
   })
 
-  // Cálculo da variação do modal
-  const priceVariation = useMemo(() => {
-    const sug = Number(newReqSuggestedPrice) || 0
-    const cur = newReqCurrentPrice || 0
-    if (cur === 0 || sug === 0) return null
-    const diff = sug - cur
-    const pct = ((diff / cur) * 100).toFixed(1)
-    return { diff, pct, isIncrease: diff > 0 }
-  }, [newReqCurrentPrice, newReqSuggestedPrice])
+  const filteredStoreRequests = storeRequests.filter((s) => {
+    const matchesSearch =
+      s.productName.toLowerCase().includes(search.toLowerCase()) ||
+      s.storeName.toLowerCase().includes(search.toLowerCase())
+    const matchesStatus = statusFilter === 'ALL' || s.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
+
+  const pendingCandidatesCount = candidates.filter((c) => c.status === 'PENDING').length
+  const pendingStoreCount = storeRequests.filter((s) => s.status === 'PENDING').length
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header Principal Clean */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">
-              {isMatriz
-                ? 'Central de Solicitações da Rede & Governança de Preços'
-                : `Solicitações à Franqueadora — ${STORE_NAMES[tenantId] || 'Filial'}`}
+    <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-200">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-purple-150 dark:border-white/15">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400 border border-purple-150 dark:border-white/10 shadow-xs">
+            <Building2 className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white tracking-tight">
+              Candidaturas & Solicitações da Franqueadora
             </h1>
-            {pendingCount > 0 && (
-              <Badge className="bg-pink-600 text-white font-black text-[10px] py-0.5 px-2 rounded-full border-0">
-                {pendingCount} {pendingCount === 1 ? 'Pendente' : 'Pendentes'}
-              </Badge>
-            )}
+            <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 font-medium">
+              Gestão de interessados no formulário de franquia e solicitações operacionais das lojas
+            </p>
           </div>
-          <p className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-0.5">
-            {isMatriz
-              ? 'Painel da Franqueadora Master: Deliberação e sincronização de reajustes solicitados pelas filiais'
-              : `Acompanhamento do histórico de propostas e pareceres da Holding para ${STORE_NAMES[tenantId] || 'sua filial'}`}
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Botão de Solicitação EXCLUSIVO PARA FILIAIS (Não aparece na Matriz) */}
-          {!isMatriz && (
-            <Button
-              size="sm"
-              onClick={() => setNewRequestModalOpen(true)}
-              className="h-9 bg-purple-900 hover:bg-purple-950 dark:bg-pink-600 dark:hover:bg-pink-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer px-3.5"
-            >
-              + Solicitar Reajuste à Holding
-            </Button>
-          )}
-
-          {onNavigateToMenu && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onNavigateToMenu}
-              className="h-9 border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white font-bold text-xs rounded-xl cursor-pointer px-3"
-            >
-              Abrir Cardápio
-            </Button>
-          )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={fetchData}
+            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Atualizar</span>
+          </Button>
         </div>
       </div>
 
-      {/* 2. KPIs Clean & Minimalistas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <Card className="p-4 rounded-2xl bg-purple-900 text-white border-0 shadow-xs">
-          <div className="text-[11px] font-bold text-purple-200 uppercase tracking-wider">
-            {isMatriz ? 'Solicitações Pendentes' : 'Em Análise na Holding'}
-          </div>
-          <div className="text-2xl font-black mt-1 font-mono text-pink-300">
-            {pendingCount} <span className="text-xs font-normal text-purple-200">pedidos</span>
-          </div>
-          <div className="text-[10px] text-purple-300/80 mt-1">
-            {pendingCount > 0 ? (isMatriz ? 'Requer decisão da Holding' : 'Aguardando parecer da holding') : 'Nenhuma pendência'}
-          </div>
-        </Card>
+      {/* Pílulas de Navegação por Abas */}
+      <div className="flex items-center gap-1.5 p-1 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-150 dark:border-white/10 w-fit shrink-0">
+        <button
+          type="button"
+          onClick={() => setActiveTab('CANDIDATES')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'CANDIDATES'
+              ? 'bg-gradient-to-r from-purple-700 to-pink-600 text-white shadow-xs'
+              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/50 dark:hover:bg-white/5'
+          }`}
+        >
+          <span>Candidaturas de Franquias ({candidates.length})</span>
+          {pendingCandidatesCount > 0 && (
+            <Badge className="bg-amber-400 text-purple-950 text-[10px] font-black py-0 px-1.5">
+              {pendingCandidatesCount} novos
+            </Badge>
+          )}
+        </button>
 
-        <Card className="p-4 rounded-2xl bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 shadow-xs">
-          <div className="text-[11px] font-bold text-purple-900/80 dark:text-purple-200/80 uppercase tracking-wider">
-            {isMatriz ? 'Aprovadas no Mês' : 'Reajustes Aprovados'}
-          </div>
-          <div className="text-2xl font-black mt-1 font-mono text-purple-950 dark:text-white">
-            {approvedCount} <span className="text-xs font-normal text-purple-600 dark:text-purple-300">itens</span>
-          </div>
-          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
-            {isMatriz ? 'Aplicados aos cardápios locais' : 'Ativos no cardápio desta loja'}
-          </div>
-        </Card>
-
-        <Card className="p-4 rounded-2xl bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 shadow-xs">
-          <div className="text-[11px] font-bold text-purple-900/80 dark:text-purple-200/80 uppercase tracking-wider">
-            {isMatriz ? 'Filiais na Rede' : 'Total de Propostas'}
-          </div>
-          <div className="text-2xl font-black mt-1 font-mono text-purple-950 dark:text-white">
-            {isMatriz ? '3' : baseStoreRequests.length} <span className="text-xs font-normal text-purple-600 dark:text-purple-300">{isMatriz ? 'filiais' : 'solicitações'}</span>
-          </div>
-          <div className="text-[10px] text-purple-600/70 dark:text-purple-300/70 mt-1">
-            {isMatriz ? 'Lisboa, Aveiro, Santarém' : 'Histórico completo da loja'}
-          </div>
-        </Card>
-
-        <Card className="p-4 rounded-2xl bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 shadow-xs">
-          <div className="text-[11px] font-bold text-purple-900/80 dark:text-purple-200/80 uppercase tracking-wider">
-            SLA de Resposta
-          </div>
-          <div className="text-2xl font-black mt-1 font-mono text-purple-950 dark:text-white">
-            &lt; 4 <span className="text-xs font-normal text-purple-600 dark:text-purple-300">horas</span>
-          </div>
-          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
-            Agilidade na operação
-          </div>
-        </Card>
+        <button
+          type="button"
+          onClick={() => setActiveTab('STORE_REQUESTS')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'STORE_REQUESTS'
+              ? 'bg-gradient-to-r from-purple-700 to-pink-600 text-white shadow-xs'
+              : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/50 dark:hover:bg-white/5'
+          }`}
+        >
+          <span>Solicitações de Lojas ({storeRequests.length})</span>
+          {pendingStoreCount > 0 && (
+            <Badge className="bg-amber-400 text-purple-950 text-[10px] font-black py-0 px-1.5">
+              {pendingStoreCount}
+            </Badge>
+          )}
+        </button>
       </div>
 
-      {/* 3. Filtros & Busca */}
-      <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
+      {/* Barra de Filtros */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
           <Input
-            placeholder={isMatriz ? 'Buscar por produto, filial ou motivo...' : 'Buscar nas minhas solicitações...'}
+            placeholder={activeTab === 'CANDIDATES' ? 'Pesquisar candidato por nome, distrito, cidade ou e-mail...' : 'Pesquisar produto ou loja...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 text-xs rounded-xl bg-purple-50/40 dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white max-w-xs"
+            className="pl-10 h-10 rounded-2xl border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] text-xs text-purple-950 dark:text-white"
           />
-
-          {isMatriz && (
-            <select
-              value={storeFilter}
-              onChange={(e) => setStoreFilter(e.target.value)}
-              className="h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/40 dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600 dark:focus:ring-pink-500 [&>option]:bg-white dark:[&>option]:bg-[#160228]"
-            >
-              <option value="ALL">Todas as Filiais ({requests.length})</option>
-              <option value="tenant-aveiro">Filial Aveiro ({requests.filter(r => r.tenantId === 'tenant-aveiro').length})</option>
-              <option value="tenant-lisboa">Filial Lisboa ({requests.filter(r => r.tenantId === 'tenant-lisboa').length})</option>
-              <option value="tenant-santarem">Filial Santarém ({requests.filter(r => r.tenantId === 'tenant-santarem').length})</option>
-            </select>
-          )}
         </div>
 
-        {/* Pílulas de Status */}
-        <div className="flex items-center gap-1 bg-purple-50/60 dark:bg-white/5 p-1 rounded-xl border border-purple-150 dark:border-white/10 w-fit">
-          <button
-            type="button"
-            onClick={() => setStatusFilter('ALL')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'ALL'
-                ? 'bg-purple-900 dark:bg-pink-600 text-white shadow-xs'
-                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-            }`}
-          >
-            Todas ({baseStoreRequests.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('PENDING')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'PENDING'
-                ? 'bg-purple-900 dark:bg-pink-600 text-white shadow-xs'
-                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-            }`}
-          >
-            Pendentes ({pendingCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('APPROVED')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'APPROVED'
-                ? 'bg-purple-900 dark:bg-pink-600 text-white shadow-xs'
-                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-            }`}
-          >
-            Aprovadas ({approvedCount})
-          </button>
-          {rejectedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setStatusFilter('REJECTED')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === 'REJECTED'
-                  ? 'bg-purple-900 dark:bg-pink-600 text-white shadow-xs'
-                  : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-              }`}
-            >
-              Recusadas ({rejectedCount})
-            </button>
-          )}
-        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-10 rounded-2xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] px-3.5 text-xs font-bold text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+        >
+          <option value="ALL">Todos os Estados</option>
+          <option value="PENDING">Pendentes</option>
+          <option value="CONTACTED">Contactados / Em Análise</option>
+          <option value="APPROVED">Aprovados</option>
+          <option value="REJECTED">Arquivados / Recusados</option>
+        </select>
       </div>
 
-      {/* 4. GRID COMPACTO DE SOLICITAÇÕES (2 A 3 COLUNAS) */}
-      {loading ? (
-        <div className="py-16 text-center text-xs text-purple-600 dark:text-purple-300 font-bold">
-          A carregar solicitações...
-        </div>
-      ) : filteredRequests.length === 0 ? (
-        <div className="p-12 text-center text-xs text-purple-700/70 dark:text-purple-200/60 font-bold bg-white dark:bg-[#160228]/95 rounded-2xl border border-dashed border-purple-200 dark:border-white/15">
-          {isMatriz
-            ? 'Nenhuma solicitação encontrada com os filtros atuais.'
-            : 'Sua filial ainda não possui solicitações registradas. Clique em "+ Solicitar Reajuste à Holding" para propor uma alteração de preço.'}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRequests.map((req) => {
-            const priceDiff = req.suggestedPrice - req.currentPrice
-            const percentDiff = req.currentPrice > 0 ? ((priceDiff / req.currentPrice) * 100).toFixed(1) : 'Novo'
-            const isIncrease = priceDiff > 0
-
-            return (
-              <Card
-                key={req.id}
-                className="p-4 bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 rounded-2xl shadow-xs hover:border-purple-300 dark:hover:border-white/25 transition flex flex-col justify-between gap-3 group"
-              >
-                <div className="space-y-3">
-                  {/* Cabeçalho do Card */}
-                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-purple-100 dark:border-white/10">
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-pink-400">
-                        {req.storeName.replace('Açaí da Rose — ', '')}
-                      </div>
-                      <div className="text-[10px] text-purple-600/70 dark:text-purple-300/70">
-                        {req.managerName} · {req.createdAt}
-                      </div>
-                    </div>
-
-                    <div>
-                      {req.status === 'PENDING' && (
-                        <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border-0 text-[9px] font-black py-0.5 px-2">
-                          PENDENTE
-                        </Badge>
-                      )}
-                      {req.status === 'APPROVED' && (
-                        <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300 border-0 text-[9px] font-black py-0.5 px-2">
-                          APROVADO
-                        </Badge>
-                      )}
-                      {req.status === 'REJECTED' && (
-                        <Badge className="bg-red-100 dark:bg-red-500/20 text-red-900 dark:text-red-300 border-0 text-[9px] font-black py-0.5 px-2">
-                          RECUSADO
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Produto & Preço */}
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={req.productImage}
-                      alt={req.productName}
-                      className="h-14 w-14 rounded-xl object-cover border border-purple-150 dark:border-white/10 shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <div className="text-[9px] font-bold uppercase text-purple-500 dark:text-pink-400">
-                        {req.category}
-                      </div>
-                      <div className="text-xs font-black text-purple-950 dark:text-white truncate">
-                        {req.productName}
-                      </div>
-                      <div className="text-xs font-mono font-bold mt-1 text-purple-950 dark:text-white flex items-center gap-1.5 flex-wrap">
-                        {req.currentPrice > 0 && (
-                          <>
-                            <span className="line-through text-purple-400 dark:text-purple-400 text-[11px]">
-                              {formatCurrency(req.currentPrice)}
-                            </span>
-                            <span>→</span>
-                          </>
-                        )}
-                        <span className="font-black text-pink-600 dark:text-pink-300 text-sm">
-                          {formatCurrency(req.suggestedPrice)}
-                        </span>
-                        {req.currentPrice > 0 && (
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
-                              isIncrease
-                                ? 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300'
-                                : 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-300'
-                            }`}
-                          >
-                            {isIncrease ? `+${percentDiff}%` : `${percentDiff}%`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Justificativa da Filial */}
-                  <div className="space-y-0.5">
-                    <div className="text-[9px] uppercase font-bold text-purple-700/70 dark:text-purple-300/70">
-                      Justificativa enviada pelo gerente:
-                    </div>
-                    <div className="p-2 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-[11px] text-purple-900/80 dark:text-purple-200/80 italic line-clamp-2">
-                      "{req.reason}"
-                    </div>
-                  </div>
-
-                  {/* Parecer da Holding */}
-                  {req.responseNotes ? (
-                    <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/80 dark:border-white/10 text-[10.5px] text-purple-950 dark:text-white font-medium">
-                      <strong>Holding:</strong> {req.responseNotes}
-                    </div>
-                  ) : req.status === 'PENDING' ? (
-                    <div className="text-[10px] text-amber-700 dark:text-amber-300 font-bold italic">
-                      ⏳ Em análise pela Franqueadora Master...
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Ações da Base do Card */}
-                <div className="pt-2 border-t border-purple-100 dark:border-white/10 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenDetail(req)}
-                    className="text-[11px] font-bold text-purple-700 dark:text-pink-400 hover:text-purple-950 dark:hover:text-white cursor-pointer transition"
-                  >
-                    Analisar Detalhes
-                  </button>
-
-                  {isMatriz && req.status === 'PENDING' ? (
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedRequest(req)
-                          setRejectReason('Não compatível com a política de preços da rede no momento.')
-                          setRejectModalOpen(true)
-                        }}
-                        className="h-7 text-[10px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border-red-200 dark:border-red-500/30 rounded-lg px-2.5 cursor-pointer"
-                      >
-                        Recusar
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        onClick={() => handleApproveRequest(req)}
-                        disabled={actionLoading}
-                        className="h-7 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg px-3 shadow-xs cursor-pointer"
-                      >
-                        Aprovar
-                      </Button>
-                    </div>
+      {/* ABA 1: CANDIDATURAS DE FRANQUIAS (FORMULÁRIO DO SITE) */}
+      {activeTab === 'CANDIDATES' && (
+        <Card className="border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] rounded-3xl overflow-hidden shadow-xs">
+          <CardHeader className="p-4 sm:p-5 border-b border-purple-150 dark:border-white/10">
+            <CardTitle className="text-sm font-black text-purple-950 dark:text-white">
+              Candidaturas Recebidas pelo Formulário &quot;Seja um Franchisado&quot;
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-purple-50/70 dark:bg-white/5 border-b border-purple-150 dark:border-white/10 text-[11px] font-black uppercase text-purple-900/80 dark:text-purple-300/70">
+                  <tr>
+                    <th className="py-3 px-4">Candidato / Interessado</th>
+                    <th className="py-3 px-4">Localidade / Distrito</th>
+                    <th className="py-3 px-4">Capital Disponível</th>
+                    <th className="py-3 px-4">Data de Envio</th>
+                    <th className="py-3 px-4">Estado</th>
+                    <th className="py-3 px-4 text-right">Ações Rápidas</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-purple-100 dark:divide-white/5">
+                  {filteredCandidates.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-purple-700/80 dark:text-purple-300/70 text-xs font-medium">
+                        Nenhuma candidatura de franquia encontrada.
+                      </td>
+                    </tr>
                   ) : (
-                    <a
-                      href={`/menu?tenantId=${req.tenantId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] font-bold text-purple-600/80 dark:text-purple-300/80 hover:text-purple-950 dark:hover:text-white"
-                    >
-                      Ver no Cardápio ↗
-                    </a>
+                    filteredCandidates.map((cand) => (
+                      <tr key={cand.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-purple-950 dark:text-white text-xs">{cand.candidateName}</div>
+                          <div className="text-[11px] text-purple-700/80 dark:text-purple-300/70">{cand.email}</div>
+                          <div className="text-[11px] font-mono text-purple-900/70 dark:text-purple-200/60">{cand.phone}</div>
+                        </td>
+                        <td className="py-3.5 px-4 font-medium text-purple-950 dark:text-white">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                            <span>{cand.city ? `${cand.city}, ${cand.district}` : cand.district}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-black text-purple-950 dark:text-pink-300 text-sm">
+                          {cand.investment}
+                        </td>
+                        <td className="py-3.5 px-4 text-purple-700/80 dark:text-purple-300/70 text-[11px]">
+                          {new Date(cand.createdAt).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {cand.status === 'PENDING' && (
+                            <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 font-bold text-[10px]">
+                              Pendente
+                            </Badge>
+                          )}
+                          {cand.status === 'CONTACTED' && (
+                            <Badge className="bg-purple-500/20 text-purple-700 dark:text-pink-300 border border-purple-500/40 font-bold text-[10px]">
+                              Contactado
+                            </Badge>
+                          )}
+                          {cand.status === 'APPROVED' && (
+                            <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-bold text-[10px]">
+                              Aprovado
+                            </Badge>
+                          )}
+                          {cand.status === 'REJECTED' && (
+                            <Badge className="bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40 font-bold text-[10px]">
+                              Arquivado
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {cand.phone && (
+                              <Button
+                                size="sm"
+                                onClick={() => openWhatsApp(cand.phone, cand.candidateName)}
+                                className="h-8 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1 cursor-pointer shadow-xs"
+                                title="Conversar no WhatsApp"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                                <span>WhatsApp</span>
+                              </Button>
+                            )}
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedCandidate(cand)
+                                setCandidateNotes(cand.responseNotes || '')
+                                setNotesModalOpen(true)
+                              }}
+                              className="h-8 px-2.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white font-bold text-xs cursor-pointer shadow-2xs"
+                            >
+                              <span>Gerir</span>
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
-                </div>
-              </Card>
-            )
-          })}
-        </div>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* ========================================================
-          MODAL DE ANÁLISE COMPLETA & EDIÇÃO DE VALOR
-      ======================================================== */}
-      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-2xl shadow-2xl">
-          <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
-            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
-              {isMatriz ? 'Análise e Deliberação da Solicitação' : 'Detalhes da Proposta'}
-            </DialogTitle>
-            <p className="text-xs text-purple-700/80 dark:text-purple-200/70">
-              {isMatriz
-                ? 'Avalie a solicitação da filial e sincronize o preço com o cardápio local'
-                : 'Acompanhe a justificativa enviada e o parecer registrado pela Holding'}
-            </p>
-          </DialogHeader>
-
-          {selectedRequest && (
-            <div className="space-y-4 py-2 text-xs">
-              {/* Resumo da Filial */}
-              <div className="p-3 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-black uppercase text-purple-700 dark:text-pink-400">
-                    Filial Solicitante
-                  </div>
-                  <div className="text-sm font-black text-purple-950 dark:text-white">
-                    {selectedRequest.storeName}
-                  </div>
-                  <div className="text-xs text-purple-800/80 dark:text-purple-200/80">
-                    Gerente: <strong>{selectedRequest.managerName}</strong> · {selectedRequest.createdAt}
-                  </div>
-                </div>
-
-                <Badge className="bg-purple-100 dark:bg-white/10 text-purple-900 dark:text-purple-200 text-[10px] font-bold border-0">
-                  {selectedRequest.type === 'PRICE_CHANGE' ? 'Reajuste de Preço' : 'Novo Produto'}
-                </Badge>
-              </div>
-
-              {/* Detalhes do Produto */}
-              <div className="flex items-center gap-4 p-3 rounded-xl border border-purple-100 dark:border-white/10">
-                <img
-                  src={selectedRequest.productImage}
-                  alt={selectedRequest.productName}
-                  className="h-20 w-20 rounded-xl object-cover border border-purple-150 dark:border-white/10 shrink-0"
-                />
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-purple-500 dark:text-pink-400">
-                    {selectedRequest.category}
-                  </span>
-                  <div className="text-base font-black text-purple-950 dark:text-white">
-                    {selectedRequest.productName}
-                  </div>
-                  {selectedRequest.currentPrice > 0 && (
-                    <div className="text-xs text-purple-600/80 dark:text-purple-300/80">
-                      Preço atual em vigor na loja: <strong>{formatCurrency(selectedRequest.currentPrice)}</strong>
-                    </div>
+      {/* ABA 2: SOLICITAÇÕES DE LOJAS DA REDE */}
+      {activeTab === 'STORE_REQUESTS' && (
+        <Card className="border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] rounded-3xl overflow-hidden shadow-xs">
+          <CardHeader className="p-4 sm:p-5 border-b border-purple-150 dark:border-white/10">
+            <CardTitle className="text-sm font-black text-purple-950 dark:text-white">
+              Solicitações de Ajuste de Preço e Cardápio Enviadas pelas Lojas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-purple-50/70 dark:bg-white/5 border-b border-purple-150 dark:border-white/10 text-[11px] font-black uppercase text-purple-900/80 dark:text-purple-300/70">
+                  <tr>
+                    <th className="py-3 px-4">Loja / Gerente</th>
+                    <th className="py-3 px-4">Produto</th>
+                    <th className="py-3 px-4">Preço Atual</th>
+                    <th className="py-3 px-4">Preço Sugerido</th>
+                    <th className="py-3 px-4">Motivo</th>
+                    <th className="py-3 px-4">Estado</th>
+                    {isMaster && <th className="py-3 px-4 text-right">Deliberação</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-purple-100 dark:divide-white/5">
+                  {filteredStoreRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={isMaster ? 7 : 6} className="py-8 text-center text-purple-700/80 dark:text-purple-300/70 text-xs font-medium">
+                        Nenhuma solicitação de loja encontrada.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStoreRequests.map((req) => (
+                      <tr key={req.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
+                          <div>{req.storeName}</div>
+                          <div className="text-[10px] text-purple-700/80 dark:text-purple-300/70 font-normal">{req.managerName}</div>
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-purple-900 dark:text-purple-200">
+                          {req.productName}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-purple-700/80 dark:text-purple-300/70">
+                          {formatCurrency(req.currentPrice)}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-black text-purple-950 dark:text-pink-300 text-sm">
+                          {formatCurrency(req.suggestedPrice)}
+                        </td>
+                        <td className="py-3.5 px-4 text-purple-700/80 dark:text-purple-300/70 text-xs max-w-xs truncate">
+                          {req.reason}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {req.status === 'PENDING' && (
+                            <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 font-bold text-[10px]">
+                              Pendente
+                            </Badge>
+                          )}
+                          {req.status === 'APPROVED' && (
+                            <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-bold text-[10px]">
+                              Aprovado
+                            </Badge>
+                          )}
+                          {req.status === 'REJECTED' && (
+                            <Badge className="bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40 font-bold text-[10px]">
+                              Recusado
+                            </Badge>
+                          )}
+                        </td>
+                        {isMaster && (
+                          <td className="py-3.5 px-4 text-right">
+                            {req.status === 'PENDING' ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedStoreReq(req)
+                                    setDeliberateAction('APPROVE')
+                                    setDeliberateNotes('Aprovado pela Franqueadora Master.')
+                                    setDeliberateModalOpen(true)
+                                  }}
+                                  className="h-7 px-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg cursor-pointer shadow-xs"
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  <span>Aprovar</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setSelectedStoreReq(req)
+                                    setDeliberateAction('REJECT')
+                                    setDeliberateNotes('Preço fora da política tarifária da rede.')
+                                    setDeliberateModalOpen(true)
+                                  }}
+                                  className="h-7 px-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-[11px] font-bold rounded-lg cursor-pointer"
+                                >
+                                  <X className="h-3 w-3 mr-1" />
+                                  <span>Recusar</span>
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-purple-700/60 dark:text-purple-300/50 font-medium">Resolvido</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))
                   )}
-                  <div className="text-xs font-bold text-pink-600 dark:text-pink-300 font-mono">
-                    Preço Proposto: <strong>{formatCurrency(selectedRequest.suggestedPrice)}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Justificativa Completa */}
-              <div className="space-y-1">
-                <Label className="text-xs font-bold text-purple-950 dark:text-white">
-                  Justificativa do Gerente:
-                </Label>
-                <div className="p-3 rounded-xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-xs italic text-purple-900/90 dark:text-purple-200/90">
-                  "{selectedRequest.reason}"
-                </div>
-              </div>
-
-              {/* Campo para Ajuste de Preço pela Holding (Apenas Franqueadora no modo pendente) */}
-              {isMatriz && selectedRequest.status === 'PENDING' ? (
-                <div className="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/30 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-black text-emerald-950 dark:text-emerald-300">
-                        Preço Sugerido pela Filial: {formatCurrency(selectedRequest.suggestedPrice)}
-                      </div>
-                      {selectedRequest.currentPrice > 0 && (
-                        <div className="text-[10px] text-emerald-800/80 dark:text-emerald-300/80">
-                          Variação de +{formatCurrency(selectedRequest.suggestedPrice - selectedRequest.currentPrice)} (+{(((selectedRequest.suggestedPrice - selectedRequest.currentPrice) / selectedRequest.currentPrice) * 100).toFixed(1)}%)
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-right">
-                      <Label className="text-[10px] font-black uppercase text-emerald-900 dark:text-emerald-300">
-                        Preço a Aprovar (€):
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.10"
-                        value={customApprovedPrice}
-                        onChange={(e) => setCustomApprovedPrice(e.target.value)}
-                        className="h-8 w-24 text-sm font-mono font-black text-right bg-white dark:bg-[#160228] border-emerald-300"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3 rounded-xl bg-purple-50 dark:bg-white/5 border border-purple-200 dark:border-white/10 text-xs">
-                  <strong>Parecer Registrado:</strong> {selectedRequest.responseNotes || (selectedRequest.status === 'PENDING' ? '⏳ Em análise pela Franqueadora Master.' : 'Decisão registrada pela Holding.')}
-                </div>
-              )}
+                </tbody>
+              </table>
             </div>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          <DialogFooter className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-purple-100 dark:border-white/10">
-            {selectedRequest && (
-              <a
-                href={`/menu?tenantId=${selectedRequest.tenantId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-bold text-purple-700 dark:text-pink-400 hover:underline"
-              >
-                Abrir Cardápio da Loja ↗
-              </a>
-            )}
+      {/* Modal de Gestão de Candidatura */}
+      {selectedCandidate && (
+        <Dialog open={notesModalOpen} onOpenChange={setNotesModalOpen}>
+          <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 text-purple-950 dark:text-white rounded-3xl shadow-2xl">
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+                Candidatura: {selectedCandidate.candidateName}
+              </DialogTitle>
+              <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
+                {selectedCandidate.city ? `${selectedCandidate.city}, ` : ''}{selectedCandidate.district} · Capital: {selectedCandidate.investment}
+              </p>
+            </DialogHeader>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDetailModalOpen(false)}
-                className="h-8 text-xs rounded-xl"
-              >
-                Fechar
-              </Button>
+            <div className="space-y-4 py-2 text-xs">
+              <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-1.5">
+                <div className="font-bold text-purple-950 dark:text-white">Motivo / Apresentação do Interessado:</div>
+                <p className="text-purple-800 dark:text-purple-200 leading-relaxed font-medium">
+                  {selectedCandidate.reason}
+                </p>
+              </div>
 
-              {isMatriz && selectedRequest?.status === 'PENDING' && (
-                <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Notas Internas da Franqueadora</Label>
+                <textarea
+                  rows={3}
+                  value={candidateNotes}
+                  onChange={(e) => setCandidateNotes(e.target.value)}
+                  placeholder="Ex: Entrevista realizada, agendada visita à loja modelo..."
+                  className="w-full rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 p-2.5 text-xs text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Alterar Estado da Candidatura</Label>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleUpdateCandidateStatus(selectedCandidate.id, 'CONTACTED', candidateNotes)}
+                    disabled={actionLoading}
+                    className="rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs cursor-pointer shadow-xs"
+                  >
+                    Marcar Contactado
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleUpdateCandidateStatus(selectedCandidate.id, 'APPROVED', candidateNotes)}
+                    disabled={actionLoading}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+                  >
+                    Aprovar Candidato
+                  </Button>
+                </div>
+                <div className="pt-1">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => {
-                      setRejectReason('Não compatível com a política de preços da rede no momento.')
-                      setRejectModalOpen(true)
-                    }}
-                    className="h-8 text-xs font-bold text-red-600 dark:text-red-400 border-red-200 rounded-xl"
-                  >
-                    Recusar
-                  </Button>
-
-                  <Button
-                    type="button"
-                    onClick={() => handleApproveRequest(selectedRequest, Number(customApprovedPrice))}
+                    size="sm"
+                    onClick={() => handleUpdateCandidateStatus(selectedCandidate.id, 'REJECTED', candidateNotes)}
                     disabled={actionLoading}
-                    className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                    className="w-full rounded-xl border-rose-200 dark:border-rose-500/20 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 font-bold text-xs cursor-pointer"
                   >
-                    {actionLoading ? 'A sincronizar...' : `Aprovar (${formatCurrency(Number(customApprovedPrice) || selectedRequest.suggestedPrice)})`}
+                    Arquivar / Recusar Candidatura
                   </Button>
-                </>
-              )}
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ========================================================
-          MODAL DE RECUSA COM MOTIVOS
-      ======================================================== */}
-      <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-2xl shadow-2xl">
-          <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
-            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
-              Recusar Solicitação de Reajuste
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedRequest && (
-            <div className="space-y-3 py-2 text-xs">
-              <p className="text-purple-900 dark:text-purple-200">
-                Selecione o motivo da recusa para <strong>{selectedRequest.storeName}</strong>:
-              </p>
-
-              <div className="space-y-1.5">
-                {[
-                  'Não compatível com a política de preços da rede no momento.',
-                  'Impacto negativo na competitividade regional da marca.',
-                  'Custo logístico já subsidiado pela franqueadora.',
-                  'Preço sugerido acima do teto estipulado em contrato de franquia.',
-                ].map((reasonOption) => (
-                  <button
-                    key={reasonOption}
-                    type="button"
-                    onClick={() => setRejectReason(reasonOption)}
-                    className={`w-full text-left p-2 rounded-xl border text-[11px] font-semibold transition ${
-                      rejectReason === reasonOption
-                        ? 'bg-purple-100 dark:bg-white/15 border-purple-500 text-purple-950 dark:text-white font-bold'
-                        : 'bg-purple-50/40 dark:bg-white/5 border-purple-200/60 dark:border-white/10 text-purple-900/80 dark:text-purple-200/80 hover:bg-purple-100/50'
-                    }`}
-                  >
-                    {reasonOption}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-1 pt-1">
-                <Label className="text-xs font-bold text-purple-950 dark:text-white">
-                  Justificativa:
-                </Label>
-                <Input
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  className="h-9 text-xs rounded-xl bg-purple-50/50 dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
-                />
+                </div>
               </div>
             </div>
-          )}
 
-          <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setRejectModalOpen(false)}
-              disabled={actionLoading}
-              className="w-full sm:w-auto h-8 text-xs rounded-xl"
-            >
-              Voltar
-            </Button>
-            <Button
-              type="button"
-              onClick={handleRejectRequest}
-              disabled={actionLoading}
-              className="w-full sm:w-auto h-8 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl cursor-pointer"
-            >
-              {actionLoading ? 'A processar...' : 'Confirmar Recusa'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ========================================================
-          MODAL DE NOVA SOLICITAÇÃO (EXCLUSIVO PARA FILIAIS)
-      ======================================================== */}
-      <Dialog open={newRequestModalOpen} onOpenChange={setNewRequestModalOpen}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-2xl shadow-2xl">
-          <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
-            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
-              Nova Proposta para a Holding
-            </DialogTitle>
-            <p className="text-xs text-purple-700/80 dark:text-purple-200/70">
-              Solicitação de alteração de preço ou novo produto para <strong>{STORE_NAMES[tenantId] || 'sua filial'}</strong>
-            </p>
-          </DialogHeader>
-
-          {/* Seletor de Tipo de Solicitação */}
-          <div className="flex rounded-xl bg-purple-50 dark:bg-white/5 p-1 border border-purple-100 dark:border-white/10">
-            <button
-              type="button"
-              onClick={() => setRequestMode('REAJUSTE')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
-                requestMode === 'REAJUSTE'
-                  ? 'bg-purple-900 dark:bg-pink-600 text-white shadow-xs'
-                  : 'text-purple-900 dark:text-purple-200 hover:text-purple-950'
-              }`}
-            >
-              Reajustar Preço Existente
-            </button>
-            <button
-              type="button"
-              onClick={() => setRequestMode('NOVO_PRODUTO')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
-                requestMode === 'NOVO_PRODUTO'
-                  ? 'bg-purple-900 dark:bg-pink-600 text-white shadow-xs'
-                  : 'text-purple-900 dark:text-purple-200 hover:text-purple-950'
-              }`}
-            >
-              Propor Novo Produto / Combo
-            </button>
-          </div>
-
-          <form onSubmit={handleCreateNewRequest} className="space-y-3 py-1 text-xs">
-            {requestMode === 'REAJUSTE' ? (
-              <>
-                {/* Seleção do Produto do Catálogo com Auto-Preenchimento */}
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold text-purple-950 dark:text-white">
-                    Selecione o Produto do Cardápio:
-                  </Label>
-                  <select
-                    value={selectedProductId}
-                    onChange={(e) => handleSelectProduct(e.target.value)}
-                    className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white [&>option]:bg-white dark:[&>option]:bg-[#160228]"
-                  >
-                    {catalog.containers?.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} — Preço Atual: {formatCurrency(c.precoBase)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-purple-950 dark:text-white">Preço Atual (€):</Label>
-                    <div className="h-9 px-3 rounded-xl bg-purple-50/70 dark:bg-white/10 border border-purple-200 dark:border-white/15 flex items-center font-mono font-bold text-purple-950 dark:text-white">
-                      {formatCurrency(newReqCurrentPrice)}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-purple-950 dark:text-white">Preço Sugerido (€):</Label>
-                    <Input
-                      type="number"
-                      step="0.10"
-                      value={newReqSuggestedPrice}
-                      onChange={(e) => setNewReqSuggestedPrice(e.target.value)}
-                      placeholder="ex: 13.50"
-                      required
-                      className="h-9 text-xs rounded-xl"
-                    />
-                  </div>
-                </div>
-
-                {/* Cálculo do Impacto */}
-                {priceVariation && (
-                  <div className="p-2.5 rounded-xl bg-purple-50/80 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-between font-mono text-[11px]">
-                    <span className="text-purple-700 dark:text-purple-300 font-bold">Variação Proposta:</span>
-                    <span className={`font-black ${priceVariation.isIncrease ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                      {priceVariation.isIncrease ? `+${formatCurrency(priceVariation.diff)} (+${priceVariation.pct}%)` : `${formatCurrency(priceVariation.diff)} (${priceVariation.pct}%)`}
-                    </span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                {/* Proposição de Novo Produto */}
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Nome do Novo Produto:</Label>
-                  <Input
-                    value={newReqProduct}
-                    onChange={(e) => setNewReqProduct(e.target.value)}
-                    placeholder="ex: Combo Estudante Açaí 350g"
-                    required
-                    className="h-9 text-xs rounded-xl"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria:</Label>
-                    <select
-                      value={newReqCategory}
-                      onChange={(e) => setNewReqCategory(e.target.value)}
-                      className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white"
-                    >
-                      <option value="Copos Master">Copos Master</option>
-                      <option value="Combos Especiais">Combos Especiais</option>
-                      <option value="Sobremesas & Cafés">Sobremesas & Cafés</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-purple-950 dark:text-white">Preço de Venda (€):</Label>
-                    <Input
-                      type="number"
-                      step="0.10"
-                      value={newReqSuggestedPrice}
-                      onChange={(e) => setNewReqSuggestedPrice(e.target.value)}
-                      placeholder="ex: 8.50"
-                      required
-                      className="h-9 text-xs rounded-xl"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-purple-950 dark:text-white">Gerente Solicitante:</Label>
-              <Input
-                value={newReqManager}
-                onChange={(e) => setNewReqManager(e.target.value)}
-                placeholder="Nome do Gerente"
-                required
-                className="h-9 text-xs rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-purple-950 dark:text-white">Justificativa Operacional / Regional:</Label>
-              <textarea
-                value={newReqReason}
-                onChange={(e) => setNewReqReason(e.target.value)}
-                placeholder="Explique o motivo do reajuste ou criação deste produto na sua região..."
-                required
-                rows={3}
-                className="w-full p-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
-              />
-            </div>
-
-            <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setNewRequestModalOpen(false)}
-                disabled={actionLoading}
-                className="w-full sm:w-auto h-8 text-xs rounded-xl"
+                onClick={() => setNotesModalOpen(false)}
+                className="rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white cursor-pointer"
+              >
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Modal de Deliberação de Solicitação de Loja */}
+      {selectedStoreReq && (
+        <Dialog open={deliberateModalOpen} onOpenChange={setDeliberateModalOpen}>
+          <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 text-purple-950 dark:text-white rounded-3xl shadow-2xl">
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+                {deliberateAction === 'APPROVE' ? 'Aprovar Solicitação de Preço' : 'Recusar Solicitação de Preço'}
+              </DialogTitle>
+              <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
+                {selectedStoreReq.storeName} · {selectedStoreReq.productName}
+              </p>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2 text-xs">
+              <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-between">
+                <div>
+                  <span className="text-purple-700/80 dark:text-purple-300/70 block text-[11px] font-bold">Preço Atual</span>
+                  <span className="font-mono font-black text-purple-950 dark:text-white text-sm">{formatCurrency(selectedStoreReq.currentPrice)}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-purple-700/80 dark:text-purple-300/70 block text-[11px] font-bold">Novo Preço Solicitado</span>
+                  <span className="font-mono font-black text-purple-950 dark:text-pink-300 text-base">{formatCurrency(selectedStoreReq.suggestedPrice)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Observação / Justificativa da Decisão</Label>
+                <textarea
+                  rows={3}
+                  value={deliberateNotes}
+                  onChange={(e) => setDeliberateNotes(e.target.value)}
+                  className="w-full rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 p-2.5 text-xs text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeliberateModalOpen(false)}
+                className="rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white cursor-pointer"
               >
                 Cancelar
               </Button>
               <Button
-                type="submit"
+                type="button"
+                onClick={handleDeliberateStoreRequest}
                 disabled={actionLoading}
-                className="w-full sm:w-auto h-8 bg-purple-900 hover:bg-purple-950 dark:bg-pink-600 dark:hover:bg-pink-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                className={`rounded-xl font-bold text-xs text-white shadow-xs cursor-pointer ${
+                  deliberateAction === 'APPROVE' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
+                }`}
               >
-                {actionLoading ? 'A submeter...' : 'Submeter Solicitação à Holding'}
+                {actionLoading ? 'A processar...' : deliberateAction === 'APPROVE' ? 'Confirmar Aprovação' : 'Confirmar Recusa'}
               </Button>
             </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

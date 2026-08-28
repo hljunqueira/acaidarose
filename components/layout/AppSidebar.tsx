@@ -155,7 +155,7 @@ export default function AppSidebar({
           { id: 'franchise', label: 'Franqueadora Master', show: true },
           {
             id: 'franchise_requests',
-            label: 'Solicitações da Rede',
+            label: 'Candidaturas & Solicitações',
             badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
             show: true,
           },
@@ -214,14 +214,14 @@ export default function AppSidebar({
     navGroups = [
       {
         key: 'franchise',
-        title: 'GESTÃO DA REDE & FRANQUIAS',
+        title: 'FRANQUEADORA MASTER',
         icon: Building2,
         accentClass: 'text-amber-600 dark:text-amber-400',
         items: [
           { id: 'franchise', label: 'Franqueadora Master', show: true },
           {
             id: 'franchise_requests',
-            label: 'Solicitações da Rede',
+            label: 'Candidaturas & Solicitações',
             badge: pendingRequestsCount > 0 ? String(pendingRequestsCount) : undefined,
             show: true,
           },
