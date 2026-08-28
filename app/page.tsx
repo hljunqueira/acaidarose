@@ -71,8 +71,8 @@ export default function HomePage() {
   useEffect(() => {
     if (user) {
       setAppMode('PDV')
-      // Se não for Super Admin, força a loja ativa a ser a loja do usuário
-      if (user.role !== 'SUPER_ADMIN' && user.tenantId) {
+      // Se for operador de loja (TENANT_ADMIN / CASHIER), força a loja ativa a ser a loja do usuário
+      if (user.role !== 'SUPER_ADMIN' && user.role !== 'FRANCHISOR_ADMIN' && user.tenantId) {
         authFetch('/api/tenants')
           .then((res) => res.json())
           .then((data) => {

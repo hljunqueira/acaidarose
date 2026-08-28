@@ -22,6 +22,12 @@ export default function StoreSelectRadioDialog({
 }: StoreSelectRadioDialogProps) {
   const [currentSelected, setCurrentSelected] = useState(selectedTenantId)
 
+  React.useEffect(() => {
+    if (open) {
+      setCurrentSelected(selectedTenantId)
+    }
+  }, [open, selectedTenantId])
+
   const handleEnter = () => {
     const target = tenants.find((t) => t.id === currentSelected) || tenants[0]
     if (target) {

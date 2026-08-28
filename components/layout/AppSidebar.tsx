@@ -234,7 +234,10 @@ export default function AppSidebar({
       },
     ]
   } else if (isFranchisorAdmin) {
-    // 🏢 2. FRANCHISOR_ADMIN (Sede Franqueadora Aveiro)
+    // 🏢 2. FRANCHISOR_ADMIN (Sede Franqueadora & Gestão de Unidades)
+    const storeShortName = (currentTenant.name || 'Loja Ativa').replace('Açaí da Rose — ', '')
+    const isHq = !!currentTenant.isHeadquarters
+
     navGroups = [
       {
         key: 'franchise',
@@ -273,35 +276,38 @@ export default function AppSidebar({
       },
       {
         key: 'salon',
-        title: 'OPERAÇÃO LOJA AVEIRO',
+        title: `OPERAÇÃO · ${storeShortName.toUpperCase()}`,
         icon: Store,
         accentClass: 'text-purple-700 dark:text-pink-400',
         items: [
-          { id: 'pdv', label: 'PDV Balcão & Montagem de Taça', show: true },
-          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', show: true },
-          { id: 'tv_panel', label: 'Painel TV de Senhas', show: true },
-          { id: 'tables', label: 'Gestão de Mesas', show: true },
+          { id: 'pdv', label: 'PDV Balcão & Montagem de Taça', subtitle: 'Operação Balcão', show: true },
+          { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
+          { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
+          { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
       {
         key: 'inventory',
-        title: 'ESTOQUE MATRIZ AVEIRO',
+        title: `ESTOQUE · ${storeShortName.toUpperCase()}`,
         icon: Boxes,
         accentClass: 'text-emerald-600 dark:text-emerald-400',
-        items: [{ id: 'inventory', label: 'Gestão de Estoque Matriz', show: true }],
+        items: [
+          { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: `Controle Físico (${storeShortName})`, show: true },
+          ...(!isHq ? [{ id: 'supply_orders' as AppViewId, label: 'Reposição com a Matriz', subtitle: 'Pedidos B2B de Carga', show: true }] : []),
+        ],
       },
       {
         key: 'storeConfig',
-        title: 'GESTÃO DA LOJA MATRIZ AVEIRO',
+        title: `GESTÃO · ${storeShortName.toUpperCase()}`,
         icon: Utensils,
         accentClass: 'text-purple-600 dark:text-purple-400',
         items: [
-          { id: 'menu', label: 'Produtos do Cardápio Aveiro', show: true },
-          { id: 'menu_categories', label: 'Categorias & Menus', show: true },
-          { id: 'company', label: 'Dados da Loja Aveiro', show: true },
-          { id: 'qrcode_config', label: 'Configurações QR Code Aveiro', show: true },
-          { id: 'users', label: 'Utilizadores Loja Aveiro', show: true },
-          { id: 'reports', label: 'Relatórios & Fecho de Caixa', show: true },
+          { id: 'menu', label: 'Produtos do Cardápio', subtitle: `Cardápio (${storeShortName})`, show: true },
+          { id: 'menu_categories', label: 'Categorias & Menus', subtitle: 'Estruturação Visual', show: true },
+          { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
+          { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
+          { id: 'users', label: 'Utilizadores & Permissões', subtitle: `Equipa (${storeShortName})`, show: true },
+          { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
         ],
       },
     ]
