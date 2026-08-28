@@ -788,7 +788,7 @@ export default function FranchiseRequestsView({
                     disabled={actionLoading}
                     className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
                   >
-                    {actionLoading ? 'A sincronizar...' : `✓ Aprovar (${formatCurrency(Number(customApprovedPrice) || selectedRequest.suggestedPrice)})`}
+                    {actionLoading ? 'A sincronizar...' : `Aprovar (${formatCurrency(Number(customApprovedPrice) || selectedRequest.suggestedPrice)})`}
                   </Button>
                 </>
               )}

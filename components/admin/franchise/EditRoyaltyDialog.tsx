@@ -281,9 +281,9 @@ export default function EditRoyaltyDialog({
                     onChange={(e) => setPaymentStatus(e.target.value as any)}
                     className="w-full h-8 px-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-[11px] font-bold text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600 dark:focus:ring-pink-500 [&>option]:bg-white dark:[&>option]:bg-[#160228]"
                   >
-                    <option value="PAID">✓ Liquidado</option>
-                    <option value="PENDING">⏳ Fecho Dia 10</option>
-                    <option value="GRACE">🌿 Carência</option>
+                    <option value="PAID">Liquidado</option>
+                    <option value="PENDING">Fecho Dia 10</option>
+                    <option value="GRACE">Carência</option>
                   </select>
                 </div>
 
@@ -304,7 +304,7 @@ export default function EditRoyaltyDialog({
             {/* Coluna Direita: Simulação Financeira & Ações (5 Colunas) */}
             <div className="md:col-span-5 p-4 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2.5">
               <div className="text-[10px] font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
-                📊 Simulação em Tempo Real
+                Simulação em Tempo Real
               </div>
 
               <div className="space-y-1.5 text-xs">

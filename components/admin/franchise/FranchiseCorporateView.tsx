@@ -318,7 +318,7 @@ export default function FranchiseCorporateView() {
             {formatCurrency(totalMarketing)}
           </div>
           <div className="text-[11px] text-emerald-400 font-medium mt-1">
-            ✓ 1.0% arrecadado p/ campanhas
+            1.0% arrecadado p/ campanhas
           </div>
         </Card>
 

@@ -21,7 +21,7 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-purple-50/70 p-3.5 rounded-2xl border border-purple-100">
         <div>
           <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-            Cremes Gelados & Bases (1 Opcional Incluso)
+            Cremes Gelados & Bases
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Pode escolher <b>{max}</b> opção de creme gelado para acompanhar o seu açaí
@@ -56,9 +56,6 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="text-2xl p-1 rounded-xl bg-purple-50 border border-purple-100 flex-shrink-0">
-                  {b.emoji || '🍨'}
-                </span>
                 <div className="min-w-0">
                   <div className="font-black text-xs sm:text-sm text-foreground leading-tight truncate">
                     {b.name}

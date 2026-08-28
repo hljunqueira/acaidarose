@@ -49,7 +49,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   // Modal para Adicionar Categoria Rápida
   const [addCatDialogOpen, setAddCatDialogOpen] = useState(false)
   const [newCatName, setNewCatName] = useState('')
-  const [newCatEmoji, setNewCatEmoji] = useState('🍧')
+  const [newCatEmoji, setNewCatEmoji] = useState('')
   const [newCatPrice, setNewCatPrice] = useState<number>(10.00)
 
   // Filtros Avançados
@@ -213,7 +213,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       id: `cat_${Date.now()}`,
       name: newCatName.trim().toUpperCase(),
       slug: newCatName.trim().toLowerCase().replace(/\s+/g, '-'),
-      emoji: newCatEmoji || '🍧',
+      emoji: newCatEmoji || '',
       defaultPrice: Number(newCatPrice) || 10.00,
       menuId: selectedMainMenu !== 'all_menus' ? selectedMainMenu : 'menu_acai',
       displayOrder: categories.length + 1,
@@ -504,7 +504,6 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         <details className="group rounded-3xl bg-white dark:bg-[#160228]/95 border border-purple-150 dark:border-white/15 p-4 shadow-xs dark:shadow-xl text-slate-900 dark:text-white transition cursor-pointer">
           <summary className="flex items-center justify-between text-xs font-black text-purple-950 dark:text-white select-none list-none">
             <div className="flex items-center gap-2">
-              <span>🌿</span>
               <span>Selos Oficiais de Conformidade & Tabela Nutricional</span>
               <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[9px] font-black uppercase">
                 Padrão Açaí da Rose
@@ -518,23 +517,23 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           <div className="pt-4 mt-3 border-t border-purple-100 dark:border-white/10 space-y-4 cursor-default">
             {/* Selos de Qualidade */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
-                <span>🌱</span> 100% VEGAN
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center justify-center">
+                100% VEGAN
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
-                <span>🍇</span> Antioxidantes
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center justify-center">
+                Antioxidantes
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
-                <span>🥛</span> Sem Leite
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center justify-center">
+                Sem Leite
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
-                <span>🌾</span> Sem Glúten
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center justify-center">
+                Sem Glúten
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
-                <span>🛡️</span> Sem Conservantes
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center justify-center">
+                Sem Conservantes
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center gap-1.5 justify-center">
-                <span>🧬</span> Sem OGM
+              <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-purple-950 dark:text-white font-bold flex items-center justify-center">
+                Sem OGM
               </div>
             </div>
 
@@ -616,12 +615,12 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-purple-200">Emoji / Ícone:</Label>
+                <Label className="text-xs font-bold text-purple-200">Abreviação / Tag:</Label>
                 <Input
                   value={newCatEmoji}
                   onChange={(e) => setNewCatEmoji(e.target.value)}
-                  placeholder="🍧"
-                  className="h-9 text-base rounded-xl text-center bg-white/10 border-white/15 text-white"
+                  placeholder="Ex: ZERO"
+                  className="h-9 text-xs rounded-xl text-center bg-white/10 border-white/15 text-white uppercase"
                 />
               </div>
               <div className="space-y-1">

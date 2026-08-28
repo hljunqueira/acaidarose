@@ -32,7 +32,7 @@ export default function CustomerIngredientsGuide({ catalog }: CustomerIngredient
       name: b.name,
       category: 'BASES',
       categoryLabel: 'Base Gelada',
-      emoji: b.emoji || '🍨',
+      emoji: b.emoji || '',
       isPremium: false,
       active: b.active !== false,
       description: 'Polpa cremosa especial batida artesanalmente',
@@ -47,7 +47,7 @@ export default function CustomerIngredientsGuide({ catalog }: CustomerIngredient
         name: t.name,
         category: 'FRUTAS',
         categoryLabel: 'Fruta Fresca',
-        emoji: t.emoji || '🍓',
+        emoji: t.emoji || '',
         isPremium: false,
         active: t.active !== false,
         description: 'Frutas selecionadas e cortadas no dia',
@@ -65,7 +65,7 @@ export default function CustomerIngredientsGuide({ catalog }: CustomerIngredient
         name: t.name,
         category: 'TOPPINGS',
         categoryLabel: 'Topping & Crocante',
-        emoji: t.emoji || '🥣',
+        emoji: t.emoji || '',
         isPremium: false,
         active: t.active !== false,
         description: 'Acompanhamento crocante e saboroso',
@@ -83,7 +83,7 @@ export default function CustomerIngredientsGuide({ catalog }: CustomerIngredient
         name: t.name,
         category: 'PREMIUM',
         categoryLabel: 'Especial Premium',
-        emoji: t.emoji || '🍯',
+        emoji: t.emoji || '',
         isPremium: true,
         price: t.priceTierLow || t.precoExtra || t.price || 1.0,
         active: t.active !== false,
@@ -140,7 +140,7 @@ export default function CustomerIngredientsGuide({ catalog }: CustomerIngredient
                 : 'bg-white/5 text-purple-300/80 hover:bg-white/10'
             }`}
           >
-            🍨 Bases ({bases.length})
+            Bases ({bases.length})
           </button>
           <button
             type="button"
@@ -151,7 +151,7 @@ export default function CustomerIngredientsGuide({ catalog }: CustomerIngredient
                 : 'bg-white/5 text-purple-300/80 hover:bg-white/10'
             }`}
           >
-            🍓 Frutas ({frutas.length})
+            Frutas ({frutas.length})
           </button>
           <button
             type="button"
@@ -162,7 +162,7 @@ export default function CustomerIngredientsGuide({ catalog }: CustomerIngredient
                 : 'bg-white/5 text-purple-300/80 hover:bg-white/10'
             }`}
           >
-            🥣 Toppings ({toppings.length})
+            Toppings ({toppings.length})
           </button>
           <button
             type="button"

@@ -89,7 +89,7 @@ export default function PreventionCenterView() {
           <CardContent className="p-4 pt-1 text-xs text-purple-700 dark:text-purple-300/70 space-y-1">
             <p>Nenhuma anomalia de timeout ou rejeição repetitiva de Webhook.</p>
             <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">
-              ✓ Notificações móveis ativas
+              Notificações móveis ativas
             </div>
           </CardContent>
         </Card>
@@ -110,7 +110,7 @@ export default function PreventionCenterView() {
           <CardContent className="p-4 pt-1 text-xs text-purple-700 dark:text-purple-300/70 space-y-1">
             <p>Nenhum pedido travado na fila além do SLA de 15 minutos.</p>
             <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">
-              ✓ Fluxo de montagem regular
+              Fluxo de montagem regular
             </div>
           </CardContent>
         </Card>
@@ -131,7 +131,7 @@ export default function PreventionCenterView() {
           <CardContent className="p-4 pt-1 text-xs text-purple-700 dark:text-purple-300/70 space-y-1">
             <p>Zero bloqueios por tentativa excessiva de senha nas últimas 24h.</p>
             <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">
-              ✓ Sessões JWT seguras
+              Sessões JWT seguras
             </div>
           </CardContent>
         </Card>

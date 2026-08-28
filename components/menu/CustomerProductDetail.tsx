@@ -280,7 +280,7 @@ export default function CustomerProductDetail({
                           : 'bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10 cursor-pointer'
                       }`}
                     >
-                      <span className="truncate">{fruta.emoji || '🍓'} {fruta.name}</span>
+                      <span className="truncate">{fruta.name}</span>
                       {isSelected ? (
                         <Check className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0 ml-1" />
                       ) : !isAvailable ? (
@@ -324,7 +324,7 @@ export default function CustomerProductDetail({
                           : 'bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10 cursor-pointer'
                       }`}
                     >
-                      <span className="truncate">{top.emoji || '🥣'} {top.name}</span>
+                      <span className="truncate">{top.name}</span>
                       {isSelected ? (
                         <Check className="h-3 w-3 text-emerald-400 flex-shrink-0 ml-1" />
                       ) : !isAvailable ? (

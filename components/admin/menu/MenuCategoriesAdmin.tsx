@@ -44,7 +44,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
     name: '',
     slug: '',
     description: '',
-    emoji: '🍧',
+    emoji: '',
     displayOrder: 1,
     active: true,
   })
@@ -55,7 +55,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
       name: '',
       slug: '',
       description: '',
-      emoji: '🍧',
+      emoji: '',
       displayOrder: displayCategories.length + 1,
       active: true,
     })
@@ -68,7 +68,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
       name: cat.name,
       slug: cat.slug,
       description: cat.description || '',
-      emoji: cat.emoji || '🍧',
+      emoji: cat.emoji || '',
       displayOrder: cat.displayOrder,
       active: cat.active,
     })
@@ -92,7 +92,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
         name: formData.name.trim(),
         slug: formData.slug.trim() || formData.name.toLowerCase().replace(/\s+/g, '-'),
         description: formData.description.trim(),
-        emoji: formData.emoji.trim() || '🍧',
+        emoji: formData.emoji.trim() || '',
         displayOrder: Number(formData.displayOrder),
         active: formData.active,
       })
@@ -103,7 +103,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
         name: formData.name.trim(),
         slug: formData.slug.trim() || formData.name.toLowerCase().replace(/\s+/g, '-'),
         description: formData.description.trim(),
-        emoji: formData.emoji.trim() || '🍧',
+        emoji: formData.emoji.trim() || '',
         displayOrder: Number(formData.displayOrder),
         active: formData.active,
         menuId: 'menu_acai',

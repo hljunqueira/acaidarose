@@ -112,7 +112,7 @@ export default function FranchiseReportDialog({
           </div>
 
           <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 text-[11px] text-purple-800 dark:text-purple-200/80">
-            💡 <b>Nota de Encerramento Contábil:</b> O fecho financeiro ocorre todo dia 05 com liquidação dos débitos diretos até o dia 10 de cada mês através de IBAN / SEPA da Holding.
+            <b>Nota de Encerramento Contábil:</b> O fecho financeiro ocorre todo dia 05 com liquidação dos débitos diretos até o dia 10 de cada mês através de IBAN / SEPA da Holding.
           </div>
         </div>
 

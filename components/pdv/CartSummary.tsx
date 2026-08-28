@@ -51,8 +51,8 @@ export default function CartSummary({
       <ScrollArea className="flex-1 py-3 -mx-2 px-2 min-h-[180px] max-h-[380px]">
         {!hasItems ? (
           <div className="text-center py-12 px-4 flex flex-col items-center justify-center">
-            <div className="h-14 w-14 rounded-2xl bg-purple-50 text-purple-300 flex items-center justify-center text-2xl mb-2">
-              🍧
+            <div className="h-14 w-14 rounded-2xl bg-purple-50 text-purple-400 flex items-center justify-center mb-2">
+              <ShoppingBag className="h-6 w-6 text-purple-400" />
             </div>
             <p className="font-bold text-xs text-foreground">Comanda Vazia</p>
             <p className="text-[11px] text-muted-foreground mt-1">Monte um açaí no painel ao lado para fechar o pedido.</p>

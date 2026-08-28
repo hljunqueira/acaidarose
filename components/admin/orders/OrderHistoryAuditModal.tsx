@@ -193,7 +193,6 @@ export default function OrderHistoryAuditModal({
                     {/* Linha Principal do Item */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{item.containerEmoji || '🍨'}</span>
                         <span className="text-xs font-black text-foreground">
                           {item.containerName || item.container?.name || 'Açaí Personalizado'}
                         </span>
@@ -225,7 +224,7 @@ export default function OrderHistoryAuditModal({
                           <span className="text-[10px] font-bold uppercase text-gray-600 mr-1">Adicionais:</span>
                           {freeToppings.map((t: any, tIdx: number) => (
                             <span key={tIdx} className="bg-gray-50 text-gray-800 px-2 py-0.5 rounded-lg text-[11px] border border-gray-100 font-medium">
-                              {t.emoji} {t.name}
+                              {t.name}
                             </span>
                           ))}
                         </div>
@@ -236,7 +235,7 @@ export default function OrderHistoryAuditModal({
                           <span className="text-[10px] font-bold uppercase text-amber-900 mr-1">Especiais:</span>
                           {premiumToppings.map((t: any, tIdx: number) => (
                             <span key={tIdx} className="bg-amber-50 text-amber-950 px-2 py-0.5 rounded-lg text-[11px] border border-amber-200/80 font-bold">
-                              {t.emoji} {t.name} (+{formatCurrency(t.precoCobrado || t.precoExtra || 1.0)})
+                              {t.name} (+{formatCurrency(t.precoCobrado || t.precoExtra || 1.0)})
                             </span>
                           ))}
                         </div>
@@ -247,15 +246,12 @@ export default function OrderHistoryAuditModal({
               })
             ) : (
               <div className="p-3.5 rounded-2xl border border-gray-100 bg-white border-l-4 border-l-purple-600 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🍨</span>
-                  <div>
-                    <div className="text-xs font-black text-foreground">
-                      1x Açaí Personalizado Especial
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Comanda emitida digitalmente
-                    </div>
+                <div>
+                  <div className="text-xs font-black text-foreground">
+                    1x Açaí Personalizado Especial
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Comanda emitida digitalmente
                   </div>
                 </div>
                 <span className="text-xs font-black text-foreground">

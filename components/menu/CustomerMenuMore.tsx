@@ -206,7 +206,7 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
               <div className="flex justify-between text-purple-200">
                 <span>Classificação dos Clientes:</span>
                 <span className="font-black text-amber-300 text-sm">
-                  ★ {tenant?.ratingAverage ? tenant.ratingAverage.toFixed(1) : '4.9'} ({tenant?.reviewsCount || '500+'} avaliações)
+                  {tenant?.ratingAverage ? tenant.ratingAverage.toFixed(1) : '4.9'} ({tenant?.reviewsCount || '500+'} avaliações)
                 </span>
               </div>
               <div className="text-[11px] text-purple-300/70 leading-relaxed">
@@ -231,7 +231,6 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl">🌿</span>
               <h3 className="text-lg font-black text-white tracking-tight">Qualidade & Selos de Conformidade Oficial</h3>
             </div>
             <p className="text-xs text-purple-200/70 mt-0.5">
@@ -245,28 +244,22 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
 
         {/* 6 Selos de Qualidade */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
-            <span className="text-xl">🌱</span>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div className="text-[11px] font-black text-white">100% VEGAN</div>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
-            <span className="text-xl">🍇</span>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div className="text-[11px] font-black text-white">Antioxidantes</div>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
-            <span className="text-xl">🥛</span>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div className="text-[11px] font-black text-white">Sem Leite</div>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
-            <span className="text-xl">🌾</span>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div className="text-[11px] font-black text-white">Sem Glúten</div>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
-            <span className="text-xl">🛡️</span>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div className="text-[11px] font-black text-white">Sem Conservantes</div>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
-            <span className="text-xl">🧬</span>
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div className="text-[11px] font-black text-white">Sem OGM</div>
           </div>
         </div>
@@ -347,9 +340,13 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
                   key={star}
                   type="button"
                   onClick={() => setRatingStars(star)}
-                  className="text-3xl sm:text-4xl transition hover:scale-125 cursor-pointer"
+                  className="p-1 transition hover:scale-125 cursor-pointer"
                 >
-                  {star <= ratingStars ? '⭐' : '☆'}
+                  <Star
+                    className={`h-8 w-8 sm:h-9 sm:w-9 ${
+                      star <= ratingStars ? 'fill-amber-400 text-amber-400' : 'text-purple-300/40 hover:text-purple-200'
+                    }`}
+                  />
                 </button>
               ))}
             </div>

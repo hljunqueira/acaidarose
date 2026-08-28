@@ -100,7 +100,6 @@ export default function ContainerAssemblyRulesDialog({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">🍧</span>
                     <span className="font-black text-sm text-zinc-900">{rule.name}</span>
                     <span className="text-xs font-mono font-bold text-purple-800 bg-purple-100/70 px-2 py-0.5 rounded-md">
                       {rule.weightGrams}g

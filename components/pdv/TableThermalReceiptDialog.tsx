@@ -21,7 +21,7 @@ export default function TableThermalReceiptDialog({
   onOpenChange,
   table,
   type = 'PRE_CONTA',
-  storeName = 'Açaí da Rose — Matriz (Torres Novas)',
+  storeName = 'Açaí da Rose',
   storePhone = '+351 911 050 264',
 }: TableThermalReceiptDialogProps) {
   const items = table.items || []
@@ -60,42 +60,28 @@ export default function TableThermalReceiptDialog({
               left: 0 !important;
               top: 0 !important;
               width: 80mm !important;
+              margin: 0 !important;
               padding: 4mm !important;
-              background: white !important;
-              color: black !important;
-              box-shadow: none !important;
-              border: none !important;
             }
           }
         `}</style>
 
-        {/* Barra de Ações Superior na Tela (Não sai na impressão) */}
-        <div className="p-3 bg-white border-b flex items-center justify-between no-print">
-          <div className="text-xs font-black text-purple-950">
-            {isKitchen ? 'Ficha de Produção / Copa' : 'Prévia de Cupom Não Fiscal'}
+        <div className="p-4 bg-zinc-800 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <Printer className="h-4 w-4 text-pink-400" />
+            <span>Visualização de Impressão Térmica (80mm)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handlePrint}
-              className="h-8 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs gap-1 cursor-pointer"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              <span>Imprimir Talão</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            onClick={handlePrint}
+            className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold h-8 px-3 rounded-xl cursor-pointer"
+          >
+            Imprimir Agora
+          </Button>
         </div>
 
-        {/* Cupom Térmico 80mm Formatado */}
-        <div className="p-4 flex justify-center overflow-y-auto max-h-[75vh]">
+        <div className="p-4 flex justify-center overflow-y-auto max-h-[70vh]">
+          {/* CUPOM TÉRMICO FORMATAÇÃO 80MM */}
           <div
             id="thermal-receipt-print"
             className="bg-white shadow-md w-[80mm] p-4 font-mono text-[12px] leading-tight text-black border border-zinc-200"
@@ -105,7 +91,7 @@ export default function TableThermalReceiptDialog({
               <img src="/logo.png" alt="Açaí da Rose" className="mx-auto h-16 w-auto object-contain" />
               <div className="font-black text-sm">{storeName}</div>
               <div className="text-[10px]">Açaí Artesanal Brasileiro</div>
-              <div className="text-[10px]">Av. Manuel de Figueiredo 12, Torres Novas</div>
+              <div className="text-[10px]">Portugal</div>
               {storePhone && <div className="text-[10px]">Tel: {storePhone}</div>}
             </div>
 
@@ -113,11 +99,11 @@ export default function TableThermalReceiptDialog({
 
             {/* Título do Documento */}
             <div className="text-center font-black text-xs uppercase my-1">
-              {isKitchen ? '★ FICHA DE PRODUÇÃO (COPA) ★' : '--- PRÉ-CONTA / CONSULTA ---'}
+              {isKitchen ? 'FICHA DE PRODUÇÃO - COPA' : 'PRÉ-CONTA / CONSULTA'}
             </div>
             {!isKitchen && (
               <div className="text-center text-[10px] text-zinc-600 font-bold mb-2">
-                (NÃO É DOCUMENTO FISCAL)
+                DOCUMENTO INFORMATIVO NÃO FISCAL
               </div>
             )}
 

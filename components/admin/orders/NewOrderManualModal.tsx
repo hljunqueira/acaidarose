@@ -330,7 +330,7 @@ export default function NewOrderManualModal({
                         : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60'
                     }`}
                   >
-                    🍽️ Na Mesa
+                    Na Mesa
                   </button>
                   <button
                     type="button"
@@ -341,7 +341,7 @@ export default function NewOrderManualModal({
                         : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60'
                     }`}
                   >
-                    🛍️ Balcão
+                    Balcão
                   </button>
                 </div>
               </div>
@@ -391,10 +391,10 @@ export default function NewOrderManualModal({
                     onChange={(e) => setStatus(e.target.value as OrderStatus)}
                     className="w-full h-9 rounded-xl border border-purple-200 bg-white px-2.5 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-purple-600"
                   >
-                    <option value="NEW">🟡 Novo Pedido</option>
-                    <option value="PREPARING">🟣 Em Preparação</option>
-                    <option value="READY">🟢 Pronto</option>
-                    <option value="PAID">⚪ Pago</option>
+                    <option value="NEW">Novo Pedido</option>
+                    <option value="PREPARING">Em Preparação</option>
+                    <option value="READY">Pronto</option>
+                    <option value="PAID">Pago</option>
                   </select>
                 </div>
 

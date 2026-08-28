@@ -18,11 +18,11 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
 
   const tags = [
     { id: 'all', label: 'Todos os Itens', count: (catalog.containers?.length || 5) + (catalog.bases?.length || 10) + (catalog.toppings?.length || 25) },
-    { id: 'copos', label: '🍧 Copos & Tamanhos', count: catalog.containers?.length || 5 },
-    { id: 'bases', label: '🟣 Cremes & Bases', count: catalog.bases?.length || 10 },
-    { id: 'frutas', label: '🍓 Frutas Frescas', count: 5 },
-    { id: 'toppings', label: '🥣 Toppings & Crocantes', count: 17 },
-    { id: 'caldas', label: '🍯 Caldas & Especiais', count: 3 },
+    { id: 'copos', label: 'Copos & Tamanhos', count: catalog.containers?.length || 5 },
+    { id: 'bases', label: 'Cremes & Bases', count: catalog.bases?.length || 10 },
+    { id: 'frutas', label: 'Frutas Frescas', count: 5 },
+    { id: 'toppings', label: 'Toppings & Crocantes', count: 17 },
+    { id: 'caldas', label: 'Caldas & Especiais', count: 3 },
   ]
 
   const containers = catalog.containers || []
@@ -137,8 +137,8 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
         </div>
 
         {totalResults === 0 ? (
-          <div className="py-16 text-center text-xs text-purple-300/60 bg-white/5 rounded-3xl border border-white/10">
-            <span className="text-3xl block mb-2">🍧</span>
+          <div className="py-16 text-center text-xs text-purple-300/60 bg-white/5 rounded-3xl border border-white/10 flex flex-col items-center justify-center">
+            <Search className="h-8 w-8 text-purple-400 mb-2 opacity-50" />
             Nenhum item encontrado para esta busca. Tente buscar por outro sabor ou tamanho!
           </div>
         ) : (
@@ -149,37 +149,24 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
                 <div className="text-xs font-black text-fuchsia-300 uppercase tracking-wider">
                   Copos & Tamanhos de Açaí
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {filteredContainers.map((c) => (
                     <div
                       key={c.id}
                       onClick={() => onSelectContainer(c)}
-                      className="p-4 rounded-3xl bg-[#1e0333]/90 border border-white/10 hover:border-fuchsia-500/50 transition-all cursor-pointer flex flex-col justify-between group shadow-xl hover:-translate-y-1 duration-200"
+                      className="p-4 rounded-3xl bg-[#1e0333]/90 border border-white/10 hover:border-fuchsia-500/50 hover:scale-[1.01] transition-all cursor-pointer flex items-center justify-between group shadow-md"
                     >
                       <div>
-                        <div className="relative h-36 w-full rounded-2xl overflow-hidden bg-purple-900/30 mb-3 border border-white/10">
-                          <img
-                            src={c.image || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=500&auto=format&fit=crop&q=80'}
-                            alt={c.name}
-                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                        <div className="font-black text-base text-white group-hover:text-fuchsia-200 transition-colors">
+                        <div className="font-extrabold text-sm text-white group-hover:text-fuchsia-200">
                           {c.name}
                         </div>
-                        <p className="text-[11px] text-purple-200/70 mt-1 line-clamp-2">
-                          {c.description || 'Frutas frescas e acompanhamentos inclusos'}
-                        </p>
+                        <div className="text-[11px] text-purple-300/70">{c.description || 'Taça personalizável'}</div>
                       </div>
-
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
-                        <div className="text-sm font-black text-fuchsia-300 font-mono">
-                          {formatCurrency(c.precoBase)}
-                        </div>
-                        <span className="h-8 px-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-black text-xs flex items-center justify-center gap-1 group-hover:shadow-md transition">
-                          <Plus className="h-3 w-3" />
-                          <span>Montar</span>
+                      <div className="text-right">
+                        <span className="font-black text-sm text-emerald-400 font-mono">
+                          {formatCurrency(c.precoBase || 6.50)}
                         </span>
+                        <div className="text-[10px] text-purple-400 font-semibold">Montar →</div>
                       </div>
                     </div>
                   ))}
@@ -187,20 +174,19 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
               </div>
             )}
 
-            {/* Bases e Ingredientes Encontrados */}
+            {/* Bases & Toppings Encontrados */}
             {(filteredBases.length > 0 || filteredToppings.length > 0) && (
-              <div className="space-y-3 pt-2">
-                <div className="text-xs font-black text-fuchsia-300 uppercase tracking-wider">
-                  Cremes Gelados & Acompanhamentos
+              <div className="space-y-3">
+                <div className="text-xs font-black text-purple-300 uppercase tracking-wider">
+                  Ingredientes & Acompanhamentos
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
                   {filteredBases.map((b) => (
                     <div
                       key={b.id}
-                      onClick={() => onSelectContainer(containers[1] || containers[0])}
+                      onClick={() => onSelectContainer(containers[0])}
                       className="p-3.5 rounded-3xl bg-[#1e0333]/90 border border-white/10 hover:border-purple-400/40 transition-all cursor-pointer flex flex-col items-center text-center group shadow-md"
                     >
-                      <span className="text-2xl mb-1">{b.emoji || '🟣'}</span>
                       <div className="font-bold text-xs text-white group-hover:text-purple-200 truncate w-full">
                         {b.name}
                       </div>
@@ -214,7 +200,6 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
                       onClick={() => onSelectContainer(containers[1] || containers[0])}
                       className="p-3.5 rounded-3xl bg-[#1e0333]/90 border border-white/10 hover:border-purple-400/40 transition-all cursor-pointer flex flex-col items-center text-center group shadow-md"
                     >
-                      <span className="text-2xl mb-1">{t.emoji || '🍓'}</span>
                       <div className="font-bold text-xs text-white group-hover:text-purple-200 truncate w-full">
                         {t.name}
                       </div>

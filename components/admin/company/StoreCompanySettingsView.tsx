@@ -133,7 +133,7 @@ export default function StoreCompanySettingsView({ tenantId }: StoreCompanySetti
           {/* Card 1: Identificação & Fiscal */}
           <Card className="p-5 rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228]/95 space-y-4 shadow-xs dark:shadow-xl text-slate-900 dark:text-white">
             <div className="text-xs font-black text-purple-700 dark:text-pink-300 uppercase tracking-wider border-b border-purple-100 dark:border-white/10 pb-2.5">
-              🏢 Identificação Cadastral & Fiscal
+              Identificação Cadastral & Fiscal
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
@@ -192,7 +192,7 @@ export default function StoreCompanySettingsView({ tenantId }: StoreCompanySetti
           {/* Card 2: Contactos, MB WAY & Wi-Fi */}
           <Card className="p-5 rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228]/95 space-y-4 shadow-xs dark:shadow-xl text-slate-900 dark:text-white">
             <div className="text-xs font-black text-purple-700 dark:text-pink-300 uppercase tracking-wider border-b border-purple-100 dark:border-white/10 pb-2.5">
-              📱 Contactos, Wi-Fi & Redes (Exibidos no Cardápio)
+              Contactos, Wi-Fi & Redes
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
@@ -266,7 +266,7 @@ export default function StoreCompanySettingsView({ tenantId }: StoreCompanySetti
         <div className="lg:col-span-5">
           <Card className="p-5 rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228]/95 space-y-3.5 shadow-xs dark:shadow-xl text-slate-900 dark:text-white">
             <div className="text-xs font-black text-purple-700 dark:text-pink-300 uppercase tracking-wider border-b border-purple-100 dark:border-white/10 pb-2.5">
-              🕒 Horário de Funcionamento Semanal
+              Horário de Funcionamento Semanal
             </div>
 
             <div className="divide-y divide-purple-100 dark:divide-white/10">

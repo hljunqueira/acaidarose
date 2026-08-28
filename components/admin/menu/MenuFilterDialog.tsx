@@ -96,8 +96,8 @@ export default function MenuFilterDialog({
             <div className="grid grid-cols-3 gap-2">
               {[
                 { val: 'all', label: 'Todos' },
-                { val: 'visible', label: '🟢 Visíveis' },
-                { val: 'hidden', label: '🔴 Ocultos' },
+                { val: 'visible', label: 'Visíveis' },
+                { val: 'hidden', label: 'Ocultos' },
               ].map((opt) => (
                 <button
                   key={opt.val}

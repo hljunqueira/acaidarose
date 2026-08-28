@@ -693,31 +693,28 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                           {/* Botões de Ação Rápida no Card */}
                           <div className="flex items-center justify-between gap-1 pt-1">
                             <Button
-                              type="button"
                               size="sm"
                               variant="outline"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setSelectedOrderForItems(order)
                               }}
-                              className="h-6 px-2 text-[10px] font-bold rounded-lg border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer gap-1"
+                              className="h-8 px-2.5 rounded-xl border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/5 text-[11px] font-bold text-purple-950 dark:text-white cursor-pointer"
                             >
-                              <span>👁️ Ver Itens</span>
+                              <span>Ver Itens</span>
                             </Button>
 
                             <div className="flex items-center gap-1">
                               {order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && (
                                 <Button
-                                  type="button"
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     handleConfirmCounterPayment(order)
                                   }}
-                                  className="h-6 px-1.5 text-[9.5px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
-                                  title="Confirmar pagamento em dinheiro/cartão"
+                                  className="h-8 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-xs cursor-pointer"
                                 >
-                                  <span>✓ Receber</span>
+                                  <span>Receber</span>
                                 </Button>
                               )}
 

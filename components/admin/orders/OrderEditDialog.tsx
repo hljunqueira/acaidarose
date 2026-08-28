@@ -160,11 +160,11 @@ export default function OrderEditDialog({
                 onChange={(e) => setStatus(e.target.value as OrderStatus)}
                 className="w-full h-9 rounded-xl border border-purple-200 bg-white px-3 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-purple-600"
               >
-                <option value="NEW">🟡 Novo Pedido</option>
-                <option value="PREPARING">🟣 Em Preparação</option>
-                <option value="READY">🟢 Pronto p/ Entrega</option>
-                <option value="PAID">⚪ Finalizado & Pago</option>
-                <option value="CANCELLED">🔴 Cancelado</option>
+                <option value="NEW">Novo Pedido</option>
+                <option value="PREPARING">Em Preparação</option>
+                <option value="READY">Pronto p/ Entrega</option>
+                <option value="PAID">Finalizado & Pago</option>
+                <option value="CANCELLED">Cancelado</option>
               </select>
             </div>
 

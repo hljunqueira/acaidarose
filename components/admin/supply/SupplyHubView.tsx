@@ -47,7 +47,7 @@ export default function SupplyHubView() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white">
-                Central de Abastecimento B2B & Expedição
+                Central de Abastecimento & Expedição
               </h1>
               <p className="text-xs sm:text-sm text-purple-700 dark:text-purple-300/70">
                 Gestão e expedição de pedidos de insumos oficiais para a rede de franquias

@@ -63,7 +63,7 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
             }}
             className="h-9 px-3 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-xs"
           >
-            Imprimir Relatório (Z)
+            Imprimir Relatório de Fecho
           </Button>
         </div>
       </div>

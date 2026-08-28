@@ -51,7 +51,7 @@ export default function InventoryManagementView({ tenantId }: { tenantId?: strin
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white">
-                Gestão de Estoque Local (Modelo Híbrido)
+                Gestão de Estoque Local
               </h1>
               <p className="text-xs sm:text-sm text-purple-700 dark:text-purple-300/70">
                 Acompanhamento assistido por alertas inteligentes e checklist rápido de turno
@@ -67,7 +67,7 @@ export default function InventoryManagementView({ tenantId }: { tenantId?: strin
             className="bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-xl text-xs font-bold gap-2 cursor-pointer shadow-md"
           >
             <ClipboardCheck className="h-3.5 w-3.5" />
-            <span>Checklist Rápido (2 min)</span>
+            <span>Checklist Rápido de Turno</span>
           </Button>
         </div>
       </div>

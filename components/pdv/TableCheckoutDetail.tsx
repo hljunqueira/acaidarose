@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import SplitBillDialog from './SplitBillDialog'
 import PaymentModal from './PaymentModal'
 import TableThermalReceiptDialog from './TableThermalReceiptDialog'
-import { ArrowLeft, Printer, Utensils, Receipt, Split, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Printer, Utensils, Receipt, Split, CheckCircle2, Eye, Trash2 } from 'lucide-react'
 
 interface TableCheckoutDetailProps {
   table: RestaurantTable
@@ -243,8 +243,8 @@ export default function TableCheckoutDetail({
                             {item.containerName || item.container?.name || 'Açaí Personalizado'}
                           </span>
                           {item.customerName && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-purple-100 dark:bg-pink-950/60 border border-purple-200 dark:border-pink-500/40 text-[10px] font-bold text-purple-900 dark:text-pink-300">
-                              👤 {item.customerName}
+                            <span className="inline-flex items-center px-1.5 py-0.2 rounded-md bg-purple-100 dark:bg-pink-950/60 border border-purple-200 dark:border-pink-500/40 text-[10px] font-bold text-purple-900 dark:text-pink-300">
+                              {item.customerName}
                             </span>
                           )}
                           {item.paymentStatus === 'PAID' && (
@@ -274,18 +274,18 @@ export default function TableCheckoutDetail({
                           <button
                             type="button"
                             onClick={() => setSelectedItemForDetail(item)}
-                            className="h-6 w-6 rounded-lg hover:bg-purple-100 dark:hover:bg-white/10 text-purple-700 dark:text-purple-300 inline-flex items-center justify-center font-bold text-xs cursor-pointer"
+                            className="h-6 w-6 rounded-lg hover:bg-purple-100 dark:hover:bg-white/10 text-purple-700 dark:text-purple-300 inline-flex items-center justify-center cursor-pointer"
                             title="Ver detalhes dos acompanhamentos"
                           >
-                            👁️
+                            <Eye className="h-3.5 w-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(item.id)}
-                            className="h-6 w-6 rounded-full hover:bg-red-500/20 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 inline-flex items-center justify-center font-bold text-xs cursor-pointer"
+                            className="h-6 w-6 rounded-full hover:bg-red-500/20 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 inline-flex items-center justify-center cursor-pointer"
                             title="Remover item da mesa"
                           >
-                            ✕
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>
@@ -388,7 +388,7 @@ export default function TableCheckoutDetail({
                 className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>✓ 100% Pago Online (Liberar Mesa)</span>
+                <span>Liberar Mesa (Pago Online)</span>
               </Button>
             ) : (
               /* Se houver saldo pendente (lançado manualmente no caixa) */

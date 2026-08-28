@@ -1,10 +1,9 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ShoppingCart, TrendingDown, PackageCheck, Send, CheckCircle2, Store } from 'lucide-react'
+import { ShoppingCart, TrendingDown, Send } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function StoreSupplyOrdersView({ tenantId }: { tenantId?: string }) {
@@ -15,11 +14,11 @@ export default function StoreSupplyOrdersView({ tenantId }: { tenantId?: string 
   })
 
   const catalog = [
-    { id: 'nutella', name: '🍫 Balde Nutella 3kg', marketPrice: 24.50, hqPrice: 22.50, unit: 'Balde 3kg' },
-    { id: 'acai', name: '🍨 Açaí Premium (Cx 10kg)', marketPrice: 38.00, hqPrice: 32.00, unit: 'Caixa 10kg' },
-    { id: 'copos', name: '📦 Copos 500ml (Cx 500un)', marketPrice: 45.00, hqPrice: 39.00, unit: 'Caixa 500un' },
-    { id: 'leite', name: '🥛 Leite Condensado 5kg', marketPrice: 18.90, hqPrice: 16.50, unit: 'Lata 5kg' },
-    { id: 'granola', name: '🌾 Granola Tradicional', marketPrice: 14.50, hqPrice: 12.00, unit: 'Saco 5kg' },
+    { id: 'nutella', name: 'Balde Nutella 3kg', marketPrice: 24.50, hqPrice: 22.50, unit: 'Balde 3kg' },
+    { id: 'acai', name: 'Açaí Premium (Cx 10kg)', marketPrice: 38.00, hqPrice: 32.00, unit: 'Caixa 10kg' },
+    { id: 'copos', name: 'Copos 500ml (Cx 500un)', marketPrice: 45.00, hqPrice: 39.00, unit: 'Caixa 500un' },
+    { id: 'leite', name: 'Leite Condensado 5kg', marketPrice: 18.90, hqPrice: 16.50, unit: 'Lata 5kg' },
+    { id: 'granola', name: 'Granola Tradicional', marketPrice: 14.50, hqPrice: 12.00, unit: 'Saco 5kg' },
   ]
 
   const totalHQ = catalog.reduce((acc, item) => acc + (quantities[item.id] || 0) * item.hqPrice, 0)
@@ -41,7 +40,7 @@ export default function StoreSupplyOrdersView({ tenantId }: { tenantId?: string 
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white">
-                Reposição de Insumos com a Matriz (B2B)
+                Reposição de Insumos com a Matriz
               </h1>
               <p className="text-xs sm:text-sm text-purple-700 dark:text-purple-300/70">
                 Tabela de preços exclusivos para franqueados e comparador de economia
@@ -84,8 +83,8 @@ export default function StoreSupplyOrdersView({ tenantId }: { tenantId?: string 
         </CardContent>
       </Card>
 
-      {/* Tabela de Insumos B2B */}
-      <Card className="border border-purple-100 dark:border-white/10 bg-white/70 dark:bg-[#160228]/80 backdrop-blur-md rounded-2xl overflow-hidden">
+      {/* Tabela de Insumos */}
+      <Card className="border border-purple-100 dark:border-white/10 bg-white/70 dark:bg-[#160228]/80 backdrop-blur-md rounded-2xl overflow-hidden shadow-xs">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -114,14 +113,14 @@ export default function StoreSupplyOrdersView({ tenantId }: { tenantId?: string 
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => setQuantities((prev) => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
-                            className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-white/10 font-bold hover:bg-purple-200 cursor-pointer"
+                            className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-white/10 font-bold hover:bg-purple-200 text-purple-950 dark:text-white cursor-pointer"
                           >
                             -
                           </button>
                           <span className="w-8 text-center font-bold text-purple-950 dark:text-white">{qty}</span>
                           <button
                             onClick={() => setQuantities((prev) => ({ ...prev, [item.id]: qty + 1 }))}
-                            className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-white/10 font-bold hover:bg-purple-200 cursor-pointer"
+                            className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-white/10 font-bold hover:bg-purple-200 text-purple-950 dark:text-white cursor-pointer"
                           >
                             +
                           </button>

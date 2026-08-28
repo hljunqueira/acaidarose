@@ -135,7 +135,7 @@ export default function StoreDetailsDialog({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-2">
                   <div className="text-xs font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
-                    🏢 Dados Fiscais & Endereço
+                    Dados Fiscais & Endereço
                   </div>
                   <div className="text-xs space-y-1.5 text-purple-950 dark:text-purple-100">
                     <div><b>Razão Social:</b> {tenant.companyName || 'Rose & Vavá Portugal Lda'}</div>
@@ -149,7 +149,7 @@ export default function StoreDetailsDialog({
 
                 <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-2">
                   <div className="text-xs font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
-                    📱 Contactos & MB WAY
+                    Contactos & MB WAY
                   </div>
                   <div className="text-xs space-y-1.5 text-purple-950 dark:text-purple-100">
                     <div className="flex items-center gap-1.5">
@@ -223,7 +223,7 @@ export default function StoreDetailsDialog({
                 <div className="p-3 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-between shadow-2xs">
                   <div className="flex items-center gap-2.5">
                     <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-700 to-pink-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                      👔
+                      <UserCheck className="h-4 w-4 text-white" />
                     </div>
                     <div>
                       <div className="text-xs font-black text-purple-950 dark:text-white flex items-center gap-1.5">
@@ -327,17 +327,17 @@ export default function StoreDetailsDialog({
                 <div>
                   {contract?.paymentStatus === 'PAID' && (
                     <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[9px] font-bold">
-                      ✓ Liquidado
+                      Liquidado
                     </Badge>
                   )}
                   {contract?.paymentStatus === 'PENDING' && (
                     <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 text-[9px] font-bold">
-                      ⏳ Fecho Dia 05
+                      Fecho Dia 05
                     </Badge>
                   )}
                   {contract?.paymentStatus === 'GRACE' && (
                     <Badge className="bg-purple-100 dark:bg-pink-500/20 text-purple-800 dark:text-pink-300 border border-purple-200 dark:border-pink-500/30 text-[9px] font-bold">
-                      🌿 Carência (0%)
+                      Carência (0%)
                     </Badge>
                   )}
                 </div>
@@ -411,7 +411,7 @@ export default function StoreDetailsDialog({
                     onClick={() => onEditContract(contract)}
                     className="h-8 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer gap-1.5"
                   >
-                    <span>⚙️ Ajustar Taxas & Carência desta Unidade</span>
+                    <span>Ajustar Taxas & Carência</span>
                   </Button>
                 )}
               </div>

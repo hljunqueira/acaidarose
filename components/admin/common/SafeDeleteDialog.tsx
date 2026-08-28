@@ -57,7 +57,7 @@ export default function SafeDeleteDialog({
 
         {warningText && (
           <div className="my-2 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold text-center">
-            ⚠️ {warningText}
+            {warningText}
           </div>
         )}
 

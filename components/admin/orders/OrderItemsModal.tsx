@@ -204,7 +204,7 @@ export default function OrderItemsModal({
                 className="h-8 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-sm cursor-pointer gap-1"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>✓ Confirmar Pagamento no Caixa</span>
+                <span>Confirmar Pagamento</span>
               </Button>
             )}
 
