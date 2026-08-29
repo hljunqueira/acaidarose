@@ -149,14 +149,42 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID é obrigatório' }, { status: 400 })
+    }
+
+    await query(
+      `DELETE FROM franchise_requests WHERE id::text = $1`,
+      [id]
+    )
+
+    const response = NextResponse.json({ success: true })
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
+  } catch (err: any) {
+    const response = NextResponse.json(
+      { error: err.message || 'Erro ao excluir solicitação' },
+      { status: 500 }
+    )
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
+  }
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   })
 }
+
 

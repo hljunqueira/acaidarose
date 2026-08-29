@@ -28,6 +28,7 @@ import {
   Check,
   X,
   Sparkles,
+  Trash2,
 } from 'lucide-react'
 
 export interface FranchiseCandidate {
@@ -92,6 +93,71 @@ export default function FranchiseRequestsView({
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [candidateNotes, setCandidateNotes] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+
+  // Estados do CRUD Adicional
+  const [newCandidateOpen, setNewCandidateOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [candidateToDelete, setCandidateToDelete] = useState<FranchiseCandidate | null>(null)
+  const [formData, setFormData] = useState({
+    nome: '',
+    email: '',
+    telefone: '',
+    cidade: '',
+    distrito: '',
+    investimento: '5.000€',
+    motivo: '',
+  })
+
+  const handleCreateCandidate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setActionLoading(true)
+    try {
+      const res = await fetch('/api/franchise-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'FRANCHISE_APPLICATION',
+          ...formData,
+        }),
+      })
+      if (!res.ok) throw new Error('Erro ao registrar candidatura')
+      toast.success('Candidatura manual registrada com sucesso!')
+      setNewCandidateOpen(false)
+      setFormData({
+        nome: '',
+        email: '',
+        telefone: '',
+        cidade: '',
+        distrito: '',
+        investimento: '5.000€',
+        motivo: '',
+      })
+      fetchData()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar candidatura')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleDeleteCandidate = async () => {
+    if (!candidateToDelete) return
+    setActionLoading(true)
+    try {
+      const res = await fetch(`/api/franchise-requests?id=${candidateToDelete.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Erro ao excluir candidatura')
+      toast.success('Candidatura excluída definitivamente!')
+      setDeleteConfirmOpen(false)
+      setCandidateToDelete(null)
+      fetchData()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao excluir candidatura')
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   // Modais de Solicitações de Lojas
   const [selectedStoreReq, setSelectedStoreReq] = useState<FranchisePriceRequest | null>(null)
@@ -236,6 +302,15 @@ export default function FranchiseRequestsView({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            onClick={() => setNewCandidateOpen(true)}
+            className="h-9 text-xs font-bold gap-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white cursor-pointer shadow-xs"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Novo Candidato</span>
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
@@ -405,6 +480,19 @@ export default function FranchiseRequestsView({
                               className="h-8 px-2.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white font-bold text-xs cursor-pointer shadow-2xs"
                             >
                               <span>Gerir</span>
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setCandidateToDelete(cand)
+                                setDeleteConfirmOpen(true)
+                              }}
+                              className="h-8 px-2 rounded-xl border-rose-250 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 font-bold text-xs cursor-pointer shadow-2xs"
+                              title="Excluir Candidatura"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </td>
@@ -672,6 +760,166 @@ export default function FranchiseRequestsView({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Modal de Confirmação de Exclusão (Delete) */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 text-purple-950 dark:text-white rounded-3xl shadow-2xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-base font-black text-rose-600 dark:text-rose-400">
+              Confirmar Exclusão de Candidato
+            </DialogTitle>
+            <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
+              Esta ação é definitiva e não poderá ser desfeita.
+            </p>
+          </DialogHeader>
+
+          <div className="py-3 text-xs text-purple-800 dark:text-purple-200 font-medium">
+            Tem certeza de que deseja excluir permanentemente a candidatura de <strong className="text-purple-950 dark:text-white">{candidateToDelete?.candidateName}</strong>?
+          </div>
+
+          <DialogFooter className="pt-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+              className="rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDeleteCandidate}
+              disabled={actionLoading}
+              className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs cursor-pointer"
+            >
+              {actionLoading ? 'A excluir...' : 'Sim, Excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Criação Manual de Candidato (Create) */}
+      <Dialog open={newCandidateOpen} onOpenChange={setNewCandidateOpen}>
+        <DialogContent className="max-w-lg p-6 bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 text-purple-950 dark:text-white rounded-3xl shadow-2xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+              Adicionar Candidatura Manualmente
+            </DialogTitle>
+            <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
+              Registre os dados de um interessado recebido fora do formulário web
+            </p>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateCandidate} className="space-y-4 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold">Nome do Candidato</Label>
+                <Input
+                  required
+                  placeholder="Nome Completo"
+                  value={formData.nome}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                  className="h-9 rounded-xl border-purple-200 dark:border-white/15 text-xs bg-purple-50/20 dark:bg-white/5"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold">E-mail</Label>
+                <Input
+                  required
+                  type="email"
+                  placeholder="exemplo@email.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="h-9 rounded-xl border-purple-200 dark:border-white/15 text-xs bg-purple-50/20 dark:bg-white/5"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold">Telemóvel / Telefone</Label>
+                <Input
+                  required
+                  placeholder="ex: 912345678"
+                  value={formData.telefone}
+                  onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                  className="h-9 rounded-xl border-purple-200 dark:border-white/15 text-xs bg-purple-50/20 dark:bg-white/5"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold">Capital Disponível</Label>
+                <select
+                  value={formData.investimento}
+                  onChange={(e) => setFormData({ ...formData, investimento: e.target.value })}
+                  className="w-full h-9 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/20 dark:bg-[#160228] px-3.5 text-xs font-medium focus:outline-none"
+                >
+                  <option value="5.000€">Até 5.000€</option>
+                  <option value="5.000€ - 10.000€">5.000€ a 10.000€</option>
+                  <option value="10.000€ - 20.000€">10.000€ a 20.000€</option>
+                  <option value="20.000€ - 50.000€">20.000€ a 50.000€</option>
+                  <option value="Mais de 50.000€">Mais de 50.000€</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold">Cidade</Label>
+                <Input
+                  required
+                  placeholder="Cidade"
+                  value={formData.cidade}
+                  onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                  className="h-9 rounded-xl border-purple-200 dark:border-white/15 text-xs bg-purple-50/20 dark:bg-white/5"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold">Distrito</Label>
+                <Input
+                  required
+                  placeholder="Distrito"
+                  value={formData.distrito}
+                  onChange={(e) => setFormData({ ...formData, distrito: e.target.value })}
+                  className="h-9 rounded-xl border-purple-200 dark:border-white/15 text-xs bg-purple-50/20 dark:bg-white/5"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] font-bold">Apresentação / Motivo do Interesse</Label>
+              <textarea
+                required
+                rows={3}
+                placeholder="Detalhes adicionais de contato..."
+                value={formData.motivo}
+                onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+                className="w-full rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/20 dark:bg-white/5 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-600"
+              />
+            </div>
+
+            <DialogFooter className="pt-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNewCandidateOpen(false)}
+                className="rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={actionLoading}
+                className="rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 text-white font-bold text-xs shadow-xs cursor-pointer"
+              >
+                {actionLoading ? 'Salvando...' : 'Salvar Candidato'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

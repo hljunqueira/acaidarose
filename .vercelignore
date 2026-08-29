@@ -1,0 +1,9 @@
+# Ignorar pastas pesadas do site estático na Vercel (servido pela VPS)
+legacy-static/
+wetransfer_site-acai-da-rose-pt_2026-08-28_2153/
+wp-config.php
+.htaccess
+scratch/
+.system_generated/
+backups/
+data/
