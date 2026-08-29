@@ -73,3 +73,13 @@ Todas as tarefas solicitadas pelo usuário foram concluídas, testadas e enviada
 ### C. Importação dos Dados Históricos do WordPress
 - Executado script customizado (`migrate-wp-leads-from-sql.js`) para ler em memória o dump do MySQL do WordPress (`u902934419_crV5L.sql`), parsear as 39 submissões do Elementor Pro e SureForms, identificar 12 leads elegíveis de franquia e importá-los com sucesso para a tabela `franchise_requests` do Postgres.
 
+### D. Migração de DNS, Cloudflare e Deploy Estático na VPS
+- **Nameservers da Cloudflare**: Alterados com sucesso na raiz do registrador do domínio `.pt` para `bonnie.ns.cloudflare.com` e `rex.ns.cloudflare.com`.
+- **Flexible SSL**: Ativada a criptografia SSL/TLS no Cloudflare no modo **Flexible**, garantindo HTTPS instantâneo para todos os visitantes do domínio sem necessidade de gerenciar certificados SSL manuais na VPS.
+- **Deploy Otimizado de Assets**: Criado e rodado o script utilitário `fast-deploy.js` que compactou os arquivos estáticos e de imagens de `legacy-static` em um ZIP leve de 213 MB (excluindo arquivos `.php` redundantes por robocopy), transferiu para a VPS via SCP e descompactou via SSH em `/etc/icontainer/apps/nginx/nginx/www/sites/acaidarose.pt/index`.
+- **Configurações Nginx da VPS**:
+  - `acaidarose.pt.conf`: Criado no host em `/etc/icontainer/apps/nginx/nginx/conf/conf.d/` para servir o site estático no diretório `/www/sites/acaidarose.pt/index` na porta 80.
+  - `api.acaidarose.pt.conf`: Criado no host para atuar como proxy reverso para `https://acaidarose.vercel.app` na porta 80, garantindo o envio CORS de formulários para a Vercel.
+  - Executado o reload no container Nginx: `docker exec ic-nginx-PHXo nginx -s reload`.
+- **Validação com cURL**: Testes de requisição HTTP simulando o Host `acaidarose.pt` e `api.acaidarose.pt` retornaram `200 OK` (com o tamanho e Etag do index estático) e os cabeçalhos de resposta corretos da Vercel (`X-Vercel-Cache`).
+

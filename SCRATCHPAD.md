@@ -40,8 +40,7 @@
 - **Crawler & Download Estático**: Executado o download estático das páginas principais (index, contact, franchising, about-us, products) de `acaidarose.pt`, convertendo os caminhos para relativos e injetando o script CORS AJAX de formulários para se comunicar com `api.acaidarose.pt`.
 - **Ajustes Visuais (franchising.html)**: Corrigido o alinhamento do título do Subheader (alinhado à esquerda com limite de 50% para não sobrepor o boneco roxo) e aplicada uma estilização premium e moderna nos inputs do formulário, checkboxes, selects e botão de submissão.
 - **Atualização de Rodapé (Todos os HTMLs)**: Atualizado o ano do copyright para 2026 e removido o link da "Agencia Save" de todos os 5 arquivos de páginas estáticas em `legacy-static/`.
-
-
-
-
-
+- **Migração de DNS & Cloudflare**: Domínio migrado com sucesso para o Cloudflare (Nameservers `bonnie.ns.cloudflare.com` e `rex.ns.cloudflare.com` ativos). Configurada criptografia no modo **Flexible SSL**.
+- **Deploy Otimizado na VPS**: Desenvolvido script de deploy automatizado (`fast-deploy.js`) que enviou os arquivos estáticos de assets e HTML compactados (213 MB) via SCP para a VPS e descompactou via SSH em `/root/acaidarose/legacy-static/`.
+- **Configuração do Nginx na VPS**: Criados manualmente os arquivos de configuração do Nginx (`acaidarose.pt.conf` e `api.acaidarose.pt.conf`) na pasta `/etc/icontainer/apps/nginx/nginx/conf/conf.d/` da VPS. Mapeados os arquivos estáticos para `/www/sites/acaidarose.pt/index` e configurado proxy reverso para `api.acaidarose.pt` apontando para a Vercel.
+- **Validação Local**: Testes de cURL locais confirmaram resposta `200 OK` do Nginx para o site estático e redirecionamento transparente de cabeçalhos (`X-Vercel-Cache`) para a API de produção.
