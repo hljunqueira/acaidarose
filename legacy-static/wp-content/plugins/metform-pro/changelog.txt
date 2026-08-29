@@ -1,0 +1,281 @@
+================ Metform Pro ================
+Version: 3.9.1 // 2025-08-31
+Fixed: Food order template conditional logic issue.
+
+Version: 3.9.0 // 2025-08-10
+Improved: Form setting modal UI design.
+Fixed: Zoho integration multi-data center issue.
+Fixed: PayPal integration not working.
+
+Version: 3.8.9 // 2025-06-24
+Added: Elementor optimized markup support.
+Updated: Pre-built demo templates section converted to container layout.
+Fixed: Compatibility issue with Google Sheets integration.
+
+Version: 3.8.8 // 2025-05-26
+Improved: All widgets icon.
+Improved: License setting page.
+
+Version: 3.8.7 // 2025-03-25
+Added: Mobile widget new control for getting number format to entries.
+
+Version: 3.8.6 // 2025-01-20
+Fixed: Simple repeater data is not showing for the exported PDF.
+Fixed: File size is too large for the exported PDF.
+Fixed: Active campaign email list issue.
+
+Version: 3.8.5 // 2025-01-20
+Added: New control for disable fraction digit for calculation widget.
+
+Version: 3.8.4 // 2024-12-25
+Fixed: Adaptive container issue for multistep form.
+
+Version: 3.8.3 // 2024-03-31
+Improved: Security.
+Fixed: Active campaign tags limitation issue.
+
+Version: 3.8.2 // 2024-02-27
+Added: Pop alert box message selecting control for form submission.
+Fixed: Adaptive form height issue of multistep form.
+
+Version: 3.8.1 // 2023-01-14
+Added: New control for comma (,) show in calculation widget.
+Fixed: PHP function deprecation issue.
+
+Version: 3.8.0 // 2023-12-21
+Fixed: Not getting the plugin update option even after release of a new version.
+
+Version: 3.7.2 // 2023-12-10
+Fixed: Multistep form tab title issue.
+Improved: Elementor controls for multistep form.
+
+Version: 3.7.1 // 2023-12-05
+Fixed: Conflict with elementor v3.18.0
+
+Version: 3.7.0 // 2023-11-05
+Added: Unique email control for form submission.
+Fixed: Form submission redirect issue.
+Fixed: Calculation widget warning issue.
+
+Version: 3.6.0 // 2023-10-18
+Fixed: Custom field not working for the form to post.
+
+Version: 3.5.0 // 2023-10-01
+Added: Zoho integration with OAuth 2.0
+Fixed: PDF exporting for all languages issue
+Fixed: Text Editor widget localstorage issue 
+Fixed: Plus sign (+) issue for Mobile widget
+Fixed: If "Not Empty" condition is selected, then the data doesn't save to entries 
+
+Version: 3.4.0 // 2023-09-17
+Added: Text editor form field for MetForm.
+Added: Zoho field mapping for both default and custom zoho fields with MetForm.
+Added: Quiz demo templates for quiz forms.
+Added: Form data passing from one form to another form. 
+
+Version: 3.3.1 // 2023-09-04
+Fixed: Admin notice permission issue.
+
+Version: 3.3.0 // 2023-08-16
+Added: Google sheet select and sheet's tab select option in Google Sheet Integration.
+Added: New settings to show input field option label in entries for select, checkbox etc fields.
+Added: Support for simple repeater field data in Google Sheet Entries. 
+Added: Compatibility with Elementor 3.15 release.
+Fixed: Elementor widget help button URL.
+Fixed: Fractional number issue in simple repeater widget.
+Fixed: Mobile widget validation issue.
+Fixed: Google sheet API token issue.
+Fixed: Time widget padding issue for ISO devices.
+
+Version 3.2.1 // 2023-06-11
+Fixed: Dynamic property assigned issue plugin updated.
+Fixed: Simple repeater unique name issue.
+Fixed: Mobile widget input issue.
+Fixed: Multistep next previous button not working properly.
+Fixed: Condition control in switch widget.
+Imrpoved: Color picker style options.
+
+Version 3.2.0 // 2023-04-05
+Fixed: Simple repeater random naming issue.
+
+Version 3.1.4 // 2023-03-06
+Fixed: Reset form not working when multiple form in a single page.
+
+Version 3.1.3 // 2023-02-21
+Improved: Demo templates.
+Fixed: field validation message color for some fields.
+Fixed: Image select preview was not working inside multistep form.
+Fixed: Removed extra peremeter was adding with URL after redirection.
+Fixed: Simple repeater not showing multiple entries.
+Fixed: Multi step conditional fields.
+Fixed: MetForm repeater range field was not working.
+
+Version 3.1.2 // 2023-01-10
+Fixed: Compatibility Issue With Elementor 3.10.0. 
+
+Version 3.1.1 // 2022-12-20
+Removed: Sweetalert success message. 
+
+Version: 3.1.0 // 2022-11-17
+Added: AWeber custom field support
+
+Version: 3.0.0 // 2022-10-26
+Added: Powerful Quiz system, now users can take quiz and mark them on metform.
+Improved: Form editor in page editor with form type and template filtering.
+Fixed: Image select default value doesn't work properly for calculation.
+Fixed: Toggle select default value doesn't work properly for calculation.
+Fixed: Toggle select default value doesn't remove after form submission.
+Fixed: Image select default value doesn't remove after form submission.
+
+Version: 2.1.5 // 2022-08-07
+Fixed: Fix a php conflict issue.
+
+Version: 2.1.4 // 2022-08-03
+Added: Save form progress feature.
+Added: Textarea support for simple repeater.
+Added: New control for multistep form.
+Added: Payment cancel redirection settings.
+Fixed: Stripe payment currency sign issue. 
+Fixed: Signature field data reset after form submit.
+
+Version: 2.1.3 // 2022-04-21
+Added: Option for default payment method. 
+Added: Dynamic Currency for Stripe and Paypal payment.
+Added: Default selection option for image select and toggle select field.
+Improved: Hubspot Integraiton.
+
+Version: 2.1.2 // 2022-03-28
+Added: Twilio SMS integration
+Updated: Fluent crm
+Tweaked: CSS and JS improved
+
+Version: 2.1.1 // 2022-01-22
+Added: Fluent CRM integration.
+Improved: Multi select with image issue.
+Updated: Text domain correction.
+Tweaked: CSS and JS improved.
+
+Version: 2.1.0 // 2022-01-06
+Fixed: Multi Select with image issue
+Fixed: Some translation issues
+Tweaked: CSS and JS improved
+
+Version: 2.0.1 // 2021-12-13
+Fixed: Some minor issues
+
+Version: 2.0.0 // 2021-11-28
+Added: Email verification feature
+Added: PDF export for form entry data
+Fixed: Cart Issue resolved
+Tweaked: Heavily core CSS and JS improved
+
+Version: 1.4.0 // 2021-11-07
+Added: Automizy Integration
+Fixed: Automizy data sending to a specific list
+Fixed: Automizy contact list fetch error fixed
+Fixed: Api Request Issue
+Tweaked: CSS and JS improved
+
+Version: 1.3.3
+    Fixed: Simple repeater’s delete and add button visual issue
+    Fixed: Mobile widget required bug
+
+Version: 1.3.2
+	Fixed: Image select widget's extra padding issue
+
+Version: 1.3.1
+	Fixed: vendors fatal error
+
+Version: 1.3.0
+	added: Added Google Sheet API feature
+
+Version: 1.2.15
+	Removed: unnecessary controls from color picker widget
+    Fixed: Prevent from deleting simple repeater last field
+    Fixed: Mobile Widget Country code input stuck issue
+
+Version: 1.2.14
+	Fix: Type checks were invalid for Like & Dislike Widget.
+    Fix: Multistep Adaptive Form Container Height issue
+    Fix: Form to Post Multiple Attachment Upload
+    Fix: Form to Post Thumbnail set from Settings
+    Add: Image Select widget Multiselect option
+    Fix: Credit card fields negative value fix
+    Fix: Elementor `_register_controls` is soft deprecated
+    Add: Toggle Select Multiselect option added
+    Fix: Calculation field input alignment
+    Fix: Conditionally Hidden inputs functionality with attributes
+
+Version: 1.2.13
+    Fix: Fixed Scheme Namespace debug log issue
+
+Version: 1.2.12
+    Fix: Simple Repeater did not work in live preview
+    Fix: Toggle Select svg icon issue
+    Fix: File Upload widget did not work with post creation feature
+
+Version: 1.2.11
+    Added: Maximum Fraction Digits for Calculation widget
+    Tweak: Changed Multistep & Response message settings on elementor
+
+Version: 1.2.10
+    Fix: Getresponse issue.
+
+Version: 1.2.9
+    Added:  Error/Success Message Customization Controls
+    Fixed: Calculation widget did not work with checklist
+
+Version: 1.2.8
+    Added: Adaptive height control multistep form
+    Fix: Simple Repeater console error
+    Fix: Mobile Widget conditional issue
+
+Version: 1.2.7
+    Fix: Critical error on toggle-select.php
+    Added: Google Map Location widget notice and documentation update
+    Fix: Toggle Select icon default value set and error check
+
+Version: 1.2.6
+    ChangeLog:
+    Fix: Toggle Select icon vertical align issue with ElementsKit Icons
+    Fix: Syntax error issue on toggle select
+    Fix: Multistep form TAB keypress focus issue
+    Fix: Multistep form optimization
+
+Version: 1.2.5
+    ChangeLog:
+    BugFix: WooCheckout bug fix
+    Fix: Conditional logic with Email input issue
+    Fix: Toggle Select widget overflow cropping issue
+    Tweak: Signature Pad cursor type changed to crosshair
+    Fix: Conditionally hidden but Required field validation
+    Added: Signature Label position & width control
+    Added: Input Warning Text color & Typography in Signature
+    Fix: Text Area line break support on E-Mail & Form Entries
+    Removed: Woocommerce widget
+    Fix: Text domain 'metform-pro' updated
+    Fix: Color Picker widget rgba value rendering
+    Fix: Simple Repeater label on Summary
+    Fix: Simple Repeater widget control variable fatal error
+    Removed: Simple Repeater widget warning indicator style control removed
+    Added: Icons in Toggle Select widget
+    Added: Calculation widget calculated field alignment control
+    Fix: Simple Repeater widget code optimize
+
+Version: 1.2.4
+    ChangeLog:
+    BugFix   :
+        Fix license problem
+
+Version: 1.2.3
+    ChangeLog:
+    BugFix  :
+        GDPR Typography Fixed
+        Image Select Repeater title fix
+
+    Feature Added :
+        WooCheckout
+        Post submission ( Create custom type post from Metform )
+
+    Tweak Added :
+        Spining animation on Submit button.

@@ -94,13 +94,19 @@ export async function POST(req: NextRequest) {
       ]
     )
 
-    return NextResponse.json({ success: true, request: res.rows[0] }, { status: 201 })
+    const response = NextResponse.json({ success: true, request: res.rows[0] }, { status: 201 })
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    return response
   } catch (err: any) {
     console.error('Erro ao registrar franchise_request:', err)
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: err.message || 'Erro ao criar solicitação' },
       { status: 500 }
     )
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
   }
 }
 
@@ -142,3 +148,15 @@ export async function PATCH(req: NextRequest) {
     )
   }
 }
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+

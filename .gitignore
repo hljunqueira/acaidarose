@@ -70,3 +70,9 @@ Thumbs.db
 # Diretórios Temporários de Scratch
 scratch/
 .system_generated/
+
+# Backups temporários do WordPress antigo
+wetransfer_site-acai-da-rose-pt_2026-08-28_2153/
+wp-config.php
+.htaccess
+

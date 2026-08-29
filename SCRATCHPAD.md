@@ -31,3 +31,17 @@
 - `npx tsc --noEmit`: 0 erros de tipagem.
 - `npm run build`: 16 páginas estáticas compiladas com sucesso.
 - Deploy: Sincronizado no GitHub `origin/main` e ativo na Vercel.
+
+## 4. Integração de Formulários & Migração (WordPress)
+- **Patch de Banco de Dados**: Aplicado patch diretamente no PostgreSQL de produção na VPS para alinhar a tabela `franchise_requests` ao Next.js (adicionado colunas `title`, `description`, `requested_changes_json` e tipo `FRANCHISE_APPLICATION`).
+- **Validação cURL**: Teste via cURL no endpoint `/api/franchise-requests` da Vercel retornou com sucesso `201 Created` e persistência íntegra no banco de dados.
+- **Cópia de Backup**: Cópia de referência dos arquivos do WordPress para `legacy-static` concluída com sucesso.
+- **Migração Histórica**: Processado o dump SQL do WordPress em memória e importados 11 leads de candidaturas de franquia com sucesso para o banco de dados PostgreSQL de produção na VPS.
+- **Crawler & Download Estático**: Executado o download estático das páginas principais (index, contact, franchising, about-us, products) de `acaidarose.pt`, convertendo os caminhos para relativos e injetando o script CORS AJAX de formulários para se comunicar com `api.acaidarose.pt`.
+- **Ajustes Visuais (franchising.html)**: Corrigido o alinhamento do título do Subheader (alinhado à esquerda com limite de 50% para não sobrepor o boneco roxo) e aplicada uma estilização premium e moderna nos inputs do formulário, checkboxes, selects e botão de submissão.
+- **Atualização de Rodapé (Todos os HTMLs)**: Atualizado o ano do copyright para 2026 e removido o link da "Agencia Save" de todos os 5 arquivos de páginas estáticas em `legacy-static/`.
+
+
+
+
+

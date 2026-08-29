@@ -1,0 +1,2015 @@
+# Copyright (C) 2025 Wpmet
+# This file is distributed under the GPLv3.
+msgid ""
+msgstr ""
+"Project-Id-Version: MetForm Pro 3.9.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/metform-pro\n"
+"POT-Creation-Date: 2025-09-01 14:53:15+00:00\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"X-Generator: grunt-wp-i18n 1.0.3\n"
+
+#: core/admin/base.php:27
+msgid "License"
+msgstr ""
+
+#: core/admin/base.php:92
+msgid "Redirect Form Data:"
+msgstr ""
+
+#: core/admin/base.php:97
+msgid "Form Fields"
+msgstr ""
+
+#: core/admin/base.php:103 traits/quiz-control.php:40
+#: widgets/credit-card/credit-card.php:103
+#: widgets/image-select/image-select.php:110
+#: widgets/payment-method/payment-method.php:109
+#: widgets/signature/signature.php:111
+#: widgets/simple-repeater/simple-repeater.php:131
+#: widgets/text-editor/text-editor.php:89
+#: widgets/toggle-select/toggle-select.php:108
+msgid "Name"
+msgstr ""
+
+#: core/admin/base.php:107
+msgid "Select Field"
+msgstr ""
+
+#: core/admin/base.php:113 widgets/simple-repeater/simple-repeater.php:164
+msgid "Delete"
+msgstr ""
+
+#: core/admin/views/license.php:43
+msgid "Congratulations! You'r product is activated for \"%s\""
+msgstr ""
+
+#: core/features/quiz/loader.php:59
+msgid "Quiz Result"
+msgstr ""
+
+#: core/features/quiz/loader.php:68
+msgid "Total Questions:"
+msgstr ""
+
+#: core/features/quiz/loader.php:72
+msgid "Correct Answers:"
+msgstr ""
+
+#: core/features/quiz/loader.php:76
+msgid "Wrong Answers:"
+msgstr ""
+
+#: core/features/quiz/loader.php:80
+msgid "Correct Percentage:"
+msgstr ""
+
+#: core/features/quiz/loader.php:84
+msgid "Total Marks:"
+msgstr ""
+
+#: core/features/quiz/overview_chart.php:16
+#: core/features/quiz/overview_chart.php:29
+msgid "Wrong Answers"
+msgstr ""
+
+#: core/features/quiz/overview_chart.php:17
+#: core/features/quiz/overview_chart.php:23
+msgid "Correct Answers"
+msgstr ""
+
+#: core/features/quiz/overview_chart.php:37
+msgid "Quiz Result Overview"
+msgstr ""
+
+#: core/integrations/Aweber.php:487
+msgid "Lists could not found in cache!, please refresh the lists first."
+msgstr ""
+
+#: core/integrations/Aweber.php:497
+msgid "Failed to retrieve access token for aweber! action could not be performed."
+msgstr ""
+
+#: core/integrations/Aweber.php:556 core/integrations/Convert_Kit.php:200
+msgid "Your data inserted on ConvertKit."
+msgstr ""
+
+#: core/integrations/Fluent_Crm.php:41
+msgid "Fluent:"
+msgstr ""
+
+#: core/integrations/Fluent_Crm.php:43
+msgid "Integrate fluent with this form."
+msgstr ""
+
+#: core/integrations/Fluent_Crm.php:43
+#: core/integrations/email-verification/screens/admin-settings.php:7
+msgid "The form must have at least one Email widget and it should be required."
+msgstr ""
+
+#: core/integrations/Fluent_Crm.php:47
+msgid "Fluent webhook:"
+msgstr ""
+
+#: core/integrations/Fluent_Crm.php:48
+msgid "Fluent webhook"
+msgstr ""
+
+#: core/integrations/Fluent_Crm.php:49
+msgid "Enter here fluent web hook."
+msgstr ""
+
+#: core/integrations/Mail_Poet.php:115
+msgid "Your data inserted on MailPoet."
+msgstr ""
+
+#: core/integrations/Mail_Poet.php:121
+msgid "MailPoet plugin could not be found."
+msgstr ""
+
+#: core/integrations/auth/register/loader.php:116
+msgid "Username: %s"
+msgstr ""
+
+#: core/integrations/auth/register/loader.php:117
+msgid "Password: %s"
+msgstr ""
+
+#: core/integrations/auth/register/loader.php:119
+msgid "[%s] Your username and password"
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:107
+msgid " Select Data Center:"
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:123
+msgid "Connect Zoho "
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:133
+msgid "Disconnect Zoho "
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:147
+#: core/integrations/crm/zoho/loader.php:185
+msgid "You're not permitted"
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:334
+#: core/integrations/crm/zoho/loader.php:370
+msgid "Token Not Found. Please"
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:334
+msgid "Connect Zoho"
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:346
+msgid "Access Token Not Found"
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:362
+msgid "Connection Failed"
+msgstr ""
+
+#: core/integrations/crm/zoho/loader.php:370
+msgid " Connect Zoho"
+msgstr ""
+
+#: core/integrations/ecommerce/woocommerce/woo-cpt.php:19
+msgid "Invalid product."
+msgstr ""
+
+#: core/integrations/email/activecampaign/active-campaign-route.php:32
+#: core/integrations/email/activecampaign/active-campaign-route.php:125
+msgid "Campaign url or API key is not yet set!"
+msgstr ""
+
+#: core/integrations/email/activecampaign/active-campaign-route.php:218
+#: core/integrations/email/activecampaign/active-campaign-route.php:227
+msgid "Tags successfully fetched."
+msgstr ""
+
+#: core/integrations/email/activecampaign/active-campaign.php:55
+#: core/integrations/email/getresponse/get-response.php:78
+msgid "Your data inserted on Active."
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:5
+msgid "Email verification :"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:7
+msgid ""
+"Want to send an email verification mail to the user by email? Active this "
+"one."
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:10
+msgid "Email Subject:"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:11
+msgid "Email subject"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:12
+msgid "Enter here email subject."
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:15
+msgid "Redirect:"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:16
+msgid "Enter redirect url"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:17
+msgid "Redirect after verify email"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:20
+msgid "Email template heading:"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:21
+msgid "Enter email template heading"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:24
+msgid "Email template paragraph:"
+msgstr ""
+
+#: core/integrations/email-verification/screens/admin-settings.php:25
+msgid "Enter email template paragraph"
+msgstr ""
+
+#: core/integrations/email-verification/screens/email-template.php:280
+msgid "Thank you!"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:19
+msgid "Multistep Settings"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:27
+msgid "Enable Multistep?"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:29
+#: core/integrations/multistep-form-controls.php:44
+#: core/integrations/multistep-form-controls.php:62
+#: core/integrations/multistep-form-controls.php:78
+#: core/integrations/multistep-form-controls.php:97 traits/quiz-control.php:303
+#: traits/quiz-control.php:393 traits/quiz-control.php:476
+#: traits/quiz-control.php:619 widgets/calculation/calculation.php:163
+#: widgets/calculation/calculation.php:205
+#: widgets/image-select/image-select.php:210 widgets/mobile/mobile.php:292
+#: widgets/simple-repeater/simple-repeater.php:143
+#: widgets/toggle-select/toggle-select.php:188
+msgid "Yes"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:30
+#: core/integrations/multistep-form-controls.php:45
+#: core/integrations/multistep-form-controls.php:63
+#: core/integrations/multistep-form-controls.php:79
+#: core/integrations/multistep-form-controls.php:98 traits/quiz-control.php:304
+#: traits/quiz-control.php:394 traits/quiz-control.php:477
+#: traits/quiz-control.php:620 widgets/calculation/calculation.php:164
+#: widgets/calculation/calculation.php:206
+#: widgets/image-select/image-select.php:211 widgets/mobile/mobile.php:293
+#: widgets/simple-repeater/simple-repeater.php:144
+#: widgets/toggle-select/toggle-select.php:189
+msgid "No"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:41
+msgid "Adaptive Form Container Height?"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:42
+msgid ""
+"Enable this to make the multistep form height adapt to current step height. "
+"( Disables Equal Height Step Container )"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:60
+msgid "Display Multistep Nav?"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:75
+msgid "Enable scroll to top?"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:76
+msgid ""
+"Enable scroll to top animation for bigger form when click on the next/prev "
+"button"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:94
+msgid "Multistep progress style?"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:95
+msgid ""
+"Enable & customize how you want the progress of the form steps to be "
+"displayed"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:111
+#: core/integrations/multistep-form-controls.php:316
+#: core/integrations/multistep-form-controls.php:379
+#: core/integrations/multistep-form-controls.php:442
+#: core/integrations/multistep-form-controls.php:590
+#: core/integrations/multistep-form-controls.php:617
+#: core/integrations/multistep-form-controls.php:644
+#: widgets/credit-card/credit-card.php:205
+#: widgets/image-select/image-select.php:445
+#: widgets/image-select/image-select.php:664
+#: widgets/image-select/image-select.php:693
+#: widgets/image-select/image-select.php:895
+#: widgets/payment-method/payment-method.php:275
+#: widgets/payment-method/payment-method.php:571
+#: widgets/signature/signature.php:219 widgets/signature/signature.php:474
+#: widgets/simple-repeater/simple-repeater.php:378
+#: widgets/simple-repeater/simple-repeater.php:497
+#: widgets/simple-repeater/simple-repeater.php:861
+#: widgets/toggle-select/toggle-select.php:345
+#: widgets/toggle-select/toggle-select.php:836
+msgid "Color"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:132
+#: core/integrations/multistep-form-controls.php:335
+#: core/integrations/multistep-form-controls.php:398
+#: core/integrations/multistep-form-controls.php:461
+#: widgets/toggle-select/toggle-select.php:561
+#: widgets/toggle-select/toggle-select.php:628
+#: widgets/toggle-select/toggle-select.php:695
+msgid "Background Color"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:167
+#: widgets/calculation/calculation.php:255
+msgid "Alignment"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:171
+#: core/integrations/multistep-form-controls.php:513
+#: core/integrations/response-message-controls.php:127
+#: core/integrations/response-message-controls.php:173
+#: widgets/calculation/calculation.php:259
+#: widgets/credit-card/credit-card.php:73
+#: widgets/image-select/image-select.php:80
+#: widgets/payment-method/payment-method.php:79
+#: widgets/signature/signature.php:81
+#: widgets/simple-repeater/simple-repeater.php:88
+#: widgets/toggle-select/toggle-select.php:78
+msgid "Left"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:175
+#: core/integrations/response-message-controls.php:131
+#: core/integrations/response-message-controls.php:177
+#: widgets/calculation/calculation.php:263
+msgid "Center"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:179
+#: core/integrations/multistep-form-controls.php:512
+#: core/integrations/response-message-controls.php:135
+#: core/integrations/response-message-controls.php:181
+#: widgets/calculation/calculation.php:267
+msgid "Right"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:198
+msgid "Slide Direction"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:202
+#: traits/quiz-control.php:175 traits/quiz-control.php:196
+#: widgets/image-select/image-select.php:126
+#: widgets/payment-method/payment-method.php:125
+#: widgets/toggle-select/toggle-select.php:124
+msgid "Horizontal"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:203
+#: traits/quiz-control.php:176 traits/quiz-control.php:197
+#: widgets/image-select/image-select.php:127
+#: widgets/payment-method/payment-method.php:126
+#: widgets/toggle-select/toggle-select.php:125
+msgid "Vertical"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:213
+#: core/integrations/response-message-controls.php:339
+#: widgets/credit-card/credit-card.php:223
+#: widgets/credit-card/credit-card.php:491
+#: widgets/image-select/image-select.php:463
+#: widgets/image-select/image-select.php:645
+#: widgets/image-select/image-select.php:884
+#: widgets/payment-method/payment-method.php:293
+#: widgets/payment-method/payment-method.php:560
+#: widgets/signature/signature.php:237
+#: widgets/simple-repeater/simple-repeater.php:396
+#: widgets/simple-repeater/simple-repeater.php:512
+#: widgets/simple-repeater/simple-repeater.php:785
+#: widgets/simple-repeater/simple-repeater.php:850
+#: widgets/simple-repeater/simple-repeater.php:918
+#: widgets/simple-repeater/simple-repeater.php:1090
+#: widgets/toggle-select/toggle-select.php:363
+#: widgets/toggle-select/toggle-select.php:742
+#: widgets/toggle-select/toggle-select.php:825
+msgid "Typography"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:228
+#: widgets/color-picker/color-picker.php:159
+#: widgets/credit-card/credit-card.php:236
+#: widgets/credit-card/credit-card.php:319
+#: widgets/image-select/image-select.php:294
+#: widgets/image-select/image-select.php:476
+#: widgets/image-select/image-select.php:594
+#: widgets/image-select/image-select.php:728
+#: widgets/image-select/image-select.php:910
+#: widgets/payment-method/payment-method.php:306
+#: widgets/payment-method/payment-method.php:409
+#: widgets/payment-method/payment-method.php:586
+#: widgets/signature/signature.php:250 widgets/signature/signature.php:352
+#: widgets/simple-repeater/simple-repeater.php:409
+#: widgets/simple-repeater/simple-repeater.php:522
+#: widgets/simple-repeater/simple-repeater.php:570
+#: widgets/simple-repeater/simple-repeater.php:876
+#: widgets/simple-repeater/simple-repeater.php:972
+#: widgets/simple-repeater/simple-repeater.php:1144
+#: widgets/text-editor/text-editor.php:183
+#: widgets/toggle-select/toggle-select.php:376
+#: widgets/toggle-select/toggle-select.php:478
+#: widgets/toggle-select/toggle-select.php:851
+msgid "Padding"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:251
+#: widgets/color-picker/color-picker.php:170
+#: widgets/credit-card/credit-card.php:250
+#: widgets/credit-card/credit-card.php:333
+#: widgets/image-select/image-select.php:305
+#: widgets/image-select/image-select.php:490
+#: widgets/image-select/image-select.php:605
+#: widgets/image-select/image-select.php:740
+#: widgets/payment-method/payment-method.php:320
+#: widgets/payment-method/payment-method.php:420
+#: widgets/signature/signature.php:264 widgets/signature/signature.php:364
+#: widgets/simple-repeater/simple-repeater.php:423
+#: widgets/simple-repeater/simple-repeater.php:533
+#: widgets/simple-repeater/simple-repeater.php:583
+#: widgets/simple-repeater/simple-repeater.php:984
+#: widgets/simple-repeater/simple-repeater.php:1156
+#: widgets/text-editor/text-editor.php:195
+#: widgets/toggle-select/toggle-select.php:390
+#: widgets/toggle-select/toggle-select.php:496
+msgid "Margin"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:274
+#: core/integrations/response-message-controls.php:447
+#: widgets/color-picker/color-picker.php:181
+#: widgets/credit-card/credit-card.php:502
+#: widgets/image-select/image-select.php:317
+#: widgets/image-select/image-select.php:624
+#: widgets/image-select/image-select.php:753
+#: widgets/payment-method/payment-method.php:432
+#: widgets/signature/signature.php:376
+#: widgets/simple-repeater/simple-repeater.php:798
+#: widgets/toggle-select/toggle-select.php:515
+msgid "Border Radius"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:290
+msgid "Text:"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:305
+#: core/integrations/multistep-form-controls.php:579
+#: widgets/credit-card/credit-card.php:348
+#: widgets/image-select/image-select.php:339
+#: widgets/image-select/image-select.php:657
+#: widgets/image-select/image-select.php:835
+#: widgets/like-dislike/like-dislike.php:168
+#: widgets/payment-method/payment-method.php:475
+#: widgets/signature/signature.php:413
+#: widgets/simple-repeater/simple-repeater.php:622
+#: widgets/simple-repeater/simple-repeater.php:998
+#: widgets/simple-repeater/simple-repeater.php:1170
+#: widgets/toggle-select/toggle-select.php:538
+msgid "Normal"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:368
+#: core/integrations/multistep-form-controls.php:607
+#: widgets/credit-card/credit-card.php:392
+#: widgets/like-dislike/like-dislike.php:200
+#: widgets/signature/signature.php:439
+#: widgets/simple-repeater/simple-repeater.php:676
+#: widgets/simple-repeater/simple-repeater.php:1038
+#: widgets/simple-repeater/simple-repeater.php:1211
+#: widgets/toggle-select/toggle-select.php:605
+msgid "Hover"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:431
+#: core/integrations/multistep-form-controls.php:634
+#: widgets/image-select/image-select.php:197
+#: widgets/like-dislike/like-dislike.php:232
+#: widgets/toggle-select/toggle-select.php:175
+msgid "Active"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:495
+msgid "Icon:"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:508
+#: core/integrations/response-message-controls.php:106
+#: traits/quiz-control.php:515 widgets/toggle-select/toggle-select.php:226
+msgid "Icon Position"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:528
+#: core/integrations/response-message-controls.php:287
+#: widgets/simple-repeater/simple-repeater.php:926
+#: widgets/simple-repeater/simple-repeater.php:1098
+msgid "Icon Size"
+msgstr ""
+
+#: core/integrations/multistep-form-controls.php:556
+#: widgets/simple-repeater/simple-repeater.php:947
+#: widgets/simple-repeater/simple-repeater.php:1119
+msgid "Icon Spacing"
+msgstr ""
+
+#: core/integrations/multistep-section-settings.php:29
+msgid "Multistep"
+msgstr ""
+
+#: core/integrations/multistep-section-settings.php:39
+msgid "Multistep Tab Title"
+msgstr ""
+
+#: core/integrations/multistep-section-settings.php:51
+msgid "Multistep Tab Icon"
+msgstr ""
+
+#: core/integrations/payment/paypal.php:143
+#: core/integrations/payment/stripe.php:74
+msgid "Already has been payment received."
+msgstr ""
+
+#: core/integrations/payment/paypal.php:148
+#: core/integrations/payment/stripe.php:79
+msgid "Please enable payment method to form settings."
+msgstr ""
+
+#: core/integrations/payment/paypal.php:154
+msgid "Enter your valid paypal email to form settings"
+msgstr ""
+
+#: core/integrations/payment/paypal.php:164
+msgid "Please set amount"
+msgstr ""
+
+#: core/integrations/payment/stripe.php:49
+msgid "Invalid payment token."
+msgstr ""
+
+#: core/integrations/payment/stripe.php:88
+msgid "Please set amount filed in payment widget."
+msgstr ""
+
+#: core/integrations/payment/stripe.php:99
+msgid "Please set Stripe Secret Keys."
+msgstr ""
+
+#: core/integrations/payment/stripe.php:135
+msgid "Successfully payment received."
+msgstr ""
+
+#: core/integrations/response-message-controls.php:27
+msgid "Response Message"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:35
+msgid "Response Type"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:39
+msgid "Alert"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:40
+msgid "Pop Alert Box"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:48
+msgid "Edit Response Message"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:50
+#: traits/quiz-control.php:488 widgets/credit-card/credit-card.php:57
+#: widgets/image-select/image-select.php:64
+#: widgets/payment-method/payment-method.php:63
+#: widgets/signature/signature.php:65
+#: widgets/simple-repeater/simple-repeater.php:72
+#: widgets/simple-repeater/simple-repeater.php:204
+#: widgets/text-editor/text-editor.php:65
+#: widgets/toggle-select/toggle-select.php:62
+#: widgets/toggle-select/toggle-select.php:200
+msgid "Show"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:51
+#: traits/quiz-control.php:489 widgets/credit-card/credit-card.php:58
+#: widgets/image-select/image-select.php:65
+#: widgets/payment-method/payment-method.php:64
+#: widgets/signature/signature.php:66
+#: widgets/simple-repeater/simple-repeater.php:73
+#: widgets/simple-repeater/simple-repeater.php:205
+#: widgets/text-editor/text-editor.php:66
+#: widgets/toggle-select/toggle-select.php:63
+#: widgets/toggle-select/toggle-select.php:201
+msgid "Hide"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:86
+#: widgets/calculation/calculation.php:131
+#: widgets/color-picker/color-picker.php:59
+#: widgets/credit-card/credit-card.php:127
+#: widgets/image-select/image-select.php:259
+#: widgets/like-dislike/like-dislike.php:66
+#: widgets/map-location/map-location.php:86 widgets/mobile/mobile.php:58
+#: widgets/payment-method/payment-method.php:198
+#: widgets/signature/signature.php:144 widgets/text-editor/text-editor.php:113
+#: widgets/toggle-select/toggle-select.php:284
+msgid "Settings"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:93
+msgid "Message Position"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:97
+#: core/integrations/response-message-controls.php:110
+#: widgets/credit-card/credit-card.php:72
+#: widgets/image-select/image-select.php:79
+#: widgets/image-select/image-select.php:581
+#: widgets/payment-method/payment-method.php:78
+#: widgets/signature/signature.php:80
+#: widgets/simple-repeater/simple-repeater.php:87
+#: widgets/toggle-select/toggle-select.php:77
+msgid "Top"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:98
+#: widgets/image-select/image-select.php:582
+msgid "Bottom"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:111
+msgid "Side"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:123
+#: core/integrations/response-message-controls.php:169
+msgid "Content Alignment"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:216
+msgid "Keep Message for (seconds)"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:235
+msgid "Success Icon"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:250
+msgid "Error Icon"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:278
+msgid "Style"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:311
+msgid "Container Width"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:357
+msgid "Success Message Color"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:368
+msgid "Error Message Color"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:379
+msgid "Success Icon Color"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:389
+msgid "Error Icon Color"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:400
+msgid "Success Message Background"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:413
+msgid "Error Message Background"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:432
+#: widgets/color-picker/color-picker.php:193
+#: widgets/credit-card/credit-card.php:381
+#: widgets/credit-card/credit-card.php:425
+#: widgets/credit-card/credit-card.php:470
+#: widgets/image-select/image-select.php:350
+#: widgets/image-select/image-select.php:382
+#: widgets/image-select/image-select.php:617 widgets/next-step/next-step.php:78
+#: widgets/payment-method/payment-method.php:485
+#: widgets/payment-method/payment-method.php:519
+#: widgets/prev-step/prev-step.php:78
+#: widgets/progress-step/progress-step.php:70
+#: widgets/signature/signature.php:430 widgets/signature/signature.php:456
+#: widgets/simple-repeater/simple-repeater.php:664
+#: widgets/simple-repeater/simple-repeater.php:717
+#: widgets/simple-repeater/simple-repeater.php:771
+#: widgets/simple-repeater/simple-repeater.php:1028
+#: widgets/simple-repeater/simple-repeater.php:1068
+#: widgets/simple-repeater/simple-repeater.php:1201
+#: widgets/simple-repeater/simple-repeater.php:1241
+msgid "Border"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:459
+msgid "Container Padding"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:471
+msgid "Icon Margin"
+msgstr ""
+
+#: core/integrations/response-message-controls.php:484
+msgid "Container Margin"
+msgstr ""
+
+#: core/integrations/rest-api.php:30
+msgid "Your data submitted on api."
+msgstr ""
+
+#: core/integrations/sms/screen.php:5
+msgid "SMS Integrations (Twilio):"
+msgstr ""
+
+#: core/integrations/sms/screen.php:9
+msgid "SMS From:"
+msgstr ""
+
+#: core/integrations/sms/screen.php:11
+msgid "Enter here sms from number."
+msgstr ""
+
+#: core/integrations/sms/screen.php:14
+msgid "Twilio Account Sid:"
+msgstr ""
+
+#: core/integrations/sms/screen.php:16
+msgid "Enter here twilio account sid."
+msgstr ""
+
+#: core/integrations/sms/screen.php:19
+msgid "Twilio Auth Token:"
+msgstr ""
+
+#: core/integrations/sms/screen.php:21
+msgid "Enter here twilio auth token."
+msgstr ""
+
+#: core/integrations/sms/screen.php:28
+msgid "SMS User:"
+msgstr ""
+
+#: core/integrations/sms/screen.php:30
+msgid "Integrate SMS confirmation with this form."
+msgstr ""
+
+#: core/integrations/sms/screen.php:30
+msgid ""
+"The form must have at least one mobile number widget and it should be "
+"required."
+msgstr ""
+
+#: core/integrations/sms/screen.php:33
+msgid "User SMS Body:"
+msgstr ""
+
+#: core/integrations/sms/screen.php:35 core/integrations/sms/screen.php:48
+msgid "Enter here admin sms body text."
+msgstr ""
+
+#: core/integrations/sms/screen.php:42
+msgid "SMS Admin:"
+msgstr ""
+
+#: core/integrations/sms/screen.php:46
+msgid "Admin SMS Body:"
+msgstr ""
+
+#: core/integrations/sms/screen.php:51
+msgid "Admin SMS To:"
+msgstr ""
+
+#: core/integrations/sms/screen.php:53
+msgid "Enter here admin sms to mobile number."
+msgstr ""
+
+#: core/integrations/zapier.php:42
+msgid "Your data inserted on zapier."
+msgstr ""
+
+#: libs/plugin-updater.php:229
+msgid "There is a new version of %1$s available. %2$sView version %3$s details%4$s."
+msgstr ""
+
+#: libs/plugin-updater.php:237
+msgid ""
+"There is a new version of %1$s available. %2$sView version %3$s details%4$s "
+"or %5$supdate now%6$s."
+msgstr ""
+
+#: libs/plugin-updater.php:478
+msgid "You do not have permission to install plugin updates"
+msgstr ""
+
+#: libs/plugin-updater.php:478
+msgid "Error"
+msgstr ""
+
+#: traits/quiz-control.php:31 traits/quiz-control.php:52
+#: widgets/calculation/calculation.php:220
+#: widgets/color-picker/color-picker.php:84
+#: widgets/credit-card/credit-card.php:154
+#: widgets/like-dislike/like-dislike.php:91
+#: widgets/map-location/map-location.php:111 widgets/mobile/mobile.php:309
+#: widgets/simple-repeater/simple-repeater.php:215
+#: widgets/text-editor/text-editor.php:149
+msgid "Label"
+msgstr ""
+
+#: traits/quiz-control.php:43
+msgid "Enter name of the input"
+msgstr ""
+
+#: traits/quiz-control.php:44 widgets/credit-card/credit-card.php:107
+#: widgets/image-select/image-select.php:114
+#: widgets/payment-method/payment-method.php:113
+#: widgets/signature/signature.php:116
+#: widgets/simple-repeater/simple-repeater.php:135
+#: widgets/text-editor/text-editor.php:94
+#: widgets/toggle-select/toggle-select.php:112
+msgid ""
+"Name is must required. Enter name without space or any special character. "
+"use only underscore/ hyphen (_/-) for multiple word. Name must be different."
+msgstr ""
+
+#: traits/quiz-control.php:55 widgets/image-select/image-select.php:412
+msgid "Question"
+msgstr ""
+
+#: traits/quiz-control.php:56 traits/quiz-control.php:57
+msgid "Enter question"
+msgstr ""
+
+#: traits/quiz-control.php:64
+msgid "Point"
+msgstr ""
+
+#: traits/quiz-control.php:68 traits/quiz-control.php:69
+msgid "Enter point"
+msgstr ""
+
+#: traits/quiz-control.php:70
+msgid ""
+"Note: if the point and the negative point both are set at zero, we won't "
+"consider it a question."
+msgstr ""
+
+#: traits/quiz-control.php:78
+msgid "Add answer for the question?"
+msgstr ""
+
+#: traits/quiz-control.php:90
+msgid "Answer:"
+msgstr ""
+
+#: traits/quiz-control.php:93 traits/quiz-control.php:94
+msgid "Enter answer"
+msgstr ""
+
+#: traits/quiz-control.php:104 traits/quiz-control.php:121
+msgid "Add negative point?"
+msgstr ""
+
+#: traits/quiz-control.php:134
+msgid "Negative point"
+msgstr ""
+
+#: traits/quiz-control.php:139
+msgid "Enter negative point"
+msgstr ""
+
+#: traits/quiz-control.php:150 traits/quiz-control.php:221
+#: traits/quiz-control.php:344
+msgid "Placeholder"
+msgstr ""
+
+#: traits/quiz-control.php:153 traits/quiz-control.php:224
+msgid "Enter placeholder"
+msgstr ""
+
+#: traits/quiz-control.php:161 widgets/credit-card/credit-card.php:115
+#: widgets/image-select/image-select.php:246
+#: widgets/payment-method/payment-method.php:186
+#: widgets/signature/signature.php:123
+#: widgets/simple-repeater/simple-repeater.php:351
+#: widgets/text-editor/text-editor.php:101
+#: widgets/toggle-select/toggle-select.php:271
+msgid "Help Text : "
+msgstr ""
+
+#: traits/quiz-control.php:164
+msgid "Type your help text"
+msgstr ""
+
+#: traits/quiz-control.php:172 traits/quiz-control.php:193
+#: widgets/image-select/image-select.php:122
+#: widgets/payment-method/payment-method.php:121
+#: widgets/toggle-select/toggle-select.php:120
+msgid "Option Display : "
+msgstr ""
+
+#: traits/quiz-control.php:184
+msgid "Option display style."
+msgstr ""
+
+#: traits/quiz-control.php:203 widgets/image-select/image-select.php:133
+#: widgets/payment-method/payment-method.php:132
+msgid "Image select option display style."
+msgstr ""
+
+#: traits/quiz-control.php:212
+msgid "Data Type"
+msgstr ""
+
+#: traits/quiz-control.php:233
+msgid "Option Text Position : "
+msgstr ""
+
+#: traits/quiz-control.php:236 traits/quiz-control.php:520
+#: widgets/toggle-select/toggle-select.php:231
+msgid "After"
+msgstr ""
+
+#: traits/quiz-control.php:237 traits/quiz-control.php:519
+#: widgets/toggle-select/toggle-select.php:230
+msgid "Before"
+msgstr ""
+
+#: traits/quiz-control.php:240
+msgid "Where do you want to option?"
+msgstr ""
+
+#: traits/quiz-control.php:249
+msgid "Type : "
+msgstr ""
+
+#: traits/quiz-control.php:252
+msgid "Single Answer"
+msgstr ""
+
+#: traits/quiz-control.php:253
+msgid "Multiple Answer"
+msgstr ""
+
+#: traits/quiz-control.php:265 traits/quiz-control.php:267
+#: traits/quiz-control.php:355
+msgid "Option Text"
+msgstr ""
+
+#: traits/quiz-control.php:269 traits/quiz-control.php:359
+msgid "Select option text that will be show to user."
+msgstr ""
+
+#: traits/quiz-control.php:275 traits/quiz-control.php:277
+#: traits/quiz-control.php:364 traits/quiz-control.php:446
+#: traits/quiz-control.php:591 traits/quiz-control.php:593
+#: widgets/image-select/image-select.php:185
+#: widgets/image-select/image-select.php:187
+#: widgets/toggle-select/toggle-select.php:163
+msgid "Option Value"
+msgstr ""
+
+#: traits/quiz-control.php:284 traits/quiz-control.php:456
+#: traits/quiz-control.php:600 widgets/image-select/image-select.php:194
+#: widgets/toggle-select/toggle-select.php:172
+msgid "Option Status"
+msgstr ""
+
+#: traits/quiz-control.php:292 traits/quiz-control.php:382
+msgid "Select it default ? "
+msgstr ""
+
+#: traits/quiz-control.php:301 traits/quiz-control.php:391
+#: traits/quiz-control.php:474 traits/quiz-control.php:617
+msgid "Select as answer?"
+msgstr ""
+
+#: traits/quiz-control.php:313 traits/quiz-control.php:403
+msgid "Options"
+msgstr ""
+
+#: traits/quiz-control.php:334 traits/quiz-control.php:424
+#: traits/quiz-control.php:552 traits/quiz-control.php:647
+#: widgets/image-select/image-select.php:238
+#: widgets/toggle-select/toggle-select.php:263
+msgid "You can add/edit here your selector options."
+msgstr ""
+
+#: traits/quiz-control.php:347
+msgid "Enter here place holder"
+msgstr ""
+
+#: traits/quiz-control.php:357
+msgid "Input Text"
+msgstr ""
+
+#: traits/quiz-control.php:366
+msgid "Input Value"
+msgstr ""
+
+#: traits/quiz-control.php:368
+msgid "Select list value that will be store/mail to desired person."
+msgstr ""
+
+#: traits/quiz-control.php:374
+msgid "Status"
+msgstr ""
+
+#: traits/quiz-control.php:436 widgets/toggle-select/toggle-select.php:154
+msgid "Toggle for select"
+msgstr ""
+
+#: traits/quiz-control.php:438 widgets/toggle-select/toggle-select.php:156
+msgid "toggle"
+msgstr ""
+
+#: traits/quiz-control.php:439
+msgid "Enter toggle text"
+msgstr ""
+
+#: traits/quiz-control.php:448 widgets/toggle-select/toggle-select.php:165
+msgid "value"
+msgstr ""
+
+#: traits/quiz-control.php:465 traits/quiz-control.php:608
+#: widgets/image-select/image-select.php:208
+#: widgets/toggle-select/toggle-select.php:186
+msgid "Select it default ?"
+msgstr ""
+
+#: traits/quiz-control.php:486 widgets/toggle-select/toggle-select.php:198
+msgid "Add\t Icon"
+msgstr ""
+
+#: traits/quiz-control.php:499 widgets/next-step/next-step.php:102
+#: widgets/prev-step/prev-step.php:102
+#: widgets/progress-step/progress-step.php:94
+#: widgets/toggle-select/toggle-select.php:210
+#: widgets/toggle-select/toggle-select.php:755
+msgid "Icon"
+msgstr ""
+
+#: traits/quiz-control.php:531 widgets/toggle-select/toggle-select.php:242
+msgid "Toggle select Options"
+msgstr ""
+
+#: traits/quiz-control.php:565 widgets/calculation/calculation.php:330
+#: widgets/image-select/image-select.php:156
+#: widgets/image-select/image-select.php:570
+msgid "Title"
+msgstr ""
+
+#: traits/quiz-control.php:573 widgets/image-select/image-select.php:164
+msgid "Thumbnail"
+msgstr ""
+
+#: traits/quiz-control.php:584 widgets/image-select/image-select.php:175
+msgid "Preview (Optional)"
+msgstr ""
+
+#: traits/quiz-control.php:629 widgets/image-select/image-select.php:220
+msgid "Image select Options"
+msgstr ""
+
+#: utils/activate-required/activate-metform.php:204
+#: utils/activate-required/activate-metform.php:223
+msgid "MetForm Pro requires MetForm, which is currently NOT RUNNING."
+msgstr ""
+
+#: utils/activate-required/activate-metform.php:206
+msgid "Activate MetForm"
+msgstr ""
+
+#: utils/activate-required/activate-metform.php:225
+msgid "Install MetForm"
+msgstr ""
+
+#: utils/render.php:38
+msgid "Save Changes"
+msgstr ""
+
+#: widgets/calculation/calculation.php:19
+msgid "Calculation"
+msgstr ""
+
+#: widgets/calculation/calculation.php:47
+#: widgets/color-picker/color-picker.php:47
+#: widgets/credit-card/credit-card.php:47
+#: widgets/image-select/image-select.php:48
+#: widgets/like-dislike/like-dislike.php:54
+#: widgets/map-location/map-location.php:64 widgets/mobile/mobile.php:46
+#: widgets/next-step/next-step.php:47
+#: widgets/payment-method/payment-method.php:53
+#: widgets/prev-step/prev-step.php:47
+#: widgets/progress-step/progress-step.php:42
+#: widgets/signature/signature.php:55
+#: widgets/simple-repeater/simple-repeater.php:62
+#: widgets/text-editor/text-editor.php:55
+#: widgets/toggle-select/toggle-select.php:47
+msgid "Content"
+msgstr ""
+
+#: widgets/calculation/calculation.php:57
+msgid "Prefix:"
+msgstr ""
+
+#: widgets/calculation/calculation.php:59
+msgid "You can use prefix before the calculation total."
+msgstr ""
+
+#: widgets/calculation/calculation.php:67
+msgid "Prefix Input Spacing"
+msgstr ""
+
+#: widgets/calculation/calculation.php:93
+msgid "Suffix:"
+msgstr ""
+
+#: widgets/calculation/calculation.php:95
+msgid "You can use suffix before the calculation total."
+msgstr ""
+
+#: widgets/calculation/calculation.php:103
+msgid "Suffix Input Spacing"
+msgstr ""
+
+#: widgets/calculation/calculation.php:141
+#: widgets/color-picker/color-picker.php:69
+#: widgets/image-select/image-select.php:269
+#: widgets/like-dislike/like-dislike.php:76
+#: widgets/map-location/map-location.php:96
+#: widgets/payment-method/payment-method.php:208
+#: widgets/signature/signature.php:154 widgets/text-editor/text-editor.php:222
+#: widgets/toggle-select/toggle-select.php:294
+msgid "Validation Type"
+msgstr ""
+
+#: widgets/calculation/calculation.php:150
+msgid "Expression with operators and inputs "
+msgstr ""
+
+#: widgets/calculation/calculation.php:153
+msgid "Ex: number_1 * number_2"
+msgstr ""
+
+#: widgets/calculation/calculation.php:154
+msgid ""
+"You have to make calculation logic by name of input fields. Use name of "
+"input field and make calculation logic by it."
+msgstr ""
+
+#: widgets/calculation/calculation.php:161
+msgid "Disable Fraction Digits"
+msgstr ""
+
+#: widgets/calculation/calculation.php:174
+msgid "Maximum Fraction Digits"
+msgstr ""
+
+#: widgets/calculation/calculation.php:188
+msgid "Minimum Fraction Digits"
+msgstr ""
+
+#: widgets/calculation/calculation.php:202
+msgid "Comma Enable"
+msgstr ""
+
+#: widgets/calculation/calculation.php:203
+msgid "Enable if you want comma in the calculation total (ex.10,000,000)"
+msgstr ""
+
+#: widgets/calculation/calculation.php:247
+#: widgets/credit-card/credit-card.php:310
+#: widgets/map-location/map-location.php:138 widgets/mobile/mobile.php:336
+msgid "Input"
+msgstr ""
+
+#: widgets/calculation/calculation.php:286
+#: widgets/color-picker/color-picker.php:213
+#: widgets/credit-card/credit-card.php:139
+#: widgets/image-select/image-select.php:872
+#: widgets/like-dislike/like-dislike.php:264
+#: widgets/map-location/map-location.php:162 widgets/mobile/mobile.php:348
+#: widgets/payment-method/payment-method.php:548
+#: widgets/signature/signature.php:508
+#: widgets/simple-repeater/simple-repeater.php:838
+#: widgets/text-editor/text-editor.php:209
+#: widgets/toggle-select/toggle-select.php:813
+msgid "Help Text"
+msgstr ""
+
+#: widgets/calculation/calculation.php:311
+msgid "WooCommerce Checkout"
+msgstr ""
+
+#: widgets/calculation/calculation.php:319
+#: widgets/calculation/calculation.php:321
+msgid "Enable"
+msgstr ""
+
+#: widgets/calculation/calculation.php:322
+#: widgets/image-select/image-select.php:198
+#: widgets/toggle-select/toggle-select.php:176
+msgid "Disable"
+msgstr ""
+
+#: widgets/calculation/calculation.php:332
+msgid "Item title"
+msgstr ""
+
+#: widgets/calculation/calculation.php:339
+msgid "Details"
+msgstr ""
+
+#: widgets/calculation/calculation.php:367
+#: widgets/color-picker/color-picker.php:250
+#: widgets/image-select/image-select.php:943
+#: widgets/like-dislike/like-dislike.php:289
+#: widgets/map-location/map-location.php:194 widgets/mobile/mobile.php:382
+#: widgets/payment-method/payment-method.php:632
+#: widgets/signature/signature.php:542 widgets/text-editor/text-editor.php:251
+#: widgets/toggle-select/toggle-select.php:875
+msgid "This field is required."
+msgstr ""
+
+#: widgets/color-picker/color-picker.php:19
+msgid "Color picker"
+msgstr ""
+
+#: widgets/color-picker/color-picker.php:111
+msgid "Picker"
+msgstr ""
+
+#: widgets/color-picker/color-picker.php:119
+#: widgets/credit-card/credit-card.php:178
+#: widgets/image-select/image-select.php:774
+#: widgets/payment-method/payment-method.php:248
+#: widgets/payment-method/payment-method.php:451
+#: widgets/signature/signature.php:192
+#: widgets/simple-repeater/simple-repeater.php:466
+msgid "Width"
+msgstr ""
+
+#: widgets/color-picker/color-picker.php:141
+#: widgets/image-select/image-select.php:797
+msgid "Height"
+msgstr ""
+
+#: widgets/color-picker/color-picker.php:202
+#: widgets/credit-card/credit-card.php:530
+#: widgets/image-select/image-select.php:329
+#: widgets/image-select/image-select.php:506
+#: widgets/image-select/image-select.php:636
+#: widgets/payment-method/payment-method.php:336
+#: widgets/signature/signature.php:280 widgets/signature/signature.php:389
+#: widgets/simple-repeater/simple-repeater.php:827
+#: widgets/toggle-select/toggle-select.php:406
+msgid "Box Shadow"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:20
+msgid "Credit Card"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:55
+#: widgets/image-select/image-select.php:62
+#: widgets/payment-method/payment-method.php:61
+#: widgets/signature/signature.php:63
+#: widgets/simple-repeater/simple-repeater.php:70
+#: widgets/text-editor/text-editor.php:63
+#: widgets/toggle-select/toggle-select.php:60
+msgid "Show Label"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:61
+#: widgets/image-select/image-select.php:68
+#: widgets/payment-method/payment-method.php:67
+#: widgets/signature/signature.php:69
+#: widgets/simple-repeater/simple-repeater.php:76
+#: widgets/toggle-select/toggle-select.php:66
+msgid "for adding label on input turn it on. Don't want to use label? turn it off."
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:68
+#: widgets/image-select/image-select.php:75
+#: widgets/payment-method/payment-method.php:74
+#: widgets/signature/signature.php:76
+#: widgets/simple-repeater/simple-repeater.php:83
+#: widgets/toggle-select/toggle-select.php:73
+msgid "Position"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:82
+#: widgets/image-select/image-select.php:89
+#: widgets/payment-method/payment-method.php:88
+#: widgets/signature/signature.php:90
+#: widgets/simple-repeater/simple-repeater.php:97
+#: widgets/toggle-select/toggle-select.php:87
+msgid ""
+"Select label position. where you want to see it. top of the input or left "
+"of the input."
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:90
+#: widgets/simple-repeater/simple-repeater.php:118
+msgid "Label : "
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:93
+#: widgets/image-select/image-select.php:100
+#: widgets/payment-method/payment-method.php:99
+#: widgets/signature/signature.php:101
+#: widgets/simple-repeater/simple-repeater.php:121
+#: widgets/toggle-select/toggle-select.php:98
+msgid "Enter here label of input"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:106
+#: widgets/image-select/image-select.php:113
+#: widgets/payment-method/payment-method.php:112
+#: widgets/signature/signature.php:115
+#: widgets/simple-repeater/simple-repeater.php:134
+#: widgets/toggle-select/toggle-select.php:111
+msgid "Enter here name of the input"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:118
+#: widgets/image-select/image-select.php:249
+#: widgets/payment-method/payment-method.php:189
+#: widgets/signature/signature.php:126
+#: widgets/simple-repeater/simple-repeater.php:354
+#: widgets/text-editor/text-editor.php:104
+#: widgets/toggle-select/toggle-select.php:274
+msgid "Type your help text here"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:265
+#: widgets/image-select/image-select.php:517
+#: widgets/payment-method/payment-method.php:348
+#: widgets/signature/signature.php:291
+#: widgets/simple-repeater/simple-repeater.php:438
+#: widgets/simple-repeater/simple-repeater.php:545
+#: widgets/toggle-select/toggle-select.php:417
+msgid "Required Indicator Color:"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:281
+#: widgets/image-select/image-select.php:535
+#: widgets/payment-method/payment-method.php:366
+#: widgets/signature/signature.php:310
+#: widgets/toggle-select/toggle-select.php:435
+msgid "Warning Text Color:"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:297
+#: widgets/image-select/image-select.php:554
+#: widgets/payment-method/payment-method.php:385
+#: widgets/signature/signature.php:329
+#: widgets/toggle-select/toggle-select.php:454
+msgid "Warning Text Typography"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:355
+#: widgets/credit-card/credit-card.php:399
+#: widgets/credit-card/credit-card.php:444
+#: widgets/simple-repeater/simple-repeater.php:629
+#: widgets/simple-repeater/simple-repeater.php:683
+#: widgets/simple-repeater/simple-repeater.php:737
+msgid "Input Color"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:371
+#: widgets/credit-card/credit-card.php:415
+#: widgets/credit-card/credit-card.php:460 widgets/signature/signature.php:420
+#: widgets/signature/signature.php:446
+#: widgets/simple-repeater/simple-repeater.php:654
+#: widgets/simple-repeater/simple-repeater.php:706
+#: widgets/simple-repeater/simple-repeater.php:760
+msgid "Background"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:437
+#: widgets/simple-repeater/simple-repeater.php:730
+msgid "Focus"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:540
+#: widgets/map-location/map-location.php:150
+msgid "Place Holder"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:560
+msgid "Please enter a valid credit card number."
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:564
+msgid "Card holder name is required."
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:568
+#: widgets/credit-card/credit-card.php:572
+msgid "Valid card expiration date is required."
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:579
+msgid "Card security code is required."
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:603
+msgid "Card Number"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:624
+msgid "Card Holder Name"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:647
+msgid "MM"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:658
+msgid "YY"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:684
+msgid "Expiration Date"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:694
+msgid "CVV"
+msgstr ""
+
+#: widgets/credit-card/credit-card.php:712
+msgid "Security Code / CVV"
+msgstr ""
+
+#: widgets/image-select/image-select.php:20
+msgid "Image select"
+msgstr ""
+
+#: widgets/image-select/image-select.php:97 widgets/signature/signature.php:98
+#: widgets/toggle-select/toggle-select.php:95
+msgid "Input Label : "
+msgstr ""
+
+#: widgets/image-select/image-select.php:140
+#: widgets/toggle-select/toggle-select.php:138
+msgid "Select Type : "
+msgstr ""
+
+#: widgets/image-select/image-select.php:143
+#: widgets/toggle-select/toggle-select.php:142
+msgid "Single Select"
+msgstr ""
+
+#: widgets/image-select/image-select.php:144
+#: widgets/toggle-select/toggle-select.php:143
+msgid "Multi Select"
+msgstr ""
+
+#: widgets/image-select/image-select.php:189
+#: widgets/toggle-select/toggle-select.php:167
+msgid "Select option value that will be store/mail to desired person."
+msgstr ""
+
+#: widgets/image-select/image-select.php:202
+#: widgets/toggle-select/toggle-select.php:180
+msgid ""
+"Want to make a option? which user can see the option but can't select it. "
+"make it disable."
+msgstr ""
+
+#: widgets/image-select/image-select.php:286
+msgid "Item"
+msgstr ""
+
+#: widgets/image-select/image-select.php:371
+#: widgets/image-select/image-select.php:686
+#: widgets/image-select/image-select.php:850
+#: widgets/payment-method/payment-method.php:508
+msgid "Selected"
+msgstr ""
+
+#: widgets/image-select/image-select.php:421
+#: widgets/payment-method/payment-method.php:225
+#: widgets/signature/signature.php:169
+#: widgets/toggle-select/toggle-select.php:312
+#: widgets/toggle-select/toggle-select.php:321
+msgid "Input Label"
+msgstr ""
+
+#: widgets/image-select/image-select.php:577
+msgid "Position:"
+msgstr ""
+
+#: widgets/image-select/image-select.php:720
+#: widgets/payment-method/payment-method.php:401
+msgid "Image"
+msgstr ""
+
+#: widgets/image-select/image-select.php:816
+msgid "Preview Border Color"
+msgstr ""
+
+#: widgets/like-dislike/like-dislike.php:26
+msgid "Like Dislike"
+msgstr ""
+
+#: widgets/like-dislike/like-dislike.php:121
+msgid "Like Dislike Icons"
+msgstr ""
+
+#: widgets/like-dislike/like-dislike.php:128
+msgid "Font Size (px)"
+msgstr ""
+
+#: widgets/like-dislike/like-dislike.php:140
+msgid "Spacing (px)"
+msgstr ""
+
+#: widgets/like-dislike/like-dislike.php:174
+#: widgets/like-dislike/like-dislike.php:206
+#: widgets/like-dislike/like-dislike.php:238
+msgid "Like Icon Color"
+msgstr ""
+
+#: widgets/like-dislike/like-dislike.php:185
+#: widgets/like-dislike/like-dislike.php:217
+#: widgets/like-dislike/like-dislike.php:249
+msgid "Dislike Icon Color"
+msgstr ""
+
+#: widgets/manifest.php:88
+msgid "Metform Pro"
+msgstr ""
+
+#: widgets/map-location/map-location.php:32
+msgid "Google Map Location"
+msgstr ""
+
+#: widgets/map-location/map-location.php:72
+msgid "Map API Notice"
+msgstr ""
+
+#: widgets/mobile/mobile.php:18
+msgid "Mobile"
+msgstr ""
+
+#: widgets/mobile/mobile.php:68
+msgid "Default Country"
+msgstr ""
+
+#: widgets/mobile/mobile.php:290
+msgid "Get Same Number Format?"
+msgstr ""
+
+#: widgets/mobile/mobile.php:296
+msgid "Do you want to get same format in the entry after submit? Make it \"Yes\"."
+msgstr ""
+
+#: widgets/mobile/mobile.php:410
+msgid "Search"
+msgstr ""
+
+#: widgets/next-step/next-step.php:19
+msgid "Next Step"
+msgstr ""
+
+#: widgets/next-step/next-step.php:63 widgets/prev-step/prev-step.php:63
+#: widgets/progress-step/progress-step.php:55
+#: widgets/simple-repeater/simple-repeater.php:891
+msgid "Button"
+msgstr ""
+
+#: widgets/next-step/next-step.php:90 widgets/prev-step/prev-step.php:90
+#: widgets/progress-step/progress-step.php:82
+msgid "Shadow"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:25
+msgid "Payment method"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:96
+msgid "Input Label:"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:139
+msgid "Payment methods"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:143
+#: widgets/payment-method/payment-method.php:157
+msgid "Paypal"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:144
+#: widgets/payment-method/payment-method.php:158
+msgid "Stripe"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:154
+msgid "Default payment method"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:167
+msgid "Integrate Field"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:175
+msgid "Field Name"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:177
+msgid "mf-sample"
+msgstr ""
+
+#: widgets/payment-method/payment-method.php:179
+msgid "Set amount field for payment."
+msgstr ""
+
+#: widgets/prev-step/prev-step.php:19
+msgid "Prev Step"
+msgstr ""
+
+#: widgets/progress-step/progress-step.php:14
+msgid "Progress Step"
+msgstr ""
+
+#: widgets/signature/signature.php:27
+msgid "Signature"
+msgstr ""
+
+#: widgets/signature/signature.php:345
+msgid "Signature Canvas"
+msgstr ""
+
+#: widgets/signature/signature.php:397
+msgid "Pen Color"
+msgstr ""
+
+#: widgets/signature/signature.php:467
+msgid "Refresh Icon"
+msgstr ""
+
+#: widgets/signature/signature.php:485
+#: widgets/toggle-select/toggle-select.php:763
+msgid "Font Size"
+msgstr ""
+
+#: widgets/signature/signature.php:496
+msgid "Spacing"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:34
+msgid "Simple repeater"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:105
+msgid "Layout"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:109
+msgid "Block"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:110
+msgid "Inline"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:141
+msgid "Use icon inside button ?"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:153
+msgid "Add button text"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:155
+msgid "Add"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:162
+msgid "Remove button text"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:171
+msgid "Add button icon"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:186
+msgid "Remove button icon"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:202
+msgid "Show label of repeater"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:213
+msgid "Repeater input label"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:226
+msgid "Input Type"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:230
+#: widgets/simple-repeater/simple-repeater.php:340
+msgid "Text"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:231
+msgid "Number"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:232
+msgid "Email"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:233
+msgid "Url"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:234
+msgid "Switch"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:235
+msgid "Range"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:236
+msgid "Checkbox"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:237
+msgid "Radio"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:238
+#: widgets/toggle-select/toggle-select.php:672
+msgid "Select"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:239
+msgid "Textarea"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:247
+msgid "Input Name"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:249
+msgid "Repeated input field name"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:257
+msgid "Min value"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:259
+msgid "Min value for range"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:270
+msgid "Max value"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:272
+msgid "Max value for range"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:283
+msgid "Increment step"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:285
+msgid "step"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:296
+msgid "Input Placeholder"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:298
+msgid "Repeated input field placeholder"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:309
+msgid "Input options"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:312
+msgid "Option 1|value-1"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:322
+msgid "Rules for options: "
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:324
+msgid ""
+"Enter here options for input. Use new line for different option.<br> Ex: "
+"<br>Option 1<br>Option 2<br> To specify value follow below "
+"example.<br>Option 1|value-1<br>Option 2|value-2"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:335
+msgid "Repeater Input List"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:367
+msgid "Repeater Label"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:458
+msgid "Field Label"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:562
+msgid "Field Input"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:598
+msgid "Input Spacing"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:908
+msgid "Delete Button:"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:1005
+#: widgets/simple-repeater/simple-repeater.php:1045
+#: widgets/simple-repeater/simple-repeater.php:1178
+#: widgets/simple-repeater/simple-repeater.php:1218
+msgid "Text Color"
+msgstr ""
+
+#: widgets/simple-repeater/simple-repeater.php:1080
+msgid "Add New Button:"
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:27
+msgid "Text Editor"
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:69
+msgid "for adding label on editor turn it on. Don't want to use label? turn it off."
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:76
+msgid "Editor Label : "
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:79
+msgid "Enter here label of editor"
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:93
+msgid "Enter here name of the editor"
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:125
+msgid "Editor Size"
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:129
+msgid "Small"
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:130
+msgid "Medium"
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:131
+msgid "Large"
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:136
+msgid "Select editor size.How look like editor you want to see."
+msgstr ""
+
+#: widgets/text-editor/text-editor.php:176
+msgid "Editor"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:20
+msgid "Toggle select"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:131
+msgid "Toggle select option display style."
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:157
+msgid "Enter here toggle text"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:470
+msgid "Toggle"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:527
+msgid "Make changes on select and normal"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:545
+#: widgets/toggle-select/toggle-select.php:612
+#: widgets/toggle-select/toggle-select.php:679
+msgid "Font Color"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:581
+msgid "Normal border style"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:648
+msgid "Hover border style"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:715
+msgid "Selected border style"
+msgstr ""
+
+#: widgets/toggle-select/toggle-select.php:783
+msgid "Vertical Align"
+msgstr ""
+
+#. Plugin Name of the plugin/theme
+msgid "MetForm Pro"
+msgstr ""
+
+#. Plugin URI of the plugin/theme
+msgid "http://products.wpmet.com/metform/"
+msgstr ""
+
+#. Description of the plugin/theme
+msgid "Most flexible and design friendly form builder for Elementor"
+msgstr ""
+
+#. Author of the plugin/theme
+msgid "Wpmet"
+msgstr ""
+
+#. Author URI of the plugin/theme
+msgid "https://wpmet.com"
+msgstr ""
