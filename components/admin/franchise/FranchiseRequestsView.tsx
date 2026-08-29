@@ -305,9 +305,8 @@ export default function FranchiseRequestsView({
           <Button
             size="sm"
             onClick={() => setNewCandidateOpen(true)}
-            className="h-9 text-xs font-bold gap-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white cursor-pointer shadow-xs"
+            className="h-9 text-xs font-bold rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white cursor-pointer shadow-xs"
           >
-            <Sparkles className="h-3.5 w-3.5" />
             <span>Novo Candidato</span>
           </Button>
 

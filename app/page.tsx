@@ -69,6 +69,22 @@ export default function HomePage() {
   }, [checkAuth])
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('acaidarose_admin_view') as AppViewId | null
+      if (savedView) {
+        setView(savedView)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && view) {
+      localStorage.setItem('acaidarose_admin_view', view)
+    }
+  }, [view])
+
+
+  useEffect(() => {
     if (user) {
       setAppMode('PDV')
       // Se for operador de loja (TENANT_ADMIN / CASHIER), força a loja ativa a ser a loja do usuário
