@@ -78,9 +78,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
 
   useEffect(() => {
     const config = getStoredTVMarqueeConfig(tenantId)
-    if (config.idleText === undefined) {
-      config.idleText = 'Açaí da Rose · O verdadeiro açaí artesanal da Amazônia'
-    }
     setMarqueeConfig(config)
     setStoreVideos(getStoreTVVideos(tenantId))
     setCurrentTVCall(getLastTVCall(tenantId))

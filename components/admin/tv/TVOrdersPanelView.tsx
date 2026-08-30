@@ -604,10 +604,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         const hasPromo = Boolean(marqueeConfig.promoText?.trim())
         const hasIdle = Boolean(marqueeConfig.idleText?.trim())
         const isPreparingEnabled = marqueeConfig.showPreparingOrders !== false
-        const hasRealPreparingOrders = preparingOrders.length > 0
+        const hasRealPreparingOrders = isPreparingEnabled && preparingOrders.length > 0
 
-        // Se o usuário não digitou texto e desativou a exibição de pedidos
-        if (!hasPromo && !hasIdle && !isPreparingEnabled) {
+        // Se o usuário não digitou texto e não há pedidos reais em preparo no salão
+        if (!hasPromo && !hasIdle && !hasRealPreparingOrders) {
           return null
         }
 
@@ -707,23 +707,15 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                           )}
                         </>
                       ) : (
-                        <>
-                          {hasIdle ? (
-                            <>
-                              <span>{idleMessage}</span>
-                              <span className="opacity-40">•</span>
-                              <span>{idleMessage}</span>
-                              <span className="opacity-40">•</span>
-                              <span>{idleMessage}</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-amber-300">⏳ Acompanhe seu pedido pelo painel</span>
-                              <span className="opacity-40">•</span>
-                              <span className="text-amber-300">⏳ Acompanhe seu pedido pelo painel</span>
-                            </>
-                          )}
-                        </>
+                        hasIdle && (
+                          <>
+                            <span>{idleMessage}</span>
+                            <span className="opacity-40">•</span>
+                            <span>{idleMessage}</span>
+                            <span className="opacity-40">•</span>
+                            <span>{idleMessage}</span>
+                          </>
+                        )
                       )}
                     </span>
                   ) : hasIdle ? (

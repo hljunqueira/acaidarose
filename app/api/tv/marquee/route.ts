@@ -12,7 +12,7 @@ export interface TVMarqueeConfig {
 
 const DEFAULT_CONFIG: TVMarqueeConfig = {
   promoText: '',
-  idleText: 'Açaí da Rose · O verdadeiro açaí artesanal da Amazônia',
+  idleText: '',
   showPreparingOrders: true,
   textColor: '#E9D5FF',
   fontFamily: 'sans',
