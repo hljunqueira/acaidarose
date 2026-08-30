@@ -15,7 +15,8 @@ import {
 } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
-import { Maximize, Minimize, Crown, Clock } from 'lucide-react'
+import { Maximize, Minimize, Clock } from 'lucide-react'
+import { CrownGoldIcon } from '@/components/ui/CrownGoldIcon'
 
 interface TVOrdersPanelViewProps {
   tenantId?: string
@@ -338,7 +339,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     }
   }
 
-  // Helper para renderizar a Coroa coroando diretamente a 1ª letra do nome do cliente
+  // Helper para renderizar a Coroa de Ouro 3D inclinada coroando diretamente a 1ª letra do nome
   const renderCrownName = (displayName: string) => {
     if (!displayName) return 'BALCÃO'
 
@@ -347,8 +348,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
     return (
       <span className="inline-flex items-baseline justify-center">
-        <span className="inline-flex flex-col items-center justify-end mr-0.5">
-          <Crown className="h-7 w-7 sm:h-9 sm:w-9 lg:h-11 lg:w-11 text-amber-500 fill-amber-400 drop-shadow-[0_2px_8px_rgba(245,158,11,0.8)] -rotate-12 -mb-2 sm:-mb-3.5 shrink-0 z-10 animate-pulse" />
+        <span className="relative inline-flex items-center justify-center mr-0.5">
+          {/* Coroa Real em Ouro Metálico 3D Inclinada */}
+          <span className="absolute -top-7 sm:-top-9 lg:-top-11 -left-2 sm:-left-3.5 -rotate-[15deg] shrink-0 z-20 pointer-events-none drop-shadow-[0_4px_12px_rgba(245,158,11,0.75)] animate-pulse">
+            <CrownGoldIcon className="h-9 w-9 sm:h-12 sm:w-12 lg:h-14 lg:w-14" />
+          </span>
           <span>{firstChar}</span>
         </span>
         <span>{rest}</span>
@@ -364,8 +368,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
     return (
       <span className="inline-flex items-baseline justify-center">
-        <span className="inline-flex flex-col items-center justify-end mr-0.5">
-          <Crown className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-amber-500 fill-amber-400 drop-shadow-xs -rotate-12 -mb-1 shrink-0 z-10" />
+        <span className="relative inline-flex items-center justify-center mr-0.5">
+          {/* Coroa Real em Ouro Metálico 3D Pequena Inclinada */}
+          <span className="absolute -top-4 sm:-top-5 -left-1.5 -rotate-[15deg] shrink-0 z-20 pointer-events-none drop-shadow-xs">
+            <CrownGoldIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+          </span>
           <span>{firstChar}</span>
         </span>
         <span>{rest}</span>
