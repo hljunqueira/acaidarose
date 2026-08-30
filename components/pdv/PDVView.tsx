@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { useCartStore } from '@/lib/stores/cartStore'
+import { useCartStore, computeItemLineTotal } from '@/lib/stores/cartStore'
+import { formatCurrency } from '@/lib/i18n/formatters'
 import StepIndicator from './StepIndicator'
 import ContainerSelector from './ContainerSelector'
 import BaseSelector from './BaseSelector'
@@ -47,6 +48,7 @@ export default function PDVView({
   const { items, draft, startDraft, resetDraft, toggleBase, toggleTopping, addDraftToCart, removeItem, clearCart, total } = useCartStore()
 
   const currentTotal = total()
+  const currentDraftTotal = draft?.container ? computeItemLineTotal(draft) : 0
 
   useEffect(() => {
     let alive = true
@@ -223,15 +225,32 @@ export default function PDVView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Coluna Esquerda: Montador / Wizard de Açaí */}
         <div className="lg:col-span-8 space-y-4">
-          <Card className="p-4 md:p-6 bg-white shadow-xs border border-purple-100 rounded-3xl">
+          <Card className="p-4 md:p-6 bg-white dark:bg-[#160228] shadow-xs border border-purple-100 dark:border-white/10 rounded-3xl">
             <StepIndicator current={step} onSelectStep={setStep} />
+
+            {/* Cabeçalho da Taça Sendo Montada com Preço em Tempo Real */}
+            {draft?.container && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 my-3 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-purple-700 text-white font-extrabold text-xs px-2.5 py-1 rounded-xl">
+                    {draft.container.name}
+                  </Badge>
+                  <span className="text-xs font-bold text-purple-900/70 dark:text-purple-200/70">
+                    Base: {formatCurrency(draft.container.precoBase)}
+                  </span>
+                </div>
+                <div className="text-xs sm:text-sm font-black text-purple-950 dark:text-white font-mono">
+                  Subtotal Taça: <span className="text-pink-600 dark:text-pink-400 font-extrabold">{formatCurrency(currentDraftTotal)}</span>
+                </div>
+              </div>
+            )}
 
             {loading ? (
               <div className="text-center py-16 text-muted-foreground text-xs font-bold">
                 A carregar cardápio oficial...
               </div>
             ) : (
-              <div className="min-h-[320px] pt-4">
+              <div className="min-h-[320px] pt-2">
                 {step === 1 && (
                   <ContainerSelector
                     containers={catalog.containers}
@@ -263,25 +282,25 @@ export default function PDVView({
               </div>
             )}
 
-            {/* Rodapé de Ações do Montador */}
+            {/* Rodapé de Ações do Montador com Soma Dinâmica */}
             {draft?.container && (
-              <div className="mt-6 pt-4 border-t border-purple-50 flex items-center justify-between">
+              <div className="mt-6 pt-4 border-t border-purple-50 dark:border-white/10 flex items-center justify-between">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={resetDraft}
-                  className="text-xs text-muted-foreground hover:text-red-600 font-bold"
+                  className="text-xs text-muted-foreground hover:text-red-600 font-bold cursor-pointer"
                 >
                   Reiniciar Açaí
                 </Button>
 
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   {step > 1 && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setStep(step - 1)}
-                      className="text-xs font-bold border-purple-200"
+                      className="text-xs font-bold border-purple-200 dark:border-white/15 cursor-pointer"
                     >
                       Voltar Etapa
                     </Button>
@@ -292,17 +311,19 @@ export default function PDVView({
                       size="sm"
                       onClick={() => setStep(step + 1)}
                       disabled={step === 2 && draft.bases.length === 0}
-                      className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-5 rounded-xl shadow-xs"
+                      className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-5 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                     >
-                      Avançar
+                      <span>Avançar</span>
+                      <span className="opacity-90 font-mono text-[11px]">({formatCurrency(currentDraftTotal)})</span>
                     </Button>
                   ) : (
                     <Button
                       size="sm"
                       onClick={handleAddCurrentToCart}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-5 rounded-xl shadow-md cursor-pointer"
+                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs px-5 rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
                     >
-                      Adicionar à Comanda
+                      <span>Adicionar à Comanda •</span>
+                      <span className="font-mono text-sm">{formatCurrency(currentDraftTotal)}</span>
                     </Button>
                   )}
                 </div>

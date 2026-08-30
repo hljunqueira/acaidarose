@@ -1,8 +1,7 @@
-'use client'
-
 import React, { useState } from 'react'
 import { ProductContainer, ProductTopping } from '@/types'
 import { formatCurrency } from '@/lib/i18n/formatters'
+import { getPremiumToppingPrice } from '@/lib/stores/cartStore'
 import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
@@ -29,20 +28,17 @@ export default function ToppingSelector({
   const [activeCategory, setActiveCategory] = useState('Todos')
 
   const isUnlimited = container.weightGrams >= 500
-  const frutaLimit = container.limiteFrutas || 999
-  const toppingLimit = container.limiteToppings || 999
+  const frutaLimit = container.limiteFrutas || (isUnlimited ? 999 : container.weightGrams === 250 ? 2 : 3)
+  const toppingLimit = container.limiteToppings || (isUnlimited ? 999 : 3)
 
-  const selectedFrutas = selectedToppings.filter((t) => t.category === 'Frutas')
-  const selectedToppingsList = selectedToppings.filter((t) => t.category === 'Toppings' || t.category === 'Cereais' || t.category === 'Doces')
-  const selectedAdicionais = selectedToppings.filter((t) => t.category === 'Adicionais' || t.isSpecialAddon)
+  const selectedFrutas = selectedToppings.filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f)))
+  const selectedAdicionais = selectedToppings.filter((t) => t.category === 'Adicionais' || t.isSpecialAddon || t.isPremium || (t.precoExtra && t.precoExtra > 0))
+  const selectedToppingsList = selectedToppings.filter((t) => !selectedFrutas.includes(t) && !selectedAdicionais.includes(t))
 
   const isOver500g = container.weightGrams > 500
 
   const getAddonPrice = (t: ProductTopping) => {
-    if (t.isSpecialAddon) {
-      return isOver500g ? (t.priceTierHigh || 2) : (t.priceTierLow || 1)
-    }
-    return t.precoExtra || 0
+    return getPremiumToppingPrice(t.name, container.weightGrams, t.precoExtra)
   }
 
   const filtered = toppings.filter((t) => {

@@ -4,37 +4,88 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CartDraftItem, CartItem, ProductBase, ProductContainer, ProductTopping, OrderItemTopping } from '@/types'
 
+export function getPremiumToppingPrice(toppingName: string, weightGrams: number, explicitPrice?: number): number {
+  if (explicitPrice && explicitPrice > 0) return explicitPrice
+  const name = toppingName.toLowerCase()
+  const isLarge = weightGrams > 500
+  if (name.includes('pistache')) {
+    return isLarge ? 4.0 : 2.0
+  }
+  if (name.includes('nutella') || name.includes('leite em p') || name.includes('ninho') || name.includes('ferrero') || name.includes('kinder')) {
+    return isLarge ? 2.0 : 1.0
+  }
+  return isLarge ? 2.0 : 1.0
+}
+
 export function computeItemLineTotal(item: CartDraftItem | CartItem | null | undefined): number {
   if (!item?.container) return 0
-  const base = Number(item.container.precoBase) || 0
-  const isOver500g = (item.container.weightGrams || 0) > 500
+  const weight = Number(item.container.weightGrams) || 500
+  const basePrice = Number(item.container.precoBase) || 0
+  const isUnlimited = weight >= 500
 
-  let extra = 0
+  // 1. Cremes / Bases Extras (+€ 2,00 por creme além do limite)
+  const maxBases = item.container.limiteCremes || item.container.limiteBases || 1
+  const extraBasesCount = Math.max(0, (item.bases?.length || 0) - maxBases)
+  const extraBasesPrice = extraBasesCount * 2.00
+
+  // 2. Frutas & Toppings Tradicionais vs Premium
+  const maxFrutas = item.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
+  const maxToppings = item.container.limiteToppings || (isUnlimited ? 999 : 3)
+
+  let frutasCount = 0
+  let toppingsTradicionaisCount = 0
+  let premiumsPrice = 0
 
   for (const t of item.toppings || []) {
-    if (t.isSpecialAddon || t.category === 'Adicionais') {
-      const price = isOver500g ? (t.priceTierHigh || 2.00) : (t.priceTierLow || 1.00)
-      extra += Number(price) || 0
-    } else if (t.isPremium && t.precoExtra) {
-      extra += Number(t.precoExtra) || 0
+    const isSpecial = t.isSpecialAddon || t.category === 'Adicionais' || t.isPremium || (t.precoExtra && t.precoExtra > 0)
+    const isFruta = t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f))
+
+    if (isSpecial) {
+      premiumsPrice += getPremiumToppingPrice(t.name, weight, t.precoExtra)
+    } else if (isFruta) {
+      frutasCount++
+    } else {
+      toppingsTradicionaisCount++
     }
   }
 
-  return +(base + extra).toFixed(2)
+  const extraFrutasCount = isUnlimited ? 0 : Math.max(0, frutasCount - maxFrutas)
+  const extraFrutasPrice = extraFrutasCount * 0.50
+
+  const extraToppingsCount = isUnlimited ? 0 : Math.max(0, toppingsTradicionaisCount - maxToppings)
+  const extraToppingsPrice = extraToppingsCount * 0.50
+
+  return +(basePrice + extraBasesPrice + extraFrutasPrice + extraToppingsPrice + premiumsPrice).toFixed(2)
 }
 
 export function computeToppingBreakdown(item: CartDraftItem | CartItem): OrderItemTopping[] {
-  const isOver500g = (item?.container?.weightGrams || 0) > 500
+  const weight = Number(item?.container?.weightGrams) || 500
+  const isUnlimited = weight >= 500
+
+  const maxFrutas = item.container?.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
+  const maxToppings = item.container?.limiteToppings || (isUnlimited ? 999 : 3)
+
+  let frutasVistas = 0
+  let toppingsVistos = 0
 
   return (item?.toppings || []).map((t) => {
-    if (t.isSpecialAddon || t.category === 'Adicionais') {
-      const price = isOver500g ? (t.priceTierHigh || 2.00) : (t.priceTierLow || 1.00)
-      return { ...t, isPaid: true, precoCobrado: Number(price) || 0 }
+    const isSpecial = t.isSpecialAddon || t.category === 'Adicionais' || t.isPremium || (t.precoExtra && t.precoExtra > 0)
+    const isFruta = t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f))
+
+    if (isSpecial) {
+      const price = getPremiumToppingPrice(t.name, weight, t.precoExtra)
+      return { ...t, isPaid: true, precoCobrado: price }
     }
-    if (t.isPremium && t.precoExtra) {
-      return { ...t, isPaid: true, precoCobrado: Number(t.precoExtra) || 0 }
+
+    if (isFruta) {
+      frutasVistas++
+      const isExtra = !isUnlimited && frutasVistas > maxFrutas
+      return { ...t, isPaid: isExtra, precoCobrado: isExtra ? 0.50 : 0 }
     }
-    return { ...t, isPaid: false, precoCobrado: 0 }
+
+    toppingsVistos++
+    const isExtra = !isUnlimited && toppingsVistos > maxToppings
+    return { ...t, isPaid: isExtra, precoCobrado: isExtra ? 0.50 : 0 }
   })
 }
 
