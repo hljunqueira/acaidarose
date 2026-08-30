@@ -3,10 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useAuthStore } from '@/lib/stores/authStore'
-import { broadcastTVCall } from '@/lib/utils/tvBroadcast'
+import { broadcastTVCall, broadcastTVMarquee, getCustomTVMarquee } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order, OrderStatus } from '@/types'
+import { Megaphone, Save, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TVOrdersControlViewProps {
@@ -18,6 +20,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(false)
+  const [marqueeText, setMarqueeText] = useState('')
+  const [showMarqueeEditor, setShowMarqueeEditor] = useState(false)
 
   const storeSlug = tenantId === '22222222-2222-2222-2222-222222222222' 
     ? 'torres-novas' 
@@ -26,6 +30,21 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const storeTitle = tenantId === '22222222-2222-2222-2222-222222222222' 
     ? 'Filial Torres Novas' 
     : 'Matriz Aveiro'
+
+  useEffect(() => {
+    setMarqueeText(getCustomTVMarquee())
+  }, [])
+
+  const handleSaveMarquee = () => {
+    broadcastTVMarquee(marqueeText.trim())
+    toast.success('Mensagem do rodapé da TV atualizada com sucesso!')
+  }
+
+  const handleResetMarquee = () => {
+    setMarqueeText('')
+    broadcastTVMarquee('')
+    toast.success('Rodapé restaurado para o modo automático (Últimos Pedidos Finalizados)!')
+  }
 
   const fetchLiveOrders = useCallback(async () => {
     try {
@@ -63,65 +82,62 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       )
       const statusLabel = status === 'READY' ? 'Pronto para Retirar' : status === 'COMPLETED' || status === 'PAID' ? 'Entregue & Finalizado' : 'Em Preparação'
       toast.success(`Pedido movido para: ${statusLabel}`)
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao atualizar pedido')
+    } catch {
+      toast.error('Erro ao atualizar status do pedido')
     }
   }
 
-  // Ação de Chamar na TV & Mudar status para Pronto
-  const handleMarkAsReadyAndCall = async (order: Order) => {
-    const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
-    const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
-
-    // 1. Atualizar status no Banco de Dados
-    await updateStatus(order.id, 'READY')
-
-    // 2. Transmitir chamada de áudio e visual para a TV física
+  const handleMarkAsReadyAndCall = (order: Order) => {
+    const ticket = `#${String(order.orderNumber || 1).padStart(3, '0')}`
+    
     broadcastTVCall({
-      ticket: ticketNum,
-      customerName: clientName,
+      ticket,
+      customerName: order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão'),
       status: 'READY',
     })
 
     if (audioEnabled) {
-      announceTVCall(ticketNum, clientName)
+      announceTVCall(ticket, order.customerName || '')
     }
 
-    toast.success(`Senha ${ticketNum} chamada na TV do Salão!`)
+    updateStatus(order.id, 'READY')
+    toast.success(`Senha ${ticket} chamada na TV!`)
   }
 
-  // Ação de Re-chamar senha já pronta
   const handleReCall = (order: Order) => {
-    const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
-    const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
-
+    const ticket = `#${String(order.orderNumber || 1).padStart(3, '0')}`
     broadcastTVCall({
-      ticket: ticketNum,
-      customerName: clientName,
+      ticket,
+      customerName: order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão'),
       status: 'READY',
     })
 
     if (audioEnabled) {
-      announceTVCall(ticketNum, clientName)
+      announceTVCall(ticket, order.customerName || '')
     }
 
-    toast.success(`Senha ${ticketNum} re-chamada na TV do Salão!`)
+    toast.info(`Senha ${ticket} re-chamada na TV!`)
   }
 
-  const handleDeliver = async (order: Order) => {
-    const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
-    await updateStatus(order.id, 'COMPLETED')
-    toast.success(`Pedido ${ticketNum} entregue com sucesso!`)
+  const handleDeliver = (order: Order) => {
+    updateStatus(order.id, 'COMPLETED')
   }
 
-  const preparingOrders = orders.filter((o) => o.status === 'PREPARING' || o.status === 'NEW')
+  const preparingOrders = orders.filter(
+    (o) =>
+      (o.status as string) === 'PREPARING' ||
+      (o.status as string) === 'NEW' ||
+      (o.status as string) === 'OPEN' ||
+      (o.status as string) === 'WAITING_PAYMENT' ||
+      (o.status as string) === 'AWAITING_PAYMENT'
+  )
   const readyOrders = orders.filter((o) => o.status === 'READY')
 
   return (
     <div className="bg-white dark:bg-[#0c0114] text-purple-950 dark:text-white rounded-3xl p-6 border border-purple-100 dark:border-purple-900/40 shadow-xl space-y-6">
       
-      {/* Top Header Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-purple-100 dark:border-white/10">
+      {/* Header com Ações */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-purple-100 dark:border-white/10">
         <div>
           <h1 className="text-lg font-black uppercase tracking-tight text-purple-900 dark:text-white">
             Painel de Controle da TV de Senhas
@@ -131,15 +147,26 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <Button
+            type="button"
+            onClick={() => setShowMarqueeEditor(!showMarqueeEditor)}
+            className={`h-9 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              showMarqueeEditor
+                ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md'
+                : 'bg-purple-100 dark:bg-white/10 hover:bg-purple-200 dark:hover:bg-white/15 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10'
+            }`}
+          >
+            <Megaphone className="h-3.5 w-3.5 mr-1.5" />
+            <span>Editar Marquee TV</span>
+          </Button>
+
           <Button
             type="button"
             onClick={() => {
               const next = !audioEnabled
               setAudioEnabled(next)
-              if (next) {
-                announceTVCall('Teste', 'Açaí da Rose')
-              }
+              if (next) announceTVCall('Teste', 'Açaí da Rose')
             }}
             className={`h-9 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               audioEnabled
@@ -161,6 +188,34 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           </Button>
         </div>
       </div>
+
+      {/* Caixa de Edição do Marquee */}
+      {showMarqueeEditor && (
+        <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
+              <Megaphone className="h-4 w-4 text-pink-600" />
+              <span>Configurar Mensagem do Rodapé (Marquee)</span>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <Input
+              value={marqueeText}
+              onChange={(e) => setMarqueeText(e.target.value)}
+              placeholder="Ex: PROMOÇÃO: Açaí 500ml com 3 acompanhamentos..."
+              className="h-10 text-xs bg-white dark:bg-[#160228] border-purple-200 dark:border-white/20 text-foreground font-medium"
+            />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button onClick={handleSaveMarquee} className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer">
+                <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
+              </Button>
+              <Button variant="outline" onClick={handleResetMarquee} className="h-10 px-3 border-purple-200 dark:border-white/15 text-xs font-bold rounded-xl cursor-pointer">
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="py-12 text-center text-xs text-purple-600 dark:text-purple-300 font-bold">

@@ -209,14 +209,14 @@ export default function OrderItemsModal({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            {onCallTV && (
+            {onCallTV && (order.status === 'PREPARING' || order.status === 'READY') && (
               <Button
                 type="button"
                 size="sm"
                 onClick={() => onCallTV(order)}
                 className="h-8 px-3 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
-                <span>Chamar Smart TV</span>
+                <span>{order.status === 'READY' ? 'Re-chamar TV' : 'Chamar Smart TV'}</span>
               </Button>
             )}
 

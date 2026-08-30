@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { subscribeToTVCalls, getLastTVCall, TVCallEvent } from '@/lib/utils/tvBroadcast'
+import { subscribeToTVCalls, getLastTVCall, TVCallEvent, subscribeToTVMarquee, getCustomTVMarquee } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
 import { Maximize, Minimize, Crown, Clock } from 'lucide-react'
@@ -27,6 +27,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [currentTime, setCurrentTime] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [customMarquee, setCustomMarquee] = useState('')
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -119,6 +120,15 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return () => unsubscribe()
   }, [audioEnabled, fetchLiveOrders])
 
+  // Ouvinte de mensagem customizada do Marquee em tempo real
+  useEffect(() => {
+    setCustomMarquee(getCustomTVMarquee())
+    const unsubscribeMarquee = subscribeToTVMarquee((msg) => {
+      setCustomMarquee(msg)
+    })
+    return () => unsubscribeMarquee()
+  }, [])
+
   // 3. Rotação contínua de vídeos em loop
   const handleVideoEnded = () => {
     setCurrentVideoIndex((prev) => (prev + 1) % ACAI_VIDEOS.length)
@@ -145,6 +155,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       (o.status as string) === 'WAITING_PAYMENT'
   )
   const readyOrders = orders.filter((o) => o.status === 'READY')
+  const completedOrders = orders.filter((o) => (o.status as string) === 'COMPLETED' || (o.status as string) === 'PAID')
 
   // Helper para exibir nome e mesa:
   // - Se tiver nome e mesa: "Henrique (Mesa 07)"
@@ -388,10 +399,78 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
       </main>
 
-      {/* 3. RODAPÉ INSTITUCIONAL */}
-      <footer className="pt-2 border-t border-white/15 flex items-center justify-between text-xs text-purple-200/80 font-bold">
-        <span>Acompanhe o seu pedido pelo número da senha</span>
-        <span>Aceda ao menu digital pelo QR Code na mesa</span>
+      {/* 3. RODAPÉ COM MARQUEE ANIMADO DINÂMICO (EDITÁVEL PELO STAFF OU FINALIZADOS) */}
+      <footer className="pt-2 border-t border-white/15 overflow-hidden">
+        <div className="flex items-center gap-3 bg-black/40 rounded-xl px-3 py-1.5 border border-white/10 text-xs text-white font-bold">
+          {/* Badge Fixa do Marquee */}
+          <div
+            className={`flex items-center gap-1.5 shrink-0 px-2.5 py-0.5 rounded-lg text-[11px] font-black uppercase tracking-wider ${
+              customMarquee
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full animate-pulse ${
+                customMarquee ? 'bg-amber-400' : 'bg-emerald-400'
+              }`}
+            />
+            <span>{customMarquee ? 'Comunicado da Loja' : 'Últimos Finalizados'}</span>
+          </div>
+
+          {/* Área Rolante Contínua (Marquee Ticker) */}
+          <div className="relative flex-1 overflow-hidden whitespace-nowrap">
+            <div className="inline-block animate-[marquee_25s_linear_infinite] whitespace-nowrap">
+              {customMarquee ? (
+                <span className="inline-flex items-center gap-3 mx-4 text-amber-100 text-sm font-black">
+                  <span>{customMarquee}</span>
+                  <span className="text-amber-400/40">★</span>
+                  <span>{customMarquee}</span>
+                </span>
+              ) : completedOrders.length > 0 ? (
+                completedOrders.slice(0, 10).map((o, idx) => (
+                  <span key={o.id || idx} className="inline-flex items-center gap-2 mx-4 text-purple-200">
+                    <span className="font-mono font-black text-amber-300 text-sm">
+                      #{String(o.orderNumber || 1).padStart(3, '0')}
+                    </span>
+                    <span className="text-white font-bold">
+                      {getDisplayName(o.customerName, o.tableNumber)}
+                    </span>
+                    <span className="text-white/30">•</span>
+                  </span>
+                ))
+              ) : calledHistory.length > 0 ? (
+                calledHistory.map((item, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-2 mx-4 text-purple-200">
+                    <span className="font-mono font-black text-amber-300 text-sm">{item.ticket}</span>
+                    <span className="text-white font-bold">{item.customerName || 'Balcão'}</span>
+                    <span className="text-white/30">•</span>
+                  </span>
+                ))
+              ) : (
+                <span className="inline-flex items-center gap-2 mx-4 text-purple-200">
+                  <span>🍇 Açaí da Rose · O Verdadeiro Açaí Artesanal da Amazônia</span>
+                  <span className="text-white/30">•</span>
+                  <span>Peça pelo QR Code na mesa ou no balcão de atendimento</span>
+                  <span className="text-white/30">•</span>
+                  <span>acaidarose.pt</span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Estilo CSS do Keyframes Marquee embutido para compatibilidade total em Smart TVs */}
+        <style jsx>{`
+          @keyframes marquee {
+            0% {
+              transform: translateX(100%);
+            }
+            100% {
+              transform: translateX(-100%);
+            }
+          }
+        `}</style>
       </footer>
     </div>
   )

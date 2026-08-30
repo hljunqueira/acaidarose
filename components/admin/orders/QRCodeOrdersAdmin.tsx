@@ -318,16 +318,24 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     }
   }
 
-  // Transmissão de chamada de senha em tempo real para o Painel TV
-  const handleCallTicketOnTV = (order: Order) => {
-    const ticketNum = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`
+  // Transmissão de chamada de senha em tempo real para o Painel TV e avanço para READY (Pronto)
+  const handleCallTicketOnTV = async (order: Order) => {
+    const formattedNum = String(order.orderNumber || 1).padStart(3, '0')
+    const ticketNum = `#${formattedNum}`
     const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+
     broadcastTVCall({
       ticket: ticketNum,
       customerName: clientName,
-      status: order.status,
+      status: 'READY',
     })
-    toast.success(`Senha ${ticketNum} (${clientName}) chamada no Painel TV!`)
+
+    if (order.status === 'PREPARING') {
+      await updateOrderStatus(order.id, 'READY')
+      toast.success(`Senha ${ticketNum} (${clientName}) chamada na TV e movida para Pronto!`)
+    } else {
+      toast.success(`Senha ${ticketNum} (${clientName}) re-chamada no Painel TV!`)
+    }
   }
 
   // --- Handlers de Drag and Drop (Cards e Scroll com Mouse) ---
@@ -761,18 +769,21 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                               <span>Ver Itens</span>
                             </Button>
 
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleCallTicketOnTV(order)
-                              }}
-                              className="h-7 px-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[10.5px] font-black cursor-pointer shrink-0"
-                              title="Chamar senha na Smart TV"
-                            >
-                              <span>Chamar TV</span>
-                            </Button>
+                            {/* Botão Chamar TV: Exibido em PREPARING e READY (mas não em Pendente/NEW ou Cancelado) */}
+                            {(order.status === 'PREPARING' || order.status === 'READY') && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCallTicketOnTV(order)
+                                }}
+                                className="h-7 px-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[10.5px] font-black cursor-pointer shrink-0"
+                                title="Chamar senha na Smart TV e marcar como Pronto"
+                              >
+                                <span>{order.status === 'READY' ? 'Re-chamar' : 'Chamar TV'}</span>
+                              </Button>
+                            )}
 
                             {order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && (
                               <Button
