@@ -266,19 +266,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return 'BALCÃO'
   }
 
-  // Determina se o pedido deve exibir a Coroa Dourada (pedidos feitos pelo cliente via autoatendimento QR Code no telemóvel)
+  // Determina se o pedido deve exibir a Coroa Dourada
   const isCrownOrder = (order: any) => {
-    if (!order) return false
-    if (order.isQRCode === false || order.is_qr_code === false || order.channel === 'POS') return false
-    
-    // Flag explícita
-    if (order.isQRCode === true || order.is_qr_code === true || order.channel === 'QR_CODE') return true
-    
-    // Operador de autoatendimento ou QR
-    const cName = String(order.cashierName || order.cashier_name || '').toLowerCase()
-    if (cName.includes('qr') || cName.includes('autoatendimento')) return true
-
-    return false
+    if (!order) return true
+    return true // Sempre exibe a coroa dourada real para dar destaque VIP a todos os pedidos de clientes e mesas
   }
 
   // Determina se o último chamado já foi finalizado/entregue
@@ -302,7 +293,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         ticket: lastCalled.ticket,
         customerName: lastCalled.customerName,
         tableNumber: lastCalled.tableNumber,
-        isQRCode: lastCalled.isQRCode,
+        isQRCode: true,
       }
     : readyOrders.length > 0
     ? {
@@ -310,7 +301,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         customerName: readyOrders[0].customerName,
         tableNumber: readyOrders[0].tableNumber,
         orderNumber: readyOrders[0].orderNumber,
-        isQRCode: isCrownOrder(readyOrders[0]),
+        isQRCode: true,
       }
     : null
 
@@ -325,7 +316,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       ticket: `#${String(o.orderNumber || 1).padStart(3, '0')}`,
       customerName: o.customerName,
       tableNumber: o.tableNumber,
-      isQRCode: isCrownOrder(o),
+      isQRCode: true,
     }))
 
   // Histórico de chamadas para preenchimento
@@ -335,7 +326,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       ticket: h.ticket,
       customerName: h.customerName,
       tableNumber: h.tableNumber,
-      isQRCode: h.isQRCode,
+      isQRCode: true,
     }))
 
   // Itens em preparação para a esteira horizontal (apenas pedidos com status ativo de preparação)
@@ -348,17 +339,16 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   }
 
   // Helper para renderizar a Coroa coroando diretamente a 1ª letra do nome do cliente
-  const renderCrownName = (displayName: string, isQR: boolean) => {
+  const renderCrownName = (displayName: string) => {
     if (!displayName) return 'BALCÃO'
-    if (!isQR) return <span>{displayName}</span>
 
     const firstChar = displayName.charAt(0)
     const rest = displayName.slice(1)
 
     return (
-      <span className="inline-flex items-center">
-        <span className="relative inline-flex items-center justify-center">
-          <Crown className="absolute -top-6 sm:-top-8 lg:-top-9 left-1/2 -translate-x-1/2 h-7 w-7 sm:h-9 sm:w-9 lg:h-10 lg:w-10 text-amber-500 fill-amber-400 drop-shadow-[0_2px_8px_rgba(245,158,11,0.7)] -rotate-12 shrink-0 pointer-events-none" />
+      <span className="inline-flex items-baseline justify-center">
+        <span className="inline-flex flex-col items-center justify-end mr-0.5">
+          <Crown className="h-7 w-7 sm:h-9 sm:w-9 lg:h-11 lg:w-11 text-amber-500 fill-amber-400 drop-shadow-[0_2px_8px_rgba(245,158,11,0.8)] -rotate-12 -mb-2 sm:-mb-3.5 shrink-0 z-10 animate-pulse" />
           <span>{firstChar}</span>
         </span>
         <span>{rest}</span>
@@ -366,17 +356,16 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     )
   }
 
-  const renderSmallCrownName = (displayName: string, isQR: boolean) => {
+  const renderSmallCrownName = (displayName: string) => {
     if (!displayName) return 'BALCÃO'
-    if (!isQR) return <span>{displayName}</span>
 
     const firstChar = displayName.charAt(0)
     const rest = displayName.slice(1)
 
     return (
-      <span className="inline-flex items-center">
-        <span className="relative inline-flex items-center justify-center">
-          <Crown className="absolute -top-3 sm:-top-3.5 left-1/2 -translate-x-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 fill-amber-400 drop-shadow-xs -rotate-12 shrink-0 pointer-events-none" />
+      <span className="inline-flex items-baseline justify-center">
+        <span className="inline-flex flex-col items-center justify-end mr-0.5">
+          <Crown className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-amber-500 fill-amber-400 drop-shadow-xs -rotate-12 -mb-1 shrink-0 z-10" />
           <span>{firstChar}</span>
         </span>
         <span>{rest}</span>
@@ -428,10 +417,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             {heroOrder ? (
               <div className="flex flex-col items-center justify-center space-y-2 animate-in fade-in zoom-in-95 duration-200 w-full">
                 
-                {/* 1º: Nome do Cliente com Coroa Coroando a 1ª Letra e Fonte Geométrica Nítida em Caixa Alta (Ex: 👑VALDAIR — MESA 12) */}
-                <div className="font-sans font-black text-4xl sm:text-5xl lg:text-6xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-2">
-                  <span className="truncate max-w-lg sm:max-w-xl">
-                    {renderCrownName(getDisplayName(heroOrder.customerName, heroOrder.tableNumber), Boolean(heroOrder.isQRCode))}
+                {/* 1º: Nome do Cliente com Coroa Dourada Coroando a 1ª Letra (Ex: 👑VALDAIR — MESA 12) */}
+                <div className="font-sans font-black text-4xl sm:text-5xl lg:text-6xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-3">
+                  <span className="max-w-full">
+                    {renderCrownName(getDisplayName(heroOrder.customerName, heroOrder.tableNumber))}
                   </span>
                 </div>
 
@@ -476,7 +465,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                       </div>
                       <div className="font-sans font-black text-sm sm:text-base lg:text-lg text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
                         <span className="truncate">
-                          {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber), isCrownOrder(order))}
+                          {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber))}
                         </span>
                       </div>
                     </div>
@@ -500,7 +489,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                             </div>
                             <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
                               <span className="truncate">
-                                {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber), isCrownOrder(order))}
+                                {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber))}
                               </span>
                             </div>
                           </>
