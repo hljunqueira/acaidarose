@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import TableCheckoutDetail from './TableCheckoutDetail'
-import QuickProductSearchDialog from './QuickProductSearchDialog'
-import CashierOperationsDialog from './CashierOperationsDialog'
 import PDVView from './PDVView'
 import { Store, ShoppingBag } from 'lucide-react'
 
@@ -39,10 +37,6 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
 
   // Mesa Inicial para Montador
   const [montadorTable, setMontadorTable] = useState<RestaurantTable | null>(null)
-
-  // Dialogs
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [cashierOpsOpen, setCashierOpsOpen] = useState(false)
 
   const fetchTables = useCallback(async () => {
     try {
@@ -251,26 +245,6 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             <ShoppingBag className="h-3.5 w-3.5" />
             <span>MONTADOR BALCÃO</span>
           </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSearchOpen(true)}
-            className="text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer rounded-xl h-9 shadow-xs"
-          >
-            Lista de Produtos
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCashierOpsOpen(true)}
-            className="text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer rounded-xl h-9 shadow-xs"
-          >
-            Troco & Sangria
-          </Button>
         </div>
       </div>
 
@@ -536,24 +510,6 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           </div>
         </div>
       )}
-
-      {/* Dialogs Auxiliares */}
-      <QuickProductSearchDialog
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        catalog={catalog}
-        onSelectProduct={() => {
-          setSearchOpen(false)
-          setActiveTab('BALCAO')
-        }}
-      />
-
-      <CashierOperationsDialog
-        open={cashierOpsOpen}
-        onOpenChange={setCashierOpsOpen}
-        tenantId={tenantId}
-        operatorName={currentUser?.name || 'Operador Caixa'}
-      />
     </div>
   )
 }
