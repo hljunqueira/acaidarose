@@ -460,8 +460,8 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         {/* ========================================================================= */}
         <section className="lg:col-span-7 flex flex-col justify-between h-full space-y-3.5">
           
-          {/* Caixa Branca Principal (Hero de Pedidos Prontos com Nome Gigante, Mesa Abaixo e Ticket) */}
-          <div className="flex-1 min-h-[230px] sm:min-h-[270px] lg:min-h-[300px] rounded-3xl bg-white border-2 border-white text-slate-900 py-5 px-6 flex flex-col items-center justify-center text-center shadow-2xl relative">
+          {/* Caixa Rosa Pastel Principal (Hero de Pedidos Prontos com Nome Gigante, Mesa Abaixo e Ticket) */}
+          <div className="flex-1 min-h-[230px] sm:min-h-[270px] lg:min-h-[300px] rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 py-5 px-6 flex flex-col items-center justify-center text-center shadow-2xl relative">
             {heroOrder ? (
               <div className="flex flex-col items-center justify-center space-y-1.5 animate-in fade-in zoom-in-95 duration-200 w-full">
                 
@@ -518,7 +518,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                     {preparingItems.map((order) => (
                       <div
                         key={order.id}
-                        className="min-w-[210px] sm:min-w-[240px] h-32 sm:h-38 lg:h-42 rounded-3xl bg-white border-2 border-white text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl shrink-0"
+                        className="min-w-[210px] sm:min-w-[240px] h-32 sm:h-38 lg:h-42 rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl shrink-0"
                       >
                         <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl text-[#180424] leading-none">
                           <span className="text-amber-500 text-lg">⏳</span>
@@ -537,7 +537,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                     {preparingItems.map((order) => (
                       <div
                         key={order.id}
-                        className="h-32 sm:h-38 lg:h-42 rounded-3xl bg-white border-2 border-white text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl transition-transform"
+                        className="h-32 sm:h-38 lg:h-42 rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl transition-transform"
                       >
                         <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl lg:text-5xl text-[#180424] leading-none">
                           <span className="text-amber-500 text-base sm:text-lg">⏳</span>
