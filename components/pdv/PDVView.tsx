@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { CatalogData, Order, PaymentMethodCode } from '@/types'
 import { RestaurantTable } from '@/types/tables'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { useCartStore, computeItemLineTotal } from '@/lib/stores/cartStore'
+import { useCartStore, computeItemLineTotal, getPremiumToppingPrice } from '@/lib/stores/cartStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import StepIndicator from './StepIndicator'
 import ContainerSelector from './ContainerSelector'
@@ -16,7 +16,7 @@ import ToppingSelector from './ToppingSelector'
 import CartSummary from './CartSummary'
 import PaymentModal from './PaymentModal'
 import OrderReceiptModal from './OrderReceiptModal'
-import { ShoppingBag, Store, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { ShoppingBag, Store, ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react'
 
 interface PDVViewProps {
   tenantId: string
@@ -49,6 +49,52 @@ export default function PDVView({
 
   const currentTotal = total()
   const currentDraftTotal = draft?.container ? computeItemLineTotal(draft) : 0
+
+  const draftBreakdown = useMemo(() => {
+    if (!draft?.container) return null
+    const weight = Number(draft.container.weightGrams) || 500
+    const isUnlimited = weight >= 500
+    const maxBases = draft.container.limiteCremes || draft.container.limiteBases || 1
+    const extraBases = Math.max(0, (draft.bases?.length || 0) - maxBases)
+    const extraBasesVal = extraBases * 2.0
+
+    const maxFrutas = draft.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
+    const maxToppings = draft.container.limiteToppings || (isUnlimited ? 999 : 3)
+
+    let frutasCount = 0
+    let toppingsCount = 0
+    let premiumsVal = 0
+
+    for (const t of draft.toppings || []) {
+      const isSpecial = t.isSpecialAddon || t.category === 'Adicionais' || t.isPremium || (t.precoExtra && t.precoExtra > 0)
+      const isFruta = t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f))
+
+      if (isSpecial) {
+        premiumsVal += getPremiumToppingPrice(t.name, weight, t.precoExtra)
+      } else if (isFruta) {
+        frutasCount++
+      } else {
+        toppingsCount++
+      }
+    }
+
+    const extraFrutas = isUnlimited ? 0 : Math.max(0, frutasCount - maxFrutas)
+    const extraFrutasVal = extraFrutas * 0.5
+    const extraToppings = isUnlimited ? 0 : Math.max(0, toppingsCount - maxToppings)
+    const extraToppingsVal = extraToppings * 0.5
+
+    return {
+      basePrice: draft.container.precoBase,
+      extraBases,
+      extraBasesVal,
+      extraFrutas,
+      extraFrutasVal,
+      extraToppings,
+      extraToppingsVal,
+      premiumsVal,
+      total: +(draft.container.precoBase + extraBasesVal + extraFrutasVal + extraToppingsVal + premiumsVal).toFixed(2),
+    }
+  }, [draft])
 
   useEffect(() => {
     let alive = true
@@ -230,18 +276,47 @@ export default function PDVView({
 
             {/* Cabeçalho da Taça Sendo Montada com Preço em Tempo Real */}
             {draft?.container && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 my-3 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-purple-700 text-white font-extrabold text-xs px-2.5 py-1 rounded-xl">
-                    {draft.container.name}
-                  </Badge>
-                  <span className="text-xs font-bold text-purple-900/70 dark:text-purple-200/70">
-                    Base: {formatCurrency(draft.container.precoBase)}
-                  </span>
+              <div className="space-y-2 py-3 px-4 my-3 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-purple-700 text-white font-extrabold text-xs px-2.5 py-1 rounded-xl">
+                      {draft.container.name}
+                    </Badge>
+                    <span className="text-xs font-bold text-purple-900/70 dark:text-purple-200/70">
+                      Base: {formatCurrency(draft.container.precoBase)}
+                    </span>
+                  </div>
+                  <div className="text-sm sm:text-base font-black text-purple-950 dark:text-white font-mono">
+                    Subtotal: <span className="text-pink-600 dark:text-pink-400 font-extrabold">{formatCurrency(currentDraftTotal)}</span>
+                  </div>
                 </div>
-                <div className="text-xs sm:text-sm font-black text-purple-950 dark:text-white font-mono">
-                  Subtotal Taça: <span className="text-pink-600 dark:text-pink-400 font-extrabold">{formatCurrency(currentDraftTotal)}</span>
-                </div>
+
+                {/* Tags de Extras Ativos na Taça */}
+                {draftBreakdown && (draftBreakdown.extraBases > 0 || draftBreakdown.extraFrutas > 0 || draftBreakdown.extraToppings > 0 || draftBreakdown.premiumsVal > 0) && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] font-black border-t border-purple-100/60 dark:border-white/10">
+                    <span className="text-muted-foreground text-[10px]">Adicionais somados:</span>
+                    {draftBreakdown.extraBases > 0 && (
+                      <span className="bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 px-2 py-0.5 rounded-md">
+                        +{draftBreakdown.extraBases}x Creme Extra (+{formatCurrency(draftBreakdown.extraBasesVal)})
+                      </span>
+                    )}
+                    {draftBreakdown.extraFrutas > 0 && (
+                      <span className="bg-pink-100 text-pink-900 dark:bg-pink-950/60 dark:text-pink-200 px-2 py-0.5 rounded-md">
+                        +{draftBreakdown.extraFrutas}x Fruta Extra (+{formatCurrency(draftBreakdown.extraFrutasVal)})
+                      </span>
+                    )}
+                    {draftBreakdown.extraToppings > 0 && (
+                      <span className="bg-fuchsia-100 text-fuchsia-900 dark:bg-fuchsia-950/60 dark:text-fuchsia-200 px-2 py-0.5 rounded-md">
+                        +{draftBreakdown.extraToppings}x Topping Extra (+{formatCurrency(draftBreakdown.extraToppingsVal)})
+                      </span>
+                    )}
+                    {draftBreakdown.premiumsVal > 0 && (
+                      <span className="bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-200 px-2 py-0.5 rounded-md">
+                        + Especiais/Premium (+{formatCurrency(draftBreakdown.premiumsVal)})
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

@@ -126,12 +126,8 @@ export const useCartStore = create<CartState>()(
           if (exists) {
             bases = s.draft.bases.filter((b) => b.id !== base.id)
           } else {
-            const max = s.draft.container.limiteCremes || s.draft.container.limiteBases || 1
-            if (s.draft.bases.length >= max) {
-              bases = [...s.draft.bases.slice(1), base]
-            } else {
-              bases = [...s.draft.bases, base]
-            }
+            // Permite adicionar mais de 1 creme, somando como creme adicional (+€ 2,00)
+            bases = [...s.draft.bases, base]
           }
           return { draft: { ...s.draft, bases } }
         }),
