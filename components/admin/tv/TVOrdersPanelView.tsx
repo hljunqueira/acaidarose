@@ -336,24 +336,24 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       onClick={handleUnlockAudio}
       className="min-h-screen w-full bg-[#180424] text-white p-3 sm:p-5 flex flex-col justify-between select-none overflow-hidden font-sans cursor-pointer"
     >
-      {/* 1. TOPO: Título PEDIDOS PRONTOS em Fonte Cursiva e Logotipo Oficial */}
-      <header className="relative w-full pb-2 border-b border-white/15">
+      {/* 1. TOPO: Logotipo Oficial da Loja Ampliado */}
+      <header className="relative w-full pb-3 border-b border-white/15">
         <div className="w-full flex items-center justify-between">
-          {/* Título Principal em Tipografia Cursiva Artesanal */}
-          <div className="flex items-center">
-            <h2 className="font-cursive text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-wide drop-shadow-sm leading-none">
+          {/* Título Principal PEDIDOS PRONTOS Centralizado no Lado Esquerdo */}
+          <div className="flex-1 flex items-center justify-start">
+            <h2 className="font-cursive text-5xl sm:text-6xl lg:text-7xl font-bold text-white tracking-wide drop-shadow-md leading-none">
               Pedidos Prontos
             </h2>
           </div>
 
-          {/* Logotipo e Nome da Loja */}
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Açaí da Rose" className="h-9 sm:h-11 w-auto object-contain" />
+          {/* Logotipo e Nome da Loja Ampliados */}
+          <div className="flex items-center gap-4">
+            <img src="/logo.png" alt="Açaí da Rose" className="h-14 sm:h-16 lg:h-20 w-auto object-contain drop-shadow-lg" />
             <div className="flex flex-col text-left">
-              <span className="font-cursive text-xl sm:text-2xl font-bold text-white leading-none">
+              <span className="font-cursive text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-none">
                 Açaí da Rose
               </span>
-              <span className="text-pink-400 font-bold text-xs sm:text-sm leading-tight">
+              <span className="text-pink-400 font-black text-sm sm:text-base lg:text-lg leading-tight mt-0.5">
                 {storeName}
               </span>
             </div>
@@ -401,9 +401,9 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             )}
           </div>
 
-          {/* Seção Inferior: Título "EM PREPARAÇÃO" Ampliado e Cards 2x Maiores com Rolagem */}
+          {/* Seção Inferior: Título "EM PREPARAÇÃO" Centralizado no Topo da Caixa e Cards 2x Maiores com Rolagem */}
           <div className="w-full flex flex-col justify-end">
-            <div className="flex items-center gap-3 mb-2.5 px-1">
+            <div className="flex items-center justify-center gap-3 mb-2.5 px-1 text-center">
               <span className="h-4 w-4 rounded-full bg-amber-400 animate-pulse shrink-0" />
               <h3 className="font-cursive text-3xl sm:text-4xl lg:text-5xl font-bold text-amber-400 leading-none">
                 Em Preparação
