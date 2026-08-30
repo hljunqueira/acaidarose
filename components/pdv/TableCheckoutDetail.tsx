@@ -417,8 +417,8 @@ export default function TableCheckoutDetail({
 
                         <div className="flex items-center gap-1.5">
                           {paid ? (
-                            <Badge className="bg-emerald-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0">
-                              ✓ Pago MB WAY
+                            <Badge className="bg-emerald-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-2xs">
+                              ✓ Pago {order.paymentMethod === 'CASH' ? 'Dinheiro' : order.paymentMethod === 'MULTIBANCO' ? 'Multibanco' : order.paymentMethod || 'Balcão'}
                             </Badge>
                           ) : (
                             <Badge className="bg-amber-500 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0">
@@ -555,7 +555,7 @@ export default function TableCheckoutDetail({
               <div className="flex justify-between text-purple-800/80 dark:text-purple-200/80">
                 <span>Status de Pagamento:</span>
                 <span className={`font-black ${isAllPaid ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}`}>
-                  {isAllPaid ? 'Quitado (MB WAY)' : 'Pendente no Caixa'}
+                  {isAllPaid ? '✓ 100% Pago no Balcão' : 'Pendente no Caixa'}
                 </span>
               </div>
             </div>

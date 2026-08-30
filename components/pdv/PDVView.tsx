@@ -134,7 +134,7 @@ export default function PDVView({
       const finalCustomerName = customer.name?.trim() || customerNameInput.trim() || (isTable ? `Cliente Mesa ${selectedTable?.number}` : 'Balcão')
       const tableNumber = isTable ? String(selectedTable?.number || '1') : 'Balcão'
 
-      // 1. Criar pedido oficial
+      // 1. Criar pedido oficial com status PREPARING e pagamento liquidado no balcão
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,28 +149,21 @@ export default function PDVView({
           channel: 'POS',
           isQRCode: false,
           cashierName: 'Operador de Caixa',
-          status: 'NEW',
+          status: 'PREPARING',
+          paymentStatus: 'PAID',
+          paidAt: new Date().toISOString(),
         }),
       })
 
       if (!res.ok) throw new Error('Falha ao registar comanda')
       const order = await res.json()
 
-      // 2. Se for mesa, sincronizar mesa
-      if (isTable && selectedTable) {
-        await fetch(`/api/tables/${selectedTable.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'CLOSE' }),
-        }).catch(() => {})
-      }
-
       setLastOrder(order)
       clearCart()
       setCustomerNameInput('')
       setPayOpen(false)
       setReceiptOpen(true)
-      toast.success('Comanda finalizada e enviada para a produção!')
+      toast.success('Pedido pago e enviado diretamente para a produção!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao finalizar')
     } finally {

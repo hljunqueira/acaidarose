@@ -43,6 +43,15 @@ export async function GET(request: NextRequest) {
         (o.cashier_name && (o.cashier_name.toLowerCase().includes('qr') || o.cashier_name.toLowerCase().includes('autoatendimento')))
       )
 
+      const isPaid = Boolean(
+        o.status === 'PAID' ||
+        o.status === 'PREPARING' ||
+        o.status === 'READY' ||
+        o.status === 'COMPLETED' ||
+        o.payment_status === 'PAID' ||
+        (!isQRCode && o.payment_method)
+      )
+
       return {
         id: o.id,
         tenantId: o.tenant_id,
@@ -55,8 +64,8 @@ export async function GET(request: NextRequest) {
         subtotal: Number(o.subtotal) || 0,
         total: Number(o.total) || 0,
         status: o.status,
-        paymentStatus: o.status === 'PAID' || o.status === 'PREPARING' || o.status === 'READY' ? 'PAID' : 'PENDING',
-        paymentMethod: o.payment_method,
+        paymentStatus: isPaid ? 'PAID' : 'PENDING',
+        paymentMethod: o.payment_method || 'MBWAY',
         tableNumber: o.table_number,
         isTableOrder: o.is_table_order !== false,
         notes: o.cancel_reason || '',
