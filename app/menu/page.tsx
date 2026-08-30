@@ -29,6 +29,19 @@ function MenuContent() {
   const rawLoja = searchParams.get('loja') || searchParams.get('tenantId') || searchParams.get('tenant') || '1'
   const paramNumero = searchParams.get('numero') || searchParams.get('mesa') || searchParams.get('table') || ''
 
+  // Sincronização explícita do tema escuro no documento HTML (para que Portais e Modais herdem o tema)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isCustomerDark) {
+        document.documentElement.classList.add('dark')
+        document.body.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+        document.body.classList.remove('dark')
+      }
+    }
+  }, [isCustomerDark])
+
   // Estado dinâmico da mesa ativa
   const [currentTableNum, setCurrentTableNum] = useState(paramNumero)
 
@@ -191,7 +204,7 @@ function MenuContent() {
       {/* 5. Modal Informativo de Detalhes (Em Modo Catálogo Vitrine) */}
       {infoModalProduct && (
         <Dialog open={Boolean(infoModalProduct)} onOpenChange={() => setInfoModalProduct(null)}>
-          <DialogContent className="bg-white text-slate-900 border border-purple-100 dark:bg-[#18022B] dark:text-white dark:border-white/15 rounded-3xl max-w-md p-6 shadow-2xl transition-colors duration-200">
+          <DialogContent className={`border rounded-3xl max-w-md p-6 shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#18022B] text-white border-white/15' : 'bg-white text-slate-900 border-purple-100'}`}>
             <DialogHeader>
               <DialogTitle className="text-xl font-black text-slate-900 dark:text-white">
                 {infoModalProduct.name}

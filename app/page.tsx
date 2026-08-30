@@ -57,7 +57,18 @@ export default function HomePage() {
   const { currentTenant, setCurrentTenant } = useFranchiseStore()
   const { isDark: isAdminDark } = useAdminTheme()
 
-  // Modo de visualização: 'LANDING' (site público) ou 'PDV' (área interna)
+  // Sincronização explícita do tema do admin no documento HTML (para modais e portais)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isAdminDark) {
+        document.documentElement.classList.add('dark')
+        document.body.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+        document.body.classList.remove('dark')
+      }
+    }
+  }, [isAdminDark])
   const [appMode, setAppMode] = useState<'LANDING' | 'PDV'>('LANDING')
 
   // Estados do PDV

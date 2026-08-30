@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 
 interface SwitchTableModalProps {
   open: boolean
@@ -20,6 +21,7 @@ export default function SwitchTableModal({
   tenantId,
   onTableSwitched,
 }: SwitchTableModalProps) {
+  const { isDark: isCustomerDark } = useCustomerTheme()
   const [selectedTable, setSelectedTable] = useState<number | null>(null)
   const [availableTables, setAvailableTables] = useState<number[]>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
   const [loading, setLoading] = useState(false)
@@ -81,7 +83,7 @@ export default function SwitchTableModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[92vw] sm:w-full max-w-md p-5 sm:p-6 bg-white text-slate-900 border border-purple-100 dark:bg-[#160228] dark:text-white dark:border-white/20 rounded-3xl shadow-2xl transition-colors duration-200">
+      <DialogContent className={`w-[92vw] sm:w-full max-w-md p-5 sm:p-6 rounded-3xl shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#160228] text-white border-white/20' : 'bg-white text-slate-900 border-purple-100'}`}>
         <DialogHeader className="text-left space-y-1">
           <DialogTitle className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
             Trocar de Mesa

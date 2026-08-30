@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { Plus, Minus, Trash2, CheckCircle2, ShoppingBag, Smartphone, CreditCard, Clock, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 
 interface CartItem {
   id: string
@@ -52,6 +53,7 @@ export default function CustomerCartSheet({
   tableNumber,
   qrConfig,
 }: CustomerCartSheetProps) {
+  const { isDark: isCustomerDark } = useCustomerTheme()
   const allowMbway = qrConfig?.allowMbwayPayment !== false
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
@@ -283,7 +285,7 @@ export default function CustomerCartSheet({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleCloseDialog()}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[92vh] overflow-hidden p-0 bg-white text-slate-900 border border-purple-100 dark:bg-[#160228] dark:text-white dark:border-white/20 rounded-3xl flex flex-col shadow-2xl transition-colors duration-200">
+      <DialogContent className={`w-[95vw] sm:w-full max-w-lg max-h-[92vh] overflow-hidden p-0 rounded-3xl flex flex-col shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#160228] text-white border-white/20' : 'bg-white text-slate-900 border-purple-100'}`}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-purple-100 dark:border-white/10 bg-purple-50/80 dark:bg-[#1e0333]/95 flex items-center justify-between">
           <div className="flex items-center gap-2.5">

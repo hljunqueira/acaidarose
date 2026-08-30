@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Check, Plus, Minus } from 'lucide-react'
+import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 
 interface CustomerProductDetailProps {
   container: ProductContainer | null
@@ -54,6 +55,7 @@ export default function CustomerProductDetail({
   onAddToCart,
   viewOnly = false,
 }: CustomerProductDetailProps) {
+  const { isDark: isCustomerDark } = useCustomerTheme()
   if (!container) return null
 
   const bases = catalog.bases || []
@@ -185,7 +187,7 @@ export default function CustomerProductDetail({
 
   return (
     <Dialog open={Boolean(container)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[90vh] overflow-hidden p-0 bg-white text-slate-900 border border-purple-100 dark:bg-[#150226] dark:text-white dark:border-white/20 rounded-3xl flex flex-col shadow-2xl transition-colors duration-200">
+      <DialogContent className={`w-[95vw] sm:w-full max-w-4xl max-h-[90vh] overflow-hidden p-0 rounded-3xl flex flex-col shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#150226] text-white border-white/20' : 'bg-white text-slate-900 border-purple-100'}`}>
         {/* Header */}
         <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-purple-100 dark:border-white/10 bg-purple-50 dark:bg-[#1e0333]/90 pr-14">
           <DialogTitle className="text-base font-black text-slate-900 dark:text-white">

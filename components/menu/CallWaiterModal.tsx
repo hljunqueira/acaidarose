@@ -12,6 +12,7 @@ import {
   Loader2,
   Printer
 } from 'lucide-react'
+import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 
 interface CallWaiterModalProps {
   open: boolean
@@ -45,6 +46,7 @@ export default function CallWaiterModal({
   tableLabel,
   tenantId,
 }: CallWaiterModalProps) {
+  const { isDark: isCustomerDark } = useCustomerTheme()
   const [callingId, setCallingId] = useState<string | null>(null)
   const [sentSuccess, setSentSuccess] = useState(false)
   const [sentReason, setSentReason] = useState('')
@@ -87,7 +89,7 @@ export default function CallWaiterModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[92vw] sm:w-full max-w-md p-5 sm:p-6 bg-white text-slate-900 border border-purple-100 dark:bg-[#160228] dark:text-white dark:border-white/20 rounded-3xl shadow-2xl transition-colors duration-200">
+      <DialogContent className={`w-[92vw] sm:w-full max-w-md p-5 sm:p-6 rounded-3xl shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#160228] text-white border-white/20' : 'bg-white text-slate-900 border-purple-100'}`}>
         <DialogHeader className="text-left space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-pink-100 text-pink-700 border border-pink-200 dark:bg-pink-600/30 dark:border-pink-500/40 dark:text-pink-300">
