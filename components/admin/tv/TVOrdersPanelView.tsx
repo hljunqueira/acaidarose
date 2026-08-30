@@ -282,6 +282,16 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       })
     : false
 
+  // Cruzamento inteligente com a lista real de pedidos do banco para recuperar a mesa exata do cliente
+  const matchedOrder = (lastCalled || readyOrders.length > 0)
+    ? orders.find((o) => {
+        const ticketToFind = lastCalled?.ticket || (readyOrders[0] ? `#${String(readyOrders[0].orderNumber || 1).padStart(3, '0')}` : '')
+        if (!ticketToFind) return false
+        const tNum = `#${String(o.orderNumber || 1).padStart(3, '0')}`
+        return tNum === ticketToFind || String(o.orderNumber) === ticketToFind.replace('#', '')
+      })
+    : null
+
   // Determina o pedido principal em destaque na CAIXA GIGANTE:
   const heroOrder: {
     ticket: string
@@ -292,15 +302,15 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   } | null = (lastCalled && !isLastCalledCompleted)
     ? {
         ticket: lastCalled.ticket,
-        customerName: lastCalled.customerName,
-        tableNumber: lastCalled.tableNumber,
+        customerName: lastCalled.customerName || matchedOrder?.customerName,
+        tableNumber: lastCalled.tableNumber ?? matchedOrder?.tableNumber,
         isQRCode: true,
       }
     : readyOrders.length > 0
     ? {
         ticket: `#${String(readyOrders[0].orderNumber || 1).padStart(3, '0')}`,
-        customerName: readyOrders[0].customerName,
-        tableNumber: readyOrders[0].tableNumber,
+        customerName: readyOrders[0].customerName || matchedOrder?.customerName,
+        tableNumber: readyOrders[0].tableNumber ?? matchedOrder?.tableNumber,
         orderNumber: readyOrders[0].orderNumber,
         isQRCode: true,
       }
@@ -388,19 +398,19 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     if (customerName && customerName.trim()) {
       return customerName.trim().toUpperCase()
     }
-    if (tableNumber) {
-      const rawTable = String(tableNumber).replace(/^Mesa\s*/i, '').trim()
+    const rawTable = tableNumber !== undefined && tableNumber !== null ? String(tableNumber).replace(/^Mesa\s*/i, '').trim() : ''
+    if (rawTable && rawTable.toLowerCase() !== 'balcão' && rawTable.toLowerCase() !== 'balcao') {
       return `MESA ${rawTable.padStart(2, '0')}`
     }
     return 'BALCÃO'
   }
 
   const getHeroTableSubtitle = (customerName?: string | null, tableNumber?: string | number | null) => {
-    if (!customerName || !customerName.trim()) return null
-    if (!tableNumber) return 'BALCÃO'
-    const rawTable = String(tableNumber).replace(/^Mesa\s*/i, '').trim()
-    if (!rawTable || rawTable.toLowerCase() === 'balcão' || rawTable.toLowerCase() === 'balcao') return 'BALCÃO'
-    return `MESA ${rawTable.padStart(2, '0')}`
+    const rawTable = tableNumber !== undefined && tableNumber !== null ? String(tableNumber).replace(/^Mesa\s*/i, '').trim() : ''
+    if (rawTable && rawTable.toLowerCase() !== 'balcão' && rawTable.toLowerCase() !== 'balcao') {
+      return `MESA ${rawTable.padStart(2, '0')}`
+    }
+    return 'BALCÃO'
   }
 
   return (

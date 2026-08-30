@@ -327,8 +327,10 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     broadcastTVCall(
       {
         ticket: ticketNum,
-        customerName: clientName,
+        customerName: order.customerName || clientName,
+        tableNumber: order.tableNumber,
         status: 'READY',
+        isQRCode: true,
       },
       order.tenantId
     )

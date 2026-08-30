@@ -3,8 +3,10 @@
 export interface TVCallEvent {
   ticket: string
   customerName?: string
+  tableNumber?: string | number | null
   status?: string
   timestamp: number
+  isQRCode?: boolean
 }
 
 const CHANNEL_NAME = 'acai_tv_orders_channel'
@@ -30,7 +32,9 @@ export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>, tenantId?:
         body: JSON.stringify({
           ticket: data.ticket,
           customerName: data.customerName,
+          tableNumber: data.tableNumber,
           status: data.status,
+          isQRCode: data.isQRCode,
           tenantId,
         }),
       }).catch(() => {})

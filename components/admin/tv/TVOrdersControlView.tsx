@@ -227,8 +227,10 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     broadcastTVCall(
       {
         ticket,
-        customerName: client,
+        customerName: order.customerName || client,
+        tableNumber: order.tableNumber,
         status: 'READY',
+        isQRCode: true,
       },
       tenantId
     )
@@ -250,8 +252,10 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     broadcastTVCall(
       {
         ticket,
-        customerName: client,
+        customerName: order.customerName || client,
+        tableNumber: order.tableNumber,
         status: 'READY',
+        isQRCode: true,
       },
       tenantId
     )
