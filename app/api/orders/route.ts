@@ -37,10 +37,17 @@ export async function GET(request: NextRequest) {
         items = typeof o.items_json === 'string' ? JSON.parse(o.items_json) : (o.items_json || [])
       } catch {}
 
+      const isQRCode = Boolean(
+        o.is_qr_code === true ||
+        !o.cashier_id && (o.is_table_order || o.table_number || o.payment_method === 'MBWAY' || (o.cashier_name && o.cashier_name.toLowerCase().includes('qr')))
+      )
+
       return {
         id: o.id,
         tenantId: o.tenant_id,
         cashierId: o.cashier_id,
+        cashierName: o.cashier_name,
+        isQRCode,
         customerName: o.customer_name,
         customerPhone: o.customer_phone,
         orderNumber: o.order_number,
@@ -77,11 +84,14 @@ export async function POST(request: NextRequest) {
       if (t) tenantId = t.id
     }
 
+    const isCustomerQRCode = !user && (body.isQRCode !== false || body.channel === 'QR_CODE' || !body.cashierId)
+
     const payload = {
       ...body,
       tenantId,
-      cashierId: user?.id || null,
-      cashierName: user?.name || 'Caixa Balcão',
+      cashierId: user?.id || body.cashierId || null,
+      cashierName: user ? user.name : (body.cashierName || (isCustomerQRCode ? 'Autoatendimento QR Code' : 'Caixa Balcão')),
+      isQRCode: isCustomerQRCode,
     }
 
     const order = await createOrder(payload)

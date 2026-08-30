@@ -426,7 +426,6 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     const matchCustomer = (o.customerName || '').toLowerCase().includes(q)
     return matchNumber || matchTable || matchCustomer
   })
-
   // Agrupamento por coluna Kanban
   const getOrdersForColumn = (status: OrderStatus) => {
     return filteredOrders.filter((o) => {
@@ -434,6 +433,24 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
       if (status === 'PAID') return o.status === 'PAID' || o.status === 'COMPLETED'
       return o.status === status
     })
+  }
+
+  // Helper de cálculo de tempo decorrido com compensação inteligente de timezone
+  const calculateElapsedMinutes = (dateStr: string | Date | undefined | null) => {
+    if (!dateStr) return 0
+    const now = Date.now()
+    let orderTime = new Date(dateStr).getTime()
+    if (isNaN(orderTime)) return 0
+
+    let diffMs = now - orderTime
+    let minutes = Math.floor(diffMs / 60000)
+
+    // Compensação de offset de 1 hora (UTC vs WEST / Fuso Europe/Lisbon)
+    if (minutes >= 55 && minutes <= 75) {
+      minutes = Math.max(0, minutes - 60)
+    }
+
+    return Math.max(0, minutes)
   }
 
   // Helper de SLA
@@ -479,8 +496,8 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar..."
-              className="pl-8 h-8 text-xs rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/10 text-purple-950 dark:text-white"
+              placeholder="Buscar senha, mesa, cliente..."
+              className="h-8 text-xs pl-8 pr-2 bg-white dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white placeholder:text-purple-400 dark:placeholder:text-purple-300/50 rounded-xl"
             />
           </div>
 
@@ -632,10 +649,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                 ) : (
                   colOrders.map((order) => {
                     const isTable = order.isTableOrder !== false && !!order.tableNumber
-                    const elapsedMinutes = Math.max(
-                      0,
-                      Math.floor((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60))
-                    )
+                    const elapsedMinutes = calculateElapsedMinutes(order.createdAt)
                     const sla = getSlaBadge(elapsedMinutes)
                     const isDraggingThis = draggedOrderId === order.id
                     const isCancelled = order.status === 'CANCELLED'
