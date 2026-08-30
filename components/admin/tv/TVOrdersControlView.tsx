@@ -149,11 +149,10 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           >
             <span>{audioEnabled ? 'Áudio Local Ativo (Computador)' : 'Ativar Áudio Local'}</span>
           </Button>
-
           <Button
             type="button"
             onClick={() => {
-              window.open(`/chamada?loja=${storeSlug}`, '_blank')
+              window.open(`/tv/${storeSlug}`, '_blank')
             }}
             className="h-9 px-4 rounded-xl text-xs font-bold bg-[#7C3AED] hover:bg-[#6D28D9] text-white shadow-md shadow-purple-700/20 cursor-pointer transition-all"
           >
@@ -169,7 +168,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* Coluna 1: Em Preparo */}
+          {/* Coluna 1: Em Preparação */}
           <div className="rounded-2xl border border-purple-100 dark:border-white/10 p-5 bg-purple-50/20 dark:bg-white/5 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
               <h2 className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
@@ -187,8 +186,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             ) : (
               <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
                 {preparingOrders.map((order) => {
-                  const ticketNum = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`
-                  const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+                  const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
+                  const clientName = order.customerName?.trim() || (order.tableNumber ? `Mesa ${String(order.tableNumber).padStart(2, '0')}` : 'Balcão')
                   return (
                     <div
                       key={order.id}
@@ -234,8 +233,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             ) : (
               <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
                 {readyOrders.map((order) => {
-                  const ticketNum = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`
-                  const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+                  const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
+                  const clientName = order.customerName?.trim() || (order.tableNumber ? `Mesa ${String(order.tableNumber).padStart(2, '0')}` : 'Balcão')
                   return (
                     <div
                       key={order.id}

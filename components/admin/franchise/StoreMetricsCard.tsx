@@ -23,8 +23,8 @@ export default function StoreMetricsCard({
 }: StoreMetricsCardProps) {
   const { tenant, metrics, operators } = storeOverview
   const storeSlug = tenant.slug || (tenant.name?.toLowerCase().includes('torres') ? 'torres-novas' : 'aveiro')
-  const tvUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.pt'}/tv/${storeSlug}`
-  const menuUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.pt'}/menu?loja=${storeSlug}`
+  const tvUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.vercel.app'}/tv/${storeSlug}`
+  const menuUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.vercel.app'}/menu?loja=${storeSlug}`
 
   const copyToClipboard = (text: string, label: string) => {
     if (navigator.clipboard) {

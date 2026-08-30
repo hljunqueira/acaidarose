@@ -132,7 +132,27 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   }
 
   // Filtragem dos pedidos reais por status
+  const preparingOrders = orders.filter(
+    (o) =>
+      (o.status as string) === 'PREPARING' ||
+      (o.status as string) === 'NEW' ||
+      (o.status as string) === 'AWAITING_PAYMENT' ||
+      (o.status as string) === 'OPEN' ||
+      (o.status as string) === 'WAITING_PAYMENT'
+  )
   const readyOrders = orders.filter((o) => o.status === 'READY')
+
+  // Helper para exibir nome correto: se tiver nome exibe o nome, se for mesa exibe Mesa XX, se for balcão sem nome exibe 'Balcão'
+  const getDisplayName = (customerName?: string | null, tableNumber?: string | number | null) => {
+    if (customerName && customerName.trim()) {
+      return customerName.trim()
+    }
+    if (tableNumber) {
+      const tableStr = String(tableNumber).replace(/^Mesa\s*/i, '').trim()
+      return `Mesa ${tableStr.padStart(2, '0')}`
+    }
+    return 'Balcão'
+  }
 
   // Pedido principal pronto em exibição no quadrante grande
   const heroOrder = readyOrders[0] || (lastCalled ? {
@@ -207,13 +227,13 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                   #{String(heroOrder.orderNumber || 1).padStart(3, '0')}
                 </div>
 
-                {/* Nome do Cliente com Coroa se for QR Code */}
+                {/* Nome do Cliente com Coroa se for QR Code / Mesa */}
                 <div className="text-2xl sm:text-4xl font-black text-slate-900 flex items-center justify-center gap-2 pt-2">
                   {(heroOrder.isTableOrder || heroOrder.tableNumber) && (
                     <Crown className="h-7 w-7 sm:h-9 sm:w-9 text-amber-500 fill-amber-500 shrink-0" />
                   )}
                   <span className="truncate max-w-md sm:max-w-lg">
-                    {heroOrder.customerName || (heroOrder.tableNumber ? `Mesa ${heroOrder.tableNumber}` : 'Cliente')}
+                    {getDisplayName(heroOrder.customerName, heroOrder.tableNumber)}
                   </span>
                 </div>
 
@@ -246,7 +266,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                       </div>
                       <div className="text-xs sm:text-sm font-bold text-slate-800 truncate w-full flex items-center justify-center gap-1 mt-1">
                         {isQR && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
-                        <span className="truncate">{order.customerName || `Mesa ${order.tableNumber}`}</span>
+                        <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
                       </div>
                     </>
                   ) : (
@@ -261,39 +281,60 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         </section>
 
         {/* ========================================================================= */}
-        {/* COLUNA DIREITA (4 COLUNAS): "PEDIDOS JÁ CHAMADOS" (TÍTULO AMARELO + CAIXA BRANCA) */}
+        {/* COLUNA DIREITA (4 COLUNAS): "EM PREPARAÇÃO" (TÍTULO AMARELO + CAIXA BRANCA) */}
         {/* ========================================================================= */}
         <section className="lg:col-span-4 flex flex-col justify-between">
           
-          {/* Título Oficial Burger King: PEDIDOS JÁ CHAMADOS em Amarelo/Dourado */}
+          {/* Título Oficial Burger King: EM PREPARAÇÃO em Amarelo/Dourado */}
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-400 uppercase tracking-tight font-sans mb-2 drop-shadow-sm">
-            PEDIDOS JÁ CHAMADOS
+            EM PREPARAÇÃO
           </h2>
 
-          {/* Coluna Branca Vertical (Fiel à Foto do BK) */}
+          {/* Coluna Branca Vertical: Fila da Cozinha em Tempo Real */}
           <div className="flex-1 min-h-[260px] sm:min-h-[300px] rounded-2xl bg-white border-2 border-white text-slate-900 p-3 sm:p-4 shadow-2xl flex flex-col justify-between mb-3 overflow-hidden">
-            {calledHistory.length > 0 ? (
+            {preparingOrders.length > 0 ? (
               <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                {calledHistory.slice(0, 6).map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="p-2.5 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-between font-sans"
-                  >
-                    <div className="flex items-center gap-1.5 truncate">
-                      {item.isQRCode && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                        {item.customerName || 'Cliente'}
+                {preparingOrders.slice(0, 6).map((order) => {
+                  const isQR = Boolean(order.isTableOrder || order.tableNumber)
+                  const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
+                  const clientName = getDisplayName(order.customerName, order.tableNumber)
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between font-sans"
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        {isQR && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                        <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                          {clientName}
+                        </span>
+                      </div>
+                      <span className="font-mono font-black text-base sm:text-lg text-[#180424]">
+                        {ticketNum}
                       </span>
                     </div>
-                    <span className="font-mono font-black text-base sm:text-lg text-[#180424]">
-                      {item.ticket}
-                    </span>
+                  )
+                })}
+              </div>
+            ) : calledHistory.length > 0 ? (
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                <div className="text-[10px] uppercase font-bold text-slate-400 pb-1 border-b border-stone-200">
+                  Últimos Chamados:
+                </div>
+                {calledHistory.slice(0, 5).map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-between"
+                  >
+                    <span className="text-xs font-bold text-slate-700 truncate">{item.customerName || 'Balcão'}</span>
+                    <span className="font-mono font-black text-sm text-slate-900">{item.ticket}</span>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center text-slate-400 font-semibold text-xs sm:text-sm text-center">
-                Histórico limpo
+                Nenhum pedido em preparação
               </div>
             )}
           </div>
