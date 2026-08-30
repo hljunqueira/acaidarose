@@ -15,6 +15,17 @@
   - Rota `app/admin/pdv/page.tsx` criada para redirecionamento limpo para `/?view=pdv`.
   - Corrigido o erro 500 no `UPDATE` de pedidos no PostgreSQL com cast `$8::jsonb` na coluna `items_json`.
   - Corrigidos warnings de acessibilidade Radix UI com a adição de `<DialogTitle>` nos modais de itens e auditoria.
-- **Compilação & Deploy**:
+- **Marquee 100% Customizável pelo Usuário (Zero Seeds & Fallbacks Travados)**:
+  - Eliminados textos estáticos/seeds hardcoded no rodapé da Smart TV (`TVOrdersPanelView.tsx`).
+  - Implementada interface completa `TVMarqueeConfig` com sincronização multi-tenant em tempo real (`lib/utils/tvBroadcast.ts`).
+  - Nova aba "Editar Marquee" no painel staff (`TVOrdersControlView.tsx`) com:
+    - Textos 100% livres (Mensagem Promocional e Mensagem Institucional);
+    - Toggle para intercalar pedidos em preparo (`showPreparingOrders`);
+    - Seletor de cor hexadecimal livre (`<input type="color">` + input hex + paleta de atalhos rápidos);
+    - Tipografia customizável (Moderna Sans, Artesanal Cursiva, Digital Mono, Clássica Serif);
+    - Escala de tamanhos dinâmicos (Pequeno, Médio, Grande, TV XL, Gigante 2XL, Max 3XL);
+    - Controle contínuo de velocidade de rolagem (slider de 10s a 60s);
+    - Live Preview interativo em tempo real simulando exatamente a TV;
+    - Transmissão instantânea para as Smart TVs da loja.
+- **Compilação & Validação**:
   - `npx tsc --noEmit` validado com 0 erros.
-  - Todas as modificações commitadas e enviadas para `origin main`.

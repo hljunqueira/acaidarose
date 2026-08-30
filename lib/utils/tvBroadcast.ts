@@ -177,23 +177,123 @@ export function getLastTVCall(tenantId?: string): TVCallEvent | null {
 const MARQUEE_CHANNEL = 'acai_tv_marquee_channel'
 const MARQUEE_STORAGE_KEY = 'acai_tv_custom_marquee'
 
+const MARQUEE_CONFIG_KEY = 'acai_tv_marquee_config_v2'
+const MARQUEE_CONFIG_CHANNEL = 'acai_tv_marquee_config_channel_v2'
+
+export interface TVMarqueeConfig {
+  promoText: string
+  idleText: string
+  showPreparingOrders: boolean
+  textColor: string
+  fontFamily: 'sans' | 'cursive' | 'mono' | 'serif'
+  fontSize: string
+  speedSeconds: number
+}
+
+export const DEFAULT_MARQUEE_CONFIG: TVMarqueeConfig = {
+  promoText: '',
+  idleText: '',
+  showPreparingOrders: true,
+  textColor: '#E9D5FF',
+  fontFamily: 'sans',
+  fontSize: 'text-xl',
+  speedSeconds: 25,
+}
+
+const getMarqueeConfigKey = (tenantId?: string) => `${MARQUEE_CONFIG_KEY}_${tenantId || 'default'}`
+
 /**
- * Transmite uma mensagem personalizada para o Marquee da TV
+ * Transmite a configuração rica de Marquee para a TV
  */
-export function broadcastTVMarquee(message: string) {
+export function broadcastTVMarqueeConfig(config: Partial<TVMarqueeConfig>, tenantId?: string) {
   if (typeof window === 'undefined') return
+  const current = getStoredTVMarqueeConfig(tenantId)
+  const merged: TVMarqueeConfig = { ...current, ...config }
 
   try {
-    localStorage.setItem(MARQUEE_STORAGE_KEY, message)
+    if (tenantId) {
+      localStorage.setItem(getMarqueeConfigKey(tenantId), JSON.stringify(merged))
+    }
+    localStorage.setItem(getMarqueeConfigKey(undefined), JSON.stringify(merged))
+    localStorage.setItem(MARQUEE_CONFIG_KEY, JSON.stringify(merged))
+    // Sincroniza a chave legada para compatibilidade retroativa
+    localStorage.setItem(MARQUEE_STORAGE_KEY, merged.promoText || '')
   } catch {}
 
   if ('BroadcastChannel' in window) {
     try {
-      const channel = new BroadcastChannel(MARQUEE_CHANNEL)
-      channel.postMessage({ message, timestamp: Date.now() })
+      const channel = new BroadcastChannel(MARQUEE_CONFIG_CHANNEL)
+      channel.postMessage({ config: merged, tenantId: tenantId || 'default', timestamp: Date.now() })
       channel.close()
     } catch {}
   }
+}
+
+/**
+ * Escuta atualizações da configuração de Marquee na TV
+ */
+export function subscribeToTVMarqueeConfig(callback: (config: TVMarqueeConfig) => void, tenantId?: string) {
+  if (typeof window === 'undefined') return () => {}
+
+  let channel: BroadcastChannel | null = null
+  const expectedTenant = tenantId || 'default'
+
+  if ('BroadcastChannel' in window) {
+    try {
+      channel = new BroadcastChannel(MARQUEE_CONFIG_CHANNEL)
+      channel.onmessage = (msg) => {
+        if (msg.data?.config) {
+          if (!msg.data.tenantId || msg.data.tenantId === expectedTenant || expectedTenant === 'default') {
+            callback(msg.data.config)
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const targetKey = getMarqueeConfigKey(tenantId)
+  const handleStorage = (e: StorageEvent) => {
+    if ((e.key === targetKey || e.key === MARQUEE_CONFIG_KEY) && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue)
+        if (parsed) callback({ ...DEFAULT_MARQUEE_CONFIG, ...parsed })
+      } catch {}
+    }
+  }
+
+  window.addEventListener('storage', handleStorage)
+
+  return () => {
+    if (channel) channel.close()
+    window.removeEventListener('storage', handleStorage)
+  }
+}
+
+/**
+ * Retorna a configuração rica gravada do Marquee
+ */
+export function getStoredTVMarqueeConfig(tenantId?: string): TVMarqueeConfig {
+  if (typeof window === 'undefined') return DEFAULT_MARQUEE_CONFIG
+  try {
+    const targetKey = getMarqueeConfigKey(tenantId)
+    const raw = localStorage.getItem(targetKey) || localStorage.getItem(MARQUEE_CONFIG_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return { ...DEFAULT_MARQUEE_CONFIG, ...parsed }
+    }
+    const legacy = localStorage.getItem(MARQUEE_STORAGE_KEY)
+    if (legacy) {
+      return { ...DEFAULT_MARQUEE_CONFIG, promoText: legacy }
+    }
+  } catch {}
+  return DEFAULT_MARQUEE_CONFIG
+}
+
+/**
+ * Transmite uma mensagem personalizada para o Marquee da TV
+ */
+export function broadcastTVMarquee(message: string, tenantId?: string) {
+  broadcastTVMarqueeConfig({ promoText: message }, tenantId)
 }
 
 /**

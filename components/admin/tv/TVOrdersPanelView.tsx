@@ -4,8 +4,10 @@ import {
   subscribeToTVCalls,
   getLastTVCall,
   TVCallEvent,
-  subscribeToTVMarquee,
-  getCustomTVMarquee,
+  subscribeToTVMarqueeConfig,
+  getStoredTVMarqueeConfig,
+  TVMarqueeConfig,
+  DEFAULT_MARQUEE_CONFIG,
   subscribeToTVVideos,
   getStoreTVVideos,
   TVVideoItem,
@@ -36,7 +38,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [currentTime, setCurrentTime] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [customMarquee, setCustomMarquee] = useState('')
+  const [marqueeConfig, setMarqueeConfig] = useState<TVMarqueeConfig>(DEFAULT_MARQUEE_CONFIG)
   const [storeVideos, setStoreVideos] = useState<TVVideoItem[]>([])
 
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -202,14 +204,14 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return () => unsubscribeSound()
   }, [])
 
-  // Ouvinte de mensagem customizada do Marquee em tempo real
+  // Ouvinte de configuração rica do Marquee em tempo real
   useEffect(() => {
-    setCustomMarquee(getCustomTVMarquee())
-    const unsubscribeMarquee = subscribeToTVMarquee((msg) => {
-      setCustomMarquee(msg)
-    })
+    setMarqueeConfig(getStoredTVMarqueeConfig(tenantId))
+    const unsubscribeMarquee = subscribeToTVMarqueeConfig((cfg) => {
+      setMarqueeConfig(cfg)
+    }, tenantId)
     return () => unsubscribeMarquee()
-  }, [])
+  }, [tenantId])
 
   // Ouvinte de configuração de exibição da TV (exibir/ocultar últimos finalizados)
   useEffect(() => {
@@ -582,74 +584,117 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         </section>
       </main>
 
-      {/* 3. RODAPÉ AMPLIADO EM LARGURA TOTAL (100%): MARQUEE DE PEDIDOS EM PREPARAÇÃO */}
-      <footer className="pt-2.5 border-t border-white/15 w-full">
-        {/* Barra do Marquee em Largura Total */}
-        {(Boolean(customMarquee) || displayConfig.showCompletedOrders !== false) && (
-          <div className="w-full flex items-center gap-4 bg-black/80 rounded-3xl px-6 py-4 sm:py-5 border-2 border-white/15 text-lg sm:text-xl text-white font-bold shadow-2xl overflow-hidden">
-            {/* Badge Fixa do Marquee (Em Preparação) */}
-            <div
-              className={`flex items-center gap-2.5 shrink-0 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider ${
-                customMarquee
-                  ? 'bg-purple-500/25 text-purple-200 border border-purple-500/40'
-                  : 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-              }`}
-            >
-              <span
-                className={`h-3 w-3 rounded-full animate-pulse ${
-                  customMarquee ? 'bg-purple-400' : 'bg-amber-400'
-                }`}
-              />
-              <span>{customMarquee ? 'Comunicado da Loja' : 'Em Preparação'}</span>
-            </div>
+      {/* 3. RODAPÉ AMPLIADO EM LARGURA TOTAL (100%): MARQUEE 100% CUSTOMIZÁVEL PELO USUÁRIO (ZERO SEEDS) */}
+      {(() => {
+        const hasPromo = Boolean(marqueeConfig.promoText?.trim())
+        const hasIdle = Boolean(marqueeConfig.idleText?.trim())
+        const showPreparing = marqueeConfig.showPreparingOrders !== false && preparingOrders.length > 0
+        const shouldShow = hasPromo || hasIdle || showPreparing
 
-            {/* Área Rolante Contínua (Marquee Ticker de Pedidos em Preparação de Ponta a Ponta) */}
-            <div className="relative flex-1 overflow-hidden whitespace-nowrap">
-              <div className="inline-block animate-[marquee_25s_linear_infinite] whitespace-nowrap text-lg sm:text-xl lg:text-2xl font-black uppercase tracking-wider">
-                {customMarquee ? (
-                  <span className="inline-flex items-center gap-4 mx-4 text-purple-100 font-black uppercase">
-                    <span>{customMarquee}</span>
-                    <span className="text-purple-400/50">★</span>
-                    <span>{customMarquee}</span>
-                  </span>
-                ) : preparingOrders.length > 0 ? (
-                  preparingOrders.map((o, idx) => (
-                    <span key={o.id || idx} className="inline-flex items-center gap-3 mx-6 text-purple-200 uppercase">
-                      <span className="font-mono font-black text-amber-300 text-xl sm:text-2xl">
-                        ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
-                      </span>
-                      <span className="text-white font-extrabold uppercase">
-                        {getDisplayName(o.customerName, o.tableNumber)}
-                      </span>
-                      <span className="text-white/30">•</span>
+        if (!shouldShow) return null
+
+        const fontClass =
+          marqueeConfig.fontFamily === 'cursive'
+            ? 'font-cursive'
+            : marqueeConfig.fontFamily === 'mono'
+            ? 'font-mono'
+            : marqueeConfig.fontFamily === 'serif'
+            ? 'font-serif'
+            : 'font-sans'
+
+        const sizeClass = marqueeConfig.fontSize || 'text-xl sm:text-2xl'
+        const badgeTitle = hasPromo ? 'Comunicado' : showPreparing ? 'Em Preparação' : 'Aviso'
+        const badgeColor = hasPromo
+          ? 'bg-purple-500/25 text-purple-200 border-purple-500/40'
+          : showPreparing
+          ? 'bg-amber-500/25 text-amber-300 border-amber-500/40'
+          : 'bg-pink-500/25 text-pink-200 border-pink-500/40'
+
+        const pulseColor = hasPromo ? 'bg-purple-400' : showPreparing ? 'bg-amber-400' : 'bg-pink-400'
+
+        return (
+          <footer className="pt-2.5 border-t border-white/15 w-full">
+            <div className="w-full flex items-center gap-4 bg-black/85 rounded-3xl px-6 py-4 sm:py-5 border-2 border-white/15 shadow-2xl overflow-hidden">
+              {/* Badge Fixa do Marquee */}
+              <div className={`flex items-center gap-2.5 shrink-0 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider border ${badgeColor}`}>
+                <span className={`h-3 w-3 rounded-full animate-pulse ${pulseColor}`} />
+                <span>{badgeTitle}</span>
+              </div>
+
+              {/* Área Rolante Contínua (Ticker Dinâmico) */}
+              <div className="relative flex-1 overflow-hidden whitespace-nowrap">
+                <div
+                  className={`inline-block whitespace-nowrap font-black uppercase tracking-wider ${fontClass} ${sizeClass}`}
+                  style={{
+                    color: marqueeConfig.textColor || '#E9D5FF',
+                    animation: `marquee ${marqueeConfig.speedSeconds || 25}s linear infinite`,
+                  }}
+                >
+                  {hasPromo && showPreparing ? (
+                    <span className="inline-flex items-center gap-6 mx-4">
+                      <span className="text-white drop-shadow-xs">{marqueeConfig.promoText.trim()}</span>
+                      <span className="opacity-40">★</span>
+                      {preparingOrders.map((o, idx) => (
+                        <React.Fragment key={o.id || idx}>
+                          <span className="inline-flex items-center gap-3">
+                            <span className="font-mono text-amber-300">
+                              ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
+                            </span>
+                            <span className="text-white font-extrabold">
+                              {getDisplayName(o.customerName, o.tableNumber)}
+                            </span>
+                          </span>
+                          <span className="opacity-40">•</span>
+                        </React.Fragment>
+                      ))}
                     </span>
-                  ))
-                ) : (
-                  <span className="inline-flex items-center gap-4 mx-4 text-purple-200 font-black uppercase tracking-wider">
-                    <span>🍇 AÇAÍ DA ROSE · O VERDADEIRO AÇAÍ ARTESANAL DA AMAZÔNIA</span>
-                    <span className="text-white/30">•</span>
-                    <span>PEÇA PELO QR CODE NA MESA OU NO BALCÃO DE ATENDIMENTO</span>
-                    <span className="text-white/30">•</span>
-                    <span>TODOS OS PEDIDOS ESTÃO EM DIA · BOM APETITE!</span>
-                  </span>
-                )}
+                  ) : hasPromo ? (
+                    <span className="inline-flex items-center gap-6 mx-4">
+                      <span>{marqueeConfig.promoText.trim()}</span>
+                      <span className="opacity-40">★</span>
+                      <span>{marqueeConfig.promoText.trim()}</span>
+                      <span className="opacity-40">★</span>
+                      <span>{marqueeConfig.promoText.trim()}</span>
+                    </span>
+                  ) : showPreparing ? (
+                    preparingOrders.map((o, idx) => (
+                      <span key={o.id || idx} className="inline-flex items-center gap-3 mx-6 uppercase">
+                        <span className="font-mono text-amber-300">
+                          ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
+                        </span>
+                        <span className="text-white font-extrabold">
+                          {getDisplayName(o.customerName, o.tableNumber)}
+                        </span>
+                        <span className="opacity-40 mx-2">•</span>
+                      </span>
+                    ))
+                  ) : hasIdle ? (
+                    <span className="inline-flex items-center gap-6 mx-4">
+                      <span>{marqueeConfig.idleText.trim()}</span>
+                      <span className="opacity-40">•</span>
+                      <span>{marqueeConfig.idleText.trim()}</span>
+                      <span className="opacity-40">•</span>
+                      <span>{marqueeConfig.idleText.trim()}</span>
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Estilo CSS do Keyframes Marquee embutido para compatibilidade total em Smart TVs */}
-        <style jsx>{`
-          @keyframes marquee {
-            0% {
-              transform: translateX(100%);
-            }
-            100% {
-              transform: translateX(-100%);
-            }
-          }
-        `}</style>
-      </footer>
+            {/* Estilo CSS do Keyframes Marquee embutido para compatibilidade total em Smart TVs */}
+            <style jsx>{`
+              @keyframes marquee {
+                0% {
+                  transform: translateX(100%);
+                }
+                100% {
+                  transform: translateX(-100%);
+                }
+              }
+            `}</style>
+          </footer>
+        )
+      })()}
     </div>
   )
 }

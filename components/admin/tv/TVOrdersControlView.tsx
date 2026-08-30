@@ -9,6 +9,10 @@ import {
   getLastTVCall,
   broadcastTVMarquee,
   getCustomTVMarquee,
+  broadcastTVMarqueeConfig,
+  getStoredTVMarqueeConfig,
+  TVMarqueeConfig,
+  DEFAULT_MARQUEE_CONFIG,
   getStoreTVVideos,
   broadcastTVVideos,
   TVVideoItem,
@@ -23,7 +27,7 @@ import {
 } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order, OrderStatus } from '@/types'
-import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Check, Plus, AlertCircle, Tv, XCircle, Volume2, VolumeX, Eye, EyeOff } from 'lucide-react'
+import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Check, Plus, AlertCircle, Tv, XCircle, Volume2, VolumeX, Eye, EyeOff, Sparkles, Palette, Type, Gauge } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TVOrdersControlViewProps {
@@ -46,7 +50,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   // Controle de Exibição na TV (Últimos Pedidos Finalizados)
   const [displayConfig, setDisplayConfig] = useState<TVDisplayConfig>({ showCompletedOrders: true })
 
-  const [marqueeText, setMarqueeText] = useState('')
+  // Configuração Rica e Livre do Marquee da TV
+  const [marqueeConfig, setMarqueeConfig] = useState<TVMarqueeConfig>(DEFAULT_MARQUEE_CONFIG)
 
   // Controle de Senha em Exibição na Smart TV
   const [currentTVCall, setCurrentTVCall] = useState<TVCallEvent | null>(null)
@@ -72,7 +77,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     : 'Loja 1 - Aveiro'
 
   useEffect(() => {
-    setMarqueeText(getCustomTVMarquee())
+    setMarqueeConfig(getStoredTVMarqueeConfig(tenantId))
     setStoreVideos(getStoreTVVideos(tenantId))
     setCurrentTVCall(getLastTVCall(tenantId))
     setSoundConfig(getStoredTVSoundConfig())
@@ -91,14 +96,20 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   }
 
   const handleSaveMarquee = () => {
-    broadcastTVMarquee(marqueeText.trim())
-    toast.success('Mensagem do rodapé da TV atualizada com sucesso!')
+    broadcastTVMarqueeConfig(marqueeConfig, tenantId)
+    toast.success('Configurações do rodapé da TV transmitidas com sucesso!')
   }
 
   const handleResetMarquee = () => {
-    setMarqueeText('')
-    broadcastTVMarquee('')
-    toast.success('Rodapé restaurado para o modo automático (Últimos Pedidos Finalizados)!')
+    const resetConfig: TVMarqueeConfig = {
+      ...DEFAULT_MARQUEE_CONFIG,
+      promoText: '',
+      idleText: '',
+      showPreparingOrders: true,
+    }
+    setMarqueeConfig(resetConfig)
+    broadcastTVMarqueeConfig(resetConfig, tenantId)
+    toast.success('Textos e estilos do rodapé limpos!')
   }
 
   // --- Handlers de Áudio e Voz ---
@@ -1025,51 +1036,193 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
         </div>
       )}
 
-      {/* ABA 3: EDIÇÃO DO MARQUEE (RODAPÉ & AVISOS) */}
+      {/* ABA 3: EDIÇÃO DO MARQUEE (RODAPÉ 100% CUSTOMIZÁVEL & LIVE PREVIEW) */}
       {activeTab === 'MARQUEE' && (
-        <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* 1. Mensagem Personalizada Rolante */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10">
+        <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-6 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* Header da Aba */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-100 dark:border-white/10">
+            <div>
               <div className="flex items-center gap-2 text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
-                <Megaphone className="h-4 w-4 text-pink-600" />
-                <span>Mensagem Personalizada do Rodapé (Marquee)</span>
+                <Sparkles className="h-4 w-4 text-pink-600" />
+                <span>Personalização Total do Rodapé da Smart TV</span>
               </div>
-              <span className="text-xs text-purple-600 dark:text-purple-300 font-bold">
-                Texto em destaque rolante na Smart TV
-              </span>
+              <p className="text-xs text-purple-700/80 dark:text-purple-300/80 font-medium mt-0.5">
+                Defina textos livres, cores, tipografia, tamanho e velocidade de rolagem sem mensagens travadas.
+              </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-              <Input
-                value={marqueeText}
-                onChange={(e) => setMarqueeText(e.target.value)}
-                placeholder="Ex: PROMOÇÃO: Açaí 500ml com 3 acompanhamentos..."
-                className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/20 text-foreground font-medium"
-              />
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button onClick={handleSaveMarquee} className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer">
-                  <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
-                </Button>
-                <Button variant="outline" onClick={handleResetMarquee} className="h-10 px-3 border-purple-200 dark:border-white/15 text-xs font-bold rounded-xl cursor-pointer">
-                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar
-                </Button>
-              </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResetMarquee}
+                className="h-8 px-3 border-purple-200 dark:border-white/15 text-xs font-bold rounded-xl cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar Textos
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveMarquee}
+                className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm"
+              >
+                <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar na Smart TV
+              </Button>
             </div>
           </div>
 
-          {/* 2. Opção de Exibição dos Pedidos em Preparação na TV */}
+          {/* 1. SIMULADOR & LIVE PREVIEW EM TEMPO REAL */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
+                <Tv className="h-3.5 w-3.5 text-pink-600" />
+                <span>Live Preview da Smart TV (Em Tempo Real)</span>
+              </span>
+              <span className="text-[11px] text-purple-600 dark:text-purple-300 font-bold">
+                Velocidade: {marqueeConfig.speedSeconds || 25}s · Cor: {marqueeConfig.textColor || '#E9D5FF'}
+              </span>
+            </div>
+
+            <div className="w-full bg-black rounded-2xl p-3 sm:p-4 border-2 border-purple-300 dark:border-white/20 shadow-xl overflow-hidden">
+              <div className="flex items-center gap-3 w-full">
+                {/* Badge do Live Preview */}
+                <div
+                  className={`flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider ${
+                    marqueeConfig.promoText?.trim()
+                      ? 'bg-purple-500/30 text-purple-200 border border-purple-500/50'
+                      : marqueeConfig.showPreparingOrders
+                      ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                      : 'bg-pink-500/30 text-pink-200 border border-pink-500/50'
+                  }`}
+                >
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full animate-pulse ${
+                      marqueeConfig.promoText?.trim()
+                        ? 'bg-purple-400'
+                        : marqueeConfig.showPreparingOrders
+                        ? 'bg-amber-400'
+                        : 'bg-pink-400'
+                    }`}
+                  />
+                  <span>
+                    {marqueeConfig.promoText?.trim()
+                      ? 'Comunicado'
+                      : marqueeConfig.showPreparingOrders
+                      ? 'Em Preparação'
+                      : 'Aviso'}
+                  </span>
+                </div>
+
+                {/* Ticker Animado no Live Preview */}
+                <div className="relative flex-1 overflow-hidden whitespace-nowrap">
+                  <div
+                    className={`inline-block whitespace-nowrap font-black uppercase tracking-wider ${
+                      marqueeConfig.fontFamily === 'cursive'
+                        ? 'font-cursive'
+                        : marqueeConfig.fontFamily === 'mono'
+                        ? 'font-mono'
+                        : marqueeConfig.fontFamily === 'serif'
+                        ? 'font-serif'
+                        : 'font-sans'
+                    } ${marqueeConfig.fontSize || 'text-xl'}`}
+                    style={{
+                      color: marqueeConfig.textColor || '#E9D5FF',
+                      animation: `marqueePreview ${marqueeConfig.speedSeconds || 25}s linear infinite`,
+                    }}
+                  >
+                    {marqueeConfig.promoText?.trim() ? (
+                      <span className="inline-flex items-center gap-4 mx-4">
+                        <span>{marqueeConfig.promoText.trim()}</span>
+                        <span className="opacity-40">★</span>
+                        <span>{marqueeConfig.promoText.trim()}</span>
+                      </span>
+                    ) : marqueeConfig.showPreparingOrders ? (
+                      <span className="inline-flex items-center gap-4 mx-4">
+                        <span className="text-amber-300 font-mono">⏳ #001 JOÃO SILVA — MESA 02</span>
+                        <span className="opacity-40">•</span>
+                        <span className="text-amber-300 font-mono">⏳ #002 MARIA SANTOS — BALCÃO</span>
+                        <span className="opacity-40">•</span>
+                        <span>{marqueeConfig.idleText?.trim() || 'AÇAÍ DA ROSE · O VERDADEIRO AÇAÍ ARTESANAL'}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-4 mx-4">
+                        <span>{marqueeConfig.idleText?.trim() || 'DEFINA SEU TEXTO PERSONALIZADO ABAIXO'}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <style jsx>{`
+              @keyframes marqueePreview {
+                0% {
+                  transform: translateX(100%);
+                }
+                100% {
+                  transform: translateX(-100%);
+                }
+              }
+            `}</style>
+          </div>
+
+          {/* 2. CONTEÚDO DOS TEXTOS (ZERO TEXTOS FORÇADOS) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Campo 1: Mensagem Promocional */}
+            <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
+                  <Megaphone className="h-3.5 w-3.5 text-pink-600" />
+                  <span>Mensagem Promocional / Destaque Livre</span>
+                </label>
+                <span className="text-[10px] text-pink-600 font-bold uppercase">Prioridade Alta</span>
+              </div>
+              <Input
+                value={marqueeConfig.promoText || ''}
+                onChange={(e) => setMarqueeConfig({ ...marqueeConfig, promoText: e.target.value })}
+                placeholder="Ex: PROMOÇÃO HOJE: Peça 1 Taça de 500ml e ganhe 1 Acompanhamento extra!"
+                className="h-10 text-xs bg-white dark:bg-[#160228] border-purple-200 dark:border-white/20 text-purple-950 dark:text-white font-medium"
+              />
+              <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
+                Texto em destaque no rodapé. Se preenchido, será exibido no ticker da Smart TV.
+              </p>
+            </div>
+
+            {/* Campo 2: Mensagem da Loja / Standby */}
+            <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                  <span>Mensagem Institucional / Aviso Geral</span>
+                </label>
+                <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold uppercase">Fila Livre</span>
+              </div>
+              <Input
+                value={marqueeConfig.idleText || ''}
+                onChange={(e) => setMarqueeConfig({ ...marqueeConfig, idleText: e.target.value })}
+                placeholder="Ex: O verdadeiro Açaí Artesanal da Amazônia. Peça no Balcão ou via QR Code na Mesa."
+                className="h-10 text-xs bg-white dark:bg-[#160228] border-purple-200 dark:border-white/20 text-purple-950 dark:text-white font-medium"
+              />
+              <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
+                Texto institucional exibido quando não houver pedidos na fila ou como complemento da loja.
+              </p>
+            </div>
+          </div>
+
+          {/* 3. CONTROLE DE EXIBIÇÃO DE PEDIDOS EM PREPARAÇÃO */}
           <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-0.5">
               <div className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                {displayConfig.showCompletedOrders ? (
+                {marqueeConfig.showPreparingOrders ? (
                   <Eye className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                 ) : (
                   <EyeOff className="h-4 w-4 text-red-500 dark:text-red-400" />
                 )}
-                <span>Exibir Barra de Pedidos em Preparação na TV</span>
+                <span>Exibir Pedidos em Preparação no Marquee</span>
               </div>
               <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80 font-medium">
-                Quando ativado, o rodapé exibe a lista rolante em tempo real das comandas que estão sendo montadas pela cozinha.
+                Intercala as comandas ativas em preparação (⏳ #001 NOME — MESA XX) na esteira rolante do rodapé.
               </p>
             </div>
 
@@ -1077,27 +1230,186 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               <Button
                 type="button"
                 size="sm"
-                onClick={() => handleToggleShowCompleted(true)}
+                onClick={() => setMarqueeConfig({ ...marqueeConfig, showPreparingOrders: true })}
                 className={`h-8 px-3.5 text-xs font-black rounded-xl cursor-pointer transition-all ${
-                  displayConfig.showCompletedOrders
+                  marqueeConfig.showPreparingOrders
                     ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
                     : 'bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-slate-700 dark:text-slate-300 hover:bg-purple-50'
                 }`}
               >
-                <span>✓ Exibir na TV</span>
+                <span>✓ Exibir Pedidos</span>
               </Button>
               <Button
                 type="button"
                 size="sm"
-                onClick={() => handleToggleShowCompleted(false)}
+                onClick={() => setMarqueeConfig({ ...marqueeConfig, showPreparingOrders: false })}
                 className={`h-8 px-3.5 text-xs font-black rounded-xl cursor-pointer transition-all ${
-                  !displayConfig.showCompletedOrders
-                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-xs'
+                  !marqueeConfig.showPreparingOrders
+                    ? 'bg-zinc-700 hover:bg-zinc-800 text-white shadow-xs'
                     : 'bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-slate-700 dark:text-slate-300 hover:bg-purple-50'
                 }`}
               >
-                <span>✕ Ocultar na TV</span>
+                <span>✕ Apenas Textos</span>
               </Button>
+            </div>
+          </div>
+
+          {/* 4. PERSONALIZAÇÃO VISUAL (COR, FONTE, TAMANHO, VELOCIDADE) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Coluna A: Cor do Texto */}
+            <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
+                  <Palette className="h-3.5 w-3.5 text-pink-600" />
+                  <span>Cor do Texto</span>
+                </span>
+                <span className="text-xs font-mono font-bold text-purple-900 dark:text-purple-200">
+                  {marqueeConfig.textColor || '#E9D5FF'}
+                </span>
+              </div>
+
+              {/* Color Picker Nativo + Hex Input */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={marqueeConfig.textColor || '#E9D5FF'}
+                  onChange={(e) => setMarqueeConfig({ ...marqueeConfig, textColor: e.target.value })}
+                  className="h-10 w-12 rounded-xl border border-purple-200 dark:border-white/20 cursor-pointer bg-white p-1"
+                />
+                <Input
+                  value={marqueeConfig.textColor || '#E9D5FF'}
+                  onChange={(e) => setMarqueeConfig({ ...marqueeConfig, textColor: e.target.value })}
+                  placeholder="#E9D5FF"
+                  className="h-10 text-xs font-mono uppercase bg-white dark:bg-[#160228] border-purple-200 dark:border-white/20"
+                />
+              </div>
+
+              {/* Paleta Rápida com 1 Clique */}
+              <div className="space-y-1">
+                <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold uppercase">Atalhos de Cores:</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { hex: '#E9D5FF', label: 'Lilás' },
+                    { hex: '#F472B6', label: 'Rosa' },
+                    { hex: '#FBBF24', label: 'Ouro' },
+                    { hex: '#FFFFFF', label: 'Branco' },
+                    { hex: '#38BDF8', label: 'Ciano' },
+                    { hex: '#4ADE80', label: 'Menta' },
+                    { hex: '#F87171', label: 'Coral' },
+                    { hex: '#C084FC', label: 'Roxo' },
+                  ].map((c) => (
+                    <button
+                      key={c.hex}
+                      type="button"
+                      onClick={() => setMarqueeConfig({ ...marqueeConfig, textColor: c.hex })}
+                      className="h-6 w-6 rounded-lg border-2 border-white dark:border-white/20 shadow-xs cursor-pointer hover:scale-115 transition-transform"
+                      style={{ backgroundColor: c.hex }}
+                      title={`${c.label} (${c.hex})`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna B: Tipografia */}
+            <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
+                  <Type className="h-3.5 w-3.5 text-purple-600" />
+                  <span>Estilo da Fonte</span>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'sans', name: 'Moderna', fontClass: 'font-sans', sample: 'Sans' },
+                  { id: 'cursive', name: 'Artesanal', fontClass: 'font-cursive text-sm', sample: 'Cursiva' },
+                  { id: 'mono', name: 'Digital', fontClass: 'font-mono', sample: 'Mono' },
+                  { id: 'serif', name: 'Clássica', fontClass: 'font-serif', sample: 'Serif' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setMarqueeConfig({ ...marqueeConfig, fontFamily: f.id as any })}
+                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-0.5 ${
+                      (marqueeConfig.fontFamily || 'sans') === f.id
+                        ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
+                        : 'bg-white dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100/60'
+                    }`}
+                  >
+                    <span className={`${f.fontClass} text-sm`}>{f.sample}</span>
+                    <span className="text-[10px] opacity-80">{f.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Coluna C: Tamanho & Velocidade */}
+            <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
+              {/* Tamanho da Fonte */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                    Tamanho do Texto
+                  </span>
+                  <span className="text-[10px] font-bold text-pink-600 uppercase">
+                    {marqueeConfig.fontSize || 'text-xl'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'text-sm', label: 'Pequeno' },
+                    { id: 'text-base', label: 'Médio' },
+                    { id: 'text-lg', label: 'Grande' },
+                    { id: 'text-xl', label: 'TV (XL)' },
+                    { id: 'text-2xl', label: 'Gigante' },
+                    { id: 'text-3xl', label: 'Max' },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setMarqueeConfig({ ...marqueeConfig, fontSize: s.id })}
+                      className={`py-1 px-1.5 rounded-lg border text-[11px] font-black transition-all cursor-pointer text-center ${
+                        (marqueeConfig.fontSize || 'text-xl') === s.id
+                          ? 'bg-purple-700 text-white border-purple-700'
+                          : 'bg-white dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100/60'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Slider de Velocidade */}
+              <div className="space-y-1.5 pt-1 border-t border-purple-100 dark:border-white/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1">
+                    <Gauge className="h-3 w-3 text-pink-600" />
+                    <span>Duração da Rolagem</span>
+                  </span>
+                  <span className="text-xs font-black text-purple-900 dark:text-purple-200 font-mono">
+                    {marqueeConfig.speedSeconds || 25}s
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min="10"
+                  max="60"
+                  step="1"
+                  value={marqueeConfig.speedSeconds || 25}
+                  onChange={(e) => setMarqueeConfig({ ...marqueeConfig, speedSeconds: Number(e.target.value) })}
+                  className="w-full accent-pink-600 cursor-pointer"
+                />
+
+                <div className="flex items-center justify-between text-[10px] text-purple-700/70 dark:text-purple-300/70 font-bold">
+                  <span>10s (Rápido)</span>
+                  <span>25s (Padrão)</span>
+                  <span>60s (Suave)</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
