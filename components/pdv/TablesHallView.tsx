@@ -194,6 +194,8 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             total: tableActiveInfo.totalValue > 0 ? tableActiveInfo.totalValue : (selectedTable.total || 0),
           }}
           allTables={tables}
+          orders={orders}
+          catalog={catalog}
           storePhone={storePhone}
           onBack={() => {
             setSelectedTableId(null)

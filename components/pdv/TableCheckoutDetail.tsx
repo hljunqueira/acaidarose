@@ -2,20 +2,22 @@
 
 import React, { useState } from 'react'
 import { RestaurantTable } from '@/types/tables'
-import { CartItem } from '@/types'
+import { CatalogData } from '@/types'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import SplitBillDialog from './SplitBillDialog'
 import PaymentModal from './PaymentModal'
 import TableThermalReceiptDialog from './TableThermalReceiptDialog'
-import { ArrowLeft, Printer, Utensils, Receipt, Split, CheckCircle2, Eye, Trash2 } from 'lucide-react'
+import { ArrowLeft, Printer, Receipt, Trash2, Edit3, CheckCircle2 } from 'lucide-react'
 import { broadcastTVCall } from '@/lib/utils/tvBroadcast'
 
 interface TableCheckoutDetailProps {
   table: RestaurantTable
   allTables: RestaurantTable[]
+  orders?: any[]
+  catalog?: CatalogData
   storePhone?: string | null
   onBack: () => void
   onSelectOtherTable: (t: RestaurantTable) => void
@@ -26,6 +28,8 @@ interface TableCheckoutDetailProps {
 export default function TableCheckoutDetail({
   table,
   allTables,
+  orders = [],
+  catalog,
   storePhone,
   onBack,
   onSelectOtherTable,
@@ -34,18 +38,45 @@ export default function TableCheckoutDetail({
 }: TableCheckoutDetailProps) {
   const [transferOpen, setTransferOpen] = useState(false)
   const [targetTableId, setTargetTableId] = useState('')
-  const [splitBillOpen, setSplitBillOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [selectedItemForDetail, setSelectedItemForDetail] = useState<any | null>(null)
+
+  // Modal de Edição de Pedido em Preparo
+  const [editingOrder, setEditingOrder] = useState<any | null>(null)
+  const [editToppingsText, setEditToppingsText] = useState('')
+  const [editNotes, setEditNotes] = useState('')
 
   // Modal de Cupom Térmico / Pré-Conta / Ficha de Produção
   const [thermalReceiptOpen, setThermalReceiptOpen] = useState(false)
   const [thermalType, setThermalType] = useState<'PRE_CONTA' | 'FICHA_PRODUCAO'>('PRE_CONTA')
 
-  const items = table.items || []
-  const total = table.total || items.reduce((acc, it) => acc + (it.lineTotal || 0), 0)
-  const occupiedTables = allTables.filter((t) => t.status === 'OCCUPIED')
+  // Filtrar todos os pedidos ativos vinculados a esta mesa
+  const tableOrders = orders.filter((o) => {
+    const oTable = o.tableNumber ? String(o.tableNumber).replace(/^Mesa\s*/i, '').trim() : ''
+    const isMatch = oTable === String(table.number)
+    const isActive = o.status !== 'CANCELLED' && o.status !== 'REFUNDED'
+    return isMatch && isActive
+  })
+
+  const isOrderPaid = (o: any) => {
+    return (
+      o.paymentStatus === 'PAID' ||
+      o.payment_status === 'PAID' ||
+      o.status === 'PAID' ||
+      o.status === 'COMPLETED'
+    )
+  }
+
+  // Se houver pedidos da tabela orders, calcula a partir deles; senão usa table.items
+  const hasOrdersList = tableOrders.length > 0
+  const ordersTotal = tableOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+  const tableItemsTotal = (table.items || []).reduce((acc, it) => acc + (it.lineTotal || 0), 0)
+  const total = hasOrdersList ? ordersTotal : (table.total || tableItemsTotal)
+
+  const isAllPaid = hasOrdersList
+    ? tableOrders.every(isOrderPaid)
+    : false
+
   const availableTargetTables = allTables.filter((t) => t.id !== table.id)
 
   const handleTransfer = async () => {
@@ -74,34 +105,6 @@ export default function TableCheckoutDetail({
     }
   }
 
-  const handleRemoveItem = async (itemId: string) => {
-    const updatedItems = items.filter((it) => it.id !== itemId)
-    const newTotal = updatedItems.reduce((acc, it) => acc + (it.lineTotal || 0), 0)
-
-    try {
-      if (updatedItems.length === 0) {
-        await fetch(`/api/tables/${table.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'CLOSE' }),
-        })
-        toast.info(`Mesa ${table.number} desocupada.`)
-        onTableUpdated()
-        onBack()
-      } else {
-        await fetch(`/api/tables/${table.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: updatedItems, total: +newTotal.toFixed(2) }),
-        })
-        toast.success('Item removido da comanda!')
-        onTableUpdated()
-      }
-    } catch {
-      toast.error('Erro ao atualizar mesa')
-    }
-  }
-
   const handlePrintPreReceipt = () => {
     setThermalType('PRE_CONTA')
     setThermalReceiptOpen(true)
@@ -112,24 +115,123 @@ export default function TableCheckoutDetail({
     setThermalReceiptOpen(true)
   }
 
+  // Abrir Modal de Edição de Pedido em Preparação
+  const handleOpenEditOrder = (order: any) => {
+    setEditingOrder(order)
+    const firstItem = order.items?.[0]
+    const currentToppings = firstItem?.toppings?.map((t: any) => t.name || t).join(', ') || ''
+    setEditToppingsText(currentToppings)
+    setEditNotes(order.notes || firstItem?.notes || '')
+  }
+
+  // Salvar Edição do Pedido
+  const handleSaveOrderEdit = async () => {
+    if (!editingOrder) return
+    setSubmitting(true)
+    try {
+      const updatedItems = Array.isArray(editingOrder.items) ? [...editingOrder.items] : []
+      if (updatedItems.length > 0) {
+        const toppingsArray = editToppingsText
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .map((name) => ({ name, price: 0 }))
+
+        updatedItems[0] = {
+          ...updatedItems[0],
+          toppings: toppingsArray,
+          notes: editNotes,
+        }
+      }
+
+      const res = await fetch(`/api/orders/${editingOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: updatedItems,
+          notes: editNotes,
+        }),
+      })
+
+      if (!res.ok) throw new Error('Falha ao atualizar pedido')
+      toast.success('Pedido atualizado na cozinha!')
+      setEditingOrder(null)
+      onTableUpdated()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar alterações')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Cancelar / Excluir Pedido da Mesa
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm('Deseja realmente cancelar este pedido?')) return
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'CANCELLED' }),
+      })
+      if (!res.ok) throw new Error('Falha ao cancelar pedido')
+      toast.success('Pedido cancelado com sucesso!')
+      onTableUpdated()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao cancelar')
+    }
+  }
+
+  // Liberar / Concluir Mesa (quando já quitada)
+  const handleClosePaidTable = async () => {
+    setSubmitting(true)
+    try {
+      await fetch(`/api/tables/${table.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'CLOSE' }),
+      })
+      toast.success(`Mesa ${table.number} liberada com sucesso!`)
+      onTableUpdated()
+      onBack()
+    } catch {
+      toast.error('Erro ao liberar mesa')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Finalizar Pagamento no Caixa
   const handleFinalizePayment = async (method: any, customer: { name: string; phone: string }) => {
     setSubmitting(true)
     try {
-      // 1. Gravar pedido como pago no histórico de comandas
-      await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenantId: table.tenantId,
-          items: table.items,
-          paymentMethod: method,
-          customerName: customer.name || `Cliente Mesa ${table.number.toString().padStart(2, '0')}`,
-          customerPhone: customer.phone,
-          isTableOrder: true,
-          tableNumber: `Mesa ${table.number.toString().padStart(2, '0')}`,
-          status: 'PAID',
-        }),
-      })
+      // 1. Gravar pedido como pago no histórico de comandas se necessário
+      if (!hasOrdersList) {
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenantId: table.tenantId,
+            items: table.items,
+            paymentMethod: method,
+            customerName: customer.name || `Cliente Mesa ${table.number.toString().padStart(2, '0')}`,
+            customerPhone: customer.phone,
+            isTableOrder: true,
+            tableNumber: String(table.number),
+            status: 'PAID',
+          }),
+        })
+      } else {
+        // Atualizar os pedidos pendentes da mesa para PAID
+        for (const ord of tableOrders) {
+          if (!isOrderPaid(ord)) {
+            await fetch(`/api/orders/${ord.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'PAID', paymentMethod: method }),
+            }).catch(() => {})
+          }
+        }
+      }
 
       // 2. Liberar a mesa
       await fetch(`/api/tables/${table.id}`, {
@@ -138,12 +240,7 @@ export default function TableCheckoutDetail({
         body: JSON.stringify({ action: 'CLOSE' }),
       })
 
-      // 3. Disparo automático da comanda para a impressora térmica pós-pagamento
-      try {
-        window.print()
-      } catch {}
-
-      toast.success(`Mesa ${table.number} recebida e comanda enviada para a impressora!`)
+      toast.success(`Conta da Mesa ${table.number} recebida e finalizada!`)
       setPaymentOpen(false)
       onTableUpdated()
       onBack()
@@ -156,59 +253,35 @@ export default function TableCheckoutDetail({
 
   return (
     <div className="space-y-4">
-      {/* Barra de Retorno */}
+      {/* Barra de Navegação Superior */}
       <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
         <Button
           variant="outline"
           size="sm"
           onClick={onBack}
-          className="text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white gap-1.5 cursor-pointer rounded-xl h-9 shadow-xs"
+          className="text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer rounded-xl h-9 shadow-xs"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="h-4 w-4 mr-1.5" />
           <span>Voltar para Salão de Mesas</span>
         </Button>
 
-        <div className="text-xs font-medium text-purple-800/80 dark:text-purple-200/80">
-          Atendente Responsável: <span className="text-purple-950 dark:text-pink-300 font-black">{table.assignedStaffName || 'Geral'}</span>
+        <div className="text-xs font-semibold text-purple-900/70 dark:text-purple-300">
+          Mesa <strong className="text-purple-950 dark:text-white">#{table.number}</strong>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Coluna Esquerda: Seletor Rápido de Mesas Ativas */}
-        <div className="lg:col-span-2 space-y-2">
-          <div className="text-[10px] font-black uppercase text-purple-800/80 dark:text-purple-200/90 px-1">
-            Mesas Ativas ({occupiedTables.length})
-          </div>
-          <div className="space-y-2">
-            {occupiedTables.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onSelectOtherTable(t)}
-                className={`w-full p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                  t.id === table.id
-                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md font-black'
-                    : 'bg-white dark:bg-white/5 text-purple-950 dark:text-white border-purple-200 dark:border-white/10 hover:border-purple-400 dark:hover:border-pink-500/40 font-bold hover:bg-purple-50 dark:hover:bg-white/10 shadow-xs'
-                }`}
-              >
-                <div className="text-sm font-black">{t.number}</div>
-                <div className="text-[10px] opacity-80 truncate">{t.nickname || `Mesa ${t.number}`}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Coluna Central: Comanda da Mesa */}
-        <div className="lg:col-span-6 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-5 shadow-xs dark:shadow-xl flex flex-col justify-between text-slate-900 dark:text-white">
-          <div>
+        {/* Coluna Central: Pedidos da Mesa (QR Code e Balcão) */}
+        <div className="lg:col-span-8 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-5 shadow-xs dark:shadow-xl flex flex-col justify-between text-slate-900 dark:text-white">
+          <div className="space-y-4">
             {/* Header da Mesa */}
-            <div className="flex items-center justify-between pb-4 border-b border-purple-100 dark:border-white/10">
+            <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
               <div>
-                <h2 className="text-lg font-black text-purple-950 dark:text-white">
-                  Mesa {table.number.toString().padStart(2, '0')}
+                <h2 className="text-base sm:text-lg font-black text-purple-950 dark:text-white">
+                  Pedidos da Mesa (QR Code e Balcão)
                 </h2>
                 <span className="text-xs text-purple-700/70 dark:text-purple-200/70 font-medium">
-                  Ativada às {table.activatedAt || '14:02'}
+                  Mesa {table.number.toString().padStart(2, '0')} • {hasOrdersList ? `${tableOrders.length} pedido(s) registrado(s)` : 'Em atendimento'}
                 </span>
               </div>
 
@@ -217,14 +290,14 @@ export default function TableCheckoutDetail({
                   type="button"
                   size="sm"
                   onClick={() => {
-                    const ticket = `Mesa ${table.number.toString().padStart(2, '0')}`
-                    const firstCustomer = items.find((it: any) => it.customerName)?.customerName
+                    const firstCustomer = tableOrders[0]?.customerName || `Mesa ${table.number}`
                     broadcastTVCall({
                       ticket: `#M${table.number}`,
-                      customerName: firstCustomer || ticket,
+                      customerName: firstCustomer,
+                      tableNumber: String(table.number),
                       status: 'READY',
                     })
-                    toast.success(`${ticket} chamada no Painel TV!`)
+                    toast.success(`Mesa ${table.number} chamada no Painel TV!`)
                   }}
                   className="text-xs bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold cursor-pointer rounded-xl h-8.5 shadow-xs"
                 >
@@ -237,100 +310,160 @@ export default function TableCheckoutDetail({
                   onClick={() => setTransferOpen(true)}
                   className="text-xs border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white font-bold cursor-pointer rounded-xl h-8.5 shadow-xs"
                 >
-                  <span>Transferir Itens</span>
+                  <span>Transferir</span>
                 </Button>
               </div>
             </div>
 
-            {/* Tabela de Itens Consumidos */}
-            <div className="my-4 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-purple-100 dark:border-white/10 text-purple-800 dark:text-purple-200 font-bold uppercase text-[10px]">
-                  <tr>
-                    <th className="py-2">Qtde</th>
-                    <th className="py-2">Item / Cliente</th>
-                    <th className="py-2 text-right">Unit.</th>
-                    <th className="py-2 text-right">Valor</th>
-                    <th className="py-2 text-center"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-purple-100 dark:divide-white/10">
-                  {items.map((item: any, idx) => (
-                    <tr key={item.id || idx} className="hover:bg-purple-50/50 dark:hover:bg-white/5">
-                      <td className="py-3 font-bold text-purple-700 dark:text-pink-300 font-mono">1x</td>
-                      <td className="py-3">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-purple-950 dark:text-white">
-                            {item.containerName || item.container?.name || 'Açaí Personalizado'}
+            {/* Lista de Pedidos da Mesa */}
+            {hasOrdersList ? (
+              <div className="space-y-3.5">
+                {tableOrders.map((order: any, idx: number) => {
+                  const paid = isOrderPaid(order)
+                  const isPreparing = order.status === 'NEW' || order.status === 'PREPARING'
+                  const isReady = order.status === 'READY'
+                  const ticketNumber = order.ticketNumber || (order.id ? `#${order.id.slice(-4).toUpperCase()}` : `#${idx + 1}`)
+                  const isQr = order.isQRCode || order.channel === 'QR_CODE'
+
+                  return (
+                    <div
+                      key={order.id || idx}
+                      className="p-4 rounded-2xl border border-purple-100 dark:border-white/10 bg-purple-50/30 dark:bg-white/[0.03] space-y-3 shadow-xs"
+                    >
+                      {/* Topo do Pedido: Cliente + Badges */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-purple-100 dark:border-white/10">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-black text-purple-950 dark:text-white">
+                            {order.customerName || `Cliente ${idx + 1}`}
                           </span>
-                          {item.customerName && (
-                            <span className="inline-flex items-center px-1.5 py-0.2 rounded-md bg-purple-100 dark:bg-pink-950/60 border border-purple-200 dark:border-pink-500/40 text-[10px] font-bold text-purple-900 dark:text-pink-300">
-                              {item.customerName}
-                            </span>
-                          )}
-                          {item.paymentStatus === 'PAID' && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/40 text-[9px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                          <span className="text-xs font-mono font-bold text-purple-700/80 dark:text-purple-300">
+                            {ticketNumber}
+                          </span>
+                          <span className="text-[10px] text-purple-600 dark:text-purple-300/80 font-medium">
+                            • {isQr ? 'Autoatendimento QR Code' : 'Lançado no Balcão'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {paid ? (
+                            <Badge className="bg-emerald-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0">
                               ✓ Pago MB WAY
-                            </span>
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-500 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0">
+                              A Pagar no Caixa
+                            </Badge>
                           )}
-                          {item.orderedAt && (
-                            <span className="text-[10px] text-purple-700/60 dark:text-purple-300/60 font-mono">
-                              {item.orderedAt}
-                            </span>
+
+                          {isPreparing && (
+                            <Badge variant="outline" className="text-[9px] font-bold border-amber-300 text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40">
+                              Em Preparação
+                            </Badge>
+                          )}
+                          {isReady && (
+                            <Badge className="bg-purple-700 text-white font-extrabold text-[9px]">
+                              Pronto
+                            </Badge>
                           )}
                         </div>
-                        <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70 mt-0.5">
-                          {item.bases?.map((b: any) => b.name).join(', ')}
-                          {item.toppings && item.toppings.length > 0 && ` + ${item.toppings.map((t: any) => t.name).join(', ')}`}
-                        </div>
-                      </td>
-                      <td className="py-3 text-right text-purple-700/80 dark:text-purple-200/70 font-mono">
-                        {formatCurrency(item.lineTotal || 0)}
-                      </td>
-                      <td className="py-3 text-right font-black text-purple-800 dark:text-pink-300 font-mono">
-                        {formatCurrency(item.lineTotal || 0)}
-                      </td>
-                      <td className="py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
+                      </div>
+
+                      {/* Lista de Itens do Pedido */}
+                      <div className="space-y-2">
+                        {Array.isArray(order.items) &&
+                          order.items.map((item: any, itemIdx: number) => {
+                            const containerName = item.containerName || item.container?.name || item.name || 'Taça de Açaí'
+                            const basesStr = item.bases?.map((b: any) => b.name || b).join(', ')
+                            const toppingsStr = item.toppings?.map((t: any) => t.name || t).join(', ')
+
+                            return (
+                              <div key={itemIdx} className="flex justify-between items-start text-xs">
+                                <div>
+                                  <div className="font-bold text-purple-950 dark:text-white">
+                                    1x {containerName}
+                                  </div>
+                                  {basesStr && (
+                                    <div className="text-[11px] text-purple-800/80 dark:text-purple-200/80">
+                                      Base: {basesStr}
+                                    </div>
+                                  )}
+                                  {toppingsStr && (
+                                    <div className="text-[11px] text-purple-700/70 dark:text-purple-300/70">
+                                      Acompanhamentos: {toppingsStr}
+                                    </div>
+                                  )}
+                                  {item.notes && (
+                                    <div className="text-[10px] text-amber-700 dark:text-amber-300 italic">
+                                      Obs: {item.notes}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="font-mono font-black text-purple-900 dark:text-pink-300 text-right">
+                                  {formatCurrency(Number(item.price || item.lineTotal || order.total) || 0)}
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+
+                      {/* Ações do Pedido (Editar se em preparo ou cancelar) */}
+                      <div className="flex items-center justify-between pt-2 border-t border-purple-100 dark:border-white/10 text-xs">
+                        <div className="flex items-center gap-2">
+                          {isPreparing && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenEditOrder(order)}
+                              className="h-7 px-2.5 text-[11px] font-bold border-purple-200 dark:border-white/15 text-purple-900 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-white/10 rounded-lg cursor-pointer"
+                            >
+                              <Edit3 className="h-3 w-3 mr-1" />
+                              <span>Editar Pedido (Em Preparo)</span>
+                            </Button>
+                          )}
+
+                          <Button
                             type="button"
-                            onClick={() => setSelectedItemForDetail(item)}
-                            className="h-6 w-6 rounded-lg hover:bg-purple-100 dark:hover:bg-white/10 text-purple-700 dark:text-purple-300 inline-flex items-center justify-center cursor-pointer"
-                            title="Ver detalhes dos acompanhamentos"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleCancelOrder(order.id)}
+                            className="h-7 px-2 text-[11px] font-bold text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg cursor-pointer"
                           >
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(item.id)}
-                            className="h-6 w-6 rounded-full hover:bg-red-500/20 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 inline-flex items-center justify-center cursor-pointer"
-                            title="Remover item da mesa"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            <span>Cancelar</span>
+                          </Button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+
+                        <div className="font-mono font-black text-sm text-purple-950 dark:text-white">
+                          Total: {formatCurrency(Number(order.total) || 0)}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-xs text-purple-700/70 dark:text-purple-300/70 font-semibold">
+                Nenhum pedido ativo no momento para esta mesa.
+              </div>
+            )}
           </div>
 
           <Button
             variant="outline"
             onClick={onAddMoreItems}
-            className="w-full h-10 border-dashed border-purple-200 dark:border-white/20 bg-purple-50/50 dark:bg-white/5 hover:bg-purple-100/70 dark:hover:bg-white/10 text-purple-950 dark:text-white font-bold text-xs cursor-pointer rounded-xl shadow-xs"
+            className="w-full h-10 mt-4 border-dashed border-purple-200 dark:border-white/20 bg-purple-50/50 dark:bg-white/5 hover:bg-purple-100/70 dark:hover:bg-white/10 text-purple-950 dark:text-white font-bold text-xs cursor-pointer rounded-xl shadow-xs"
           >
-            + Adicionar Mais Itens / Açaís
+            + Adicionar Novo Pedido no Balcão para Mesa {table.number}
           </Button>
         </div>
 
-        {/* Coluna Direita: Painel de Fechamento de Conta */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-5 shadow-xs dark:shadow-xl flex flex-col justify-between text-slate-900 dark:text-white">
+        {/* Coluna Direita: Painel de Fechamento / Resumo da Mesa */}
+        <div className="lg:col-span-4 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-5 shadow-xs dark:shadow-xl flex flex-col justify-between text-slate-900 dark:text-white space-y-4">
           <div className="space-y-4">
             <div className="text-sm font-black text-purple-950 dark:text-white border-b border-purple-100 dark:border-white/10 pb-3">
-              Fechamento de Conta
+              Resumo da Mesa {table.number}
             </div>
 
             <div className="space-y-2 text-xs">
@@ -339,30 +472,22 @@ export default function TableCheckoutDetail({
                 <span className="font-bold text-purple-950 dark:text-white">{formatCurrency(total)}</span>
               </div>
               <div className="flex justify-between text-purple-800/80 dark:text-purple-200/80">
-                <span>Taxa de Serviço:</span>
-                <span className="font-bold text-purple-950 dark:text-white">€ 0,00</span>
+                <span>Status de Pagamento:</span>
+                <span className={`font-black ${isAllPaid ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}`}>
+                  {isAllPaid ? 'Quitado (MB WAY)' : 'Pendente no Caixa'}
+                </span>
               </div>
             </div>
 
             {/* Total em Destaque */}
             <div className="pt-3 border-t border-dashed border-purple-200 dark:border-white/15 text-center">
-              <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70 font-bold uppercase">Total Consumido</div>
+              <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70 font-bold uppercase">Total da Mesa</div>
               <div className="text-3xl font-black text-purple-950 dark:text-white mt-1 font-mono">{formatCurrency(total)}</div>
             </div>
           </div>
 
           {/* Botões de Ação do Fechamento */}
           <div className="space-y-2.5 pt-4 border-t border-purple-100 dark:border-white/10">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setSplitBillOpen(true)}
-              className="w-full text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white gap-1.5 cursor-pointer rounded-xl h-9 shadow-xs"
-            >
-              <Split className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-              <span>Dividir Conta (Split Bill)</span>
-            </Button>
-
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
@@ -373,6 +498,7 @@ export default function TableCheckoutDetail({
                 <Receipt className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
                 <span>Pré-Conta</span>
               </Button>
+
               <Button
                 type="button"
                 variant="outline"
@@ -384,95 +510,130 @@ export default function TableCheckoutDetail({
               </Button>
             </div>
 
-            {items.length > 0 && items.every((it: any) => it.paymentStatus === 'PAID') ? (
-              /* Se todos os itens da mesa já foram pagos online via MB WAY */
+            {/* Se tudo já foi pago (como via MB WAY), botão para liberar mesa; senão botão para receber */}
+            {isAllPaid ? (
               <Button
                 type="button"
+                onClick={handleClosePaidTable}
                 disabled={submitting}
-                onClick={async () => {
-                  setSubmitting(true)
-                  try {
-                    await fetch(`/api/tables/${table.id}`, {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'CLOSE' }),
-                    })
-                    toast.success(`Mesa ${table.number} desocupada e liberada com sucesso!`)
-                    onTableUpdated()
-                    onBack()
-                  } catch {
-                    toast.error('Erro ao liberar mesa')
-                  } finally {
-                    setSubmitting(false)
-                  }
-                }}
-                className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer flex items-center justify-center gap-2"
+                className="w-full h-11 rounded-2xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-black text-sm shadow-md cursor-pointer flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Liberar Mesa (Pago Online)</span>
+                <span>Concluir & Liberar Mesa</span>
               </Button>
             ) : (
-              /* Se houver saldo pendente (lançado manualmente no caixa) */
               <Button
                 type="button"
                 onClick={() => setPaymentOpen(true)}
-                className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer"
+                disabled={submitting}
+                className="w-full h-11 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer"
               >
-                Receber e Finalizar
+                <span>Receber & Finalizar</span>
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Modal de Transferência */}
+      {/* Modal de Edição de Pedido em Preparo */}
+      {editingOrder && (
+        <Dialog open={Boolean(editingOrder)} onOpenChange={(open) => !open && setEditingOrder(null)}>
+          <DialogContent className="sm:max-w-md bg-white dark:bg-[#1a022d] text-slate-900 dark:text-white border border-purple-200 dark:border-white/15 rounded-3xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+                Editar Pedido em Preparação ({editingOrder.customerName || `Mesa ${table.number}`})
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2 text-xs">
+              <div>
+                <label className="block text-xs font-bold text-purple-900 dark:text-purple-200 mb-1">
+                  Acompanhamentos (separados por vírgula):
+                </label>
+                <input
+                  type="text"
+                  value={editToppingsText}
+                  onChange={(e) => setEditToppingsText(e.target.value)}
+                  placeholder="Ex: Leite Ninho, Morango, Granola"
+                  className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs font-semibold text-purple-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-purple-900 dark:text-purple-200 mb-1">
+                  Observações da Cozinha:
+                </label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Ex: Sem calda, caprichar no ninho"
+                  className="w-full p-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs font-semibold text-purple-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingOrder(null)}
+                className="text-xs font-bold rounded-xl"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveOrderEdit}
+                disabled={submitting}
+                className="text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white rounded-xl"
+              >
+                Salvar Alterações
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog de Transferência de Mesa */}
       <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-[#1a022d] text-slate-900 dark:text-white border border-purple-200 dark:border-white/15 rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-base font-black">
-              Transferir Itens da Mesa {table.number}
+            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+              Transferir Mesa {table.number.toString().padStart(2, '0')}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-2 my-3">
-            <label className="text-xs font-bold">Selecione a Mesa de Destino:</label>
+          <div className="py-3 text-xs space-y-2">
+            <span className="text-purple-800/80 dark:text-purple-200/80 font-medium">
+              Selecione a nova mesa de destino:
+            </span>
             <select
               value={targetTableId}
               onChange={(e) => setTargetTableId(e.target.value)}
-              className="w-full h-11 px-3.5 rounded-xl border bg-background text-xs font-bold cursor-pointer"
+              className="w-full h-10 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white cursor-pointer"
             >
-              <option value="">Escolha a mesa...</option>
+              <option value="">Selecione uma mesa...</option>
               {availableTargetTables.map((t) => (
                 <option key={t.id} value={t.id}>
-                  Mesa {t.number} ({t.nickname || (t.status === 'AVAILABLE' ? 'Livre' : 'Ocupada')})
+                  Mesa {t.number.toString().padStart(2, '0')} ({t.status === 'AVAILABLE' ? 'Livre' : 'Ocupada'})
                 </option>
               ))}
             </select>
           </div>
 
-          <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setTransferOpen(false)}>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)} className="text-xs font-bold rounded-xl">
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleTransfer} className="bg-purple-700 text-white font-bold cursor-pointer">
+            <Button size="sm" onClick={handleTransfer} className="text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white rounded-xl">
               Confirmar Transferência
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Divisão de Conta */}
-      <SplitBillDialog
-        open={splitBillOpen}
-        onOpenChange={setSplitBillOpen}
-        total={total}
-        tableNumber={table.number}
-        onConfirmSplit={() => {
-          setPaymentOpen(true)
-        }}
-      />
-
-      {/* Modal de Pagamento com Troco */}
+      {/* Modal de Pagamento no Caixa */}
       <PaymentModal
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
@@ -482,77 +643,17 @@ export default function TableCheckoutDetail({
         onPay={handleFinalizePayment}
       />
 
-      {/* Modal de Detalhes do Item da Mesa (Raio-X de Ingredientes) */}
-      <Dialog open={Boolean(selectedItemForDetail)} onOpenChange={(open) => !open && setSelectedItemForDetail(null)}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-5 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl">
-          <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
-            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
-              {selectedItemForDetail?.containerName || selectedItemForDetail?.container?.name || 'Açaí Personalizado'}
-            </DialogTitle>
-            <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-semibold">
-              Mesa {table.number} · Cliente: <strong>{selectedItemForDetail?.customerName || 'Mesa'}</strong>
-            </p>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2 text-xs">
-            {/* Bases */}
-            {selectedItemForDetail?.bases && selectedItemForDetail.bases.length > 0 && (
-              <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-1">
-                <div className="text-[10px] font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
-                  Bases & Cremes Selecionados
-                </div>
-                <div className="font-bold text-purple-950 dark:text-white">
-                  {selectedItemForDetail.bases.map((b: any) => b.name).join(', ')}
-                </div>
-              </div>
-            )}
-
-            {/* Toppings / Frutas / Caldas */}
-            {selectedItemForDetail?.toppings && selectedItemForDetail.toppings.length > 0 && (
-              <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-1">
-                <div className="text-[10px] font-black uppercase text-purple-700 dark:text-pink-300 tracking-wider">
-                  Acompanhamentos / Frutas / Caldas
-                </div>
-                <div className="font-bold text-purple-950 dark:text-white">
-                  {selectedItemForDetail.toppings.map((t: any) => t.name).join(', ')}
-                </div>
-              </div>
-            )}
-
-            {/* Observações */}
-            {selectedItemForDetail?.notes && (
-              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-950 dark:text-amber-200 italic">
-                <b>Observação:</b> {selectedItemForDetail.notes}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-purple-100/50 dark:bg-white/5 font-black text-sm">
-              <span>Valor do Item:</span>
-              <span className="text-purple-950 dark:text-pink-300 font-mono">
-                {formatCurrency(selectedItemForDetail?.lineTotal || 0)}
-              </span>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={() => setSelectedItemForDetail(null)}
-              className="w-full bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl"
-            >
-              Fechar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de Cupom Térmico Não Fiscal 80mm */}
+      {/* Modal de Impressão Térmica */}
       <TableThermalReceiptDialog
         open={thermalReceiptOpen}
         onOpenChange={setThermalReceiptOpen}
-        table={table}
-        type={thermalType}
+        table={{
+          ...table,
+          items: hasOrdersList ? tableOrders.flatMap((o) => o.items || []) : (table.items || []),
+          total,
+        }}
         storePhone={storePhone}
+        type={thermalType}
       />
     </div>
   )
