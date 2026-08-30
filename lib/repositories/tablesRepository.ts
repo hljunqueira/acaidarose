@@ -35,48 +35,60 @@ export async function getTablesByTenant(tenantId: string): Promise<RestaurantTab
   try {
     const res = await query(
       `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
-              total_amount, last_activity, activated_at, created_at, updated_at
+              total_amount, last_activity, activated_at, created_at, updated_at, deleted_at
        FROM tables 
-       WHERE tenant_id::text = $1 AND deleted_at IS NULL
+       WHERE tenant_id::text = $1
        ORDER BY table_number ASC`,
       [tenantId]
     )
 
     if (res.rows && res.rows.length > 0) {
-      return res.rows.map((t: any) => ({
-        id: t.id,
-        tenantId: t.tenant_id,
-        number: t.table_number,
-        code: t.qr_code_token || `MESA-${t.table_number}`,
-        nickname: `Mesa ${t.table_number}`,
-        status: (t.status || 'AVAILABLE') as TableStatus,
-        total: Number(t.total_amount) || 0,
-        activatedAt: t.activated_at,
-        items: [],
-        createdAt: t.created_at,
-        updatedAt: t.updated_at,
-      }))
+      return res.rows
+        .filter((t: any) => !t.deleted_at)
+        .map((t: any) => ({
+          id: t.id,
+          tenantId: t.tenant_id,
+          number: t.table_number,
+          code: t.qr_code_token || generateTableHash(t.table_number),
+          nickname: `Mesa ${t.table_number}`,
+          status: (t.status || 'AVAILABLE') as TableStatus,
+          total: Number(t.total_amount) || 0,
+          activatedAt: t.activated_at,
+          items: [],
+          createdAt: t.created_at,
+          updatedAt: t.updated_at,
+        }))
     }
+
+    // Se a loja não possuir mesas criadas, inicializa o salão no banco com 12 mesas reais e hashes únicas
+    const initialTables: RestaurantTable[] = []
+    for (let i = 1; i <= 12; i++) {
+      const newId = uuidv4()
+      const hash = generateTableHash(i)
+      await query(
+        `INSERT INTO tables (id, tenant_id, table_number, qr_code_token, status)
+         VALUES ($1, $2, $3, $4, 'AVAILABLE')
+         ON CONFLICT (tenant_id, table_number) DO NOTHING`,
+        [newId, tenantId, i, hash]
+      ).catch(() => {})
+
+      initialTables.push({
+        id: newId,
+        tenantId,
+        number: i,
+        code: hash,
+        nickname: `Mesa ${i}`,
+        status: 'AVAILABLE',
+        total: 0,
+        items: [],
+        createdAt: new Date().toISOString(),
+      })
+    }
+    return initialTables
   } catch (err) {
     console.error('Erro ao buscar mesas no PostgreSQL:', err)
+    return []
   }
-
-  // Gera 12 mesas padrão se a loja ainda não tiver
-  const defaultTables: RestaurantTable[] = []
-  for (let i = 1; i <= 12; i++) {
-    defaultTables.push({
-      id: `table-${tenantId}-${i}`,
-      tenantId,
-      number: i,
-      code: `QR-MESA-${i}`,
-      nickname: `Mesa ${i}`,
-      status: 'AVAILABLE',
-      total: 0,
-      items: [],
-      createdAt: new Date().toISOString(),
-    })
-  }
-  return defaultTables
 }
 
 export async function getTableByNumber(tenantId: string, number: number): Promise<RestaurantTable | null> {
@@ -302,8 +314,40 @@ export async function updateTable(id: string, payload: Partial<RestaurantTable>)
 
 export async function deleteTable(id: string): Promise<boolean> {
   await ensureTablesTable()
+
+  // 1. Se for um identificador virtual inicial
+  if (id.startsWith('table-')) {
+    const parts = id.split('-')
+    const tableNumber = parseInt(parts[parts.length - 1]) || 1
+    const tenantId = parts.slice(1, parts.length - 1).join('-') || '11111111-1111-1111-1111-111111111111'
+
+    const newId = uuidv4()
+    await query(
+      `INSERT INTO tables (id, tenant_id, table_number, qr_code_token, status, created_at, updated_at, deleted_at)
+       VALUES ($1, $2, $3, $4, 'AVAILABLE', timezone('utc'::text, now()), timezone('utc'::text, now()), timezone('utc'::text, now()))
+       ON CONFLICT (tenant_id, table_number) DO UPDATE
+       SET deleted_at = timezone('utc'::text, now()), updated_at = timezone('utc'::text, now())`,
+      [newId, tenantId, tableNumber, generateTableHash(tableNumber)]
+    ).catch(() => {})
+
+    return true
+  }
+
+  // 2. Se for UUID físico
   const res = await query(`UPDATE tables SET deleted_at = timezone('utc'::text, now()) WHERE id::text = $1`, [id])
   return (res.rowCount || 0) > 0
+}
+
+export async function deleteAllTablesByTenant(tenantId: string): Promise<boolean> {
+  await ensureTablesTable()
+  await query(
+    `UPDATE tables 
+     SET deleted_at = timezone('utc'::text, now()),
+         updated_at = timezone('utc'::text, now())
+     WHERE tenant_id::text = $1 AND deleted_at IS NULL`,
+    [tenantId]
+  )
+  return true
 }
 
 export async function closeTable(tableId: string, tenantId?: string): Promise<boolean> {

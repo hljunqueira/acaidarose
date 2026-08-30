@@ -31,6 +31,8 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
   const [batchQROpen, setBatchQROpen] = useState(false)
   const [tableToDelete, setTableToDelete] = useState<RestaurantTable | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -94,6 +96,21 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
     }
   }
 
+  const handleConfirmDeleteAllTables = async () => {
+    setDeleteAllLoading(true)
+    try {
+      const res = await fetch(`/api/tables?tenantId=${encodeURIComponent(tenantId)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Falha ao eliminar todas as mesas')
+      toast.success('Todas as mesas foram eliminadas com sucesso!')
+      setDeleteAllOpen(false)
+      fetchData()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao eliminar todas as mesas')
+    } finally {
+      setDeleteAllLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Header Minimalista */}
@@ -127,13 +144,26 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
           </Button>
 
           {isMaster && (
-            <Button
-              size="sm"
-              onClick={handleOpenAdd}
-              className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
-            >
-              Nova Mesa
-            </Button>
+            <>
+              {tables.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteAllOpen(true)}
+                  className="h-9 text-xs font-bold border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 rounded-xl cursor-pointer"
+                >
+                  Excluir Todas
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                onClick={handleOpenAdd}
+                className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+              >
+                Nova Mesa
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -271,6 +301,18 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
             variant="destructive"
             loading={deleteLoading}
             onConfirm={handleConfirmDeleteTable}
+          />
+
+          <ConfirmActionDialog
+            open={deleteAllOpen}
+            onOpenChange={setDeleteAllOpen}
+            title="Excluir Todas as Mesas"
+            description="Tem a certeza que deseja eliminar TODAS as mesas desta unidade? Todas as mesas atuais serão removidas do salão."
+            confirmLabel="Excluir Todas as Mesas"
+            cancelLabel="Cancelar"
+            variant="destructive"
+            loading={deleteAllLoading}
+            onConfirm={handleConfirmDeleteAllTables}
           />
         </>
       )}

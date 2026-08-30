@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTablesByTenant, createTable, createBatchTables } from '@/lib/repositories/tablesRepository'
+import { getTablesByTenant, createTable, createBatchTables, deleteAllTablesByTenant } from '@/lib/repositories/tablesRepository'
 
 export async function GET(req: NextRequest) {
   try {
@@ -36,5 +36,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(created, { status: 201 })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Erro ao criar mesa' }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const tenantId = searchParams.get('tenantId') || '11111111-1111-1111-1111-111111111111'
+    await deleteAllTablesByTenant(tenantId)
+    return NextResponse.json({ success: true, message: 'Todas as mesas foram excluídas' })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Erro ao excluir todas as mesas' }, { status: 500 })
   }
 }
