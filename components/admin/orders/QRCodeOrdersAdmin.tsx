@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Order, OrderStatus } from '@/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -38,7 +39,6 @@ import { playOrderNotificationSound } from '@/lib/utils/soundNotification'
 import { broadcastTVCall } from '@/lib/utils/tvBroadcast'
 import OrderHistoryAuditModal from './OrderHistoryAuditModal'
 import OrderEditDialog from './OrderEditDialog'
-import NewOrderManualModal from './NewOrderManualModal'
 import CancelReasonDialog from './CancelReasonDialog'
 import OrderItemsModal from './OrderItemsModal'
 import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
@@ -112,6 +112,7 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
 ]
 
 export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) {
+  const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'KANBAN' | 'LIST'>('KANBAN')
@@ -128,7 +129,6 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
   const [selectedOrderForAudit, setSelectedOrderForAudit] = useState<Order | null>(null)
   const [selectedOrderForItems, setSelectedOrderForItems] = useState<Order | null>(null)
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null)
-  const [newOrderModalOpen, setNewOrderModalOpen] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
@@ -560,10 +560,10 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
 
           <Button
             size="sm"
-            onClick={() => setNewOrderModalOpen(true)}
+            onClick={() => router.push('/admin/pdv')}
             className="h-8 text-xs font-black bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white shadow-sm rounded-xl cursor-pointer px-3.5"
           >
-            <span>Nova Comanda</span>
+            <span>Nova Comanda (PDV)</span>
           </Button>
         </div>
       </div>
@@ -1134,15 +1134,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         onSave={handleSaveEditedOrder}
       />
 
-      {/* 6. Modal de Nova Comanda Manual */}
-      <NewOrderManualModal
-        open={newOrderModalOpen}
-        onOpenChange={setNewOrderModalOpen}
-        tenantId={tenantId}
-        onCreateOrder={handleCreateOrder}
-      />
-
-      {/* 7. Dialog de Cancelamento com Motivo */}
+      {/* 6. Dialog de Cancelamento com Motivo */}
       <CancelReasonDialog
         open={cancelConfirmOpen}
         onOpenChange={setCancelConfirmOpen}

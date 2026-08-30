@@ -91,8 +91,8 @@ export default function OrderHistoryAuditModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 bg-white border border-purple-100/80 rounded-3xl shadow-xl">
         {/* 1. Header Minimalista */}
-        <DialogHeader className="pb-3 border-b border-gray-100 space-y-2">
-          <div className="flex items-center justify-between gap-3">
+        <DialogHeader className="pb-3 border-b border-gray-100 space-y-2 text-left">
+          <DialogTitle className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="text-lg font-black text-foreground tracking-tight">
                 Comanda #{order.orderNumber || 100}
@@ -109,7 +109,7 @@ export default function OrderHistoryAuditModal({
             </div>
 
             <div>{getStatusBadge()}</div>
-          </div>
+          </DialogTitle>
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">

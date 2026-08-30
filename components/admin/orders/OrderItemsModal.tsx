@@ -66,7 +66,7 @@ export default function OrderItemsModal({
       <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         {/* Header com Ticket, Mesa e Nome */}
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
-          <div className="flex items-center justify-between gap-2">
+          <DialogTitle className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-xl font-black text-purple-950 dark:text-pink-300 font-mono">
                 Ticket #{order.orderNumber || 100}
@@ -93,7 +93,7 @@ export default function OrderItemsModal({
                 </Badge>
               )}
             </div>
-          </div>
+          </DialogTitle>
 
           <div className="flex items-center gap-1.5 text-xs text-purple-700/80 dark:text-purple-200/70 pt-1 font-semibold">
             <User className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
