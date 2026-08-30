@@ -30,6 +30,28 @@
     --radius: 0.85rem;
   }
 
+  .dark {
+    --background: 280 60% 4%;
+    --foreground: 0 0% 98%;
+    --card: 280 50% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 280 50% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 280 75% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 280 30% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 280 20% 15%;
+    --muted-foreground: 280 15% 65%;
+    --accent: 280 30% 18%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 280 20% 20%;
+    --input: 280 20% 20%;
+    --ring: 280 75% 60%;
+  }
+
   body {
     font-family: var(--font-body);
     background-color: hsl(var(--background));

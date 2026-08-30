@@ -210,6 +210,19 @@ export function broadcastTVMarqueeConfig(config: Partial<TVMarqueeConfig>, tenan
   const current = getStoredTVMarqueeConfig(tenantId)
   const merged: TVMarqueeConfig = { ...current, ...config }
 
+  // 1. Envio via API Backend para sincronização entre dispositivos e Smart TVs
+  try {
+    fetch('/api/tv/marquee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        config: merged,
+        tenantId,
+      }),
+    }).catch(() => {})
+  } catch {}
+
+  // 2. LocalStorage (persistência local)
   try {
     if (tenantId) {
       localStorage.setItem(getMarqueeConfigKey(tenantId), JSON.stringify(merged))
@@ -220,6 +233,7 @@ export function broadcastTVMarqueeConfig(config: Partial<TVMarqueeConfig>, tenan
     localStorage.setItem(MARQUEE_STORAGE_KEY, merged.promoText || '')
   } catch {}
 
+  // 3. BroadcastChannel (mesmo navegador)
   if ('BroadcastChannel' in window) {
     try {
       const channel = new BroadcastChannel(MARQUEE_CONFIG_CHANNEL)

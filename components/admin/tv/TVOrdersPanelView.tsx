@@ -136,6 +136,21 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     } catch {
       // fallback silencioso
     }
+
+    // Consulta de configurações do Marquee em tempo real via Backend API
+    try {
+      const marqueeUrl = tenantId ? `/api/tv/marquee?tenantId=${encodeURIComponent(tenantId)}` : '/api/tv/marquee'
+      const marqueeRes = await fetch(marqueeUrl)
+      if (marqueeRes.ok) {
+        const marqueeData = await marqueeRes.json()
+        if (marqueeData?.success && marqueeData.config) {
+          setMarqueeConfig((prev) => ({
+            ...prev,
+            ...marqueeData.config,
+          }))
+        }
+      }
+    } catch {}
   }, [tenantId, soundConfig, audioEnabled])
 
   // Polling a cada 2 segundos para sincronização contínua com PostgreSQL e chamadas
@@ -584,14 +599,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         </section>
       </main>
 
-      {/* 3. RODAPÉ AMPLIADO EM LARGURA TOTAL (100%): MARQUEE 100% CUSTOMIZÁVEL PELO USUÁRIO (ZERO SEEDS) */}
+      {/* 3. RODAPÉ AMPLIADO EM LARGURA TOTAL (100%): MARQUEE DE PEDIDOS E COMUNICADOS */}
       {(() => {
         const hasPromo = Boolean(marqueeConfig.promoText?.trim())
-        const hasIdle = Boolean(marqueeConfig.idleText?.trim())
         const showPreparing = marqueeConfig.showPreparingOrders !== false && preparingOrders.length > 0
-        const shouldShow = hasPromo || hasIdle || showPreparing
-
-        if (!shouldShow) return null
+        const idleMessage = marqueeConfig.idleText?.trim() || 'Açaí da Rose · O verdadeiro açaí artesanal da Amazônia'
 
         const fontClass =
           marqueeConfig.fontFamily === 'cursive'
@@ -603,7 +615,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             : 'font-sans'
 
         const sizeClass = marqueeConfig.fontSize || 'text-xl sm:text-2xl'
-        const badgeTitle = hasPromo ? 'Comunicado' : showPreparing ? 'Em Preparação' : 'Aviso'
+        const badgeTitle = hasPromo ? 'Comunicado' : showPreparing ? 'Em Preparação' : 'Institucional'
         const badgeColor = hasPromo
           ? 'bg-purple-500/25 text-purple-200 border-purple-500/40'
           : showPreparing
@@ -656,7 +668,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                       <span className="opacity-40">★</span>
                       <span>{marqueeConfig.promoText.trim()}</span>
                     </span>
-                  ) : showPreparing && hasIdle ? (
+                  ) : showPreparing ? (
                     <span className="inline-flex items-center gap-6 mx-4">
                       {preparingOrders.map((o, idx) => (
                         <React.Fragment key={o.id || idx}>
@@ -671,30 +683,18 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                           <span className="opacity-40">•</span>
                         </React.Fragment>
                       ))}
-                      <span>{marqueeConfig.idleText.trim()}</span>
+                      <span>{idleMessage}</span>
                       <span className="opacity-40">•</span>
                     </span>
-                  ) : showPreparing ? (
-                    preparingOrders.map((o, idx) => (
-                      <span key={o.id || idx} className="inline-flex items-center gap-3 mx-6 uppercase">
-                        <span className="font-mono text-amber-300">
-                          ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
-                        </span>
-                        <span className="text-white font-extrabold">
-                          {getDisplayName(o.customerName, o.tableNumber)}
-                        </span>
-                        <span className="opacity-40 mx-2">•</span>
-                      </span>
-                    ))
-                  ) : hasIdle ? (
+                  ) : (
                     <span className="inline-flex items-center gap-6 mx-4">
-                      <span>{marqueeConfig.idleText.trim()}</span>
+                      <span>{idleMessage}</span>
                       <span className="opacity-40">•</span>
-                      <span>{marqueeConfig.idleText.trim()}</span>
+                      <span>{idleMessage}</span>
                       <span className="opacity-40">•</span>
-                      <span>{marqueeConfig.idleText.trim()}</span>
+                      <span>{idleMessage}</span>
                     </span>
-                  ) : null}
+                  )}
                 </div>
               </div>
             </div>

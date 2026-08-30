@@ -383,7 +383,9 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             size="sm"
             onClick={() => setActiveTab(activeTab === 'VIDEOS' ? 'NONE' : 'VIDEOS')}
             className={`h-8 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-purple-200 dark:border-white/15 shrink-0 ${
-              activeTab === 'VIDEOS' ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black ring-2 ring-purple-300' : 'text-purple-950 dark:text-white'
+              activeTab === 'VIDEOS'
+                ? 'bg-purple-100 dark:bg-white/20 text-purple-950 dark:text-white font-black ring-2 ring-purple-300'
+                : 'bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
             }`}
           >
             Vídeos TV
@@ -396,7 +398,9 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             size="sm"
             onClick={() => setActiveTab(activeTab === 'MARQUEE' ? 'NONE' : 'MARQUEE')}
             className={`h-8 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-purple-200 dark:border-white/15 shrink-0 ${
-              activeTab === 'MARQUEE' ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black ring-2 ring-purple-300' : 'text-purple-950 dark:text-white'
+              activeTab === 'MARQUEE'
+                ? 'bg-purple-100 dark:bg-white/20 text-purple-950 dark:text-white font-black ring-2 ring-purple-300'
+                : 'bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
             }`}
           >
             Editar Marquee
@@ -410,10 +414,10 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             onClick={() => setActiveTab(activeTab === 'AUDIO' ? 'NONE' : 'AUDIO')}
             className={`h-8 px-3 rounded-xl text-xs font-bold border-purple-200 dark:border-white/15 transition-all cursor-pointer shrink-0 ${
               activeTab === 'AUDIO'
-                ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black ring-2 ring-purple-300'
+                ? 'bg-purple-100 dark:bg-white/20 text-purple-950 dark:text-white font-black ring-2 ring-purple-300'
                 : soundConfig.enabled
-                ? 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 border-pink-300'
-                : 'text-purple-950 dark:text-white'
+                ? 'bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border-pink-300 dark:border-pink-800'
+                : 'bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
             }`}
           >
             {soundConfig.enabled ? `Áudio (${soundConfig.gender === 'female' ? 'Voz Fem.' : 'Voz Masc.'})` : 'Áudio Desligado'}
@@ -1056,7 +1060,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                 variant="outline"
                 size="sm"
                 onClick={handleResetMarquee}
-                className="h-8 px-3 border-purple-200 dark:border-white/15 text-xs font-bold rounded-xl cursor-pointer"
+                className="h-8 px-3 bg-white dark:bg-white/10 hover:bg-purple-50 dark:hover:bg-white/20 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white text-xs font-bold rounded-xl cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar Textos
               </Button>
