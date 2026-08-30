@@ -62,6 +62,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         const data = await res.json()
         if (Array.isArray(data.orders)) {
           setOrders(data.orders)
+          const currentReady = data.orders.filter((o: Order) => o.status === 'READY')
+          if (currentReady.length === 0) {
+            setLastCalled(null)
+          }
         }
       }
     } catch {
@@ -154,14 +158,17 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return 'Balcão'
   }
 
-  // Pedido principal pronto em exibição no quadrante grande
-  const heroOrder = readyOrders[0] || (lastCalled ? {
-    id: 'last-called',
-    orderNumber: lastCalled.ticket.replace('#', ''),
-    customerName: lastCalled.customerName,
-    isTableOrder: lastCalled.isQRCode,
-    tableNumber: lastCalled.tableNumber,
-  } : null)
+  // Pedido principal pronto em exibição no quadrante grande:
+  // - Se readyOrders tiver pedidos: prioriza o último chamado que ainda esteja pronto, ou pega o primeiro pronto.
+  // - Se readyOrders estiver VAZIO (pedido finalizado ou excluído): heroOrder é null (tela limpa).
+  const heroOrder = readyOrders.length > 0
+    ? (readyOrders.find((o) => {
+        if (!lastCalled) return false
+        const t1 = `#${String(o.orderNumber || 1).padStart(3, '0')}`
+        const t2 = lastCalled.ticket
+        return t1 === t2 || String(o.orderNumber) === t2.replace('#', '')
+      }) || readyOrders[0])
+    : null
 
   // Próximos 3 pedidos prontos para as 3 caixas brancas inferiores
   const nextReadyOrders = readyOrders.slice(1, 4)
