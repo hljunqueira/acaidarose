@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { subscribeToTVCalls, getLastTVCall, TVCallEvent } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
-import { Volume2, VolumeX, Maximize, Minimize, Crown, Clock } from 'lucide-react'
+import { Maximize, Minimize, Crown, Clock } from 'lucide-react'
 
 interface TVOrdersPanelViewProps {
   tenantId?: string
@@ -170,25 +170,6 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             <span>{currentTime || '00:00:00'}</span>
             <span className="text-[10px] text-purple-300 font-sans uppercase font-semibold">Lisboa</span>
           </div>
-
-          {/* Áudio */}
-          <Button
-            type="button"
-            onClick={() => {
-              const next = !audioEnabled
-              setAudioEnabled(next)
-              if (next) {
-                announceTVCall('Áudio Ativado', 'Bem-vindo ao Açaí da Rose')
-              }
-            }}
-            size="sm"
-            className={`h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-              audioEnabled ? 'bg-pink-600 hover:bg-pink-700 text-white' : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-            }`}
-          >
-            {audioEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{audioEnabled ? 'Voz Ativa' : 'Ativar Voz'}</span>
-          </Button>
 
           {/* Fullscreen */}
           <Button

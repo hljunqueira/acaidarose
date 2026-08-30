@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { StoreOverview } from '@/types'
 import { formatCurrency } from '@/lib/i18n/formatters'
-import { Store, Phone, MapPin, CheckCircle, ShieldCheck, Users, Eye, TrendingUp } from 'lucide-react'
+import { Store, Phone, MapPin, CheckCircle, ShieldCheck, Users, Eye, TrendingUp, Tv, QrCode, Copy, ExternalLink } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface StoreMetricsCardProps {
   storeOverview: StoreOverview
@@ -21,6 +22,16 @@ export default function StoreMetricsCard({
   onViewDetails,
 }: StoreMetricsCardProps) {
   const { tenant, metrics, operators } = storeOverview
+  const storeSlug = tenant.slug || (tenant.name?.toLowerCase().includes('torres') ? 'torres-novas' : 'aveiro')
+  const tvUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.pt'}/tv/${storeSlug}`
+  const menuUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.pt'}/menu?loja=${storeSlug}`
+
+  const copyToClipboard = (text: string, label: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text)
+      toast.success(`${label} copiado para a área de transferência!`)
+    }
+  }
 
   return (
     <Card
@@ -69,8 +80,67 @@ export default function StoreMetricsCard({
           </div>
         </div>
 
+        {/* Links Operacionais Rápidos da Franquia (TV, Menu QR e KDS) */}
+        <div className="my-3 p-2.5 rounded-2xl bg-purple-100/50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 space-y-1.5 text-xs">
+          <div className="text-[10px] font-bold text-purple-900 dark:text-purple-300 uppercase tracking-wider flex items-center justify-between">
+            <span>Links Operacionais da Unidade</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-white dark:bg-white/5 border border-purple-150 dark:border-white/10">
+            <div className="flex items-center gap-1.5 truncate">
+              <Tv className="h-3.5 w-3.5 text-pink-600 dark:text-pink-400 shrink-0" />
+              <span className="font-mono text-[11px] truncate">/tv/{storeSlug}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => copyToClipboard(tvUrl, 'Link da Smart TV')}
+                className="p-1 rounded-lg hover:bg-purple-50 dark:hover:bg-white/10 text-purple-700 dark:text-purple-300 cursor-pointer"
+                title="Copiar Link da Smart TV"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+              <a
+                href={tvUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 rounded-lg hover:bg-purple-50 dark:hover:bg-white/10 text-pink-600 dark:text-pink-400 cursor-pointer"
+                title="Abrir Smart TV da Loja"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-white dark:bg-white/5 border border-purple-150 dark:border-white/10">
+            <div className="flex items-center gap-1.5 truncate">
+              <QrCode className="h-3.5 w-3.5 text-purple-700 dark:text-purple-300 shrink-0" />
+              <span className="font-mono text-[11px] truncate">/menu?loja={storeSlug}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => copyToClipboard(menuUrl, 'Link do Menu Digital')}
+                className="p-1 rounded-lg hover:bg-purple-50 dark:hover:bg-white/10 text-purple-700 dark:text-purple-300 cursor-pointer"
+                title="Copiar Link do Menu Digital"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+              <a
+                href={menuUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 rounded-lg hover:bg-purple-50 dark:hover:bg-white/10 text-purple-700 dark:text-purple-300 cursor-pointer"
+                title="Abrir Menu Digital da Loja"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+          </div>
+        </div>
+
         {/* Informações da Loja */}
-        <div className="text-xs text-purple-700/80 dark:text-purple-200/70 space-y-1.5 mb-4">
+        <div className="text-xs text-purple-700/80 dark:text-purple-200/70 space-y-1.5 mb-3">
           {tenant.address && (
             <div className="flex items-center gap-1.5 truncate">
               <MapPin className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400 flex-shrink-0" />
@@ -91,27 +161,14 @@ export default function StoreMetricsCard({
 
       {/* Ações */}
       <div className="pt-3 border-t border-purple-150 dark:border-white/10 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => onViewDetails(storeOverview)}
-            className="text-xs font-bold text-purple-700 dark:text-pink-400 hover:text-purple-950 dark:hover:text-pink-300 flex items-center gap-1 p-1 hover:underline cursor-pointer"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            <span>Ver Raio-X</span>
-          </button>
-
-          <a
-            href={`/menu?tenantId=${encodeURIComponent(tenant.id)}&loja=${encodeURIComponent(tenant.slug || 'torres-novas')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-bold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 hover:underline inline-flex items-center gap-1"
-            title="Abrir o Cardápio QR Code desta Loja"
-          >
-            <span>Cardápio</span>
-            <span>↗</span>
-          </a>
-        </div>
+        <button
+          type="button"
+          onClick={() => onViewDetails(storeOverview)}
+          className="text-xs font-bold text-purple-700 dark:text-pink-400 hover:text-purple-950 dark:hover:text-pink-300 flex items-center gap-1 p-1 hover:underline cursor-pointer"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>Ver Raio-X</span>
+        </button>
 
         <button
           type="button"
@@ -128,3 +185,4 @@ export default function StoreMetricsCard({
     </Card>
   )
 }
+
