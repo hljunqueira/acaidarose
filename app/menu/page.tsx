@@ -43,18 +43,29 @@ function MenuContent() {
     }
   }, [isCustomerDark])
 
-  // Estado dinâmico da mesa ativa
+  // Estado dinâmico da mesa e da loja ativa
+  const [activeLoja, setActiveLoja] = useState(rawLoja)
   const [currentTableNum, setCurrentTableNum] = useState(paramNumero)
 
-  // Resolução de Mesa via Token / Hash Criptográfico
+  // Sincroniza se o searchParam inicial de loja mudar
+  useEffect(() => {
+    if (rawLoja) setActiveLoja(rawLoja)
+  }, [rawLoja])
+
+  // Resolução de Mesa e Filial via Token / Hash Criptográfico
   useEffect(() => {
     if (paramToken) {
       fetch(`/api/tables/token/${encodeURIComponent(paramToken)}`)
         .then((res) => res.json())
         .then((data) => {
-          if (data.table?.number) {
-            const tableNumStr = String(data.table.number).padStart(2, '0')
-            setCurrentTableNum(tableNumStr)
+          if (data.table) {
+            if (data.table.number) {
+              const tableNumStr = String(data.table.number).padStart(2, '0')
+              setCurrentTableNum(tableNumStr)
+            }
+            if (data.table.storeSlug || data.table.tenantId) {
+              setActiveLoja(data.table.storeSlug || data.table.tenantId)
+            }
           }
         })
         .catch(() => {})
@@ -88,19 +99,20 @@ function MenuContent() {
   const tableLabel = isTable ? `Mesa ${currentTableNum}` : 'Catálogo Digital'
   const cartTotal = cart.reduce((acc, item) => acc + (Number(item.lineTotal) || 0), 0)
 
-  // Sincroniza se o searchParam inicial mudar
+  // Sincroniza se o searchParam inicial de número mudar
   useEffect(() => {
     if (paramNumero) setCurrentTableNum(paramNumero)
   }, [paramNumero])
 
   // Carregar dados da loja e configurações de QR Code
   useEffect(() => {
-    // 1. Catálogo de Produtos
-    fetch(`/api/products?loja=${encodeURIComponent(rawLoja)}`)
+    setLoading(true)
+    // 1. Catálogo de Produtos da Loja Específica
+    fetch(`/api/products?loja=${encodeURIComponent(activeLoja)}`)
       .then((r) => r.json())
       .then((data) => {
         setCatalog(data)
-        const storeName = data.tenantName || (rawLoja === '2' || rawLoja.includes('torres') ? 'Loja 2 - Torres Novas' : 'Loja 1 - Aveiro')
+        const storeName = data.tenantName || (activeLoja === '2' || activeLoja.includes('torres') ? 'Loja 2 - Torres Novas' : 'Loja 1 - Aveiro')
         setTenant({
           id: data.tenantId || '11111111-1111-1111-1111-111111111111',
           name: storeName,
@@ -120,7 +132,7 @@ function MenuContent() {
       })
 
     // 2. Configurações de QR Code da Unidade
-    fetch(`/api/qrcode-config?loja=${encodeURIComponent(rawLoja)}`)
+    fetch(`/api/qrcode-config?loja=${encodeURIComponent(activeLoja)}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.config) {
@@ -128,7 +140,7 @@ function MenuContent() {
         }
       })
       .catch(() => {})
-  }, [rawLoja])
+  }, [activeLoja])
 
   const handleSelectContainer = (container: ProductContainer, showInfoOnly = false) => {
     if (showInfoOnly) {

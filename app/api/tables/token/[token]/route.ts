@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTableByToken } from '@/lib/repositories/tablesRepository'
+import { getTenantByIdOrSlug, AVEIRO_HQ_ID } from '@/lib/repositories/tenantsRepository'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
@@ -13,15 +14,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       return NextResponse.json({ error: 'Mesa não encontrada' }, { status: 404 })
     }
 
-    const storeSlug = table.tenantId?.startsWith('11111111') ? 'aveiro' : 'torres-novas'
+    const tenant = await getTenantByIdOrSlug(table.tenantId)
+    const storeSlug = tenant?.slug || (table.tenantId?.startsWith('22222222') ? 'torres-novas' : 'aveiro')
+    const storeName = tenant?.name || (storeSlug === 'torres-novas' ? 'Loja 2 - Torres Novas' : 'Loja 1 - Aveiro')
+
     return NextResponse.json({
       table: {
         id: table.id,
         number: table.number,
         code: table.code,
         nickname: table.nickname,
-        tenantId: table.tenantId,
+        tenantId: table.tenantId || tenant?.id || AVEIRO_HQ_ID,
         storeSlug,
+        storeName,
       },
     })
   } catch (err: any) {
