@@ -73,23 +73,29 @@ export async function PUT(
       return errorResponse('Comanda não encontrada', 404)
     }
 
+    const updatedRow = res.rows[0]
+
     // Registra evento no log de auditoria da Franqueadora Master / TI
     try {
-      await query(
-        `INSERT INTO system_logs (level, category, message, metadata, created_at)
-         VALUES ('INFO', 'FRANCHISE_ORDER_AUDIT', $1, $2::jsonb, NOW())`,
-        [
-          `Pedido #${id.slice(-4).toUpperCase()} alterado na loja por ${authorName}`,
-          JSON.stringify({
-            orderId: id,
-            author: authorName,
-            role: authorRole,
-            changes: body.items ? 'Itens/Acompanhamentos alterados' : 'Status/Notas alterados',
-            notes: notesVal,
-            updatedAt: new Date().toISOString(),
-          }),
-        ]
-      ).catch(() => {})
+      const { recordAuditLog } = await import('@/lib/repositories/auditRepository')
+      await recordAuditLog({
+        tenantId: updatedRow.tenant_id,
+        authorName: authorName,
+        userRole: authorRole,
+        action: body.status ? `UPDATE_ORDER_STATUS_${body.status}` : 'UPDATE_ORDER',
+        entity: 'ORDER',
+        entityId: id,
+        message: `Comanda #${updatedRow.order_number || id.slice(-4).toUpperCase()} alterada para ${updatedRow.status} por ${authorName}`,
+        metadata: {
+          orderId: id,
+          orderNumber: updatedRow.order_number,
+          status: updatedRow.status,
+          customerName: updatedRow.customer_name,
+          tableNumber: updatedRow.table_number,
+          total: updatedRow.total,
+          notes: notesVal,
+        },
+      })
     } catch {}
 
     const updated = await getOrderById(id)
@@ -122,8 +128,28 @@ export async function DELETE(
       if (body?.permanent || body?.delete) isPermanent = true
     } catch {}
 
+    const authorName = user?.name || 'Henrique Linhares Junqueira'
+    const authorRole = user?.role || 'ADMIN'
+
     if (isPermanent) {
+      const existing = await getOrderById(id)
       await query(`DELETE FROM orders WHERE id::text = $1`, [id])
+
+      try {
+        const { recordAuditLog } = await import('@/lib/repositories/auditRepository')
+        await recordAuditLog({
+          tenantId: existing?.tenantId,
+          authorName,
+          userRole: authorRole,
+          action: 'DELETE_ORDER_PERMANENT',
+          entity: 'ORDER',
+          entityId: id,
+          level: 'WARN',
+          message: `Comanda #${existing?.orderNumber || id.slice(-4).toUpperCase()} excluída definitivamente da base por ${authorName}`,
+          metadata: { orderId: id, orderNumber: existing?.orderNumber, customerName: existing?.customerName },
+        })
+      } catch {}
+
       return jsonResponse({ success: true, message: 'Comanda excluída definitivamente' })
     }
 
@@ -133,6 +159,21 @@ export async function DELETE(
       await query(`DELETE FROM orders WHERE id::text = $1`, [id])
       return jsonResponse({ success: true, message: 'Comanda removida' })
     }
+
+    try {
+      const { recordAuditLog } = await import('@/lib/repositories/auditRepository')
+      await recordAuditLog({
+        tenantId: order.tenantId,
+        authorName,
+        userRole: authorRole,
+        action: 'CANCEL_ORDER',
+        entity: 'ORDER',
+        entityId: id,
+        level: 'WARN',
+        message: `Comanda #${order.orderNumber || id.slice(-4).toUpperCase()} cancelada: ${cancelReason} (por ${authorName})`,
+        metadata: { orderId: id, orderNumber: order.orderNumber, reason: cancelReason },
+      })
+    } catch {}
 
     return jsonResponse({ success: true, message: 'Pedido cancelado com sucesso', order })
   } catch (err: any) {

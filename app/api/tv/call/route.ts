@@ -51,6 +51,20 @@ export async function POST(req: NextRequest) {
     }
     lastCallsByTenant['default'] = record
 
+    try {
+      const { recordAuditLog } = await import('@/lib/repositories/auditRepository')
+      await recordAuditLog({
+        tenantId: tenantId === 'default' ? null : tenantId,
+        authorName: 'Henrique Linhares Junqueira',
+        userRole: 'ADMIN',
+        action: 'TV_CALL_ANNOUNCE',
+        entity: 'SMART_TV',
+        entityId: ticket,
+        message: `Senha ${ticket} chamada no painel da Smart TV (${customerName || 'Balcão'})`,
+        metadata: { ticket, customerName, tableNumber, status },
+      })
+    } catch {}
+
     return NextResponse.json({
       success: true,
       call: record,
@@ -67,6 +81,19 @@ export async function DELETE(req: NextRequest) {
 
     delete lastCallsByTenant[tenantId]
     delete lastCallsByTenant['default']
+
+    try {
+      const { recordAuditLog } = await import('@/lib/repositories/auditRepository')
+      await recordAuditLog({
+        tenantId: tenantId === 'default' ? null : tenantId,
+        authorName: 'Henrique Linhares Junqueira',
+        userRole: 'ADMIN',
+        action: 'TV_CALL_CLEAR',
+        entity: 'SMART_TV',
+        message: `Tela da Smart TV limpa pelo operador`,
+        metadata: { tenantId },
+      })
+    } catch {}
 
     return NextResponse.json({
       success: true,

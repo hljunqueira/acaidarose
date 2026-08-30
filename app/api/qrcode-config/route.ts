@@ -124,6 +124,30 @@ export async function PUT(req: NextRequest) {
       ]
     )
 
+    // Registra evento no log de auditoria da Franqueadora Master / TI
+    try {
+      const { recordAuditLog } = await import('@/lib/repositories/auditRepository')
+      await recordAuditLog({
+        tenantId,
+        authorName: 'Henrique Linhares Junqueira',
+        userRole: 'ADMIN_MATRIZ',
+        action: 'UPDATE_QRCODE_CONFIG',
+        entity: 'QRCODE_CONFIG',
+        entityId: tenantId,
+        message: `Configurações do QR Code & Ementa Digital atualizadas (Modo: ${mode}, Entrega: ${pickupModel}, MB WAY: ${allowMbwayPayment ? 'ATIVO' : 'INATIVO'})`,
+        metadata: {
+          mode,
+          pickupModel,
+          allowTableTransfer,
+          allowMbwayPayment,
+          allowInternationalPhone,
+          customerNameRule,
+          customerPhoneRule,
+          customerNifRule,
+        },
+      })
+    } catch {}
+
     return NextResponse.json({
       success: true,
       config: {
