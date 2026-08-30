@@ -339,7 +339,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     }
   }
 
-  // Helper para renderizar a Coroa de Ouro 3D inclinada coroando diretamente a 1ª letra do nome
+  // Helper para renderizar a Coroa Oficial PNG inclinada coroando diretamente a 1ª letra do nome
   const renderCrownName = (displayName: string) => {
     if (!displayName) return 'BALCÃO'
 
@@ -349,10 +349,12 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return (
       <span className="inline-flex items-baseline justify-center">
         <span className="relative inline-flex items-center justify-center mr-0.5">
-          {/* Coroa Real em Ouro Metálico 3D Inclinada */}
-          <span className="absolute -top-7 sm:-top-9 lg:-top-11 -left-2 sm:-left-3.5 -rotate-[15deg] shrink-0 z-20 pointer-events-none drop-shadow-[0_4px_12px_rgba(245,158,11,0.75)] animate-pulse">
-            <CrownGoldIcon className="h-9 w-9 sm:h-12 sm:w-12 lg:h-14 lg:w-14" />
-          </span>
+          {/* Imagem Oficial da Coroa Dourada Inclinada */}
+          <img
+            src="/coroa.png"
+            alt="Coroa"
+            className="absolute -top-10 sm:-top-13 lg:-top-16 -left-4 sm:-left-5 lg:-left-7 h-12 w-12 sm:h-16 sm:w-16 lg:h-20 lg:w-20 object-contain -rotate-[16deg] shrink-0 z-20 pointer-events-none drop-shadow-[0_4px_12px_rgba(245,158,11,0.65)] animate-pulse"
+          />
           <span>{firstChar}</span>
         </span>
         <span>{rest}</span>
@@ -369,15 +371,36 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return (
       <span className="inline-flex items-baseline justify-center">
         <span className="relative inline-flex items-center justify-center mr-0.5">
-          {/* Coroa Real em Ouro Metálico 3D Pequena Inclinada */}
-          <span className="absolute -top-4 sm:-top-5 -left-1.5 -rotate-[15deg] shrink-0 z-20 pointer-events-none drop-shadow-xs">
-            <CrownGoldIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-          </span>
+          <img
+            src="/coroa.png"
+            alt="Coroa"
+            className="absolute -top-4 sm:-top-5 -left-2 h-5 w-5 sm:h-6 sm:w-6 object-contain -rotate-[16deg] shrink-0 z-20 pointer-events-none drop-shadow-xs"
+          />
           <span>{firstChar}</span>
         </span>
         <span>{rest}</span>
       </span>
     )
+  }
+
+  // Helpers específicos para o Hero de Pedidos Prontos (Nome em cima, Mesa abaixo, Ticket embaixo)
+  const getHeroCustomerName = (customerName?: string | null, tableNumber?: string | number | null) => {
+    if (customerName && customerName.trim()) {
+      return customerName.trim().toUpperCase()
+    }
+    if (tableNumber) {
+      const rawTable = String(tableNumber).replace(/^Mesa\s*/i, '').trim()
+      return `MESA ${rawTable.padStart(2, '0')}`
+    }
+    return 'BALCÃO'
+  }
+
+  const getHeroTableSubtitle = (customerName?: string | null, tableNumber?: string | number | null) => {
+    if (!customerName || !customerName.trim()) return null
+    if (!tableNumber) return 'BALCÃO'
+    const rawTable = String(tableNumber).replace(/^Mesa\s*/i, '').trim()
+    if (!rawTable || rawTable.toLowerCase() === 'balcão' || rawTable.toLowerCase() === 'balcao') return 'BALCÃO'
+    return `MESA ${rawTable.padStart(2, '0')}`
   }
 
   return (
@@ -419,24 +442,31 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         {/* ========================================================================= */}
         <section className="lg:col-span-7 flex flex-col justify-between h-full space-y-3.5">
           
-          {/* Caixa Branca Principal (Hero de Pedidos Prontos com Altura e Fontes Ampliadas) */}
-          <div className="flex-1 min-h-[220px] sm:min-h-[260px] lg:min-h-[285px] rounded-3xl bg-white border-2 border-white text-slate-900 py-5 px-6 flex flex-col items-center justify-center text-center shadow-2xl relative">
+          {/* Caixa Branca Principal (Hero de Pedidos Prontos com Nome Gigante, Mesa Abaixo e Ticket) */}
+          <div className="flex-1 min-h-[230px] sm:min-h-[270px] lg:min-h-[300px] rounded-3xl bg-white border-2 border-white text-slate-900 py-5 px-6 flex flex-col items-center justify-center text-center shadow-2xl relative">
             {heroOrder ? (
-              <div className="flex flex-col items-center justify-center space-y-2 animate-in fade-in zoom-in-95 duration-200 w-full">
+              <div className="flex flex-col items-center justify-center space-y-1.5 animate-in fade-in zoom-in-95 duration-200 w-full">
                 
-                {/* 1º: Nome do Cliente com Coroa Dourada Coroando a 1ª Letra (Ex: 👑VALDAIR — MESA 12) */}
-                <div className="font-sans font-black text-4xl sm:text-5xl lg:text-6xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-3">
-                  <span className="max-w-full">
-                    {renderCrownName(getDisplayName(heroOrder.customerName, heroOrder.tableNumber))}
+                {/* 1º: Nome do Cliente com a Imagem da Coroa Oficial na 1ª Letra (Tamanho Gigante) */}
+                <div className="font-sans font-black text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-4">
+                  <span className="max-w-full truncate">
+                    {renderCrownName(getHeroCustomerName(heroOrder.customerName, heroOrder.tableNumber))}
                   </span>
                 </div>
 
-                {/* 2º: Número do Ticket / Senha Gigante Monospace */}
-                <div className="font-mono font-black text-7xl sm:text-8xl lg:text-9xl text-[#180424] tracking-tight leading-none my-1">
+                {/* 2º: Identificação da Mesa Abaixo do Nome */}
+                {getHeroTableSubtitle(heroOrder.customerName, heroOrder.tableNumber) && (
+                  <div className="font-sans font-black text-xl sm:text-2xl lg:text-3xl text-pink-600 uppercase tracking-wider -mt-1">
+                    {getHeroTableSubtitle(heroOrder.customerName, heroOrder.tableNumber)}
+                  </div>
+                )}
+
+                {/* 3º: Número do Ticket / Senha Gigante Monospace */}
+                <div className="font-mono font-black text-7xl sm:text-8xl lg:text-9xl text-[#180424] tracking-tight leading-none my-0.5">
                   {heroOrder.ticket || `#${String(heroOrder.orderNumber || 1).padStart(3, '0')}`}
                 </div>
 
-                {/* 3º: Instrução Oficial em Glossário PT-PT Mandatório */}
+                {/* 4º: Instrução Oficial em Glossário PT-PT Mandatório */}
                 <div className="text-xs sm:text-sm lg:text-base font-black tracking-widest text-pink-600 uppercase pt-1">
                   POR FAVOR, DIRIJA-SE AO BALCÃO DE LEVANTAMENTO
                 </div>
