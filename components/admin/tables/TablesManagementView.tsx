@@ -257,6 +257,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
             onOpenChange={setAddEditOpen}
             table={editingTable}
             tenantId={tenantId}
+            existingTables={tables}
             onSuccess={fetchData}
           />
 

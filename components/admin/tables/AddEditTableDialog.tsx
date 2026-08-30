@@ -13,6 +13,7 @@ interface AddEditTableDialogProps {
   onOpenChange: (open: boolean) => void
   table: RestaurantTable | null
   tenantId: string
+  existingTables?: RestaurantTable[]
   onSuccess: () => void
 }
 
@@ -21,6 +22,7 @@ export default function AddEditTableDialog({
   onOpenChange,
   table,
   tenantId,
+  existingTables = [],
   onSuccess,
 }: AddEditTableDialogProps) {
   const [isBatch, setIsBatch] = useState(false)
@@ -35,14 +37,19 @@ export default function AddEditTableDialog({
       setIsBatch(false)
       setNumber(table.number.toString())
       setNickname(table.nickname || '')
-    } else {
+    } else if (open) {
       setIsBatch(false)
-      setNumber('1')
-      setStartNumber('1')
-      setEndNumber('10')
+      const maxNum =
+        existingTables.length > 0
+          ? Math.max(...existingTables.map((t) => Number(t.number) || 0))
+          : 0
+      const nextNum = Math.max(1, maxNum + 1)
+      setNumber(String(nextNum))
+      setStartNumber(String(nextNum))
+      setEndNumber(String(nextNum + 9))
       setNickname('')
     }
-  }, [table, open])
+  }, [table, open, existingTables])
 
   const numStart = parseInt(startNumber) || 1
   const numEnd = parseInt(endNumber) || 1
@@ -68,13 +75,12 @@ export default function AddEditTableDialog({
           const err = await res.json().catch(() => ({}))
           throw new Error(err.error || 'Falha ao criar lote de mesas')
         }
-        toast.success(`${totalBatchCount} mesas adicionadas com sucesso!`)
+        toast.success(`${totalBatchCount} mesas adicionadas a partir da Mesa ${numStart}!`)
       } else {
         const tableNum = table ? table.number : (Number(number) || 1)
         const payload = {
           tenantId,
           number: tableNum,
-          code: table?.code || `QR-MESA-${tableNum}`,
           nickname: nickname.trim() || `Mesa ${tableNum.toString().padStart(2, '0')}`,
           serviceChargePercent: 0,
           status: table?.status || 'AVAILABLE',
@@ -93,7 +99,7 @@ export default function AddEditTableDialog({
           const errData = await res.json().catch(() => ({}))
           throw new Error(errData.error || 'Falha ao guardar mesa')
         }
-        toast.success(table ? `Mesa ${tableNum} atualizada!` : `Mesa ${tableNum} adicionada!`)
+        toast.success(table ? `Mesa ${tableNum} atualizada!` : `Mesa ${tableNum} adicionada ao salão!`)
       }
 
       onSuccess()

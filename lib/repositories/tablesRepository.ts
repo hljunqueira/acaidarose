@@ -2,7 +2,36 @@ import { RestaurantTable, TableStatus, TableOrderItem } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
 
+let hasEnsuredTable = false
+export async function ensureTablesTable() {
+  if (hasEnsuredTable) return
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS tables (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        table_number INTEGER NOT NULL,
+        qr_code_token VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'AVAILABLE' NOT NULL,
+        current_order_id UUID,
+        total_amount NUMERIC(10, 2) DEFAULT 0.00,
+        last_activity TIMESTAMP WITH TIME ZONE,
+        activated_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+        deleted_at TIMESTAMP WITH TIME ZONE
+      );
+      CREATE INDEX IF NOT EXISTS idx_tables_tenant_id ON tables(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_tables_qr_token ON tables(qr_code_token);
+    `)
+    hasEnsuredTable = true
+  } catch (err) {
+    console.error('Erro ao garantir tabela tables:', err)
+  }
+}
+
 export async function getTablesByTenant(tenantId: string): Promise<RestaurantTable[]> {
+  await ensureTablesTable()
   try {
     const res = await query(
       `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
@@ -51,11 +80,13 @@ export async function getTablesByTenant(tenantId: string): Promise<RestaurantTab
 }
 
 export async function getTableByNumber(tenantId: string, number: number): Promise<RestaurantTable | null> {
+  await ensureTablesTable()
   const tables = await getTablesByTenant(tenantId)
   return tables.find((t) => t.number === number) || null
 }
 
 export async function getTableById(id: string): Promise<RestaurantTable | null> {
+  await ensureTablesTable()
   try {
     const res = await query(`SELECT * FROM tables WHERE id::text = $1 AND deleted_at IS NULL LIMIT 1`, [id])
     if (res.rows?.[0]) {
@@ -84,6 +115,7 @@ export function generateTableHash(tableNumber: number): string {
 }
 
 export async function createTable(payload: Partial<RestaurantTable>): Promise<RestaurantTable> {
+  await ensureTablesTable()
   const id = payload.id || uuidv4()
   const tenantId = payload.tenantId || '11111111-1111-1111-1111-111111111111'
   const tableNumber = Number(payload.number) || 1
@@ -151,6 +183,7 @@ export async function createBatchTables(
   assignedStaffId?: string,
   assignedStaffName?: string
 ): Promise<RestaurantTable[]> {
+  await ensureTablesTable()
   const created: RestaurantTable[] = []
   const start = Math.min(Number(startNumber) || 1, Number(endNumber) || 1)
   const end = Math.max(Number(startNumber) || 1, Number(endNumber) || 1)
@@ -167,6 +200,7 @@ export async function createBatchTables(
 }
 
 export async function getTableByToken(token: string): Promise<RestaurantTable | null> {
+  await ensureTablesTable()
   try {
     const res = await query(
       `SELECT * FROM tables WHERE qr_code_token = $1 AND deleted_at IS NULL LIMIT 1`,
@@ -195,6 +229,7 @@ export async function getTableByToken(token: string): Promise<RestaurantTable | 
 }
 
 export async function regenerateTableToken(id: string): Promise<RestaurantTable | null> {
+  await ensureTablesTable()
   const table = await getTableById(id)
   if (!table) return null
 
@@ -215,6 +250,7 @@ export async function regenerateTableToken(id: string): Promise<RestaurantTable 
 }
 
 export async function updateTable(id: string, payload: Partial<RestaurantTable>): Promise<RestaurantTable | null> {
+  await ensureTablesTable()
   const tenantId = payload.tenantId || '11111111-1111-1111-1111-111111111111'
   const tableNumber = payload.number !== undefined ? payload.number : null
   const code = payload.code || (tableNumber ? `QR-MESA-${tableNumber}` : null)
@@ -265,6 +301,7 @@ export async function updateTable(id: string, payload: Partial<RestaurantTable>)
 }
 
 export async function deleteTable(id: string): Promise<boolean> {
+  await ensureTablesTable()
   const res = await query(`UPDATE tables SET deleted_at = timezone('utc'::text, now()) WHERE id::text = $1`, [id])
   return (res.rowCount || 0) > 0
 }
