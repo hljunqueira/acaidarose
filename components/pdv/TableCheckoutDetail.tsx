@@ -79,6 +79,9 @@ export default function TableCheckoutDetail({
 
   const availableTargetTables = allTables.filter((t) => t.id !== table.id)
 
+  const [blockModalOpen, setBlockModalOpen] = useState(false)
+  const [blockReason, setBlockReason] = useState('Limpeza / Higienização')
+
   const handleTransfer = async () => {
     if (!targetTableId) {
       toast.error('Selecione a mesa de destino')
@@ -102,6 +105,83 @@ export default function TableCheckoutDetail({
       onBack()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao transferir')
+    }
+  }
+
+  // Helper para obter o ticket oficial de um pedido
+  const getOrderOfficialTicket = (order: any, idx?: number) => {
+    if (order.ticketNumber) return order.ticketNumber
+    if (order.orderNumber) return `#${String(order.orderNumber).padStart(3, '0')}`
+    if (order.ticket_number) return order.ticket_number
+    if (order.id) return `#${order.id.slice(-4).toUpperCase()}`
+    return `#00${(idx || 0) + 1}`
+  }
+
+  // Chamar Pedido Específico na Smart TV com seu Ticket Oficial e Mesa
+  const handleCallOrderOnTV = async (order: any, idx?: number) => {
+    const officialTicket = getOrderOfficialTicket(order, idx)
+    const customerName = order.customerName || `Mesa ${table.number}`
+
+    broadcastTVCall({
+      ticket: officialTicket,
+      customerName: customerName,
+      tableNumber: String(table.number),
+      isQRCode: Boolean(order.isQRCode || order.channel === 'QR_CODE'),
+      status: 'READY',
+    })
+
+    // Sincroniza também via endpoint backend API para Smart TVs externas
+    fetch('/api/tv/call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticket: officialTicket,
+        customerName: customerName,
+        tableNumber: String(table.number),
+        status: 'READY',
+      }),
+    }).catch(() => {})
+
+    toast.success(`${customerName} (${officialTicket} - Mesa ${table.number}) chamado na Smart TV!`)
+  }
+
+  // Chamar Mesa Inteira na TV (usa o ticket do 1º pedido ativo)
+  const handleCallTableOnTV = () => {
+    const firstOrder = tableOrders[0]
+    if (firstOrder) {
+      handleCallOrderOnTV(firstOrder, 0)
+    } else {
+      const ticket = `#M${String(table.number).padStart(2, '0')}`
+      broadcastTVCall({
+        ticket,
+        customerName: `Mesa ${table.number}`,
+        tableNumber: String(table.number),
+        status: 'READY',
+      })
+      toast.success(`Mesa ${table.number} chamada no Painel TV!`)
+    }
+  }
+
+  // Bloquear Mesa por Motivo (Limpeza, Reserva, etc.)
+  const handleBlockTable = async () => {
+    setSubmitting(true)
+    try {
+      await fetch(`/api/tables/${table.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE',
+          status: 'OCCUPIED',
+          nickname: `🔒 ${blockReason}`,
+        }),
+      })
+      toast.success(`Mesa ${table.number} bloqueada (${blockReason})`)
+      setBlockModalOpen(false)
+      onTableUpdated()
+    } catch {
+      toast.error('Erro ao bloquear mesa')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -289,16 +369,7 @@ export default function TableCheckoutDetail({
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => {
-                    const firstCustomer = tableOrders[0]?.customerName || `Mesa ${table.number}`
-                    broadcastTVCall({
-                      ticket: `#M${table.number}`,
-                      customerName: firstCustomer,
-                      tableNumber: String(table.number),
-                      status: 'READY',
-                    })
-                    toast.success(`Mesa ${table.number} chamada no Painel TV!`)
-                  }}
+                  onClick={handleCallTableOnTV}
                   className="text-xs bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold cursor-pointer rounded-xl h-8.5 shadow-xs"
                 >
                   <span>Chamar na TV</span>
@@ -322,7 +393,7 @@ export default function TableCheckoutDetail({
                   const paid = isOrderPaid(order)
                   const isPreparing = order.status === 'NEW' || order.status === 'PREPARING'
                   const isReady = order.status === 'READY'
-                  const ticketNumber = order.ticketNumber || (order.id ? `#${order.id.slice(-4).toUpperCase()}` : `#${idx + 1}`)
+                  const ticketNumber = getOrderOfficialTicket(order, idx)
                   const isQr = order.isQRCode || order.channel === 'QR_CODE'
 
                   return (
@@ -407,9 +478,19 @@ export default function TableCheckoutDetail({
                           })}
                       </div>
 
-                      {/* Ações do Pedido (Editar se em preparo ou cancelar) */}
-                      <div className="flex items-center justify-between pt-2 border-t border-purple-100 dark:border-white/10 text-xs">
-                        <div className="flex items-center gap-2">
+                      {/* Ações do Pedido (Chamar na TV com Ticket Oficial, Editar se em preparo ou Cancelar) */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-100 dark:border-white/10 text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Botão de Chamada Específica deste Pedido com sua Senha Oficial */}
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleCallOrderOnTV(order, idx)}
+                            className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-lg cursor-pointer"
+                          >
+                            <span>Chamar {ticketNumber} na TV</span>
+                          </Button>
+
                           {isPreparing && (
                             <Button
                               type="button"
@@ -459,7 +540,7 @@ export default function TableCheckoutDetail({
           </Button>
         </div>
 
-        {/* Coluna Direita: Painel de Fechamento / Resumo da Mesa */}
+        {/* Coluna Direita: Painel de Gestão & Fechamento da Mesa */}
         <div className="lg:col-span-4 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-5 shadow-xs dark:shadow-xl flex flex-col justify-between text-slate-900 dark:text-white space-y-4">
           <div className="space-y-4">
             <div className="text-sm font-black text-purple-950 dark:text-white border-b border-purple-100 dark:border-white/10 pb-3">
@@ -486,7 +567,7 @@ export default function TableCheckoutDetail({
             </div>
           </div>
 
-          {/* Botões de Ação do Fechamento */}
+          {/* Botões de Gestão da Mesa */}
           <div className="space-y-2.5 pt-4 border-t border-purple-100 dark:border-white/10">
             <div className="grid grid-cols-2 gap-2">
               <Button
@@ -510,8 +591,27 @@ export default function TableCheckoutDetail({
               </Button>
             </div>
 
-            {/* Se tudo já foi pago (como via MB WAY), botão para liberar mesa; senão botão para receber */}
-            {isAllPaid ? (
+            {/* Bloqueio de Mesa com Motivo */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setBlockModalOpen(true)}
+              className="w-full text-xs font-bold border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100/60 rounded-xl h-9 cursor-pointer"
+            >
+              <span>🔒 Bloquear Mesa por Motivo</span>
+            </Button>
+
+            {/* Ação Principal: Receber Pagamento ou Desocupar Mesa */}
+            {!isAllPaid ? (
+              <Button
+                type="button"
+                onClick={() => setPaymentOpen(true)}
+                disabled={submitting}
+                className="w-full h-11 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer"
+              >
+                <span>Receber no Caixa</span>
+              </Button>
+            ) : (
               <Button
                 type="button"
                 onClick={handleClosePaidTable}
@@ -519,21 +619,59 @@ export default function TableCheckoutDetail({
                 className="w-full h-11 rounded-2xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-black text-sm shadow-md cursor-pointer flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Concluir & Liberar Mesa</span>
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={() => setPaymentOpen(true)}
-                disabled={submitting}
-                className="w-full h-11 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer"
-              >
-                <span>Receber & Finalizar</span>
+                <span>Desocupar / Liberar Mesa</span>
               </Button>
             )}
           </div>
         </div>
       </div>
+
+      {/* Modal de Bloquear Mesa por Motivo */}
+      <Dialog open={blockModalOpen} onOpenChange={setBlockModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-[#1a022d] text-slate-900 dark:text-white border border-purple-200 dark:border-white/15 rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+              Bloquear Mesa {table.number.toString().padStart(2, '0')}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-3 text-xs space-y-3">
+            <span className="text-purple-800/80 dark:text-purple-200/80 font-medium">
+              Selecione o motivo do bloqueio da mesa:
+            </span>
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                'Limpeza / Higienização',
+                'Mesa Reservada',
+                'Manutenção / Interditada',
+                'Aguardando Atendimento Especial',
+              ].map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => setBlockReason(reason)}
+                  className={`p-3 rounded-xl text-left font-bold text-xs border transition cursor-pointer ${
+                    blockReason === reason
+                      ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
+                      : 'bg-purple-50/50 dark:bg-white/5 border-purple-200 dark:border-white/10 text-purple-950 dark:text-white hover:bg-purple-100/60'
+                  }`}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setBlockModalOpen(false)} className="text-xs font-bold rounded-xl">
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleBlockTable} disabled={submitting} className="text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl">
+              Confirmar Bloqueio
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Edição de Pedido em Preparo */}
       {editingOrder && (

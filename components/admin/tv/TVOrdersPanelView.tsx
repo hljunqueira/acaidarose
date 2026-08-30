@@ -27,8 +27,8 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   const [loading, setLoading] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [soundConfig, setSoundConfig] = useState<TVSoundConfig>({ enabled: true, gender: 'female' })
-  const [lastCalled, setLastCalled] = useState<{ ticket: string; customerName?: string; isQRCode?: boolean; tableNumber?: number | null } | null>(null)
-  const [calledHistory, setCalledHistory] = useState<Array<{ ticket: string; customerName?: string; isQRCode?: boolean; tableNumber?: number | null }>>([])
+  const [lastCalled, setLastCalled] = useState<{ ticket: string; customerName?: string | null; isQRCode?: boolean; tableNumber?: string | number | null } | null>(null)
+  const [calledHistory, setCalledHistory] = useState<Array<{ ticket: string; customerName?: string | null; isQRCode?: boolean; tableNumber?: string | number | null }>>([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [currentTime, setCurrentTime] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -106,10 +106,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           if (remoteCall.timestamp > lastProcessedCallTimestampRef.current) {
             lastProcessedCallTimestampRef.current = remoteCall.timestamp
             
-            const isQR = Boolean(remoteCall.customerName?.includes('Mesa') || remoteCall.ticket.startsWith('#0'))
+            const isQR = Boolean(remoteCall.customerName?.includes('Mesa') || remoteCall.ticket.startsWith('#0') || remoteCall.isQRCode)
             const newCall = {
               ticket: remoteCall.ticket,
               customerName: remoteCall.customerName,
+              tableNumber: remoteCall.tableNumber,
               isQRCode: isQR,
             }
 
@@ -145,6 +146,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       setLastCalled({
         ticket: initialCall.ticket,
         customerName: initialCall.customerName,
+        tableNumber: initialCall.tableNumber,
       })
     }
 
@@ -154,11 +156,12 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         if (event.timestamp <= lastProcessedCallTimestampRef.current) return
         lastProcessedCallTimestampRef.current = event.timestamp
 
-        const isQR = Boolean(event.customerName?.includes('Mesa') || event.ticket.startsWith('#0'))
+        const isQR = Boolean(event.customerName?.includes('Mesa') || event.ticket.startsWith('#0') || event.isQRCode)
         
         const newCall = {
           ticket: event.ticket,
           customerName: event.customerName,
+          tableNumber: event.tableNumber,
           isQRCode: isQR,
         }
 
