@@ -18,6 +18,7 @@ import CustomerMenuMore from '@/components/menu/CustomerMenuMore'
 import CustomerProductDetail from '@/components/menu/CustomerProductDetail'
 import CustomerCartSheet from '@/components/menu/CustomerCartSheet'
 import CallWaiterModal from '@/components/menu/CallWaiterModal'
+import SwitchTableModal from '@/components/menu/SwitchTableModal'
 import { Info } from 'lucide-react'
 
 function MenuContent() {
@@ -25,9 +26,15 @@ function MenuContent() {
   const rawLoja = searchParams.get('loja') || searchParams.get('tenantId') || searchParams.get('tenant') || '1'
   const paramNumero = searchParams.get('numero') || searchParams.get('mesa') || searchParams.get('table') || ''
 
-  // Se o cliente acessou diretamente sem mesa/número, abre em modo Catálogo Vitrine (Read-Only)
-  const isTable = Boolean(paramNumero)
-  const isCatalogOnly = !isTable
+  // Estado dinâmico da mesa ativa
+  const [currentTableNum, setCurrentTableNum] = useState(paramNumero)
+
+  // Configurações do QR Code da loja
+  const [qrConfig, setQrConfig] = useState<any>({ mode: 'ORDER_EMISSION', allowTableTransfer: true })
+
+  // Se o cliente acessou diretamente sem mesa/número ou se o modo da loja for VIEW_ONLY, abre em modo Catálogo Vitrine (Read-Only)
+  const isTable = Boolean(currentTableNum)
+  const isCatalogOnly = !isTable || qrConfig.mode === 'VIEW_ONLY'
 
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
@@ -40,21 +47,28 @@ function MenuContent() {
   const [selectedContainer, setSelectedContainer] = useState<ProductContainer | null>(null)
   const [infoModalProduct, setInfoModalProduct] = useState<ProductContainer | null>(null)
 
-  // Carrinho do Cliente
+  // Carrinho do Cliente & Modais
   const [cart, setCart] = useState<any[]>([])
   const [cartOpen, setCartOpen] = useState(false)
   const [waiterModalOpen, setWaiterModalOpen] = useState(false)
+  const [switchTableModalOpen, setSwitchTableModalOpen] = useState(false)
 
-  const tableLabel = isTable ? `Mesa ${paramNumero}` : 'Catálogo Digital'
+  const tableLabel = isTable ? `Mesa ${currentTableNum}` : 'Catálogo Digital'
   const cartTotal = cart.reduce((acc, item) => acc + (Number(item.lineTotal) || 0), 0)
 
-  // Carregar dados da loja
+  // Sincroniza se o searchParam inicial mudar
   useEffect(() => {
+    if (paramNumero) setCurrentTableNum(paramNumero)
+  }, [paramNumero])
+
+  // Carregar dados da loja e configurações de QR Code
+  useEffect(() => {
+    // 1. Catálogo de Produtos
     fetch(`/api/products?loja=${encodeURIComponent(rawLoja)}`)
       .then((r) => r.json())
       .then((data) => {
         setCatalog(data)
-        const storeName = data.tenantName || (rawLoja === '2' || rawLoja.includes('torres') ? 'Açaí da Rose — Filial Torres Novas' : 'Açaí da Rose — Sede Matriz Aveiro')
+        const storeName = data.tenantName || (rawLoja === '2' || rawLoja.includes('torres') ? 'Loja 2 - Torres Novas' : 'Loja 1 - Aveiro')
         setTenant({
           id: data.tenantId || '11111111-1111-1111-1111-111111111111',
           name: storeName,
@@ -72,7 +86,26 @@ function MenuContent() {
       .finally(() => {
         setLoading(false)
       })
+
+    // 2. Configurações de QR Code da Unidade
+    fetch(`/api/qrcode-config?loja=${encodeURIComponent(rawLoja)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.config) {
+          setQrConfig(data.config)
+        }
+      })
+      .catch(() => {})
   }, [rawLoja])
+
+  const handleTableSwitched = (newNum: string) => {
+    setCurrentTableNum(newNum)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('numero', newNum)
+      window.history.replaceState(null, '', url.toString())
+    }
+  }
 
   const handleSelectContainer = (container: ProductContainer) => {
     if (isCatalogOnly) {
@@ -84,13 +117,15 @@ function MenuContent() {
 
   return (
     <div className="min-h-dvh bg-[#f8f5fc] text-slate-900 dark:bg-[#0E0117] dark:text-white flex flex-col selection:bg-pink-500 selection:text-white transition-colors duration-200 overflow-x-hidden max-w-full">
-      {/* 1. Header do Cardápio */}
+      {/* 1. Header do Cardápio com Troca de Mesa */}
       <CustomerMenuHeader
         tenant={tenant}
         isTable={isTable}
         tableLabel={tableLabel}
         cartCount={cart.length}
         onOpenCart={() => setCartOpen(true)}
+        allowTableTransfer={qrConfig.allowTableTransfer !== false}
+        onOpenSwitchTable={() => setSwitchTableModalOpen(true)}
       />
 
       {/* Aviso de Modo Catálogo Vitrine (quando acessado diretamente sem QR Code de mesa) */}
@@ -213,7 +248,7 @@ function MenuContent() {
         tenantId={tenant?.id}
         tenantName={tenant?.name}
         isTable={isTable}
-        tableNumber={paramNumero}
+        tableNumber={currentTableNum}
       />
 
       {/* 7. Modal Chamada de Garçom */}
@@ -223,6 +258,17 @@ function MenuContent() {
           onOpenChange={setWaiterModalOpen}
           tableLabel={tableLabel}
           tenantId={tenant?.id || ''}
+        />
+      )}
+
+      {/* 8. Modal Simples de Troca de Mesa */}
+      {isTable && (
+        <SwitchTableModal
+          open={switchTableModalOpen}
+          onOpenChange={setSwitchTableModalOpen}
+          currentTableNumber={currentTableNum}
+          tenantId={tenant?.id || '11111111-1111-1111-1111-111111111111'}
+          onTableSwitched={handleTableSwitched}
         />
       )}
     </div>

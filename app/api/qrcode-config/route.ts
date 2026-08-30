@@ -4,6 +4,30 @@ import { getTenantByIdOrSlug } from '@/lib/repositories/tenantsRepository'
 
 export const dynamic = 'force-dynamic'
 
+// Cache em memória / persistência rápida por tenant
+const tenantQrConfigCache: Record<string, any> = {
+  '11111111-1111-1111-1111-111111111111': {
+    mode: 'ORDER_EMISSION',
+    pickupModel: 'TV_CALL',
+    allowTableTransfer: true,
+    allowMbwayPayment: true,
+    allowInternationalPhone: true,
+    customerNameRule: 'OPTIONAL',
+    customerPhoneRule: 'OPTIONAL',
+    customerNifRule: 'OPTIONAL',
+  },
+  '22222222-2222-2222-2222-222222222222': {
+    mode: 'ORDER_EMISSION',
+    pickupModel: 'TV_CALL',
+    allowTableTransfer: true,
+    allowMbwayPayment: true,
+    allowInternationalPhone: true,
+    customerNameRule: 'OPTIONAL',
+    customerPhoneRule: 'OPTIONAL',
+    customerNifRule: 'OPTIONAL',
+  },
+}
+
 export async function GET(req: NextRequest) {
   try {
     const rawTenant =
@@ -15,16 +39,18 @@ export async function GET(req: NextRequest) {
     const t = await getTenantByIdOrSlug(rawTenant)
     const tenantId = t ? t.id : '11111111-1111-1111-1111-111111111111'
 
+    const saved = tenantQrConfigCache[tenantId] || {}
+
     const config = {
-      mode: 'ORDER_EMISSION',
-      allowMbwayPayment: true,
-      pickupModel: 'TV_CALL',
+      mode: saved.mode || 'ORDER_EMISSION',
+      allowMbwayPayment: saved.allowMbwayPayment ?? true,
+      pickupModel: saved.pickupModel || 'TV_CALL',
       tableMode: 'FIXED_QR',
-      allowTableTransfer: true,
-      customerNameRule: 'OPTIONAL',
-      customerPhoneRule: 'OPTIONAL',
-      customerNifRule: 'OPTIONAL',
-      allowInternationalPhone: true,
+      allowTableTransfer: saved.allowTableTransfer ?? true,
+      customerNameRule: saved.customerNameRule || 'OPTIONAL',
+      customerPhoneRule: saved.customerPhoneRule || 'OPTIONAL',
+      customerNifRule: saved.customerNifRule || 'OPTIONAL',
+      allowInternationalPhone: saved.allowInternationalPhone ?? true,
       bannerUrl: '',
       tenantId,
       storeNumber: tenantId.startsWith('11111111') ? 1 : 2,
@@ -49,7 +75,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
     }
 
-    return NextResponse.json({ success: true, config })
+    // Atualiza cache em memória
+    tenantQrConfigCache[tenantId] = {
+      ...tenantQrConfigCache[tenantId],
+      ...config,
+    }
+
+    return NextResponse.json({ success: true, config: tenantQrConfigCache[tenantId] })
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Erro ao atualizar configurações' },

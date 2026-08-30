@@ -10,6 +10,8 @@ interface CustomerMenuHeaderProps {
   tableLabel?: string
   cartCount?: number
   onOpenCart?: () => void
+  allowTableTransfer?: boolean
+  onOpenSwitchTable?: () => void
 }
 
 export default function CustomerMenuHeader({
@@ -18,6 +20,8 @@ export default function CustomerMenuHeader({
   tableLabel,
   cartCount = 0,
   onOpenCart,
+  allowTableTransfer = true,
+  onOpenSwitchTable,
 }: CustomerMenuHeaderProps) {
   let storeName = 'Loja 1 - Aveiro'
   if (tenant?.name) {
@@ -68,12 +72,25 @@ export default function CustomerMenuHeader({
           </span>
         </div>
 
-        {/* 3. Direita: Mesa & Carrinho */}
+        {/* 3. Direita: Mesa, Trocar de Mesa & Carrinho */}
         <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0">
           {isTable && tableLabel ? (
-            <div className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 text-white font-black text-[10px] sm:text-xs shadow-md shadow-pink-600/20 whitespace-nowrap">
-              <Utensils className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
-              <span>{tableLabel}</span>
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 text-white font-black text-[10px] sm:text-xs shadow-md shadow-pink-600/20 whitespace-nowrap">
+                <Utensils className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
+                <span>{tableLabel}</span>
+              </div>
+
+              {/* Botão simples para Trocar de Mesa */}
+              {allowTableTransfer && onOpenSwitchTable && (
+                <button
+                  type="button"
+                  onClick={onOpenSwitchTable}
+                  className="text-[10px] sm:text-[11px] font-bold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 underline underline-offset-2 transition cursor-pointer whitespace-nowrap hidden xs:inline sm:inline"
+                >
+                  Trocar de mesa
+                </button>
+              )}
             </div>
           ) : null}
 
