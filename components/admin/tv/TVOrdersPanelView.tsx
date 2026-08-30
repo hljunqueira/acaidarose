@@ -347,6 +347,43 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     }
   }
 
+  // Helper para renderizar a Coroa coroando diretamente a 1ª letra do nome do cliente
+  const renderCrownName = (displayName: string, isQR: boolean) => {
+    if (!displayName) return 'BALCÃO'
+    if (!isQR) return <span>{displayName}</span>
+
+    const firstChar = displayName.charAt(0)
+    const rest = displayName.slice(1)
+
+    return (
+      <span className="inline-flex items-center">
+        <span className="relative inline-flex items-center justify-center">
+          <Crown className="absolute -top-6 sm:-top-8 lg:-top-9 left-1/2 -translate-x-1/2 h-7 w-7 sm:h-9 sm:w-9 lg:h-10 lg:w-10 text-amber-500 fill-amber-400 drop-shadow-[0_2px_8px_rgba(245,158,11,0.7)] -rotate-12 shrink-0 pointer-events-none" />
+          <span>{firstChar}</span>
+        </span>
+        <span>{rest}</span>
+      </span>
+    )
+  }
+
+  const renderSmallCrownName = (displayName: string, isQR: boolean) => {
+    if (!displayName) return 'BALCÃO'
+    if (!isQR) return <span>{displayName}</span>
+
+    const firstChar = displayName.charAt(0)
+    const rest = displayName.slice(1)
+
+    return (
+      <span className="inline-flex items-center">
+        <span className="relative inline-flex items-center justify-center">
+          <Crown className="absolute -top-3 sm:-top-3.5 left-1/2 -translate-x-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 fill-amber-400 drop-shadow-xs -rotate-12 shrink-0 pointer-events-none" />
+          <span>{firstChar}</span>
+        </span>
+        <span>{rest}</span>
+      </span>
+    )
+  }
+
   return (
     <div
       ref={panelRef}
@@ -391,13 +428,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             {heroOrder ? (
               <div className="flex flex-col items-center justify-center space-y-2 animate-in fade-in zoom-in-95 duration-200 w-full">
                 
-                {/* 1º: Nome do Cliente com Coroa e Fonte Geométrica Nítida em Caixa Alta (Ex: VALDAIR — MESA 12) */}
-                <div className="font-sans font-black text-4xl sm:text-5xl lg:text-6xl text-[#180424] flex items-center justify-center gap-3 uppercase tracking-tight leading-tight max-w-full px-2">
-                  {heroOrder.isQRCode && (
-                    <Crown className="h-8 w-8 sm:h-11 sm:w-11 text-amber-500 fill-amber-500 shrink-0 inline-block" />
-                  )}
+                {/* 1º: Nome do Cliente com Coroa Coroando a 1ª Letra e Fonte Geométrica Nítida em Caixa Alta (Ex: 👑VALDAIR — MESA 12) */}
+                <div className="font-sans font-black text-4xl sm:text-5xl lg:text-6xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-2">
                   <span className="truncate max-w-lg sm:max-w-xl">
-                    {getDisplayName(heroOrder.customerName, heroOrder.tableNumber)}
+                    {renderCrownName(getDisplayName(heroOrder.customerName, heroOrder.tableNumber), Boolean(heroOrder.isQRCode))}
                   </span>
                 </div>
 
@@ -440,9 +474,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                         <span className="text-amber-500 text-lg">⏳</span>
                         <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
                       </div>
-                      <div className="font-sans font-black text-sm sm:text-base lg:text-lg text-slate-900 uppercase truncate w-full flex items-center justify-center gap-1.5 mt-2 leading-tight">
-                        {isCrownOrder(order) && <Crown className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" />}
-                        <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
+                      <div className="font-sans font-black text-sm sm:text-base lg:text-lg text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
+                        <span className="truncate">
+                          {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber), isCrownOrder(order))}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -463,9 +498,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                               <span className="text-amber-500 text-base sm:text-lg">⏳</span>
                               <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
                             </div>
-                            <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center gap-1.5 mt-2 leading-tight">
-                              {isCrownOrder(order) && <Crown className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" />}
-                              <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
+                            <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
+                              <span className="truncate">
+                                {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber), isCrownOrder(order))}
+                              </span>
                             </div>
                           </>
                         ) : (
