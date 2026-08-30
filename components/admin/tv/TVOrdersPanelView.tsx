@@ -59,7 +59,8 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return () => clearInterval(timer)
   }, [])
 
-  const lastProcessedCallTimestampRef = useRef<number>(Date.now())
+  const lastProcessedCallTimestampRef = useRef<number>(0)
+  const isInitialMountRef = useRef<boolean>(true)
 
   // 1. Carregamento de pedidos reais da loja ativa e sincronização de chamadas via API (para Smart TVs em outros dispositivos/rede)
   const fetchLiveOrders = useCallback(async () => {
@@ -86,7 +87,21 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         const callData = await callRes.json()
         if (callData?.success && callData.call) {
           const remoteCall = callData.call
-          // Se for uma chamada nova que ainda não foi tocada nesta TV
+          
+          // Na inicialização, define o estado visual sem tocar áudio de chamadas antigas
+          if (isInitialMountRef.current) {
+            isInitialMountRef.current = false
+            lastProcessedCallTimestampRef.current = remoteCall.timestamp
+            const isQR = Boolean(remoteCall.customerName?.includes('Mesa') || remoteCall.ticket.startsWith('#0'))
+            setLastCalled({
+              ticket: remoteCall.ticket,
+              customerName: remoteCall.customerName,
+              isQRCode: isQR,
+            })
+            return
+          }
+
+          // Se for uma chamada nova transmitida pelo operador
           if (remoteCall.timestamp > lastProcessedCallTimestampRef.current) {
             lastProcessedCallTimestampRef.current = remoteCall.timestamp
             
@@ -104,7 +119,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             })
 
             // Toca o áudio TTS exclusivamente na Smart TV
-            if (soundConfig.enabled && audioEnabled) {
+            if (soundConfig.enabled !== false && audioEnabled) {
               announceTVCall(remoteCall.ticket, remoteCall.customerName, soundConfig.gender)
             }
           }
