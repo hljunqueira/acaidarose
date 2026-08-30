@@ -338,176 +338,134 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* ========================================================= */}
-          {/* SALÃO DE MESAS (LIVRES vs OCUPADAS MULTI-CLIENTE)          */}
-          {/* ========================================================= */}
-          <div className="lg:col-span-8 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-6 shadow-xs dark:shadow-xl">
-            <div className="flex items-center justify-between mb-5 pb-3 border-b border-purple-100 dark:border-white/10">
-              <h2 className="text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
+        <div className="w-full bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-6 shadow-xs dark:shadow-xl">
+          {/* Cabeçalho do Salão com Legenda e Botão de Novo Pedido */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-purple-100 dark:border-white/10">
+            <div className="flex items-center gap-3">
+              <h2 className="text-base font-black text-purple-950 dark:text-white uppercase tracking-wider">
                 Salão de Atendimento
               </h2>
-              <div className="flex items-center gap-4 text-xs">
+              <Badge className="bg-purple-100 dark:bg-white/10 text-purple-900 dark:text-purple-200 text-[10px] font-extrabold border-0">
+                {tables.length} Mesas
+              </Badge>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Legenda Semântica de Comandas */}
+              <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-md bg-purple-700 dark:bg-pink-600 shadow-xs"></span>
-                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Ocupada</span>
+                  <span className="text-purple-900/80 dark:text-purple-200/90 font-bold">Com Pedidos</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-md bg-purple-50 dark:bg-white/10 border border-purple-200 dark:border-white/20"></span>
-                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Livre</span>
+                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Sem Pedidos</span>
                 </div>
               </div>
+
+              {/* Botão de Destaque: Novo Pedido / Montar Açaí */}
+              <Button
+                type="button"
+                onClick={() => setActiveTab('BALCAO')}
+                className="h-10 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-sm cursor-pointer flex items-center gap-1.5 transition-transform active:scale-95"
+              >
+                <span>+ Novo Pedido / Montar Açaí</span>
+              </Button>
             </div>
+          </div>
 
-            {loading ? (
-              <div className="py-16 text-center text-xs text-purple-700 dark:text-purple-200/70 font-bold">
-                A carregar salão...
-              </div>
-            ) : tables.length === 0 ? (
-              <div className="py-16 text-center text-xs text-purple-700/70 dark:text-purple-200/60 font-semibold">
-                Nenhuma mesa configurada. Aceda ao menu "Mesas" para criar a numeração do salão.
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {tables.map((t) => {
-                  const tableData = getTableActiveData(t.number)
-                  const isOccupied = tableData.isOccupied || t.status === 'OCCUPIED'
-                  const displayTotal = tableData.totalValue > 0 ? tableData.totalValue : (t.total || 0)
+          {loading ? (
+            <div className="py-16 text-center text-xs text-purple-700 dark:text-purple-200/70 font-bold">
+              A carregar salão...
+            </div>
+          ) : tables.length === 0 ? (
+            <div className="py-16 text-center text-xs text-purple-700/70 dark:text-purple-200/60 font-semibold">
+              Nenhuma mesa configurada. Aceda ao menu "Mesas" para criar a numeração do salão.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {tables.map((t) => {
+                const tableData = getTableActiveData(t.number)
+                const isOccupied = tableData.isOccupied || t.status === 'OCCUPIED'
+                const displayTotal = tableData.totalValue > 0 ? tableData.totalValue : (t.total || 0)
 
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        if (isOccupied) handleSelectTable(t)
-                        else handleOpenFreeTable(t)
-                      }}
-                      className={`min-h-[135px] rounded-2xl border flex flex-col items-center justify-between p-4 text-center transition-all duration-150 cursor-pointer ${
-                        isOccupied
-                          ? 'bg-gradient-to-br from-purple-100/90 to-pink-100/90 dark:from-pink-950/80 dark:to-purple-950/90 border-purple-400 dark:border-pink-500 text-purple-950 dark:text-white shadow-md dark:shadow-pink-600/20 hover:scale-[1.02]'
-                          : 'bg-purple-50/50 dark:bg-white/[0.04] text-purple-950 dark:text-white border-purple-200 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50 hover:bg-purple-100/60 dark:hover:bg-white/10 hover:scale-[1.02]'
-                      }`}
-                    >
-                      {/* Topo do Card: Número da Mesa + Badge com Status de Pagamento */}
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-lg font-black text-purple-950 dark:text-white">
-                          Mesa {t.number}
-                        </span>
-                        {isOccupied ? (
-                          tableData.isFullyPaid ? (
-                            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-xs">
-                              € {displayTotal.toFixed(2)} ✓ Pago
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-xs">
-                              € {displayTotal.toFixed(2)}
-                            </Badge>
-                          )
-                        ) : (
-                          <Badge variant="outline" className="text-[9px] font-bold border-purple-200 dark:border-white/20 text-purple-700 dark:text-purple-300 py-0 px-1.5">
-                            Livre
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      if (isOccupied) handleSelectTable(t)
+                      else handleOpenFreeTable(t)
+                    }}
+                    className={`min-h-[145px] rounded-2xl border flex flex-col items-center justify-between p-4 text-center transition-all duration-150 cursor-pointer ${
+                      isOccupied
+                        ? 'bg-gradient-to-br from-purple-100/90 to-pink-100/90 dark:from-pink-950/80 dark:to-purple-950/90 border-purple-400 dark:border-pink-500 text-purple-950 dark:text-white shadow-md dark:shadow-pink-600/20 hover:scale-[1.02]'
+                        : 'bg-purple-50/50 dark:bg-white/[0.04] text-purple-950 dark:text-white border-purple-200 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50 hover:bg-purple-100/60 dark:hover:bg-white/10 hover:scale-[1.02]'
+                    }`}
+                  >
+                    {/* Topo do Card: Número da Mesa + Badge com Status de Pagamento */}
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-base font-black text-purple-950 dark:text-white">
+                        Mesa {t.number}
+                      </span>
+                      {isOccupied ? (
+                        tableData.isFullyPaid ? (
+                          <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-xs">
+                            € {displayTotal.toFixed(2)} ✓
                           </Badge>
-                        )}
-                      </div>
-
-                      {/* Corpo do Card: Nomes dos Clientes na Mesa ou Status */}
-                      <div className="py-2 w-full text-center">
-                        {isOccupied && tableData.customerNames.length > 0 ? (
-                          <div className="space-y-0.5">
-                            <div className="text-xs font-black text-purple-950 dark:text-pink-200 truncate px-1">
-                              {tableData.customerNames.join(', ')}
-                            </div>
-                            <div className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold">
-                              {tableData.activeItemsCount} taça(s) em consumo
-                            </div>
-                          </div>
                         ) : (
-                          <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">
-                            {isOccupied ? 'Em Consumo' : 'Disponível'}
-                          </div>
-                        )}
-                      </div>
+                          <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-xs">
+                            € {displayTotal.toFixed(2)}
+                          </Badge>
+                        )
+                      ) : (
+                        <Badge variant="outline" className="text-[9px] font-bold border-purple-200 dark:border-white/20 text-purple-700/80 dark:text-purple-300/80 py-0 px-1.5 bg-white/60 dark:bg-white/5">
+                          Sem Pedidos
+                        </Badge>
+                      )}
+                    </div>
 
-                      {/* Rodapé: Ação Inteligente (Ver Comanda vs Cobrar no Caixa vs + Abrir Mesa) */}
-                      <div className="w-full pt-2 border-t border-purple-200/60 dark:border-white/10 text-[10.5px] font-black">
-                        {isOccupied ? (
-                          tableData.isFullyPaid ? (
-                            <span className="text-purple-900 dark:text-pink-200 block font-black">
-                              Ver Comanda ›
-                            </span>
-                          ) : (
-                            <span className="text-emerald-700 dark:text-emerald-300 block font-black">
-                              Cobrar no Caixa ›
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-purple-600/70 dark:text-purple-300/60 block font-bold">
-                            + Abrir Mesa
+                    {/* Corpo do Card: Nomes dos Clientes na Mesa ou Status */}
+                    <div className="py-2.5 w-full text-center">
+                      {isOccupied && tableData.customerNames.length > 0 ? (
+                        <div className="space-y-0.5">
+                          <div className="text-xs font-black text-purple-950 dark:text-pink-200 truncate px-1">
+                            {tableData.customerNames.join(', ')}
+                          </div>
+                          <div className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold">
+                            {tableData.activeItemsCount} taça(s) em consumo
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs font-bold text-purple-700/70 dark:text-purple-200/60">
+                          {isOccupied ? 'Em Consumo' : 'Mesa Pronta'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rodapé: Ação Inteligente (Ver Comanda vs Cobrar no Caixa vs + Lançar Pedido) */}
+                    <div className="w-full pt-2 border-t border-purple-200/60 dark:border-white/10 text-[11px] font-black">
+                      {isOccupied ? (
+                        tableData.isFullyPaid ? (
+                          <span className="text-purple-900 dark:text-pink-200 block font-black">
+                            Ver Comanda ›
                           </span>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* ========================================================= */}
-          {/* PAINEL LATERAL "STATUS CAIXA"                             */}
-          {/* ========================================================= */}
-          <div className="lg:col-span-4 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-6 shadow-xs dark:shadow-xl flex flex-col justify-between space-y-4">
-            <div>
-              <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10 mb-4">
-                <h2 className="text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
-                  Status Caixa
-                </h2>
-                <Badge variant="outline" className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10">
-                  Turno Ativo
-                </Badge>
-              </div>
-
-              <div className="space-y-3">
-                {/* Mesas Ativas */}
-                <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-purple-950 dark:text-white">Mesas Ativas</div>
-                    <div className="text-[10px] text-purple-700/70 dark:text-purple-200/60 font-medium">Em atendimento no salão</div>
-                  </div>
-                  <div className="text-2xl font-black text-purple-950 dark:text-white font-mono">{activeTablesCount}</div>
-                </div>
-
-                {/* Vendas do Turno */}
-                <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-purple-950 dark:text-white">Vendas do Turno</div>
-                    <div className="text-[10px] text-purple-700/70 dark:text-purple-200/60 font-medium">Comandas finalizadas</div>
-                  </div>
-                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{salesCount}</div>
-                </div>
-
-                {/* Total Faturado */}
-                <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-emerald-950 dark:text-emerald-200">Total Faturado</div>
-                    <div className="text-[10px] text-emerald-700/80 dark:text-emerald-300/70 font-medium">Recebido no turno</div>
-                  </div>
-                  <div className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono">
-                    {formatCurrency(totalRevenue)}
-                  </div>
-                </div>
-              </div>
+                        ) : (
+                          <span className="text-emerald-700 dark:text-emerald-300 block font-black">
+                            Cobrar no Caixa ›
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-purple-600/80 dark:text-purple-300/80 block font-bold">
+                          + Lançar Pedido
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
-
-            {/* Botão Principal "Novo Pedido / Montar Açaí" */}
-            <Button
-              type="button"
-              onClick={() => setActiveTab('BALCAO')}
-              className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md cursor-pointer"
-            >
-              <span>Novo Pedido / Montar Açaí</span>
-            </Button>
-          </div>
+          )}
         </div>
       )}
     </div>
