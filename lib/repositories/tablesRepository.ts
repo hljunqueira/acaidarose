@@ -80,17 +80,50 @@ export async function getTableById(id: string): Promise<RestaurantTable | null> 
 
 export async function createTable(payload: Partial<RestaurantTable>): Promise<RestaurantTable> {
   const id = payload.id || uuidv4()
+  const tenantId = payload.tenantId || '11111111-1111-1111-1111-111111111111'
+  const tableNumber = Number(payload.number) || 1
+  const code = payload.code || `QR-MESA-${tableNumber}`
+  const status = payload.status || 'AVAILABLE'
+  const nickname = payload.nickname || `Mesa ${tableNumber}`
+
+  // 1. Verifica se já existe registro com o mesmo número para o estabelecimento
+  const existing = await query(
+    `SELECT id FROM tables WHERE tenant_id::text = $1 AND table_number = $2 LIMIT 1`,
+    [tenantId, tableNumber]
+  )
+
+  if (existing.rows && existing.rows.length > 0) {
+    const existingId = existing.rows[0].id
+    const updateRes = await query(
+      `UPDATE tables 
+       SET qr_code_token = $2,
+           status = $3,
+           deleted_at = NULL,
+           updated_at = timezone('utc'::text, now())
+       WHERE id::text = $1
+       RETURNING *`,
+      [existingId, code, status]
+    )
+    const t = updateRes.rows[0]
+    return {
+      id: t.id,
+      tenantId: t.tenant_id,
+      number: t.table_number,
+      code: t.qr_code_token,
+      nickname,
+      status: t.status,
+      total: 0,
+      items: [],
+      createdAt: t.created_at,
+    }
+  }
+
+  // 2. Insere nova mesa
   const res = await query(
     `INSERT INTO tables (id, tenant_id, table_number, qr_code_token, status)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [
-      id,
-      payload.tenantId,
-      payload.number || 1,
-      payload.code || `MESA-${payload.number || 1}`,
-      payload.status || 'AVAILABLE',
-    ]
+    [id, tenantId, tableNumber, code, status]
   )
   const t = res.rows[0]
   return {
@@ -98,6 +131,7 @@ export async function createTable(payload: Partial<RestaurantTable>): Promise<Re
     tenantId: t.tenant_id,
     number: t.table_number,
     code: t.qr_code_token,
+    nickname,
     status: t.status,
     total: 0,
     items: [],
@@ -113,7 +147,9 @@ export async function createBatchTables(
   assignedStaffName?: string
 ): Promise<RestaurantTable[]> {
   const created: RestaurantTable[] = []
-  for (let num = startNumber; num <= endNumber; num++) {
+  const start = Math.min(Number(startNumber) || 1, Number(endNumber) || 1)
+  const end = Math.max(Number(startNumber) || 1, Number(endNumber) || 1)
+  for (let num = start; num <= end; num++) {
     const table = await createTable({ tenantId, number: num, code: `QR-MESA-${num}`, status: 'AVAILABLE' })
     created.push(table)
   }

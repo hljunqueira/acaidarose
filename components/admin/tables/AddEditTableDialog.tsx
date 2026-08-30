@@ -2,14 +2,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { RestaurantTable } from '@/types/tables'
-import { StaffMember } from '@/types/staff'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Store, Layers } from 'lucide-react'
 
 interface AddEditTableDialogProps {
   open: boolean
@@ -67,8 +64,11 @@ export default function AddEditTableDialog({
             endNumber: numEnd,
           }),
         })
-        if (!res.ok) throw new Error('Falha ao criar lote de mesas')
-        toast.success(`${totalBatchCount} mesas criadas com sucesso!`)
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error || 'Falha ao criar lote de mesas')
+        }
+        toast.success(`${totalBatchCount} mesas adicionadas com sucesso!`)
       } else {
         const tableNum = table ? table.number : (Number(number) || 1)
         const payload = {
@@ -93,7 +93,7 @@ export default function AddEditTableDialog({
           const errData = await res.json().catch(() => ({}))
           throw new Error(errData.error || 'Falha ao guardar mesa')
         }
-        toast.success(table ? `Mesa ${tableNum} atualizada com sucesso!` : `Mesa ${tableNum} adicionada ao salão!`)
+        toast.success(table ? `Mesa ${tableNum} atualizada!` : `Mesa ${tableNum} adicionada!`)
       }
 
       onSuccess()
@@ -107,24 +107,20 @@ export default function AddEditTableDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/15 shadow-2xl text-slate-900 dark:text-white">
-        <DialogHeader>
-          <DialogTitle className="text-base font-black text-purple-950 dark:text-white flex items-center gap-2">
-            <Store className="h-4 w-4 text-purple-700 dark:text-pink-400" />
-            <span>{table ? `Editar Mesa ${table.number}` : 'Adicionar Mesas'}</span>
+      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/15 shadow-2xl text-slate-900 dark:text-white">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+            {table ? `Editar Mesa ${table.number}` : 'Adicionar Mesas'}
           </DialogTitle>
-          <p className="text-xs text-purple-700/80 dark:text-purple-200/70">
-            Configure as mesas físicas do salão para gerar os QR Codes de autoatendimento.
-          </p>
         </DialogHeader>
 
-        {/* Abas Alternador: Individual vs Lote (apenas se for criação) */}
+        {/* Alternador de Modo (apenas ao adicionar) */}
         {!table && (
-          <div className="grid grid-cols-2 p-1 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-150 dark:border-white/10 my-2">
+          <div className="grid grid-cols-2 p-1 bg-purple-50 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10 my-1">
             <button
               type="button"
               onClick={() => setIsBatch(false)}
-              className={`py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                 !isBatch
                   ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
                   : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
@@ -135,23 +131,23 @@ export default function AddEditTableDialog({
             <button
               type="button"
               onClick={() => setIsBatch(true)}
-              className={`py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                 isBatch
                   ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
                   : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
               }`}
             >
-              Criar em Lote (ex: 1 a 10)
+              Criar em Lote
             </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 my-2">
+        <form onSubmit={handleSubmit} className="space-y-4 my-2">
           {isBatch && !table ? (
             /* Formulário em Lote */
             <div className="space-y-3 p-4 bg-purple-50/50 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-purple-950 dark:text-white">Do Número:</Label>
                   <Input
                     type="number"
@@ -159,10 +155,10 @@ export default function AddEditTableDialog({
                     value={startNumber}
                     onChange={(e) => setStartNumber(e.target.value)}
                     required
-                    className="h-10 text-xs rounded-xl"
+                    className="h-10 text-xs font-bold rounded-xl"
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-purple-950 dark:text-white">Até o Número:</Label>
                   <Input
                     type="number"
@@ -170,24 +166,20 @@ export default function AddEditTableDialog({
                     value={endNumber}
                     onChange={(e) => setEndNumber(e.target.value)}
                     required
-                    className="h-10 text-xs rounded-xl"
+                    className="h-10 text-xs font-bold rounded-xl"
                   />
                 </div>
-              </div>
-
-              <div className="text-[11px] text-purple-700 dark:text-purple-200/80 font-medium">
-                Serão criadas <strong className="text-purple-950 dark:text-white">{totalBatchCount} mesas</strong> prontas com QR Codes automáticos.
               </div>
             </div>
           ) : (
             /* Formulário Unitário */
             <div className="space-y-3">
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Número da Mesa *</Label>
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Número da Mesa</Label>
                   {table && (
                     <span className="text-[10px] text-muted-foreground font-semibold">
-                      (Bloqueado na edição)
+                      Bloqueado na edição
                     </span>
                   )}
                 </div>
@@ -196,7 +188,6 @@ export default function AddEditTableDialog({
                   min="1"
                   value={table ? table.number : number}
                   onChange={(e) => setNumber(e.target.value)}
-                  placeholder="Ex: 1"
                   required
                   disabled={Boolean(table)}
                   className={`h-10 text-xs rounded-xl font-bold font-mono ${
@@ -205,20 +196,14 @@ export default function AddEditTableDialog({
                       : ''
                   }`}
                 />
-                {table && (
-                  <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
-                    O número da mesa não pode ser alterado após a criação. Para usar outro número, exclua esta mesa e adicione uma nova.
-                  </p>
-                )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-bold text-purple-950 dark:text-white">Apelido / Localização (Opcional)</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Apelido / Localização</Label>
                 <Input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  placeholder="Ex: Esplanada, Salão Principal, Varanda"
                   className="h-10 text-xs rounded-xl"
                 />
               </div>
@@ -241,7 +226,13 @@ export default function AddEditTableDialog({
               disabled={saving}
               className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
             >
-              {saving ? 'A guardar...' : table ? 'Guardar Alterações' : isBatch ? `Criar ${totalBatchCount} Mesas` : 'Adicionar Mesa'}
+              {saving
+                ? 'A guardar...'
+                : table
+                ? 'Guardar Alterações'
+                : isBatch
+                ? `Criar ${totalBatchCount} Mesas`
+                : 'Adicionar Mesa'}
             </Button>
           </DialogFooter>
         </form>
