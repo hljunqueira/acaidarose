@@ -59,7 +59,9 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return () => clearInterval(timer)
   }, [])
 
-  // 1. Carregamento de pedidos reais da loja ativa (público para TV do salão)
+  const lastProcessedCallTimestampRef = useRef<number>(Date.now())
+
+  // 1. Carregamento de pedidos reais da loja ativa e sincronização de chamadas via API (para Smart TVs em outros dispositivos/rede)
   const fetchLiveOrders = useCallback(async () => {
     try {
       const url = tenantId ? `/api/orders?tenantId=${encodeURIComponent(tenantId)}` : '/api/orders'
@@ -75,16 +77,52 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     } finally {
       setLoading(false)
     }
-  }, [tenantId])
 
-  // Polling a cada 2.5 segundos para sincronização contínua com PostgreSQL
+    // Consulta de chamadas em tempo real via Backend API
+    try {
+      const callUrl = tenantId ? `/api/tv/call?tenantId=${encodeURIComponent(tenantId)}` : '/api/tv/call'
+      const callRes = await fetch(callUrl)
+      if (callRes.ok) {
+        const callData = await callRes.json()
+        if (callData?.success && callData.call) {
+          const remoteCall = callData.call
+          // Se for uma chamada nova que ainda não foi tocada nesta TV
+          if (remoteCall.timestamp > lastProcessedCallTimestampRef.current) {
+            lastProcessedCallTimestampRef.current = remoteCall.timestamp
+            
+            const isQR = Boolean(remoteCall.customerName?.includes('Mesa') || remoteCall.ticket.startsWith('#0'))
+            const newCall = {
+              ticket: remoteCall.ticket,
+              customerName: remoteCall.customerName,
+              isQRCode: isQR,
+            }
+
+            setLastCalled(newCall)
+            setCalledHistory((prev) => {
+              const filtered = prev.filter((item) => item.ticket !== remoteCall.ticket)
+              return [newCall, ...filtered].slice(0, 10)
+            })
+
+            // Toca o áudio TTS exclusivamente na Smart TV
+            if (soundConfig.enabled && audioEnabled) {
+              announceTVCall(remoteCall.ticket, remoteCall.customerName, soundConfig.gender)
+            }
+          }
+        }
+      }
+    } catch {
+      // fallback silencioso
+    }
+  }, [tenantId, soundConfig, audioEnabled])
+
+  // Polling a cada 2 segundos para sincronização contínua com PostgreSQL e chamadas
   useEffect(() => {
     fetchLiveOrders()
-    const interval = setInterval(fetchLiveOrders, 2500)
+    const interval = setInterval(fetchLiveOrders, 2000)
     return () => clearInterval(interval)
   }, [fetchLiveOrders])
 
-  // 2. Ouvinte de Chamadas em Tempo Real via BroadcastChannel e LocalStorage
+  // 2. Ouvinte de Chamadas em Tempo Real via BroadcastChannel e LocalStorage (mesmo navegador)
   useEffect(() => {
     const initialCall = getLastTVCall(tenantId)
     if (initialCall) {
@@ -96,6 +134,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
     const unsubscribe = subscribeToTVCalls(
       (event: TVCallEvent) => {
+        // Evita tocar duplicado se já foi processado via API
+        if (event.timestamp <= lastProcessedCallTimestampRef.current) return
+        lastProcessedCallTimestampRef.current = event.timestamp
+
         const isQR = Boolean(event.customerName?.includes('Mesa') || event.ticket.startsWith('#0'))
         
         const newCall = {
@@ -325,17 +367,17 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         {/* ========================================================================= */}
         {/* COLUNA ESQUERDA (7 COLUNAS): "PEDIDOS PRONTOS" + "EM PREPARAÇÃO (ESTEIRA)" */}
         {/* ========================================================================= */}
-        <section className="lg:col-span-7 flex flex-col justify-between h-full space-y-2">
+        <section className="lg:col-span-7 flex flex-col justify-between h-full space-y-3.5">
           
-          {/* Caixa Branca Principal (Hero de Pedidos Prontos com Altura Super Otimizada) */}
-          <div className="min-h-[150px] sm:min-h-[170px] lg:min-h-[190px] rounded-3xl bg-white border-2 border-white text-slate-900 py-3.5 px-5 flex flex-col items-center justify-center text-center shadow-2xl relative">
+          {/* Caixa Branca Principal (Hero de Pedidos Prontos com Altura e Fontes Ampliadas) */}
+          <div className="flex-1 min-h-[220px] sm:min-h-[260px] lg:min-h-[285px] rounded-3xl bg-white border-2 border-white text-slate-900 py-5 px-6 flex flex-col items-center justify-center text-center shadow-2xl relative">
             {heroOrder ? (
-              <div className="flex flex-col items-center justify-center space-y-1 animate-in fade-in zoom-in-95 duration-200 w-full">
+              <div className="flex flex-col items-center justify-center space-y-2 animate-in fade-in zoom-in-95 duration-200 w-full">
                 
                 {/* 1º: Nome do Cliente com Coroa e Fonte Geométrica Nítida em Caixa Alta (Ex: VALDAIR — MESA 12) */}
-                <div className="font-sans font-black text-3xl sm:text-4xl lg:text-5xl text-[#180424] flex items-center justify-center gap-2.5 uppercase tracking-tight leading-tight max-w-full px-2">
+                <div className="font-sans font-black text-4xl sm:text-5xl lg:text-6xl text-[#180424] flex items-center justify-center gap-3 uppercase tracking-tight leading-tight max-w-full px-2">
                   {heroOrder.isQRCode && (
-                    <Crown className="h-7 w-7 sm:h-9 sm:w-9 text-amber-500 fill-amber-500 shrink-0 inline-block" />
+                    <Crown className="h-8 w-8 sm:h-11 sm:w-11 text-amber-500 fill-amber-500 shrink-0 inline-block" />
                   )}
                   <span className="truncate max-w-lg sm:max-w-xl">
                     {getDisplayName(heroOrder.customerName, heroOrder.tableNumber)}
@@ -343,26 +385,26 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 </div>
 
                 {/* 2º: Número do Ticket / Senha Gigante Monospace */}
-                <div className="font-mono font-black text-6xl sm:text-7xl lg:text-8xl text-[#180424] tracking-tight leading-none my-0.5">
+                <div className="font-mono font-black text-7xl sm:text-8xl lg:text-9xl text-[#180424] tracking-tight leading-none my-1">
                   {heroOrder.ticket || `#${String(heroOrder.orderNumber || 1).padStart(3, '0')}`}
                 </div>
 
                 {/* 3º: Instrução Oficial em Glossário PT-PT Mandatório */}
-                <div className="text-[11px] sm:text-xs lg:text-sm font-black tracking-widest text-pink-600 uppercase">
+                <div className="text-xs sm:text-sm lg:text-base font-black tracking-widest text-pink-600 uppercase pt-1">
                   POR FAVOR, DIRIJA-SE AO BALCÃO DE LEVANTAMENTO
                 </div>
               </div>
             ) : (
-              <div className="text-slate-400 font-bold text-lg sm:text-xl">
+              <div className="text-slate-400 font-bold text-xl sm:text-2xl">
                 Aguardando conclusão de pedidos...
               </div>
             )}
           </div>
 
           {/* Seção Inferior: Título "EM PREPARAÇÃO" Ampliado e Cards 2x Maiores com Rolagem */}
-          <div className="w-full flex-1 flex flex-col justify-end pt-1">
-            <div className="flex items-center gap-2.5 mb-2 px-1">
-              <span className="h-3.5 w-3.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+          <div className="w-full flex flex-col justify-end">
+            <div className="flex items-center gap-3 mb-2.5 px-1">
+              <span className="h-4 w-4 rounded-full bg-amber-400 animate-pulse shrink-0" />
               <h3 className="font-cursive text-3xl sm:text-4xl lg:text-5xl font-bold text-amber-400 leading-none">
                 Em Preparação
               </h3>
@@ -371,11 +413,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             {/* Esteira Horizontal de Cards 2x Maiores de Preparação */}
             <div className="w-full overflow-hidden">
               {preparingItems.length > 4 ? (
-                <div className="flex gap-3 animate-[marquee_20s_linear_infinite] whitespace-nowrap py-1">
+                <div className="flex gap-3.5 animate-[marquee_20s_linear_infinite] whitespace-nowrap py-1">
                   {preparingItems.map((order) => (
                     <div
                       key={order.id}
-                      className="min-w-[200px] sm:min-w-[230px] h-32 sm:h-36 lg:h-40 rounded-3xl bg-white border-2 border-white text-slate-900 p-3.5 sm:p-4 flex flex-col items-center justify-center text-center shadow-xl shrink-0"
+                      className="min-w-[210px] sm:min-w-[240px] h-32 sm:h-38 lg:h-42 rounded-3xl bg-white border-2 border-white text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl shrink-0"
                     >
                       <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl text-[#180424] leading-none">
                         <span className="text-amber-500 text-lg">⏳</span>
@@ -389,7 +431,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                   {[0, 1, 2, 3].map((idx) => {
                     const order = preparingItems[idx]
                     const historyFallback = !order ? otherHistoryCalls[idx] : null
@@ -397,7 +439,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                     return (
                       <div
                         key={idx}
-                        className="h-32 sm:h-36 lg:h-40 rounded-3xl bg-white border-2 border-white text-slate-900 p-3.5 sm:p-4 flex flex-col items-center justify-center text-center shadow-xl transition-transform"
+                        className="h-32 sm:h-38 lg:h-42 rounded-3xl bg-white border-2 border-white text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl transition-transform"
                       >
                         {order ? (
                           <>

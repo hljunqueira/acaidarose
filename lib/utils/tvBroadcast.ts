@@ -21,7 +21,25 @@ export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>, tenantId?:
     timestamp: Date.now(),
   }
 
-  // 1. BroadcastChannel (mesmo navegador / abas abertas)
+  // 1. Envio via API Backend para sincronização via rede / Smart TV em outros dispositivos
+  if (typeof window !== 'undefined') {
+    try {
+      fetch('/api/tv/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticket: data.ticket,
+          customerName: data.customerName,
+          status: data.status,
+          tenantId,
+        }),
+      }).catch(() => {})
+    } catch {
+      // fallback silencioso
+    }
+  }
+
+  // 2. BroadcastChannel (mesmo navegador / abas abertas)
   if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
     try {
       const channel = new BroadcastChannel(CHANNEL_NAME)
@@ -32,7 +50,7 @@ export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>, tenantId?:
     }
   }
 
-  // 2. LocalStorage (dispara evento 'storage' entre abas e persiste o último chamado)
+  // 3. LocalStorage (dispara evento 'storage' entre abas e persiste o último chamado)
   if (typeof window !== 'undefined') {
     try {
       if (tenantId) {

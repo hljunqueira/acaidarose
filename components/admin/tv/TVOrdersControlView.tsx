@@ -239,10 +239,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       timestamp: Date.now(),
     })
 
-    if (soundConfig.enabled) {
-      announceTVCall(ticket, order.customerName || '', soundConfig.gender)
-    }
-
     updateStatus(order.id, 'READY')
     toast.success(`Senha ${ticket} chamada na TV!`)
   }
@@ -265,10 +261,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       customerName: client,
       timestamp: Date.now(),
     })
-
-    if (soundConfig.enabled) {
-      announceTVCall(ticket, order.customerName || '', soundConfig.gender)
-    }
 
     toast.info(`Senha ${ticket} re-chamada na TV!`)
   }
@@ -300,10 +292,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       customerName: clientFormatted,
       timestamp: Date.now(),
     })
-
-    if (soundConfig.enabled) {
-      announceTVCall(ticketFormatted, clientFormatted, soundConfig.gender)
-    }
 
     toast.success(`Senha ${ticketFormatted} (${clientFormatted}) chamada na Smart TV!`)
     setManualTicket('')
