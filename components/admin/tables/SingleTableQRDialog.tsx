@@ -32,8 +32,8 @@ const STORE_SLUGS: Record<string, string> = {
 }
 
 const STORE_LABELS: Record<string, string> = {
-  '11111111-1111-1111-1111-111111111111': 'Matriz Aveiro',
-  '22222222-2222-2222-2222-222222222222': 'Filial Torres Novas',
+  '11111111-1111-1111-1111-111111111111': 'Loja 1 - Aveiro',
+  '22222222-2222-2222-2222-222222222222': 'Loja 2 - Torres Novas',
 }
 
 const getStoreCityLabel = (tId?: string) => {

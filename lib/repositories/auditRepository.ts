@@ -116,7 +116,7 @@ export async function getAuditLogs(options?: {
       const role = meta.role || 'ADMIN'
       const level = meta.level || 'INFO'
       const message = meta.message || `${row.action} em ${row.entity}`
-      const tenantName = row.tenant_name || (row.tenant_id?.startsWith('11111111') ? 'Matriz Aveiro' : row.tenant_id?.startsWith('22222222') ? 'Filial Torres Novas' : 'Franqueadora Master')
+      const tenantName = row.tenant_name || (row.tenant_id?.startsWith('11111111') ? 'Loja 1 - Aveiro' : row.tenant_id?.startsWith('22222222') ? 'Loja 2 - Torres Novas' : 'Franqueadora Master')
 
       return {
         id: row.id,

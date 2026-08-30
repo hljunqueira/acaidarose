@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
           message: `Comanda #${o.order_number || o.id.substring(0, 5)} (${o.customer_name || 'Cliente'}) · Estado: ${o.status} · Total: €${Number(o.total || 0).toFixed(2)} · Pagamento: ${o.payment_method || 'Balcão'}`,
           author: o.cashier_name || 'Henrique Linhares Junqueira',
           role: 'OPERADOR',
-          tenant: o.tenant_id === '11111111-1111-1111-1111-111111111111' ? 'Matriz Aveiro' : 'Filial Torres Novas',
+          tenant: o.tenant_id === '11111111-1111-1111-1111-111111111111' ? 'Loja 1 - Aveiro' : 'Loja 2 - Torres Novas',
           entityId: o.id,
           metadata: { orderId: o.id, orderNumber: o.order_number, total: o.total, status: o.status },
         })

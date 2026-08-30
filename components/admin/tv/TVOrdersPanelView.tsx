@@ -42,7 +42,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   const videoRef = useRef<HTMLVideoElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const storeName = tenantId === '22222222-2222-2222-2222-222222222222' ? 'Torres Novas' : 'Matriz Aveiro'
+  const storeName = tenantId === '22222222-2222-2222-2222-222222222222' ? 'Loja 2 - Torres Novas' : 'Loja 1 - Aveiro'
 
   // Relógio com Fuso Horário Obrigatório de Portugal (Europe/Lisbon)
   useEffect(() => {
@@ -430,24 +430,24 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       onClick={handleUnlockAudio}
       className="min-h-screen w-full bg-[#180424] text-white p-3 sm:p-5 flex flex-col justify-between select-none overflow-hidden font-sans cursor-pointer"
     >
-      {/* 1. TOPO: Logotipo Oficial da Loja Ampliado */}
+      {/* 1. TOPO: Logotipo Oficial da Loja Alinhado com o Início do Card do Vídeo */}
       <header className="relative w-full pb-3 border-b border-white/15">
-        <div className="w-full flex items-center justify-between">
-          {/* Título Principal PEDIDOS PRONTOS Centralizado no Lado Esquerdo */}
-          <div className="flex-1 flex items-center justify-start">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          {/* Título Principal PEDIDOS PRONTOS na Coluna dos Pedidos (7 Colunas) */}
+          <div className="lg:col-span-7 flex items-center justify-start">
             <h2 className="font-cursive text-5xl sm:text-6xl lg:text-7xl font-bold text-white tracking-wide drop-shadow-md leading-none">
               Pedidos Prontos
             </h2>
           </div>
 
-          {/* Logotipo e Nome da Loja Ampliados */}
-          <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="Açaí da Rose" className="h-14 sm:h-16 lg:h-20 w-auto object-contain drop-shadow-lg" />
+          {/* Logotipo e Nome da Loja Alinhados no Início do Card do Vídeo (5 Colunas) */}
+          <div className="lg:col-span-5 flex items-center justify-start gap-4">
+            <img src="/logo.png" alt="Açaí da Rose" className="h-14 sm:h-16 lg:h-20 w-auto object-contain drop-shadow-lg shrink-0" />
             <div className="flex flex-col text-left">
               <span className="font-cursive text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-none">
                 Açaí da Rose
               </span>
-              <span className="text-pink-400 font-black text-sm sm:text-base lg:text-lg leading-tight mt-0.5">
+              <span className="text-pink-400 font-black text-sm sm:text-base lg:text-lg leading-tight mt-0.5 tracking-wide">
                 {storeName}
               </span>
             </div>

@@ -68,8 +68,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     : 'aveiro'
 
   const storeTitle = tenantId === '22222222-2222-2222-2222-222222222222' 
-    ? 'Filial Torres Novas' 
-    : 'Matriz Aveiro'
+    ? 'Loja 2 - Torres Novas' 
+    : 'Loja 1 - Aveiro'
 
   useEffect(() => {
     setMarqueeText(getCustomTVMarquee())
