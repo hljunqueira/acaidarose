@@ -28,6 +28,7 @@ function MenuContent() {
   const { isDark: isCustomerDark } = useCustomerTheme()
   const rawLoja = searchParams.get('loja') || searchParams.get('tenantId') || searchParams.get('tenant') || '1'
   const paramNumero = searchParams.get('numero') || searchParams.get('mesa') || searchParams.get('table') || ''
+  const paramToken = searchParams.get('token') || searchParams.get('hash') || searchParams.get('t') || ''
 
   // Sincronização explícita do tema escuro no documento HTML (para que Portais e Modais herdem o tema)
   useEffect(() => {
@@ -44,6 +45,21 @@ function MenuContent() {
 
   // Estado dinâmico da mesa ativa
   const [currentTableNum, setCurrentTableNum] = useState(paramNumero)
+
+  // Resolução de Mesa via Token / Hash Criptográfico
+  useEffect(() => {
+    if (paramToken) {
+      fetch(`/api/tables/token/${encodeURIComponent(paramToken)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.table?.number) {
+            const tableNumStr = String(data.table.number).padStart(2, '0')
+            setCurrentTableNum(tableNumStr)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [paramToken])
 
   // Configurações do QR Code da loja
   const [qrConfig, setQrConfig] = useState<any>({ mode: 'ORDER_EMISSION', allowTableTransfer: true })

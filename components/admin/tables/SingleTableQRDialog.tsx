@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/lib/stores/authStore'
 import {
   Copy,
   ExternalLink,
@@ -44,9 +45,15 @@ const getStoreCityLabel = (tId?: string) => {
 export default function SingleTableQRDialog({ table, tenantId, open, onOpenChange }: SingleTableQRDialogProps) {
   if (!table) return null
 
+  const { user } = useAuthStore()
+  const isMaster = !user || user.role === 'SUPER_ADMIN' || user.role === 'FRANCHISOR_ADMIN'
+
   const [detectedOrigin, setDetectedOrigin] = useState<string>('https://acaidarose.vercel.app')
   const [customOrigin, setCustomOrigin] = useState<string>('')
   const [copied, setCopied] = useState(false)
+  const [hashCopied, setHashCopied] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [activeTableToken, setActiveTableToken] = useState<string>(table.code || '')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -54,21 +61,60 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
     }
   }, [])
 
+  useEffect(() => {
+    if (table?.code) {
+      setActiveTableToken(table.code)
+    }
+  }, [table])
+
   const effectiveTenantId = table.tenantId || tenantId || '11111111-1111-1111-1111-111111111111'
   const activeOrigin = (customOrigin.trim() || detectedOrigin).replace(/\/$/, '')
   const lojaSlug = STORE_SLUGS[effectiveTenantId] || 'aveiro'
   const storeTitle = getStoreCityLabel(effectiveTenantId)
   const formattedTableNumber = table.number.toString().padStart(2, '0')
-  const tableUrl = `${activeOrigin}/menu?tipo=mesa&numero=${formattedTableNumber}&loja=${lojaSlug}`
+  const tableUrl = `${activeOrigin}/menu?tipo=mesa&numero=${formattedTableNumber}&loja=${lojaSlug}&token=${encodeURIComponent(activeTableToken || table.code || '')}`
 
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(tableUrl)
       setCopied(true)
-      toast.success('Link do QR Code copiado para a área de transferência!')
+      toast.success('Link do QR Code copiado!')
       setTimeout(() => setCopied(false), 2500)
     } catch {
       toast.error('Não foi possível copiar o link')
+    }
+  }
+
+  const handleCopyHash = async () => {
+    const hash = activeTableToken || table.code || ''
+    if (!hash) return
+    try {
+      await navigator.clipboard.writeText(hash)
+      setHashCopied(true)
+      toast.success('Hash / Token copiado para a área de transferência!')
+      setTimeout(() => setHashCopied(false), 2500)
+    } catch {
+      toast.error('Erro ao copiar Hash')
+    }
+  }
+
+  const handleRegenerateHash = async () => {
+    if (!table.id) return
+    setRegenerating(true)
+    try {
+      const res = await fetch(`/api/tables/${table.id}/regenerate-token`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (!res.ok || !data.table?.code) {
+        throw new Error(data.error || 'Falha ao regenerar hash')
+      }
+      setActiveTableToken(data.table.code)
+      toast.success('Nova Hash gerada! A placa física precisará ser reimpressa.')
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao regenerar hash')
+    } finally {
+      setRegenerating(false)
     }
   }
 
@@ -248,6 +294,43 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
                 <div className="text-[10px] text-purple-700/80 dark:text-purple-300/80 break-all bg-white dark:bg-white/5 p-2 rounded-xl border border-purple-100 dark:border-white/10">
                   <span className="font-bold text-purple-950 dark:text-white">URL Gerada:</span>{' '}
                   <span className="font-mono text-pink-600 dark:text-pink-300 select-all">{tableUrl}</span>
+                </div>
+              </div>
+
+              {/* Hash / Token Criptográfico de Segurança */}
+              <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                    Hash / Token da Mesa:
+                  </Label>
+                  <span className="text-[10px] text-purple-700 dark:text-pink-400 font-mono font-bold bg-white dark:bg-black/30 px-2 py-0.5 rounded-lg border border-purple-100 dark:border-white/10">
+                    {activeTableToken || table.code || 'Gerado'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyHash}
+                    className="flex-1 h-8 text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white rounded-xl cursor-pointer"
+                  >
+                    {hashCopied ? 'Hash Copiada!' : 'Copiar Hash'}
+                  </Button>
+
+                  {isMaster && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRegenerateHash}
+                      disabled={regenerating}
+                      className="h-8 text-xs font-bold text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl cursor-pointer"
+                    >
+                      {regenerating ? 'A gerar...' : 'Regenerar Hash'}
+                    </Button>
+                  )}
                 </div>
               </div>
 

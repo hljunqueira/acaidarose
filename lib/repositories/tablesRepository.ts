@@ -78,11 +78,16 @@ export async function getTableById(id: string): Promise<RestaurantTable | null> 
   return null
 }
 
+export function generateTableHash(tableNumber: number): string {
+  const randomPart = uuidv4().replace(/-/g, '').slice(0, 8)
+  return `tb${tableNumber}_${randomPart}`
+}
+
 export async function createTable(payload: Partial<RestaurantTable>): Promise<RestaurantTable> {
   const id = payload.id || uuidv4()
   const tenantId = payload.tenantId || '11111111-1111-1111-1111-111111111111'
   const tableNumber = Number(payload.number) || 1
-  const code = payload.code || `QR-MESA-${tableNumber}`
+  const code = payload.code || generateTableHash(tableNumber)
   const status = payload.status || 'AVAILABLE'
   const nickname = payload.nickname || `Mesa ${tableNumber}`
 
@@ -96,7 +101,7 @@ export async function createTable(payload: Partial<RestaurantTable>): Promise<Re
     const existingId = existing.rows[0].id
     const updateRes = await query(
       `UPDATE tables 
-       SET qr_code_token = $2,
+       SET qr_code_token = COALESCE(NULLIF(qr_code_token, ''), $2),
            status = $3,
            deleted_at = NULL,
            updated_at = timezone('utc'::text, now())
@@ -150,10 +155,63 @@ export async function createBatchTables(
   const start = Math.min(Number(startNumber) || 1, Number(endNumber) || 1)
   const end = Math.max(Number(startNumber) || 1, Number(endNumber) || 1)
   for (let num = start; num <= end; num++) {
-    const table = await createTable({ tenantId, number: num, code: `QR-MESA-${num}`, status: 'AVAILABLE' })
+    const table = await createTable({
+      tenantId,
+      number: num,
+      code: generateTableHash(num),
+      status: 'AVAILABLE',
+    })
     created.push(table)
   }
   return created
+}
+
+export async function getTableByToken(token: string): Promise<RestaurantTable | null> {
+  try {
+    const res = await query(
+      `SELECT * FROM tables WHERE qr_code_token = $1 AND deleted_at IS NULL LIMIT 1`,
+      [token]
+    )
+    if (res.rows?.[0]) {
+      const t = res.rows[0]
+      return {
+        id: t.id,
+        tenantId: t.tenant_id,
+        number: t.table_number,
+        code: t.qr_code_token,
+        nickname: `Mesa ${t.table_number}`,
+        status: (t.status || 'AVAILABLE') as TableStatus,
+        total: Number(t.total_amount) || 0,
+        activatedAt: t.activated_at,
+        items: [],
+        createdAt: t.created_at,
+        updatedAt: t.updated_at,
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao buscar mesa por token:', err)
+  }
+  return null
+}
+
+export async function regenerateTableToken(id: string): Promise<RestaurantTable | null> {
+  const table = await getTableById(id)
+  if (!table) return null
+
+  const newToken = generateTableHash(table.number)
+  const res = await query(
+    `UPDATE tables 
+     SET qr_code_token = $2,
+         updated_at = timezone('utc'::text, now())
+     WHERE id::text = $1 AND deleted_at IS NULL
+     RETURNING *`,
+    [id, newToken]
+  )
+
+  if (res.rows?.[0]) {
+    return getTableById(id)
+  }
+  return null
 }
 
 export async function updateTable(id: string, payload: Partial<RestaurantTable>): Promise<RestaurantTable | null> {
