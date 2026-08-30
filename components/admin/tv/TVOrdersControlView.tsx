@@ -1057,19 +1057,19 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             </div>
           </div>
 
-          {/* 2. Opção de Exibição dos Últimos Pedidos Finalizados na TV */}
+          {/* 2. Opção de Exibição dos Pedidos em Preparação na TV */}
           <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-0.5">
               <div className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 {displayConfig.showCompletedOrders ? (
-                  <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <Eye className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                 ) : (
                   <EyeOff className="h-4 w-4 text-red-500 dark:text-red-400" />
                 )}
-                <span>Exibir Barra de Últimos Pedidos Finalizados</span>
+                <span>Exibir Barra de Pedidos em Preparação na TV</span>
               </div>
               <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80 font-medium">
-                Quando desativado, o rodapé de histórico de pedidos fica oculto na Smart TV, maximizando a área dos vídeos gastronômicos.
+                Quando ativado, o rodapé exibe a lista rolante em tempo real das comandas que estão sendo montadas pela cozinha.
               </p>
             </div>
 
@@ -1080,7 +1080,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                 onClick={() => handleToggleShowCompleted(true)}
                 className={`h-8 px-3.5 text-xs font-black rounded-xl cursor-pointer transition-all ${
                   displayConfig.showCompletedOrders
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
                     : 'bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-slate-700 dark:text-slate-300 hover:bg-purple-50'
                 }`}
               >
