@@ -536,7 +536,7 @@ export default function TableCheckoutDetail({
             onClick={onAddMoreItems}
             className="w-full h-10 mt-4 border-dashed border-purple-200 dark:border-white/20 bg-purple-50/50 dark:bg-white/5 hover:bg-purple-100/70 dark:hover:bg-white/10 text-purple-950 dark:text-white font-bold text-xs cursor-pointer rounded-xl shadow-xs"
           >
-            + Adicionar Novo Pedido no Balcão para Mesa {table.number}
+            Adicionar Novo Pedido no Balcão para Mesa {table.number}
           </Button>
         </div>
 

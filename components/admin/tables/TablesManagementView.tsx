@@ -108,7 +108,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
             onClick={handleOpenAdd}
             className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer"
           >
-            + Nova Mesa
+            Nova Mesa
           </Button>
         </div>
       </div>
@@ -136,7 +136,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
               ) : tables.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-purple-700/70 dark:text-purple-300/60">
-                    Nenhuma mesa registada nesta unidade. Clique em "+ Adicionar Mesas" para começar.
+                    Nenhuma mesa registada nesta unidade. Clique em "Adicionar Mesas" para começar.
                   </td>
                 </tr>
               ) : (
@@ -202,7 +202,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
             onClick={handleOpenAdd}
             className="w-full h-11 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-2xl cursor-pointer shadow-sm"
           >
-            + Adicionar Mesas
+            Adicionar Mesas
           </Button>
         </div>
       </div>

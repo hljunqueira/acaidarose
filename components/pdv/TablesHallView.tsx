@@ -369,7 +369,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                 onClick={() => setActiveTab('BALCAO')}
                 className="h-10 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-sm cursor-pointer flex items-center gap-1.5 transition-transform active:scale-95"
               >
-                <span>+ Novo Pedido / Montar Açaí</span>
+                <span>Novo Pedido / Montar Açaí</span>
               </Button>
             </div>
           </div>

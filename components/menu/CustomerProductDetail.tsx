@@ -498,7 +498,7 @@ export default function CustomerProductDetail({
                   onClick={handleConfirm}
                   className="h-11 px-6 rounded-2xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-600/30 cursor-pointer"
                 >
-                  + Adicionar ao Pedido
+                  Adicionar ao Pedido
                 </Button>
               </>
             )}

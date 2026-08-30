@@ -30,6 +30,8 @@ import {
   Layers,
   XCircle,
   Trash2,
+  LayoutGrid,
+  ListOrdered,
 } from 'lucide-react'
 
 import { playOrderNotificationSound } from '@/lib/utils/soundNotification'
@@ -112,6 +114,7 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
 export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'KANBAN' | 'LIST'>('KANBAN')
   const [searchQuery, setSearchQuery] = useState('')
   const [originFilter, setOriginFilter] = useState<'ALL' | 'TABLES' | 'COUNTER'>('ALL')
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -499,6 +502,12 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
   const countTables = orders.filter((o) => o.isTableOrder !== false && !!o.tableNumber).length
   const countCounter = orders.filter((o) => o.isTableOrder === false || !o.tableNumber).length
 
+  const handleManualRefresh = async () => {
+    setLoading(true)
+    await loadOrders()
+    toast.success('Pedidos e comandas atualizados!')
+  }
+
   return (
     <div className="w-full space-y-2.5">
       {/* Linha 1: Título e Ações Rápidas */}
@@ -542,7 +551,8 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
           <Button
             size="sm"
             variant="outline"
-            onClick={loadOrders}
+            onClick={handleManualRefresh}
+            title="Atualizar pedidos agora"
             className="h-8 px-2.5 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-800 dark:text-purple-100 cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -558,13 +568,13 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         </div>
       </div>
 
-      {/* Linha 2: Filtros de Origem Segmentados */}
-      <div className="max-w-full overflow-x-auto no-scrollbar py-1">
-        <div className="flex items-center gap-1.5 bg-purple-50/80 dark:bg-white/5 p-1 rounded-2xl border border-purple-150 dark:border-white/10 w-fit shrink-0">
+      {/* Linha 2: Filtros de Origem Segmentados + Seletor Kanban vs Lista */}
+      <div className="flex flex-wrap items-center justify-between gap-2 py-1">
+        <div className="flex items-center gap-1.5 bg-purple-50/80 dark:bg-white/5 p-1 rounded-2xl border border-purple-150 dark:border-white/10 shrink-0">
           <button
             type="button"
             onClick={() => setOriginFilter('ALL')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               originFilter === 'ALL'
                 ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
                 : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
@@ -580,7 +590,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
           <button
             type="button"
             onClick={() => setOriginFilter('TABLES')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               originFilter === 'TABLES'
                 ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
                 : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
@@ -596,7 +606,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
           <button
             type="button"
             onClick={() => setOriginFilter('COUNTER')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               originFilter === 'COUNTER'
                 ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
                 : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
@@ -609,19 +619,216 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
             </span>
           </button>
         </div>
+
+        {/* Seletor de Modo Kanban / Lista */}
+        <div className="flex items-center gap-1 bg-purple-50/80 dark:bg-white/5 p-1 rounded-2xl border border-purple-150 dark:border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewMode('KANBAN')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'KANBAN'
+                ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            <span>Kanban</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode('LIST')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'LIST'
+                ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+            }`}
+          >
+            <ListOrdered className="h-3.5 w-3.5" />
+            <span>Lista</span>
+          </button>
+        </div>
       </div>
 
-      {/* 2. Colunas do Kanban com Arraste do Mouse e Cards Largos */}
-      <div
-        ref={kanbanContainerRef}
-        onMouseDown={handleMouseDownOnContainer}
-        onMouseMove={handleMouseMoveOnContainer}
-        onMouseUp={handleMouseUpOrLeaveContainer}
-        onMouseLeave={handleMouseUpOrLeaveContainer}
-        className={`flex items-start gap-4 overflow-x-auto pb-6 pt-1 px-1 min-w-full select-none ${
-          isPanning ? 'cursor-grabbing select-none' : 'cursor-grab'
-        }`}
-      >
+      {/* Visualização Condicional: MODO LISTA vs MODO KANBAN */}
+      {viewMode === 'LIST' ? (
+        <div className="bg-white dark:bg-[#18022b]/95 rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/[0.02] text-purple-950/70 dark:text-purple-200/70 font-extrabold uppercase text-[10px] tracking-wider">
+                  <th className="py-3 px-4">Senha / Ticket</th>
+                  <th className="py-3 px-3">Origem & Mesa</th>
+                  <th className="py-3 px-3">Cliente</th>
+                  <th className="py-3 px-3">Tempo / SLA</th>
+                  <th className="py-3 px-3">Itens</th>
+                  <th className="py-3 px-3">Total / Pagamento</th>
+                  <th className="py-3 px-3">Etapa Atual</th>
+                  <th className="py-3 px-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-purple-100/60 dark:divide-white/5 font-medium">
+                {filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-muted-foreground text-xs font-bold">
+                      Nenhum pedido encontrado com os filtros atuais.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOrders.map((order) => {
+                    const isTable = order.isTableOrder !== false && !!order.tableNumber
+                    const elapsedMinutes = calculateElapsedMinutes(order.createdAt)
+                    const sla = getSlaBadge(elapsedMinutes)
+                    const items = order.items || []
+                    const isPaid = order.paymentStatus === 'PAID' || order.status === 'PAID' || order.status === 'COMPLETED'
+                    const isPreparing = order.status === 'PREPARING'
+                    const isReady = order.status === 'READY'
+
+                    return (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-purple-50/40 dark:hover:bg-white/[0.02] transition-colors"
+                      >
+                        {/* Senha */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-sm font-mono text-purple-950 dark:text-white">
+                              #{String(order.orderNumber || 100).padStart(3, '0')}
+                            </span>
+                            {order.isQRCode ? (
+                              <Badge className="bg-pink-100 text-pink-900 dark:bg-pink-950/60 dark:text-pink-200 text-[9px] font-bold border-0">
+                                QR Code
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-200 text-[9px] font-bold border-0">
+                                Balcão
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Origem & Mesa */}
+                        <td className="py-3 px-3">
+                          {isTable ? (
+                            <Badge className="bg-purple-700 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-lg">
+                              Mesa {order.tableNumber}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                              Balcão / Levar
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Cliente */}
+                        <td className="py-3 px-3">
+                          <div className="font-bold text-xs text-purple-950 dark:text-white">
+                            {order.customerName || 'Cliente'}
+                          </div>
+                          {order.customerPhone && (
+                            <div className="text-[10px] text-muted-foreground font-mono">
+                              {order.customerPhone}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Tempo / SLA */}
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${sla.className}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${sla.dotClass}`} />
+                            {sla.label}
+                          </span>
+                        </td>
+
+                        {/* Itens */}
+                        <td className="py-3 px-3">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderForItems(order)}
+                            className="text-xs font-bold text-purple-700 dark:text-pink-400 hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <span>{items.length} {items.length === 1 ? 'item' : 'itens'}</span>
+                            <span className="text-[10px] text-muted-foreground">({items[0]?.container?.name || 'Açaí'})</span>
+                          </button>
+                        </td>
+
+                        {/* Total / Pagamento */}
+                        <td className="py-3 px-3">
+                          <div className="font-black text-xs font-mono text-purple-950 dark:text-white">
+                            {formatCurrency(order.total || 0)}
+                          </div>
+                          <div>
+                            {isPaid ? (
+                              <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                                ✓ Pago ({order.paymentMethod === 'CASH' ? 'Dinheiro' : order.paymentMethod === 'MULTIBANCO' ? 'Multibanco' : order.paymentMethod || 'Balcão'})
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                A Pagar no Caixa
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Etapa Atual com Seletor Rápido */}
+                        <td className="py-3 px-3">
+                          <select
+                            value={order.status || 'NEW'}
+                            onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                            className="h-7 px-2 text-[11px] font-bold rounded-lg border border-purple-200 dark:border-white/15 bg-white dark:bg-[#200538] text-purple-950 dark:text-white cursor-pointer"
+                          >
+                            <option value="NEW">Novo</option>
+                            <option value="PREPARING">Em Preparação</option>
+                            <option value="READY">Pronto</option>
+                            <option value="PAID">Finalizado</option>
+                            <option value="CANCELLED">Cancelado</option>
+                          </select>
+                        </td>
+
+                        {/* Ações */}
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCallTicketOnTV(order)}
+                              className="h-7 px-2 text-[10px] font-bold border-purple-200 dark:border-white/15 bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-900 dark:text-white rounded-lg cursor-pointer"
+                            >
+                              <span>Chamar TV</span>
+                            </Button>
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => handlePrintOrder(e, order)}
+                              className="h-7 px-2 text-[10px] font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 text-purple-800 dark:text-purple-200 rounded-lg cursor-pointer"
+                            >
+                              <Printer className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* 2. Colunas do Kanban com Arraste do Mouse e Cards Largos */
+        <div
+          ref={kanbanContainerRef}
+          onMouseDown={handleMouseDownOnContainer}
+          onMouseMove={handleMouseMoveOnContainer}
+          onMouseUp={handleMouseUpOrLeaveContainer}
+          onMouseLeave={handleMouseUpOrLeaveContainer}
+          className={`flex items-start gap-4 overflow-x-auto pb-6 pt-1 px-1 min-w-full select-none ${
+            isPanning ? 'cursor-grabbing select-none' : 'cursor-grab'
+          }`}
+        >
         {KANBAN_COLUMNS.map((col) => {
           const colOrders = getOrdersForColumn(col.id)
           const isOver = dragOverColumn === col.id
@@ -889,7 +1096,8 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
             </div>
           )
         })}
-      </div>
+        </div>
+      )}
 
       {/* Modal de Detalhes dos Itens do Pedido (Raio-X de Ingredientes) */}
       <OrderItemsModal
