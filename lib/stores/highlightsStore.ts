@@ -12,6 +12,7 @@ export interface HighlightItem {
   price: number
   imageUrl: string
   videoUrl?: string
+  mediaType?: 'VIDEO' | 'IMAGE'
   active: boolean
   displayOrder: number
 }
@@ -26,6 +27,7 @@ const DEFAULT_HIGHLIGHTS: HighlightItem[] = [
     price: 9.50,
     imageUrl: '/images/official/acai_copo_500g.jpg',
     videoUrl: '/videos/hero_cup_rotation.mp4',
+    mediaType: 'VIDEO',
     active: true,
     displayOrder: 1,
   },
@@ -38,18 +40,20 @@ const DEFAULT_HIGHLIGHTS: HighlightItem[] = [
     price: 13.50,
     imageUrl: '/images/official/acai_tigela_750g.jpg',
     videoUrl: '/videos/hero_revealing_cup.mp4',
+    mediaType: 'VIDEO',
     active: true,
     displayOrder: 2,
   },
   {
     id: 'hl-3',
     title: 'Balde Família Açaí 1 Kg',
-    subtitle: 'Para partilhar com a família: 1Kg de pura polpa com frutas e toppings à vontade',
+    subtitle: 'Para partilhar com a família: 1Kg de pura polpa com frutas e acompanhamentos à vontade',
     badgeLabel: 'PARA PARTILHAR',
     badgeColor: 'bg-purple-600',
     price: 18.00,
     imageUrl: '/images/official/acai_balde_1kg.jpg',
     videoUrl: '/videos/hero_orbiting_cup.mp4',
+    mediaType: 'VIDEO',
     active: true,
     displayOrder: 3,
   },
@@ -62,6 +66,7 @@ const DEFAULT_HIGHLIGHTS: HighlightItem[] = [
     price: 4.50,
     imageUrl: '/images/official/milkshake_acai.png',
     videoUrl: '/videos/hero_gliding_texture.mp4',
+    mediaType: 'VIDEO',
     active: true,
     displayOrder: 4,
   },
@@ -73,6 +78,7 @@ interface HighlightsState {
   addHighlight: (item: HighlightItem) => void
   updateHighlight: (id: string, updated: Partial<HighlightItem>) => void
   deleteHighlight: (id: string) => void
+  toggleActive: (id: string) => void
 }
 
 export const useHighlightsStore = create<HighlightsState>()(
@@ -92,9 +98,15 @@ export const useHighlightsStore = create<HighlightsState>()(
         set((state) => ({
           highlights: state.highlights.filter((h) => h.id !== id),
         })),
+      toggleActive: (id) =>
+        set((state) => ({
+          highlights: state.highlights.map((h) =>
+            h.id === id ? { ...h, active: !h.active } : h
+          ),
+        })),
     }),
     {
-      name: 'acaidarose_highlights_store_v3',
+      name: 'acaidarose_highlights_store_v4',
     }
   )
 )

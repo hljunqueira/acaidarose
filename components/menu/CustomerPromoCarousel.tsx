@@ -10,31 +10,31 @@ export default function CustomerPromoCarousel({ onSelectPromo }: { onSelectPromo
   const { highlights } = useHighlightsStore()
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  // Filtrar apenas destaques ativos
+  // Filtrar ESTRITAMENTE apenas destaques com active === true (sem fallback fictício)
   const activeHighlights = highlights.filter((h) => h.active)
-  const displayItems = activeHighlights.length > 0 ? activeHighlights : highlights
 
   useEffect(() => {
-    if (displayItems.length <= 1) return
+    if (activeHighlights.length <= 1) return
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % displayItems.length)
+      setCurrentIndex((prev) => (prev + 1) % activeHighlights.length)
     }, 6000)
     return () => clearInterval(timer)
-  }, [displayItems.length])
+  }, [activeHighlights.length])
 
-  if (displayItems.length === 0) return null
+  // Se não houver nenhum destaque ativo cadastrado, oculta o carrossel de forma limpa
+  if (activeHighlights.length === 0) return null
 
-  const banner = displayItems[currentIndex] || displayItems[0]
-  const videoSrc = banner.videoUrl || '/videos/hero_cup_rotation.mp4'
+  const banner = activeHighlights[currentIndex] || activeHighlights[0]
+  const videoSrc = banner.videoUrl || ''
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setCurrentIndex((prev) => (prev - 1 + displayItems.length) % displayItems.length)
+    setCurrentIndex((prev) => (prev - 1 + activeHighlights.length) % activeHighlights.length)
   }
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setCurrentIndex((prev) => (prev + 1) % displayItems.length)
+    setCurrentIndex((prev) => (prev + 1) % activeHighlights.length)
   }
 
   return (
@@ -103,7 +103,7 @@ export default function CustomerPromoCarousel({ onSelectPromo }: { onSelectPromo
         </div>
 
         {/* Botões Laterais de Navegação (Desktop) */}
-        {displayItems.length > 1 && (
+        {activeHighlights.length > 1 && (
           <>
             <button
               type="button"
@@ -125,9 +125,9 @@ export default function CustomerPromoCarousel({ onSelectPromo }: { onSelectPromo
         )}
 
         {/* Indicadores de Paginação do Carrossel */}
-        {displayItems.length > 1 && (
+        {activeHighlights.length > 1 && (
           <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20">
-            {displayItems.map((_, idx) => (
+            {activeHighlights.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
