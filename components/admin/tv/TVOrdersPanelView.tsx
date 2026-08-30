@@ -9,6 +9,9 @@ import {
   subscribeToTVVideos,
   getStoreTVVideos,
   TVVideoItem,
+  subscribeToTVSoundConfig,
+  getStoredTVSoundConfig,
+  TVSoundConfig,
 } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
@@ -21,7 +24,8 @@ interface TVOrdersPanelViewProps {
 export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [audioEnabled, setAudioEnabled] = useState(false)
+  const [audioEnabled, setAudioEnabled] = useState(true)
+  const [soundConfig, setSoundConfig] = useState<TVSoundConfig>({ enabled: true, gender: 'female' })
   const [lastCalled, setLastCalled] = useState<{ ticket: string; customerName?: string; isQRCode?: boolean; tableNumber?: number | null } | null>(null)
   const [calledHistory, setCalledHistory] = useState<Array<{ ticket: string; customerName?: string; isQRCode?: boolean; tableNumber?: number | null }>>([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
@@ -108,8 +112,8 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           return [newCall, ...filtered].slice(0, 10)
         })
 
-        if (audioEnabled) {
-          announceTVCall(event.ticket, event.customerName)
+        if (soundConfig.enabled && audioEnabled) {
+          announceTVCall(event.ticket, event.customerName, soundConfig.gender)
         }
 
         fetchLiveOrders()
@@ -122,7 +126,16 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     )
 
     return () => unsubscribe()
-  }, [audioEnabled, fetchLiveOrders, tenantId])
+  }, [audioEnabled, fetchLiveOrders, tenantId, soundConfig])
+
+  // Ouvinte de configurações de Som da TV em tempo real
+  useEffect(() => {
+    setSoundConfig(getStoredTVSoundConfig())
+    const unsubscribeSound = subscribeToTVSoundConfig((config) => {
+      setSoundConfig(config)
+    })
+    return () => unsubscribeSound()
+  }, [])
 
   // Ouvinte de mensagem customizada do Marquee em tempo real
   useEffect(() => {

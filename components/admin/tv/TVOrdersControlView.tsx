@@ -14,29 +14,38 @@ import {
   TVVideoItem,
   DEFAULT_OFFICIAL_VIDEOS,
   TVCallEvent,
+  broadcastTVSoundConfig,
+  getStoredTVSoundConfig,
+  TVSoundConfig,
 } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order, OrderStatus } from '@/types'
-import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Check, Plus, AlertCircle, Tv, XCircle } from 'lucide-react'
+import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Check, Plus, AlertCircle, Tv, XCircle, Volume2, VolumeX } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TVOrdersControlViewProps {
   tenantId?: string
 }
 
+type TVControlTab = 'CALL' | 'VIDEOS' | 'MARQUEE' | 'AUDIO' | 'NONE'
+
 export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewProps) {
   const { authFetch } = useAuthStore()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [audioEnabled, setAudioEnabled] = useState(false)
+  
+  // Sistema de Abas Exclusivas (Abre uma de cada vez)
+  const [activeTab, setActiveTab] = useState<TVControlTab>('CALL')
+
+  // Controle de Áudio e Voz (Feminina / Masculina)
+  const [soundConfig, setSoundConfig] = useState<TVSoundConfig>({ enabled: true, gender: 'female' })
+
   const [marqueeText, setMarqueeText] = useState('')
-  const [showMarqueeEditor, setShowMarqueeEditor] = useState(false)
 
   // Controle de Senha em Exibição na Smart TV
   const [currentTVCall, setCurrentTVCall] = useState<TVCallEvent | null>(null)
 
   // Estados do Gestor de Vídeos da TV
-  const [showVideosManager, setShowVideosManager] = useState(false)
   const [storeVideos, setStoreVideos] = useState<TVVideoItem[]>([])
   const [videoInputMode, setVideoInputMode] = useState<'FILE' | 'URL'>('FILE')
   const [videoUrlInput, setVideoUrlInput] = useState('')
@@ -44,8 +53,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const [editingVideo, setEditingVideo] = useState<TVVideoItem | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Estado para a Central de Chamada de Senha (ativa por padrão ou sob demanda)
-  const [showCallModal, setShowCallModal] = useState(true)
+  // Estado para chamada manual
   const [manualTicket, setManualTicket] = useState('')
   const [manualClient, setManualClient] = useState('')
 
@@ -61,6 +69,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     setMarqueeText(getCustomTVMarquee())
     setStoreVideos(getStoreTVVideos(tenantId))
     setCurrentTVCall(getLastTVCall(tenantId))
+    setSoundConfig(getStoredTVSoundConfig())
   }, [tenantId])
 
   const handleSaveMarquee = () => {
@@ -72,6 +81,26 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     setMarqueeText('')
     broadcastTVMarquee('')
     toast.success('Rodapé restaurado para o modo automático (Últimos Pedidos Finalizados)!')
+  }
+
+  // --- Handlers de Áudio e Voz ---
+  const handleToggleSoundEnabled = (enabled: boolean) => {
+    const updated = { ...soundConfig, enabled }
+    setSoundConfig(updated)
+    broadcastTVSoundConfig(updated)
+    toast.success(`Áudio da Smart TV ${enabled ? 'ativado' : 'desativado'}!`)
+  }
+
+  const handleSelectVoiceGender = (gender: 'female' | 'male') => {
+    const updated = { ...soundConfig, gender }
+    setSoundConfig(updated)
+    broadcastTVSoundConfig(updated)
+    toast.success(`Voz da TV configurada para: ${gender === 'female' ? 'Feminina' : 'Masculina'}`)
+  }
+
+  const handleTestAudio = () => {
+    announceTVCall('001', 'Teste Açaí da Rose', soundConfig.gender)
+    toast.info(`Reproduzindo teste com Voz ${soundConfig.gender === 'female' ? 'Feminina' : 'Masculina'}...`)
   }
 
   // --- Handlers de Gestão de Vídeos da Smart TV ---
@@ -210,8 +239,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       timestamp: Date.now(),
     })
 
-    if (audioEnabled) {
-      announceTVCall(ticket, order.customerName || '')
+    if (soundConfig.enabled) {
+      announceTVCall(ticket, order.customerName || '', soundConfig.gender)
     }
 
     updateStatus(order.id, 'READY')
@@ -237,8 +266,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       timestamp: Date.now(),
     })
 
-    if (audioEnabled) {
-      announceTVCall(ticket, order.customerName || '')
+    if (soundConfig.enabled) {
+      announceTVCall(ticket, order.customerName || '', soundConfig.gender)
     }
 
     toast.info(`Senha ${ticket} re-chamada na TV!`)
@@ -272,8 +301,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       timestamp: Date.now(),
     })
 
-    if (audioEnabled) {
-      announceTVCall(ticketFormatted, clientFormatted)
+    if (soundConfig.enabled) {
+      announceTVCall(ticketFormatted, clientFormatted, soundConfig.gender)
     }
 
     toast.success(`Senha ${ticketFormatted} (${clientFormatted}) chamada na Smart TV!`)
@@ -299,7 +328,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
 
   return (
     <div className="space-y-4">
-      {/* Header Minimalista Padrão das Outras Páginas */}
+      {/* Header Minimalista: Botões em Linha Única sem Ícones */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-purple-100 dark:border-white/10">
         <div>
           <h1 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">
@@ -310,14 +339,15 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           </p>
         </div>
 
+        {/* Barra de Abas Exclusivas (Abre uma de cada vez) */}
         <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto shrink-0 pb-0.5">
-          {/* Botão 1: Chamar Senha */}
+          {/* Aba 1: Chamar Senha */}
           <Button
             type="button"
             size="sm"
-            onClick={() => setShowCallModal(!showCallModal)}
+            onClick={() => setActiveTab(activeTab === 'CALL' ? 'NONE' : 'CALL')}
             className={`h-8 px-3 rounded-xl text-xs font-black cursor-pointer shadow-xs transition-all shrink-0 ${
-              showCallModal
+              activeTab === 'CALL'
                 ? 'bg-pink-700 text-white ring-2 ring-pink-400'
                 : 'bg-pink-600 hover:bg-pink-700 text-white'
             }`}
@@ -325,56 +355,50 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             Chamar Senha
           </Button>
 
-          {/* Botão 2: Vídeos TV */}
+          {/* Aba 2: Vídeos TV */}
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setShowVideosManager(!showVideosManager)
-              if (showMarqueeEditor) setShowMarqueeEditor(false)
-            }}
+            onClick={() => setActiveTab(activeTab === 'VIDEOS' ? 'NONE' : 'VIDEOS')}
             className={`h-8 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-purple-200 dark:border-white/15 shrink-0 ${
-              showVideosManager ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black' : 'text-purple-950 dark:text-white'
+              activeTab === 'VIDEOS' ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black ring-2 ring-purple-300' : 'text-purple-950 dark:text-white'
             }`}
           >
             Vídeos TV
           </Button>
 
-          {/* Botão 3: Editar Marquee */}
+          {/* Aba 3: Editar Marquee */}
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setShowMarqueeEditor(!showMarqueeEditor)
-              if (showVideosManager) setShowVideosManager(false)
-            }}
+            onClick={() => setActiveTab(activeTab === 'MARQUEE' ? 'NONE' : 'MARQUEE')}
             className={`h-8 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-purple-200 dark:border-white/15 shrink-0 ${
-              showMarqueeEditor ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black' : 'text-purple-950 dark:text-white'
+              activeTab === 'MARQUEE' ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black ring-2 ring-purple-300' : 'text-purple-950 dark:text-white'
             }`}
           >
             Editar Marquee
           </Button>
 
-          {/* Botão 4: Ativar Áudio */}
+          {/* Aba 4: Áudio */}
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              const next = !audioEnabled
-              setAudioEnabled(next)
-              if (next) announceTVCall('Teste', 'Açaí da Rose')
-            }}
+            onClick={() => setActiveTab(activeTab === 'AUDIO' ? 'NONE' : 'AUDIO')}
             className={`h-8 px-3 rounded-xl text-xs font-bold border-purple-200 dark:border-white/15 transition-all cursor-pointer shrink-0 ${
-              audioEnabled ? 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 border-pink-300' : 'text-purple-950 dark:text-white'
+              activeTab === 'AUDIO'
+                ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black ring-2 ring-purple-300'
+                : soundConfig.enabled
+                ? 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 border-pink-300'
+                : 'text-purple-950 dark:text-white'
             }`}
           >
-            {audioEnabled ? 'Áudio Ativo' : 'Ativar Áudio'}
+            {soundConfig.enabled ? `Áudio (${soundConfig.gender === 'female' ? 'Voz Fem.' : 'Voz Masc.'})` : 'Áudio Desligado'}
           </Button>
 
-          {/* Botão 5: Abrir Tela TV */}
+          {/* Ação 5: Abrir Tela TV (Nova Aba) */}
           <Button
             type="button"
             size="sm"
@@ -389,8 +413,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
         </div>
       </div>
 
-      {/* CENTRAL DE CHAMADA DE SENHA & FILA DE PEDIDOS (Exibida ao clicar no botão Chamar Senha) */}
-      {showCallModal && (
+      {/* ABA 1: CENTRAL DE CHAMADA DE SENHA & FILA DE PEDIDOS */}
+      {activeTab === 'CALL' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Card 1: Controle de Exibição & Chamador Rápido */}
           <div className="p-5 rounded-3xl bg-pink-50/70 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900/40 space-y-4 shadow-sm">
@@ -594,8 +618,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
         </div>
       )}
 
-      {/* PAINEL DE GESTÃO DE VÍDEOS DA SMART TV */}
-      {showVideosManager && (
+      {/* ABA 2: PAINEL DE GESTÃO DE VÍDEOS DA SMART TV */}
+      {activeTab === 'VIDEOS' && (
         <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-100 dark:border-white/10">
             <div>
@@ -991,14 +1015,17 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
         </div>
       )}
 
-      {/* Caixa de Edição do Marquee */}
-      {showMarqueeEditor && (
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
+      {/* ABA 3: EDIÇÃO DO MARQUEE (RODAPÉ) */}
+      {activeTab === 'MARQUEE' && (
+        <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10">
+            <div className="flex items-center gap-2 text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
               <Megaphone className="h-4 w-4 text-pink-600" />
               <span>Configurar Mensagem do Rodapé (Marquee)</span>
             </div>
+            <span className="text-xs text-purple-600 dark:text-purple-300 font-bold">
+              Texto em destaque rolante no rodapé da Smart TV
+            </span>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-2">
             <Input
@@ -1014,6 +1041,127 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               <Button variant="outline" onClick={handleResetMarquee} className="h-10 px-3 border-purple-200 dark:border-white/15 text-xs font-bold rounded-xl cursor-pointer">
                 <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ABA 4: CONFIGURAÇÕES DE ÁUDIO & VOZ (FEMININA OU MASCULINA) */}
+      {activeTab === 'AUDIO' && (
+        <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-100 dark:border-white/10">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
+                {soundConfig.enabled ? (
+                  <Volume2 className="h-4 w-4 text-pink-600" />
+                ) : (
+                  <VolumeX className="h-4 w-4 text-slate-400" />
+                )}
+                <span>Configurações de Áudio & Síntese de Voz na Smart TV</span>
+              </div>
+              <p className="text-xs text-purple-700/80 dark:text-purple-300/80 font-medium mt-0.5">
+                Defina se a TV deve emitir sinal sonoro ao chamar senhas e escolha a voz desejada (Feminina ou Masculina).
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              onClick={handleTestAudio}
+              className="h-8 px-4 bg-purple-700 hover:bg-purple-800 text-white text-xs font-black rounded-xl cursor-pointer shadow-xs gap-1"
+            >
+              <span>🔊 Testar Som da TV</span>
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Status do Som na TV */}
+            <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                  Status do Áudio na TV
+                </span>
+                <Badge
+                  className={`text-[10px] font-black uppercase ${
+                    soundConfig.enabled ? 'bg-emerald-600 text-white' : 'bg-zinc-600 text-white'
+                  }`}
+                >
+                  {soundConfig.enabled ? 'Ativado' : 'Desativado'}
+                </Badge>
+              </div>
+
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                {soundConfig.enabled
+                  ? 'A Smart TV tocará o sino e anunciará a senha e o nome do cliente por voz.'
+                  : 'A Smart TV ficará silenciosa, exibindo apenas o destaque visual das senhas.'}
+              </p>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleToggleSoundEnabled(true)}
+                  className={`flex-1 py-2 px-3 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                    soundConfig.enabled
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-white dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10'
+                  }`}
+                >
+                  ✓ Ativar Áudio
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleToggleSoundEnabled(false)}
+                  className={`flex-1 py-2 px-3 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                    !soundConfig.enabled
+                      ? 'bg-zinc-700 text-white border-zinc-700 shadow-xs'
+                      : 'bg-white dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10'
+                  }`}
+                >
+                  ✕ Desativar Áudio
+                </button>
+              </div>
+            </div>
+
+            {/* Seleção de Voz (Feminina / Masculina) */}
+            <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                  Gênero da Voz (TTS)
+                </span>
+                <span className="text-xs font-bold text-pink-600">
+                  {soundConfig.gender === 'female' ? 'Voz Feminina' : 'Voz Masculina'}
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                Selecione o tom de voz para a fala automática da senha chamada no salão.
+              </p>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleSelectVoiceGender('female')}
+                  className={`flex-1 py-2 px-3 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                    soundConfig.gender === 'female'
+                      ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                      : 'bg-white dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10'
+                  }`}
+                >
+                  👩 Voz Feminina (Padrão)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectVoiceGender('male')}
+                  className={`flex-1 py-2 px-3 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                    soundConfig.gender === 'male'
+                      ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
+                      : 'bg-white dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10'
+                  }`}
+                >
+                  👨 Voz Masculina
+                </button>
+              </div>
             </div>
           </div>
         </div>

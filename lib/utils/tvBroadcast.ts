@@ -188,6 +188,75 @@ export function subscribeToTVMarquee(callback: (message: string) => void) {
   }
 }
 
+const SOUND_CONFIG_CHANNEL = 'acai_tv_sound_config_channel'
+const SOUND_CONFIG_KEY = 'acai_tv_sound_config'
+
+export interface TVSoundConfig {
+  enabled: boolean
+  gender: 'female' | 'male'
+}
+
+export function broadcastTVSoundConfig(config: TVSoundConfig) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(SOUND_CONFIG_KEY, JSON.stringify(config))
+  } catch {}
+
+  if ('BroadcastChannel' in window) {
+    try {
+      const channel = new BroadcastChannel(SOUND_CONFIG_CHANNEL)
+      channel.postMessage(config)
+      channel.close()
+    } catch {}
+  }
+}
+
+export function subscribeToTVSoundConfig(callback: (config: TVSoundConfig) => void) {
+  if (typeof window === 'undefined') return () => {}
+
+  let channel: BroadcastChannel | null = null
+
+  if ('BroadcastChannel' in window) {
+    try {
+      channel = new BroadcastChannel(SOUND_CONFIG_CHANNEL)
+      channel.onmessage = (msg) => {
+        if (msg.data && typeof msg.data.enabled === 'boolean') {
+          callback(msg.data)
+        }
+      }
+    } catch {}
+  }
+
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === SOUND_CONFIG_KEY && e.newValue) {
+      try {
+        const data = JSON.parse(e.newValue)
+        if (data && typeof data.enabled === 'boolean') {
+          callback(data)
+        }
+      } catch {}
+    }
+  }
+
+  window.addEventListener('storage', handleStorage)
+
+  return () => {
+    if (channel) channel.close()
+    window.removeEventListener('storage', handleStorage)
+  }
+}
+
+export function getStoredTVSoundConfig(): TVSoundConfig {
+  if (typeof window === 'undefined') return { enabled: true, gender: 'female' }
+  try {
+    const raw = localStorage.getItem(SOUND_CONFIG_KEY)
+    if (!raw) return { enabled: true, gender: 'female' }
+    return JSON.parse(raw)
+  } catch {
+    return { enabled: true, gender: 'female' }
+  }
+}
+
 /**
  * Retorna a mensagem personalizada gravada do Marquee
  */

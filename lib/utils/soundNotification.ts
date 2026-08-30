@@ -1,3 +1,30 @@
+export type TVVoiceGender = 'female' | 'male'
+
+export interface TVSoundConfig {
+  enabled: boolean
+  gender: TVVoiceGender
+}
+
+const SOUND_CONFIG_KEY = 'acai_tv_sound_config'
+
+export function getTVSoundConfig(): TVSoundConfig {
+  if (typeof window === 'undefined') return { enabled: true, gender: 'female' }
+  try {
+    const raw = localStorage.getItem(SOUND_CONFIG_KEY)
+    if (!raw) return { enabled: true, gender: 'female' }
+    return JSON.parse(raw)
+  } catch {
+    return { enabled: true, gender: 'female' }
+  }
+}
+
+export function saveTVSoundConfig(config: TVSoundConfig) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(SOUND_CONFIG_KEY, JSON.stringify(config))
+  } catch {}
+}
+
 /**
  * Sintetizador de alerta sonoro para novos pedidos QR Code
  * Utiliza a Web Audio API nativa do navegador (sem arquivos .mp3 externos)
@@ -46,9 +73,9 @@ export function playOrderNotificationSound() {
 }
 
 /**
- * Anuncia a senha na TV com sino e sintetizador de voz
+ * Anuncia a senha na TV com sino e sintetizador de voz (Feminina ou Masculina)
  */
-export function announceTVCall(ticket: string, customerName?: string) {
+export function announceTVCall(ticket: string, customerName?: string, voiceGender?: TVVoiceGender) {
   if (typeof window === 'undefined') return
 
   // 1. Toca o sino
@@ -67,13 +94,54 @@ export function announceTVCall(ticket: string, customerName?: string) {
       const utterance = new SpeechSynthesisUtterance(textToSpeak)
       utterance.lang = 'pt-PT'
       utterance.rate = 0.95
-      utterance.pitch = 1.05
 
-      // Busca voz em português se disponível
+      const gender = voiceGender || getTVSoundConfig().gender || 'female'
       const voices = window.speechSynthesis.getVoices()
-      const ptVoice = voices.find((v) => v.lang.startsWith('pt'))
-      if (ptVoice) {
-        utterance.voice = ptVoice
+      const ptVoices = voices.filter((v) => v.lang.startsWith('pt'))
+
+      if (gender === 'female') {
+        utterance.pitch = 1.15
+        const femaleVoice = ptVoices.find((v) => {
+          const name = v.name.toLowerCase()
+          return (
+            name.includes('female') ||
+            name.includes('luciana') ||
+            name.includes('helena') ||
+            name.includes('joana') ||
+            name.includes('catarina') ||
+            name.includes('maria') ||
+            name.includes('francisca') ||
+            name.includes('victoria') ||
+            name.includes('raquel') ||
+            name.includes('inês')
+          )
+        })
+        if (femaleVoice) {
+          utterance.voice = femaleVoice
+        } else if (ptVoices.length > 0) {
+          utterance.voice = ptVoices[0]
+        }
+      } else {
+        // Voz Masculina
+        utterance.pitch = 0.85
+        const maleVoice = ptVoices.find((v) => {
+          const name = v.name.toLowerCase()
+          return (
+            name.includes('male') ||
+            name.includes('cristiano') ||
+            name.includes('duarte') ||
+            name.includes('manuel') ||
+            name.includes('jorge') ||
+            name.includes('ricardo') ||
+            name.includes('felipe') ||
+            name.includes('antónio')
+          )
+        })
+        if (maleVoice) {
+          utterance.voice = maleVoice
+        } else if (ptVoices.length > 0) {
+          utterance.voice = ptVoices[0]
+        }
       }
 
       // Pequeno delay de 300ms para o sino soar antes da voz
@@ -85,4 +153,5 @@ export function announceTVCall(ticket: string, customerName?: string) {
     // fallback se não suportado
   }
 }
+
 
