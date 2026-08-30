@@ -419,6 +419,8 @@ export default function PDVView({
         total={currentTotal}
         storePhone={storePhone}
         submitting={submitting}
+        initialCustomerName={customerNameInput.trim() || (orderType === 'MESA' && selectedTable ? `Cliente Mesa ${selectedTable.number}` : '')}
+        initialTableName={orderType === 'MESA' && selectedTable ? `Mesa ${selectedTable.number}` : 'Balcão'}
         onPay={handleProcessPayment}
       />
 

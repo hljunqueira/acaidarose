@@ -778,6 +778,8 @@ export default function TableCheckoutDetail({
         total={total}
         storePhone={storePhone}
         submitting={submitting}
+        initialCustomerName={tableOrders[0]?.customerName || `Cliente Mesa ${table.number}`}
+        initialTableName={`Mesa ${table.number}`}
         onPay={handleFinalizePayment}
       />
 

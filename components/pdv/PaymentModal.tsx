@@ -17,6 +17,8 @@ interface PaymentModalProps {
   total: number
   storePhone?: string | null
   submitting: boolean
+  initialCustomerName?: string
+  initialTableName?: string
   onPay: (method: PaymentMethodCode, customer: { name: string; phone: string }) => void
 }
 
@@ -33,11 +35,21 @@ export default function PaymentModal({
   total,
   storePhone,
   submitting,
+  initialCustomerName = '',
+  initialTableName,
   onPay,
 }: PaymentModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodCode | null>(null)
-  const [customerName, setCustomerName] = useState('')
+  const [customerName, setCustomerName] = useState(initialCustomerName)
   const [customerPhone, setCustomerPhone] = useState('')
+  
+  // Sincronizar nome inicial automaticamente ao abrir o modal
+  React.useEffect(() => {
+    if (open) {
+      setCustomerName(initialCustomerName || '')
+      setSelectedMethod(null)
+    }
+  }, [open, initialCustomerName])
   
   // Cálculo de Troco para Dinheiro
   const [amountReceived, setAmountReceived] = useState<string>('')
