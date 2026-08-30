@@ -122,10 +122,10 @@ export default function AppSidebar({
   const getGroupForView = (v: AppViewId): string => {
     if (['dev_hub', 'prevention_center', 'audit_logs'].includes(v)) return 'devHub'
     if (['franchise', 'franchise_candidates', 'store_requests', 'franchise_requests', 'supply_hub'].includes(v)) return 'franchise'
-    if (['pdv', 'qrcode', 'tv_panel', 'tables'].includes(v)) return 'salon'
+    if (['pdv', 'qrcode', 'tables'].includes(v)) return 'salon'
     if (['menu', 'menu_categories', 'menu_menus', 'menu_highlights'].includes(v)) return 'menu'
     if (['inventory', 'supply_orders'].includes(v)) return 'inventory'
-    if (['company', 'qrcode_config', 'users', 'reports'].includes(v)) return 'storeConfig'
+    if (['company', 'qrcode_config', 'tv_panel', 'users', 'reports'].includes(v)) return 'storeConfig'
     return 'salon'
   }
 
@@ -214,7 +214,6 @@ export default function AppSidebar({
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
-          { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
@@ -247,6 +246,7 @@ export default function AppSidebar({
         accentClass: 'text-purple-600 dark:text-purple-400',
         items: [
           { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
+          { id: 'tv_panel', label: 'Configuração Painel de Senha', subtitle: 'Vídeos & Mensagens TV', show: true },
           { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
           { id: 'users', label: 'Utilizadores & Permissões', subtitle: 'Gerentes, Caixas & Acessos', show: true },
           { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
@@ -298,7 +298,6 @@ export default function AppSidebar({
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
-          { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
@@ -331,6 +330,7 @@ export default function AppSidebar({
         accentClass: 'text-purple-600 dark:text-purple-400',
         items: [
           { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
+          { id: 'tv_panel', label: 'Configuração Painel de Senha', subtitle: 'Vídeos & Mensagens TV', show: true },
           { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
           { id: 'users', label: 'Utilizadores & Permissões', subtitle: 'Gerentes, Caixas & Acessos', show: true },
           { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
@@ -348,7 +348,6 @@ export default function AppSidebar({
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
-          { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
@@ -386,6 +385,7 @@ export default function AppSidebar({
         accentClass: 'text-purple-600 dark:text-purple-400',
         items: [
           { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
+          { id: 'tv_panel', label: 'Configuração Painel de Senha', subtitle: 'Vídeos & Mensagens TV', show: true },
           { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
           { id: 'users', label: 'Operadores de Caixa', subtitle: 'Equipa Local', show: true },
           { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
@@ -403,7 +403,6 @@ export default function AppSidebar({
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
-          { id: 'tv_panel', label: 'Painel TV de Senhas', subtitle: 'Chamada Balcão', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
           { id: 'inventory', label: 'Estoque do Turno', subtitle: 'Checklist Rápido 2 min', show: true },
         ],
