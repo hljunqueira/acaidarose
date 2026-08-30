@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
 
       const isQRCode = Boolean(
         o.is_qr_code === true ||
-        !o.cashier_id && (o.is_table_order || o.table_number || o.payment_method === 'MBWAY' || (o.cashier_name && o.cashier_name.toLowerCase().includes('qr')))
+        o.channel === 'QR_CODE' ||
+        (o.cashier_name && (o.cashier_name.toLowerCase().includes('qr') || o.cashier_name.toLowerCase().includes('autoatendimento')))
       )
 
       return {

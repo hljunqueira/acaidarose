@@ -216,18 +216,14 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   // Determina se o pedido deve exibir a Coroa Dourada (pedidos feitos pelo cliente via autoatendimento QR Code no telemóvel)
   const isCrownOrder = (order: any) => {
     if (!order) return false
-    // 1. Flag explícita
+    if (order.isQRCode === false || order.is_qr_code === false || order.channel === 'POS') return false
+    
+    // Flag explícita
     if (order.isQRCode === true || order.is_qr_code === true || order.channel === 'QR_CODE') return true
     
-    // 2. Operador de autoatendimento ou QR
+    // Operador de autoatendimento ou QR
     const cName = String(order.cashierName || order.cashier_name || '').toLowerCase()
     if (cName.includes('qr') || cName.includes('autoatendimento')) return true
-    
-    // 3. Pagamento digital MB WAY do cliente
-    if (order.paymentMethod === 'MBWAY' || order.payment_method === 'MBWAY') return true
-
-    // 4. Sem operador físico cadastrado e com mesa associada
-    if (!order.cashierId && !order.cashier_id && (order.tableNumber || order.table_number || order.isTableOrder)) return true
 
     return false
   }

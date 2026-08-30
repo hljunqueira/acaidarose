@@ -670,18 +670,29 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                       >
                         {/* Header do Card */}
                         <div className="flex items-center justify-between gap-1.5 pb-1.5 border-b border-purple-100 dark:border-white/10">
-                          <div className="flex items-center gap-1 min-w-0">
+                          <div className="flex items-center gap-1 min-w-0 flex-wrap">
                             <GripVertical className="h-3 w-3 text-purple-400/60 dark:text-purple-400/40 group-hover:text-purple-700 dark:group-hover:text-pink-400 transition shrink-0" />
-                            <span className="font-black text-xs text-purple-950 dark:text-white shrink-0">
+                            <span className="font-black text-xs text-purple-950 dark:text-white shrink-0 mr-0.5">
                               #{order.orderNumber || 100}
                             </span>
-                            {isTable ? (
+                            
+                            {/* Mesa se houver */}
+                            {isTable && (
                               <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0 px-1.5 rounded-md border-0 shrink-0">
-                                {order.tableNumber}
+                                Mesa {String(order.tableNumber).replace(/\D/g, '') || order.tableNumber}
+                              </Badge>
+                            )}
+
+                            {/* Origem: QR Code vs Balcão */}
+                            {order.isQRCode ? (
+                              <Badge className="bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 border border-pink-300 dark:border-pink-500/40 text-[8.5px] font-extrabold py-0 px-1.5 rounded-md shrink-0 flex items-center gap-0.5">
+                                <Smartphone className="h-2.5 w-2.5" />
+                                <span>QR Code</span>
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-[9px] font-bold border-purple-200 dark:border-white/20 text-purple-800 dark:text-purple-200 py-0 px-1.5 shrink-0">
-                                Balcão
+                              <Badge variant="outline" className="border-purple-200 dark:border-white/20 bg-purple-50/50 dark:bg-white/5 text-purple-900 dark:text-purple-200 text-[8.5px] font-bold py-0 px-1.5 rounded-md shrink-0 flex items-center gap-0.5">
+                                <Store className="h-2.5 w-2.5" />
+                                <span>Balcão</span>
                               </Badge>
                             )}
                           </div>

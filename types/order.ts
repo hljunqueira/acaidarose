@@ -43,6 +43,8 @@ export interface Order {
   mbwayPhone?: string | null
   isTableOrder?: boolean
   tableNumber?: string | null
+  isQRCode?: boolean
+  channel?: string | null
   notes?: string | null
   cancelledAt?: string | Date | null
   cancelReason?: string | null
