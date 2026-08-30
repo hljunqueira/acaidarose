@@ -216,20 +216,48 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return false
   }
 
-  // Pedido principal pronto em exibição no quadrante grande:
-  // - Se readyOrders tiver pedidos: prioriza o último chamado que ainda esteja pronto, ou pega o primeiro pronto.
-  // - Se readyOrders estiver VAZIO (pedido finalizado ou excluído): heroOrder é null (tela limpa).
-  const heroOrder = readyOrders.length > 0
-    ? (readyOrders.find((o) => {
-        if (!lastCalled) return false
+  // Determina o pedido principal em destaque na CAIXA GIGANTE:
+  // 1. Prioridade Máxima: Último chamado ativo (lastCalled via KDS, Painel ou Chamada Manual)
+  // 2. Fallback: Primeiro pedido da lista de prontos (readyOrders[0])
+  const matchedReady = lastCalled
+    ? readyOrders.find((o) => {
         const t1 = `#${String(o.orderNumber || 1).padStart(3, '0')}`
         const t2 = lastCalled.ticket
         return t1 === t2 || String(o.orderNumber) === t2.replace('#', '')
-      }) || readyOrders[0])
+      })
     : null
 
-  // Próximos 3 pedidos prontos para as 3 caixas brancas inferiores
-  const nextReadyOrders = readyOrders.slice(1, 4)
+  const heroOrder = lastCalled
+    ? {
+        ticket: lastCalled.ticket.startsWith('#') ? lastCalled.ticket : `#${lastCalled.ticket}`,
+        customerName: lastCalled.customerName,
+        tableNumber: lastCalled.tableNumber ?? matchedReady?.tableNumber,
+        isQRCode: lastCalled.isQRCode ?? isCrownOrder(matchedReady),
+        orderNumber: matchedReady?.orderNumber || lastCalled.ticket.replace('#', ''),
+      }
+    : readyOrders.length > 0
+    ? {
+        ticket: `#${String(readyOrders[0].orderNumber || 1).padStart(3, '0')}`,
+        customerName: readyOrders[0].customerName,
+        tableNumber: readyOrders[0].tableNumber,
+        isQRCode: isCrownOrder(readyOrders[0]),
+        orderNumber: readyOrders[0].orderNumber,
+      }
+    : null
+
+  // Próximos pedidos para as 3 caixas brancas inferiores (combina histórico de chamadas e pedidos prontos)
+  const otherHistoryCalls = calledHistory.filter((c) => c.ticket !== heroOrder?.ticket)
+  const otherReadyOrders = readyOrders
+    .filter((o) => `#${String(o.orderNumber || 1).padStart(3, '0')}` !== heroOrder?.ticket)
+    .map((o) => ({
+      ticket: `#${String(o.orderNumber || 1).padStart(3, '0')}`,
+      customerName: o.customerName,
+      tableNumber: o.tableNumber,
+      isQRCode: isCrownOrder(o),
+    }))
+
+  // Unifica para preencher as 3 caixas inferiores
+  const lowerBoxItems = [...otherHistoryCalls, ...otherReadyOrders].slice(0, 3)
 
   return (
     <div
@@ -280,15 +308,15 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           {/* Caixa Branca Principal (70% de Destaque) */}
           <div className="flex-1 min-h-[280px] sm:min-h-[340px] rounded-2xl bg-white border-2 border-white text-slate-900 p-6 flex flex-col items-center justify-center text-center shadow-2xl relative mb-3">
             {heroOrder ? (
-              <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="flex flex-col items-center justify-center space-y-2 animate-in fade-in zoom-in-95 duration-200">
                 {/* Número da Senha Gigante */}
                 <div className="font-mono font-black text-6xl sm:text-8xl lg:text-9xl text-[#180424] tracking-tight leading-none">
-                  #{String(heroOrder.orderNumber || 1).padStart(3, '0')}
+                  {heroOrder.ticket || `#${String(heroOrder.orderNumber || 1).padStart(3, '0')}`}
                 </div>
 
                 {/* Nome do Cliente com Coroa se for QR Code */}
                 <div className="text-2xl sm:text-4xl font-black text-slate-900 flex items-center justify-center gap-2 pt-2">
-                  {isCrownOrder(heroOrder) && (
+                  {heroOrder.isQRCode && (
                     <Crown className="h-7 w-7 sm:h-9 sm:w-9 text-amber-500 fill-amber-500 shrink-0" />
                   )}
                   <span className="truncate max-w-md sm:max-w-xl">
@@ -310,22 +338,21 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           {/* 3 Caixas Brancas Menores Inferiores (Fiel à Foto do BK) */}
           <div className="grid grid-cols-3 gap-3">
             {[0, 1, 2].map((idx) => {
-              const order = nextReadyOrders[idx]
-              const showCrown = isCrownOrder(order)
+              const item = lowerBoxItems[idx]
 
               return (
                 <div
                   key={idx}
                   className="h-24 sm:h-28 rounded-xl bg-white border border-white text-slate-900 p-2.5 sm:p-3 flex flex-col items-center justify-center text-center shadow-lg"
                 >
-                  {order ? (
+                  {item ? (
                     <>
                       <div className="font-mono font-black text-2xl sm:text-4xl text-[#180424] leading-none">
-                        #{String(order.orderNumber || 1).padStart(3, '0')}
+                        {item.ticket}
                       </div>
                       <div className="text-xs sm:text-sm font-bold text-slate-800 truncate w-full flex items-center justify-center gap-1 mt-1">
-                        {showCrown && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
-                        <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
+                        {item.isQRCode && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                        <span className="truncate">{getDisplayName(item.customerName, item.tableNumber)}</span>
                       </div>
                     </>
                   ) : (
