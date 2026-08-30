@@ -289,7 +289,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return true // Sempre exibe a coroa dourada real para dar destaque VIP a todos os pedidos de clientes e mesas
   }
 
-  // Determina se o último chamado é um pedido REALMENTE ATIVO no banco (READY ou PREPARING)
+  // Determina se o último chamado é um pedido REALMENTE PRONTO no banco (READY)
   const activeOrderForLastCall = lastCalled
     ? orders.find((o) => {
         const tNum = `#${String(o.orderNumber || 1).padStart(3, '0')}`
@@ -298,11 +298,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           String(o.orderNumber) === lastCalled.ticket.replace('#', '') ||
           (lastCalled.customerName && o.customerName && o.customerName.trim().toUpperCase() === lastCalled.customerName.trim().toUpperCase())
         
-        return matches && (o.status === 'READY' || o.status === 'PREPARING')
+        return matches && o.status === 'READY'
       })
     : null
 
-  // Determina o pedido principal em destaque na CAIXA GIGANTE (Hero):
+  // Determina o pedido principal em destaque na CAIXA GIGANTE (Hero de Pedidos Prontos):
   const heroOrder: {
     ticket: string
     customerName?: string | null
@@ -521,17 +521,22 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                     {preparingItems.map((order) => (
                       <div
                         key={order.id}
-                        className="min-w-[210px] sm:min-w-[240px] h-32 sm:h-38 lg:h-42 rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl shrink-0"
+                        className="min-w-[210px] sm:min-w-[240px] h-32 sm:h-38 lg:h-42 rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 p-3.5 flex flex-col items-center justify-center text-center shadow-xl shrink-0"
                       >
-                        <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl text-[#180424] leading-none">
-                          <span className="text-amber-500 text-lg">⏳</span>
+                        <div className="flex items-center gap-1.5 font-mono font-black text-2xl sm:text-3xl lg:text-4xl text-[#180424] leading-none">
+                          <span className="text-amber-500 text-sm sm:text-base">⏳</span>
                           <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
                         </div>
-                        <div className="font-sans font-black text-sm sm:text-base lg:text-lg text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
+                        <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center mt-1.5 leading-tight pt-0.5">
                           <span className="truncate">
-                            {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber))}
+                            {renderSmallCrownName(order.customerName || 'Cliente')}
                           </span>
                         </div>
+                        {order.tableNumber !== undefined && order.tableNumber !== null && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao' && (
+                          <div className="text-[10px] sm:text-xs font-black text-pink-600 uppercase tracking-wider mt-0.5">
+                            MESA {String(order.tableNumber).replace(/^Mesa\s*/i, '').padStart(2, '0')}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -540,17 +545,22 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                     {preparingItems.map((order) => (
                       <div
                         key={order.id}
-                        className="h-32 sm:h-38 lg:h-42 rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl transition-transform"
+                        className="h-32 sm:h-38 lg:h-42 rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 p-3.5 flex flex-col items-center justify-center text-center shadow-xl transition-transform"
                       >
-                        <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl lg:text-5xl text-[#180424] leading-none">
-                          <span className="text-amber-500 text-base sm:text-lg">⏳</span>
+                        <div className="flex items-center gap-1.5 font-mono font-black text-2xl sm:text-3xl lg:text-4xl text-[#180424] leading-none">
+                          <span className="text-amber-500 text-sm sm:text-base">⏳</span>
                           <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
                         </div>
-                        <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
+                        <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center mt-1.5 leading-tight pt-0.5">
                           <span className="truncate">
-                            {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber))}
+                            {renderSmallCrownName(order.customerName || 'Cliente')}
                           </span>
                         </div>
+                        {order.tableNumber !== undefined && order.tableNumber !== null && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao' && (
+                          <div className="text-[10px] sm:text-xs font-black text-pink-600 uppercase tracking-wider mt-0.5">
+                            MESA {String(order.tableNumber).replace(/^Mesa\s*/i, '').padStart(2, '0')}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
