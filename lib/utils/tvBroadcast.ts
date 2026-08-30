@@ -35,7 +35,12 @@ export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>, tenantId?:
   // 2. LocalStorage (dispara evento 'storage' entre abas e persiste o último chamado)
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(getCallKey(tenantId), JSON.stringify(payload))
+      if (tenantId) {
+        localStorage.setItem(getCallKey(tenantId), JSON.stringify(payload))
+      }
+      // Sempre grava também na chave padrão para garantir recebimento em Smart TVs sem tenant explicitado
+      localStorage.setItem(getCallKey(undefined), JSON.stringify(payload))
+      localStorage.setItem('acai_tv_last_call_trigger', String(Date.now()))
     } catch {
       // fallback silencioso
     }

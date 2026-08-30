@@ -324,11 +324,14 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     const ticketNum = `#${formattedNum}`
     const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
 
-    broadcastTVCall({
-      ticket: ticketNum,
-      customerName: clientName,
-      status: 'READY',
-    })
+    broadcastTVCall(
+      {
+        ticket: ticketNum,
+        customerName: clientName,
+        status: 'READY',
+      },
+      order.tenantId
+    )
 
     if (order.status === 'PREPARING') {
       await updateOrderStatus(order.id, 'READY')
@@ -399,6 +402,21 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         setOrderToCancel(order)
         setCancelConfirmOpen(true)
         return
+      }
+
+      // Se for movido para PRONTO (READY), dispara a chamada de voz na TV automaticamente
+      if (targetStatus === 'READY') {
+        const formattedNum = String(order.orderNumber || 1).padStart(3, '0')
+        const ticketNum = `#${formattedNum}`
+        const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+        broadcastTVCall(
+          {
+            ticket: ticketNum,
+            customerName: clientName,
+            status: 'READY',
+          },
+          order.tenantId
+        )
       }
 
       const paymentStatus: 'PAID' | 'PENDING' =

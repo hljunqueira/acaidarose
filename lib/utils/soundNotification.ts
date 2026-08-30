@@ -78,13 +78,14 @@ export function playOrderNotificationSound() {
 export function announceTVCall(ticket: string, customerName?: string, voiceGender?: TVVoiceGender) {
   if (typeof window === 'undefined') return
 
-  // 1. Toca o sino
+  // 1. Toca o sino de alta fidelidade da Web Audio API
   playOrderNotificationSound()
 
   // 2. Síntese de voz em português
   try {
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel() // cancela falas pendentes
+      window.speechSynthesis.cancel() // cancela falas pendentes travadas
+      window.speechSynthesis.resume() // destrava motor de fala do Chrome
 
       const cleanTicket = ticket.replace('#', '')
       const textToSpeak = customerName
@@ -93,14 +94,15 @@ export function announceTVCall(ticket: string, customerName?: string, voiceGende
 
       const utterance = new SpeechSynthesisUtterance(textToSpeak)
       utterance.lang = 'pt-PT'
-      utterance.rate = 0.95
+      utterance.rate = 0.92
+      utterance.volume = 1.0
 
       const gender = voiceGender || getTVSoundConfig().gender || 'female'
       const voices = window.speechSynthesis.getVoices()
       const ptVoices = voices.filter((v) => v.lang.startsWith('pt'))
 
       if (gender === 'female') {
-        utterance.pitch = 1.15
+        utterance.pitch = 1.1
         const femaleVoice = ptVoices.find((v) => {
           const name = v.name.toLowerCase()
           return (
@@ -144,13 +146,13 @@ export function announceTVCall(ticket: string, customerName?: string, voiceGende
         }
       }
 
-      // Pequeno delay de 300ms para o sino soar antes da voz
+      // Delay de 400ms para o sino soar com clareza antes da voz
       setTimeout(() => {
         window.speechSynthesis.speak(utterance)
-      }, 300)
+      }, 400)
     }
   } catch {
-    // fallback se não suportado
+    // fallback silencioso
   }
 }
 
