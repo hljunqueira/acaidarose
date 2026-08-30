@@ -298,6 +298,74 @@ export function getStoredTVSoundConfig(): TVSoundConfig {
   }
 }
 
+const DISPLAY_CONFIG_CHANNEL = 'acai_tv_display_config_channel'
+const DISPLAY_CONFIG_KEY = 'acai_tv_display_config'
+
+export interface TVDisplayConfig {
+  showCompletedOrders: boolean
+}
+
+export function broadcastTVDisplayConfig(config: TVDisplayConfig) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(DISPLAY_CONFIG_KEY, JSON.stringify(config))
+  } catch {}
+
+  if ('BroadcastChannel' in window) {
+    try {
+      const channel = new BroadcastChannel(DISPLAY_CONFIG_CHANNEL)
+      channel.postMessage(config)
+      channel.close()
+    } catch {}
+  }
+}
+
+export function subscribeToTVDisplayConfig(callback: (config: TVDisplayConfig) => void) {
+  if (typeof window === 'undefined') return () => {}
+
+  let channel: BroadcastChannel | null = null
+
+  if ('BroadcastChannel' in window) {
+    try {
+      channel = new BroadcastChannel(DISPLAY_CONFIG_CHANNEL)
+      channel.onmessage = (msg) => {
+        if (msg.data && typeof msg.data.showCompletedOrders === 'boolean') {
+          callback(msg.data)
+        }
+      }
+    } catch {}
+  }
+
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === DISPLAY_CONFIG_KEY && e.newValue) {
+      try {
+        const data = JSON.parse(e.newValue)
+        if (data && typeof data.showCompletedOrders === 'boolean') {
+          callback(data)
+        }
+      } catch {}
+    }
+  }
+
+  window.addEventListener('storage', handleStorage)
+
+  return () => {
+    if (channel) channel.close()
+    window.removeEventListener('storage', handleStorage)
+  }
+}
+
+export function getStoredTVDisplayConfig(): TVDisplayConfig {
+  if (typeof window === 'undefined') return { showCompletedOrders: true }
+  try {
+    const raw = localStorage.getItem(DISPLAY_CONFIG_KEY)
+    if (!raw) return { showCompletedOrders: true }
+    return JSON.parse(raw)
+  } catch {
+    return { showCompletedOrders: true }
+  }
+}
+
 /**
  * Retorna a mensagem personalizada gravada do Marquee
  */

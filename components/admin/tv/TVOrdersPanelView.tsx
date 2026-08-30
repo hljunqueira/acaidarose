@@ -12,6 +12,9 @@ import {
   subscribeToTVSoundConfig,
   getStoredTVSoundConfig,
   TVSoundConfig,
+  subscribeToTVDisplayConfig,
+  getStoredTVDisplayConfig,
+  TVDisplayConfig,
 } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
@@ -27,6 +30,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   const [loading, setLoading] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [soundConfig, setSoundConfig] = useState<TVSoundConfig>({ enabled: true, gender: 'female' })
+  const [displayConfig, setDisplayConfig] = useState<TVDisplayConfig>({ showCompletedOrders: true })
   const [lastCalled, setLastCalled] = useState<{ ticket: string; customerName?: string | null; isQRCode?: boolean; tableNumber?: string | number | null } | null>(null)
   const [calledHistory, setCalledHistory] = useState<Array<{ ticket: string; customerName?: string | null; isQRCode?: boolean; tableNumber?: string | number | null }>>([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
@@ -205,6 +209,15 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       setCustomMarquee(msg)
     })
     return () => unsubscribeMarquee()
+  }, [])
+
+  // Ouvinte de configuração de exibição da TV (exibir/ocultar últimos finalizados)
+  useEffect(() => {
+    setDisplayConfig(getStoredTVDisplayConfig())
+    const unsubscribeDisplay = subscribeToTVDisplayConfig((cfg) => {
+      setDisplayConfig(cfg)
+    })
+    return () => unsubscribeDisplay()
   }, [])
 
   // Ouvinte e Carregamento de Vídeos da Playlist da Loja em tempo real
@@ -614,70 +627,72 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
       </main>
 
-      {/* 3. RODAPÉ AMPLIADO: MARQUEE 2X MAIS ALTO + HORÁRIO DE LISBOA + BOTÃO ECRÃ INTEIRO */}
+      {/* 3. RODAPÉ AMPLIADO: MARQUEE (SE ATIVO) + HORÁRIO DE LISBOA + BOTÃO ECRÃ INTEIRO */}
       <footer className="pt-2.5 border-t border-white/15 flex flex-col sm:flex-row items-center gap-3">
-        {/* Barra do Marquee 2x Mais Alta com Altura Generosa */}
-        <div className="flex-1 w-full flex items-center gap-4 bg-black/80 rounded-3xl px-7 py-5 sm:py-6 border-2 border-white/15 text-lg sm:text-xl text-white font-bold shadow-2xl overflow-hidden">
-          {/* Badge Fixa do Marquee */}
-          <div
-            className={`flex items-center gap-2.5 shrink-0 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider ${
-              customMarquee
-                ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-                : 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
-            }`}
-          >
-            <span
-              className={`h-3 w-3 rounded-full animate-pulse ${
-                customMarquee ? 'bg-amber-400' : 'bg-emerald-400'
+        {/* Barra do Marquee: Renderiza se houver comunicado da loja OU se showCompletedOrders estiver ativado */}
+        {(Boolean(customMarquee) || displayConfig.showCompletedOrders !== false) && (
+          <div className="flex-1 w-full flex items-center gap-4 bg-black/80 rounded-3xl px-7 py-5 sm:py-6 border-2 border-white/15 text-lg sm:text-xl text-white font-bold shadow-2xl overflow-hidden">
+            {/* Badge Fixa do Marquee */}
+            <div
+              className={`flex items-center gap-2.5 shrink-0 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider ${
+                customMarquee
+                  ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
+                  : 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
               }`}
-            />
-            <span>{customMarquee ? 'Comunicado da Loja' : 'Últimos Finalizados'}</span>
-          </div>
+            >
+              <span
+                className={`h-3 w-3 rounded-full animate-pulse ${
+                  customMarquee ? 'bg-amber-400' : 'bg-emerald-400'
+                }`}
+              />
+              <span>{customMarquee ? 'Comunicado da Loja' : 'Últimos Finalizados'}</span>
+            </div>
 
-          {/* Área Rolante Contínua (Marquee Ticker Ampliado em Caixa Alta) */}
-          <div className="relative flex-1 overflow-hidden whitespace-nowrap">
-            <div className="inline-block animate-[marquee_25s_linear_infinite] whitespace-nowrap text-lg sm:text-xl lg:text-2xl font-black uppercase tracking-wider">
-              {customMarquee ? (
-                <span className="inline-flex items-center gap-4 mx-4 text-amber-100 font-black uppercase">
-                  <span>{customMarquee}</span>
-                  <span className="text-amber-400/50">★</span>
-                  <span>{customMarquee}</span>
-                </span>
-              ) : completedOrders.length > 0 ? (
-                completedOrders.slice(0, 10).map((o, idx) => (
-                  <span key={o.id || idx} className="inline-flex items-center gap-3 mx-6 text-purple-200 uppercase">
-                    <span className="font-mono font-black text-amber-300 text-xl sm:text-2xl">
-                      #{String(o.orderNumber || 1).padStart(3, '0')}
-                    </span>
-                    <span className="text-white font-extrabold uppercase">
-                      {getDisplayName(o.customerName, o.tableNumber)}
-                    </span>
-                    <span className="text-white/30">•</span>
+            {/* Área Rolante Contínua (Marquee Ticker Ampliado em Caixa Alta) */}
+            <div className="relative flex-1 overflow-hidden whitespace-nowrap">
+              <div className="inline-block animate-[marquee_25s_linear_infinite] whitespace-nowrap text-lg sm:text-xl lg:text-2xl font-black uppercase tracking-wider">
+                {customMarquee ? (
+                  <span className="inline-flex items-center gap-4 mx-4 text-amber-100 font-black uppercase">
+                    <span>{customMarquee}</span>
+                    <span className="text-amber-400/50">★</span>
+                    <span>{customMarquee}</span>
                   </span>
-                ))
-              ) : otherHistoryCalls.length > 0 ? (
-                otherHistoryCalls.map((item, idx) => (
-                  <span key={idx} className="inline-flex items-center gap-3 mx-6 text-purple-200 uppercase">
-                    <span className="font-mono font-black text-amber-300 text-xl sm:text-2xl">{item.ticket}</span>
-                    <span className="text-white font-extrabold uppercase">{item.customerName || 'BALCÃO'}</span>
+                ) : completedOrders.length > 0 ? (
+                  completedOrders.slice(0, 10).map((o, idx) => (
+                    <span key={o.id || idx} className="inline-flex items-center gap-3 mx-6 text-purple-200 uppercase">
+                      <span className="font-mono font-black text-amber-300 text-xl sm:text-2xl">
+                        #{String(o.orderNumber || 1).padStart(3, '0')}
+                      </span>
+                      <span className="text-white font-extrabold uppercase">
+                        {getDisplayName(o.customerName, o.tableNumber)}
+                      </span>
+                      <span className="text-white/30">•</span>
+                    </span>
+                  ))
+                ) : otherHistoryCalls.length > 0 ? (
+                  otherHistoryCalls.map((item, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-3 mx-6 text-purple-200 uppercase">
+                      <span className="font-mono font-black text-amber-300 text-xl sm:text-2xl">{item.ticket}</span>
+                      <span className="text-white font-extrabold uppercase">{item.customerName || 'BALCÃO'}</span>
+                      <span className="text-white/30">•</span>
+                    </span>
+                  ))
+                ) : (
+                  <span className="inline-flex items-center gap-4 mx-4 text-purple-200 font-black uppercase tracking-wider">
+                    <span>🍇 AÇAÍ DA ROSE · O VERDADEIRO AÇAÍ ARTESANAL DA AMAZÔNIA</span>
                     <span className="text-white/30">•</span>
+                    <span>PEÇA PELO QR CODE NA MESA OU NO BALCÃO DE ATENDIMENTO</span>
+                    <span className="text-white/30">•</span>
+                    <span>ACAIDAROSE.PT</span>
                   </span>
-                ))
-              ) : (
-                <span className="inline-flex items-center gap-4 mx-4 text-purple-200 font-black uppercase tracking-wider">
-                  <span>🍇 AÇAÍ DA ROSE · O VERDADEIRO AÇAÍ ARTESANAL DA AMAZÔNIA</span>
-                  <span className="text-white/30">•</span>
-                  <span>PEÇA PELO QR CODE NA MESA OU NO BALCÃO DE ATENDIMENTO</span>
-                  <span className="text-white/30">•</span>
-                  <span>ACAIDAROSE.PT</span>
-                </span>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Widgets no Canto Inferior Direito: Relógio Oficial de Lisboa & Botão Ecrã Inteiro */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Widgets no Canto Inferior Direito: Relógio Oficial de Lisboa & Botão EcrÃ Inteiro */}
+        <div className={`flex items-center gap-3 shrink-0 ${!customMarquee && displayConfig.showCompletedOrders === false ? 'ml-auto' : ''}`}>
           {/* Relógio Travado em Portugal (Europe/Lisbon) */}
           <div className="flex items-center gap-2.5 px-5 py-4 sm:py-5 rounded-3xl bg-black/80 border-2 border-white/20 text-base sm:text-lg font-mono font-black text-white shadow-2xl">
             <Clock className="h-5 w-5 text-pink-400 shrink-0" />

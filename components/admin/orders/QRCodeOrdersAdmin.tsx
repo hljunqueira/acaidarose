@@ -526,7 +526,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-purple-100 dark:border-white/10">
         <div className="flex items-center gap-2">
           <h1 className="text-base font-black text-purple-950 dark:text-white tracking-tight shrink-0">
-            Pedidos & Comandas
+            Pedidos QR Code | Balcão
           </h1>
         </div>
 

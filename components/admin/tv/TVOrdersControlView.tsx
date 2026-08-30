@@ -17,10 +17,13 @@ import {
   broadcastTVSoundConfig,
   getStoredTVSoundConfig,
   TVSoundConfig,
+  broadcastTVDisplayConfig,
+  getStoredTVDisplayConfig,
+  TVDisplayConfig,
 } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order, OrderStatus } from '@/types'
-import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Check, Plus, AlertCircle, Tv, XCircle, Volume2, VolumeX } from 'lucide-react'
+import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Check, Plus, AlertCircle, Tv, XCircle, Volume2, VolumeX, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TVOrdersControlViewProps {
@@ -39,6 +42,9 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
 
   // Controle de Áudio e Voz (Feminina / Masculina)
   const [soundConfig, setSoundConfig] = useState<TVSoundConfig>({ enabled: true, gender: 'female' })
+
+  // Controle de Exibição na TV (Últimos Pedidos Finalizados)
+  const [displayConfig, setDisplayConfig] = useState<TVDisplayConfig>({ showCompletedOrders: true })
 
   const [marqueeText, setMarqueeText] = useState('')
 
@@ -70,7 +76,19 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     setStoreVideos(getStoreTVVideos(tenantId))
     setCurrentTVCall(getLastTVCall(tenantId))
     setSoundConfig(getStoredTVSoundConfig())
+    setDisplayConfig(getStoredTVDisplayConfig())
   }, [tenantId])
+
+  const handleToggleShowCompleted = (showCompletedOrders: boolean) => {
+    const updated = { ...displayConfig, showCompletedOrders }
+    setDisplayConfig(updated)
+    broadcastTVDisplayConfig(updated)
+    toast.success(
+      showCompletedOrders
+        ? 'Barra de últimos pedidos ativada na Smart TV!'
+        : 'Barra de últimos pedidos ocultada na Smart TV!'
+    )
+  }
 
   const handleSaveMarquee = () => {
     broadcastTVMarquee(marqueeText.trim())
@@ -1007,31 +1025,78 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
         </div>
       )}
 
-      {/* ABA 3: EDIÇÃO DO MARQUEE (RODAPÉ) */}
+      {/* ABA 3: EDIÇÃO DO MARQUEE (RODAPÉ & AVISOS) */}
       {activeTab === 'MARQUEE' && (
-        <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10">
-            <div className="flex items-center gap-2 text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
-              <Megaphone className="h-4 w-4 text-pink-600" />
-              <span>Configurar Mensagem do Rodapé (Marquee)</span>
+        <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* 1. Mensagem Personalizada Rolante */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10">
+              <div className="flex items-center gap-2 text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
+                <Megaphone className="h-4 w-4 text-pink-600" />
+                <span>Mensagem Personalizada do Rodapé (Marquee)</span>
+              </div>
+              <span className="text-xs text-purple-600 dark:text-purple-300 font-bold">
+                Texto em destaque rolante na Smart TV
+              </span>
             </div>
-            <span className="text-xs text-purple-600 dark:text-purple-300 font-bold">
-              Texto em destaque rolante no rodapé da Smart TV
-            </span>
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <Input
+                value={marqueeText}
+                onChange={(e) => setMarqueeText(e.target.value)}
+                placeholder="Ex: PROMOÇÃO: Açaí 500ml com 3 acompanhamentos..."
+                className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/20 text-foreground font-medium"
+              />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Button onClick={handleSaveMarquee} className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer">
+                  <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
+                </Button>
+                <Button variant="outline" onClick={handleResetMarquee} className="h-10 px-3 border-purple-200 dark:border-white/15 text-xs font-bold rounded-xl cursor-pointer">
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-2">
-            <Input
-              value={marqueeText}
-              onChange={(e) => setMarqueeText(e.target.value)}
-              placeholder="Ex: PROMOÇÃO: Açaí 500ml com 3 acompanhamentos..."
-              className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/20 text-foreground font-medium"
-            />
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button onClick={handleSaveMarquee} className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer">
-                <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
+
+          {/* 2. Opção de Exibição dos Últimos Pedidos Finalizados na TV */}
+          <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                {displayConfig.showCompletedOrders ? (
+                  <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <EyeOff className="h-4 w-4 text-red-500 dark:text-red-400" />
+                )}
+                <span>Exibir Barra de Últimos Pedidos Finalizados</span>
+              </div>
+              <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80 font-medium">
+                Quando desativado, o rodapé de histórico de pedidos fica oculto na Smart TV, maximizando a área dos vídeos gastronômicos.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleToggleShowCompleted(true)}
+                className={`h-8 px-3.5 text-xs font-black rounded-xl cursor-pointer transition-all ${
+                  displayConfig.showCompletedOrders
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                    : 'bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-slate-700 dark:text-slate-300 hover:bg-purple-50'
+                }`}
+              >
+                <span>✓ Exibir na TV</span>
               </Button>
-              <Button variant="outline" onClick={handleResetMarquee} className="h-10 px-3 border-purple-200 dark:border-white/15 text-xs font-bold rounded-xl cursor-pointer">
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleToggleShowCompleted(false)}
+                className={`h-8 px-3.5 text-xs font-black rounded-xl cursor-pointer transition-all ${
+                  !displayConfig.showCompletedOrders
+                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-xs'
+                    : 'bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-slate-700 dark:text-slate-300 hover:bg-purple-50'
+                }`}
+              >
+                <span>✕ Ocultar na TV</span>
               </Button>
             </div>
           </div>
