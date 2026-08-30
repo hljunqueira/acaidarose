@@ -269,7 +269,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     }))
 
   // Itens em preparação para a esteira horizontal
-  const preparingItems = preparingOrders.slice(0, 4)
+  const preparingItems = preparingOrders
 
   const handleUnlockAudio = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -283,13 +283,13 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       onClick={handleUnlockAudio}
       className="min-h-screen w-full bg-[#180424] text-white p-3 sm:p-5 flex flex-col justify-between select-none overflow-hidden font-sans cursor-pointer"
     >
-      {/* 1. TOPO: Título PEDIDOS PRONTOS à Esquerda e Logotipo Oficial Centralizado */}
-      <header className="relative w-full pb-3 border-b border-white/15">
+      {/* 1. TOPO: Título PEDIDOS PRONTOS em Fonte Cursiva e Logotipo Oficial */}
+      <header className="relative w-full pb-2.5 border-b border-white/15">
         <div className="w-full flex items-center justify-between">
-          {/* Título Principal PEDIDOS PRONTOS */}
+          {/* Título Principal em Tipografia Cursiva Artesanal */}
           <div className="flex items-center">
-            <h2 className="text-3xl sm:text-5xl lg:text-5xl font-black text-white uppercase tracking-tight font-sans drop-shadow-sm leading-none">
-              PEDIDOS PRONTOS
+            <h2 className="font-cursive text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-wide drop-shadow-sm leading-none">
+              Pedidos Prontos
             </h2>
           </div>
 
@@ -297,10 +297,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="Açaí da Rose" className="h-9 sm:h-11 w-auto object-contain" />
             <div className="flex flex-col text-left">
-              <span className="text-base sm:text-lg font-black uppercase tracking-tight text-white leading-tight font-sans">
+              <span className="font-cursive text-xl sm:text-2xl font-bold text-white leading-none">
                 Açaí da Rose
               </span>
-              <span className="text-pink-400 font-bold text-xs sm:text-sm leading-none">
+              <span className="text-pink-400 font-bold text-xs sm:text-sm leading-tight">
                 {storeName}
               </span>
             </div>
@@ -309,22 +309,22 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       </header>
 
       {/* 2. GRID PRINCIPAL (Corpo da TV em 7x5 colunas) */}
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 my-2.5 flex-1 items-stretch">
+      <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 my-2 flex-1 items-stretch">
         
         {/* ========================================================================= */}
         {/* COLUNA ESQUERDA (7 COLUNAS): "PEDIDOS PRONTOS" + "EM PREPARAÇÃO (ESTEIRA)" */}
         {/* ========================================================================= */}
-        <section className="lg:col-span-7 flex flex-col justify-between h-full space-y-3">
+        <section className="lg:col-span-7 flex flex-col justify-between h-full space-y-2.5">
           
-          {/* Caixa Branca Principal (Hero de Pedidos Prontos) */}
-          <div className="flex-1 min-h-[300px] sm:min-h-[360px] rounded-3xl bg-white border-2 border-white text-slate-900 p-6 flex flex-col items-center justify-center text-center shadow-2xl relative">
+          {/* Caixa Branca Principal (Hero de Pedidos Prontos com Altura Otimizada) */}
+          <div className="flex-1 min-h-[200px] sm:min-h-[230px] lg:min-h-[250px] rounded-3xl bg-white border-2 border-white text-slate-900 p-5 flex flex-col items-center justify-center text-center shadow-2xl relative">
             {heroOrder ? (
-              <div className="flex flex-col items-center justify-center space-y-3 animate-in fade-in zoom-in-95 duration-200 w-full">
+              <div className="flex flex-col items-center justify-center space-y-1.5 animate-in fade-in zoom-in-95 duration-200 w-full">
                 
-                {/* 1º: Nome do Cliente com Coroa e Tipografia Cursiva Elegante no Topo */}
-                <div className="font-cursive text-5xl sm:text-6xl lg:text-7xl font-bold text-[#180424] flex items-center justify-center gap-3 leading-tight max-w-full px-2">
+                {/* 1º: Nome do Cliente com Coroa e Fonte Geométrica Nítida de Alta Legibilidade */}
+                <div className="font-sans font-black text-3xl sm:text-4xl lg:text-5xl text-[#180424] flex items-center justify-center gap-2.5 tracking-tight leading-tight max-w-full px-2">
                   {heroOrder.isQRCode && (
-                    <Crown className="h-8 w-8 sm:h-10 sm:w-10 text-amber-500 fill-amber-500 shrink-0 inline-block" />
+                    <Crown className="h-7 w-7 sm:h-9 sm:w-9 text-amber-500 fill-amber-500 shrink-0 inline-block" />
                   )}
                   <span className="truncate max-w-lg sm:max-w-xl">
                     {getDisplayName(heroOrder.customerName, heroOrder.tableNumber)}
@@ -332,13 +332,13 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 </div>
 
                 {/* 2º: Número do Ticket / Senha Gigante Monospace */}
-                <div className="font-mono font-black text-7xl sm:text-8xl lg:text-9xl text-[#180424] tracking-tight leading-none my-1">
+                <div className="font-mono font-black text-6xl sm:text-7xl lg:text-8xl text-[#180424] tracking-tight leading-none my-0.5">
                   {heroOrder.ticket || `#${String(heroOrder.orderNumber || 1).padStart(3, '0')}`}
                 </div>
 
-                {/* 3º: Instrução Oficial de Retirada */}
-                <div className="text-xs sm:text-sm font-black tracking-widest text-pink-600 uppercase pt-1">
-                  POR FAVOR, DIRIJA-SE AO BALCÃO DE RETIRADA
+                {/* 3º: Instrução Oficial em Glossário PT-PT Mandatório */}
+                <div className="text-[11px] sm:text-xs lg:text-sm font-black tracking-widest text-pink-600 uppercase pt-0.5">
+                  POR FAVOR, DIRIJA-SE AO BALCÃO DE LEVANTAMENTO
                 </div>
               </div>
             ) : (
@@ -348,54 +348,76 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             )}
           </div>
 
-          {/* Seção Inferior: Título "EM PREPARAÇÃO" e Esteira Horizontal de Cards Menores */}
+          {/* Seção Inferior: Título "EM PREPARAÇÃO" Cursivo e Esteira de Cards Maiores com Rolagem */}
           <div className="w-full">
-            <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 mb-1.5 px-1">
               <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
-              <h3 className="text-sm sm:text-base font-black text-amber-400 uppercase tracking-wider font-sans">
-                EM PREPARAÇÃO
+              <h3 className="font-cursive text-2xl sm:text-3xl font-bold text-amber-400 leading-none">
+                Em Preparação
               </h3>
             </div>
 
-            {/* Grade / Esteira Horizontal de Cards Menores */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {[0, 1, 2, 3].map((idx) => {
-                const order = preparingItems[idx]
-                const historyFallback = !order ? calledHistory[idx] : null
-
-                return (
-                  <div
-                    key={idx}
-                    className="h-20 sm:h-24 rounded-2xl bg-white border border-white text-slate-900 p-2 sm:p-2.5 flex flex-col items-center justify-center text-center shadow-lg transition-transform"
-                  >
-                    {order ? (
-                      <>
-                        <div className="flex items-center gap-1 font-mono font-black text-xl sm:text-2xl text-[#180424] leading-none">
-                          <span className="text-amber-500 text-xs sm:text-sm">⏳</span>
-                          <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
-                        </div>
-                        <div className="font-cursive text-base sm:text-lg font-bold text-slate-800 truncate w-full flex items-center justify-center gap-1 mt-1 leading-none">
-                          {isCrownOrder(order) && <Crown className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />}
-                          <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
-                        </div>
-                      </>
-                    ) : historyFallback ? (
-                      <>
-                        <div className="font-mono font-black text-lg sm:text-xl text-slate-600 leading-none">
-                          {historyFallback.ticket}
-                        </div>
-                        <div className="font-cursive text-sm sm:text-base font-bold text-slate-500 truncate w-full mt-0.5 leading-none">
-                          {historyFallback.customerName || 'Balcão'}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-slate-300 font-mono font-bold text-xl">
-                        ---
+            {/* Esteira Horizontal de Cards de Preparação (Maiores e com Rolagem se houver muitos) */}
+            <div className="w-full overflow-hidden">
+              {preparingItems.length > 4 ? (
+                <div className="flex gap-2.5 animate-[marquee_20s_linear_infinite] whitespace-nowrap py-1">
+                  {preparingItems.map((order) => (
+                    <div
+                      key={order.id}
+                      className="min-w-[170px] sm:min-w-[190px] h-24 sm:h-28 rounded-2xl bg-white border border-white text-slate-900 p-2.5 flex flex-col items-center justify-center text-center shadow-lg shrink-0"
+                    >
+                      <div className="flex items-center gap-1 font-mono font-black text-2xl text-[#180424] leading-none">
+                        <span className="text-amber-500 text-sm">⏳</span>
+                        <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                      <div className="font-sans font-black text-sm text-slate-800 truncate w-full flex items-center justify-center gap-1 mt-1.5 leading-none">
+                        {isCrownOrder(order) && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                        <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {[0, 1, 2, 3].map((idx) => {
+                    const order = preparingItems[idx]
+                    const historyFallback = !order ? calledHistory[idx] : null
+
+                    return (
+                      <div
+                        key={idx}
+                        className="h-24 sm:h-28 rounded-2xl bg-white border border-white text-slate-900 p-2.5 flex flex-col items-center justify-center text-center shadow-lg transition-transform"
+                      >
+                        {order ? (
+                          <>
+                            <div className="flex items-center gap-1 font-mono font-black text-2xl sm:text-3xl text-[#180424] leading-none">
+                              <span className="text-amber-500 text-xs sm:text-sm">⏳</span>
+                              <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
+                            </div>
+                            <div className="font-sans font-black text-xs sm:text-sm text-slate-800 truncate w-full flex items-center justify-center gap-1 mt-1.5 leading-none">
+                              {isCrownOrder(order) && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                              <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
+                            </div>
+                          </>
+                        ) : historyFallback ? (
+                          <>
+                            <div className="font-mono font-black text-xl text-slate-600 leading-none">
+                              {historyFallback.ticket}
+                            </div>
+                            <div className="font-sans font-bold text-xs text-slate-500 truncate w-full mt-1 leading-none">
+                              {historyFallback.customerName || 'Balcão'}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-slate-300 font-mono font-bold text-2xl">
+                            ---
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -421,7 +443,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#2a0845] to-[#160228] p-6 text-center">
                 <img src="/logo.png" alt="Açaí da Rose" className="h-16 w-auto object-contain mb-3" />
-                <span className="text-lg font-black text-white uppercase tracking-wider font-sans">Açaí da Rose</span>
+                <span className="font-cursive text-3xl font-bold text-white uppercase tracking-wider">Açaí da Rose</span>
                 <span className="font-cursive text-2xl text-pink-400 font-bold mt-1">O Verdadeiro Açaí Artesanal</span>
               </div>
             )}
@@ -457,10 +479,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
       </main>
 
-      {/* 3. RODAPÉ AMPLIADO: MARQUEE DINÂMICO + HORÁRIO DE LISBOA + BOTÃO TELA CHEIA */}
+      {/* 3. RODAPÉ AMPLIADO: MARQUEE DINÂMICO + HORÁRIO DE LISBOA + BOTÃO ECRÃ INTEIRO */}
       <footer className="pt-2 border-t border-white/15 flex flex-col sm:flex-row items-center gap-3">
-        {/* Barra do Marquee Ampliada */}
-        <div className="flex-1 w-full flex items-center gap-3 bg-black/60 rounded-2xl px-5 py-3 border border-white/15 text-base text-white font-bold shadow-lg overflow-hidden">
+        {/* Barra do Marquee Ampliada com Altura Generosa */}
+        <div className="flex-1 w-full flex items-center gap-3.5 bg-black/70 rounded-2xl px-6 py-3.5 sm:py-4 border border-white/15 text-base sm:text-lg text-white font-bold shadow-lg overflow-hidden">
           {/* Badge Fixa do Marquee */}
           <div
             className={`flex items-center gap-2 shrink-0 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider ${
@@ -519,23 +541,23 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           </div>
         </div>
 
-        {/* Widgets no Canto Inferior Direito: Relógio Oficial de Lisboa & Botão Fullscreen */}
+        {/* Widgets no Canto Inferior Direito: Relógio Oficial de Lisboa & Botão Ecrã Inteiro */}
         <div className="flex items-center gap-2.5 shrink-0">
           {/* Relógio Travado em Portugal (Europe/Lisbon) */}
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-black/70 border border-white/20 text-sm sm:text-base font-mono font-black text-white shadow-lg">
+          <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-black/70 border border-white/20 text-sm sm:text-base font-mono font-black text-white shadow-lg">
             <Clock className="h-4 w-4 text-pink-400 shrink-0" />
             <span>{currentTime || '00:00:00'}</span>
             <span className="text-[10px] text-purple-300 font-sans uppercase font-extrabold">Lisboa</span>
           </div>
 
-          {/* Fullscreen */}
+          {/* Ecrã Inteiro */}
           <Button
             type="button"
             onClick={toggleFullscreen}
             variant="outline"
             size="sm"
-            className="h-11 w-11 p-0 rounded-2xl border-white/20 bg-white/10 hover:bg-white/20 text-white cursor-pointer shadow-lg"
-            title="Tela Cheia"
+            className="h-12 w-12 p-0 rounded-2xl border-white/20 bg-white/10 hover:bg-white/20 text-white cursor-pointer shadow-lg"
+            title="Ecrã Inteiro"
           >
             {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
           </Button>
