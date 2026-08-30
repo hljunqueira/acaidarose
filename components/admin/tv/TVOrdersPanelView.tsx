@@ -358,12 +358,12 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
     return (
       <span className="inline-flex items-baseline justify-center">
-        <span className="relative inline-flex items-center justify-center mr-0.5">
-          {/* Imagem Oficial da Coroa Dourada Inclinada e Pulsante no Ombro da 1ª Letra */}
+        <span className="relative inline-flex items-center justify-center mr-1">
+          {/* Imagem Oficial da Coroa Dourada Inclinada de Alto Contraste */}
           <img
             src="/coroa.png"
             alt="Coroa"
-            className="absolute -top-6 sm:-top-8 lg:-top-10 -left-5 sm:-left-7 lg:-left-8 h-10 w-10 sm:h-14 sm:w-14 lg:h-17 lg:w-17 object-contain -rotate-[18deg] shrink-0 z-20 pointer-events-none drop-shadow-[0_4px_14px_rgba(245,158,11,0.85)] animate-pulse transition-all duration-300"
+            className="absolute -top-8 sm:-top-10 lg:-top-12 -left-4 sm:-left-6 lg:-left-7 h-12 w-12 sm:h-16 sm:w-16 lg:h-20 lg:w-20 object-contain -rotate-[18deg] shrink-0 z-30 pointer-events-none drop-shadow-[0_4px_12px_rgba(180,83,9,0.6)] [filter:contrast(1.5)_brightness(0.85)_saturate(2)] animate-pulse"
           />
           <span>{firstChar}</span>
         </span>
@@ -384,7 +384,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           <img
             src="/coroa.png"
             alt="Coroa"
-            className="absolute -top-4 sm:-top-5 -left-2 h-5 w-5 sm:h-6 sm:w-6 object-contain -rotate-[16deg] shrink-0 z-20 pointer-events-none drop-shadow-xs"
+            className="absolute -top-4 sm:-top-5 -left-2 h-5 w-5 sm:h-6 sm:w-6 object-contain -rotate-[18deg] shrink-0 z-20 pointer-events-none drop-shadow-xs [filter:contrast(1.5)_brightness(0.85)_saturate(2)]"
           />
           <span>{firstChar}</span>
         </span>
@@ -457,9 +457,9 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             {heroOrder ? (
               <div className="flex flex-col items-center justify-center space-y-1.5 animate-in fade-in zoom-in-95 duration-200 w-full">
                 
-                {/* 1º: Nome do Cliente com a Imagem da Coroa Oficial na 1ª Letra (Tamanho Gigante) */}
-                <div className="font-sans font-black text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-4">
-                  <span className="max-w-full truncate">
+                {/* 1º: Nome do Cliente com a Imagem da Coroa Oficial na 1ª Letra (Tamanho Gigante Sem Corte) */}
+                <div className="font-sans font-black text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-6">
+                  <span className="max-w-full inline-block">
                     {renderCrownName(getHeroCustomerName(heroOrder.customerName, heroOrder.tableNumber))}
                   </span>
                 </div>
