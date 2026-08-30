@@ -139,7 +139,8 @@ export default function AuditLogsView() {
         <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           {[
             { id: 'ALL', label: 'Todos' },
-            { id: 'QRCODE', label: 'QR Code' },
+            { id: 'MESAS_QR_SECURITY', label: 'Hashes das Mesas' },
+            { id: 'QRCODE', label: 'Config QR Code' },
             { id: 'ORDER', label: 'Pedidos' },
             { id: 'SMART_TV', label: 'Smart TV' },
             { id: 'FRANCHISE', label: 'Franquias' },
@@ -250,7 +251,7 @@ export default function AuditLogsView() {
       {/* Modal de Detalhes da Alteração */}
       {selectedLog && (
         <Dialog open={Boolean(selectedLog)} onOpenChange={() => setSelectedLog(null)}>
-          <DialogContent className="max-w-lg rounded-3xl bg-white dark:bg-[#180424] border border-purple-150 dark:border-white/10 p-6 space-y-4">
+          <DialogContent className="max-w-lg rounded-3xl bg-white dark:bg-[#180424] border border-purple-150 dark:border-white/10 p-6 space-y-4 text-slate-900 dark:text-white">
             <DialogHeader>
               <DialogTitle className="text-lg font-black text-purple-950 dark:text-white flex items-center gap-2">
                 <Info className="h-5 w-5 text-pink-500" />
@@ -278,6 +279,34 @@ export default function AuditLogsView() {
                 </div>
               </div>
 
+              {/* Destaque para Hash do QR Code se existir */}
+              {selectedLog.metadata?.qrHash && (
+                <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-purple-950 dark:text-white">Hash do QR Code da Mesa:</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(selectedLog.metadata?.qrHash)
+                          toast.success(`Hash ${selectedLog.metadata?.qrHash} copiada!`)
+                        } catch {
+                          toast.error('Erro ao copiar hash')
+                        }
+                      }}
+                      className="h-7 text-[11px] font-bold rounded-lg cursor-pointer gap-1"
+                    >
+                      Copiar Hash
+                    </Button>
+                  </div>
+                  <div className="font-mono font-bold text-sm text-pink-600 dark:text-pink-300 bg-white dark:bg-black/30 p-2 rounded-xl border border-purple-100 dark:border-white/10">
+                    {selectedLog.metadata.qrHash}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-bold text-slate-900 dark:text-white">Descrição do Evento:</label>
                 <div className="p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-xs mt-1 border border-slate-800 break-words">
@@ -298,7 +327,7 @@ export default function AuditLogsView() {
             <DialogFooter>
               <Button
                 onClick={() => setSelectedLog(null)}
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold h-10"
+                className="w-full bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold h-10 cursor-pointer"
               >
                 Fechar
               </Button>

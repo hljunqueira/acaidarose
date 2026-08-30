@@ -77,6 +77,48 @@ export async function GET(req: NextRequest) {
       }
     })
 
+    // Logs de Mesas & Hashes de Segurança dos QR Codes
+    const tablesRes = await query(
+      `SELECT id, tenant_id, table_number, qr_code_token, status, created_at, updated_at, deleted_at
+       FROM tables
+       ORDER BY updated_at DESC
+       LIMIT 50`
+    ).catch(() => ({ rows: [] }))
+
+    tablesRes.rows.forEach((t: any) => {
+      const isDeleted = Boolean(t.deleted_at)
+      const actionType = isDeleted ? 'TABLE_DELETED' : 'TABLE_QR_HASH_SYNC'
+      const level = isDeleted ? 'WARN' : 'INFO'
+      const mesaNum = t.table_number ? String(t.table_number).padStart(2, '0') : '00'
+      const hash = t.qr_code_token || 'Sem Hash'
+      const storeName =
+        t.tenant_id === '22222222-2222-2222-2222-222222222222' || String(t.tenant_id).includes('torres')
+          ? 'Loja 2 - Torres Novas'
+          : 'Loja 1 - Aveiro'
+
+      formattedLogs.push({
+        id: `tbl-${t.id}-${t.updated_at ? new Date(t.updated_at).getTime() : '1'}`,
+        timestamp: new Date(t.updated_at || t.created_at).toISOString().replace('T', ' ').substring(0, 19),
+        level,
+        scope: 'MESAS_QR_SECURITY',
+        action: actionType,
+        message: isDeleted
+          ? `Mesa ${mesaNum} eliminada do salão · Hash revogada: [${hash}]`
+          : `Mesa ${mesaNum} ativa · Hash QR Code: [${hash}] · Estado: ${t.status || 'AVAILABLE'}`,
+        author: 'TI / Franqueadora Master',
+        role: 'SUPER_ADMIN',
+        tenant: storeName,
+        entityId: t.id,
+        metadata: {
+          tableNumber: t.table_number,
+          qrHash: hash,
+          status: t.status,
+          isDeleted,
+          tenantId: t.tenant_id,
+        },
+      })
+    })
+
     // Ordena pelo timestamp decrescente
     formattedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
