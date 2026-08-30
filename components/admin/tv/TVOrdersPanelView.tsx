@@ -430,27 +430,36 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       onClick={handleUnlockAudio}
       className="min-h-screen w-full bg-[#180424] text-white p-3 sm:p-5 flex flex-col justify-between select-none overflow-hidden font-sans cursor-pointer"
     >
-      {/* 1. TOPO: Logotipo Oficial da Loja Alinhado com o Início do Card do Vídeo */}
+      {/* 1. TOPO: TÍTULO "PEDIDOS PRONTOS" À ESQUERDA + RELÓGIO DE LISBOA & ECRÃ INTEIRO À DIREITA */}
       <header className="relative w-full pb-3 border-b border-white/15">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-          {/* Título Principal PEDIDOS PRONTOS na Coluna dos Pedidos (7 Colunas) */}
-          <div className="lg:col-span-7 flex items-center justify-start">
+        <div className="w-full flex items-center justify-between">
+          {/* Título Principal PEDIDOS PRONTOS */}
+          <div className="flex items-center justify-start">
             <h2 className="font-cursive text-5xl sm:text-6xl lg:text-7xl font-bold text-white tracking-wide drop-shadow-md leading-none">
               Pedidos Prontos
             </h2>
           </div>
 
-          {/* Logotipo e Nome da Loja Alinhados no Início do Card do Vídeo (5 Colunas) */}
-          <div className="lg:col-span-5 flex items-center justify-start gap-4">
-            <img src="/logo.png" alt="Açaí da Rose" className="h-14 sm:h-16 lg:h-20 w-auto object-contain drop-shadow-lg shrink-0" />
-            <div className="flex flex-col text-left">
-              <span className="font-cursive text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-none">
-                Açaí da Rose
-              </span>
-              <span className="text-pink-400 font-black text-sm sm:text-base lg:text-lg leading-tight mt-0.5 tracking-wide">
-                {storeName}
-              </span>
+          {/* Widgets no Canto Superior Direito: Relógio Oficial de Lisboa & Botão Ecrã Inteiro */}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Relógio Travado em Portugal (Europe/Lisbon) */}
+            <div className="flex items-center gap-2.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-black/80 border-2 border-white/20 text-sm sm:text-base font-mono font-black text-white shadow-xl">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-pink-400 shrink-0" />
+              <span>{currentTime || '00:00:00'}</span>
+              <span className="text-[11px] text-purple-300 font-sans uppercase font-extrabold">Lisboa</span>
             </div>
+
+            {/* Ecrã Inteiro */}
+            <Button
+              type="button"
+              onClick={toggleFullscreen}
+              variant="outline"
+              size="sm"
+              className="h-11 w-11 sm:h-12 sm:w-12 p-0 rounded-2xl border-2 border-white/20 bg-white/10 hover:bg-white/20 text-white cursor-pointer shadow-xl"
+              title="Ecrã Inteiro"
+            >
+              {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+            </Button>
           </div>
         </div>
       </header>
@@ -458,17 +467,28 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       {/* 2. GRID PRINCIPAL (Corpo da TV em 7x5 colunas) */}
       <main className="grid grid-cols-12 gap-4 my-2 flex-1 items-stretch">
         {/* ========================================================================= */}
-        {/* COLUNA ESQUERDA (7 COLUNAS): "PEDIDOS PRONTOS" EM ALTURA TOTAL */}
+        {/* COLUNA ESQUERDA (7 COLUNAS): "PEDIDOS PRONTOS" COM LOGO E LOJA DENTRO */}
         {/* ========================================================================= */}
         <section className="lg:col-span-7 flex flex-col justify-between h-full">
           
-          {/* Caixa Rosa Pastel Principal em Altura Total (Hero de Pedidos Prontos com Nome Gigante, Mesa Abaixo e Ticket) */}
+          {/* Caixa Rosa Pastel Principal em Altura Total (Hero de Pedidos Prontos com Logo, Nome Gigante, Mesa e Ticket) */}
           <div className="w-full h-full min-h-[460px] sm:min-h-[520px] rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 py-6 px-6 sm:px-8 flex flex-col items-center justify-center text-center shadow-2xl relative">
             {heroOrder ? (
               <div className="flex flex-col items-center justify-center space-y-2 sm:space-y-3 animate-in fade-in zoom-in-95 duration-200 w-full my-auto">
                 
+                {/* Identificação Superior da Loja Dentro do Quadro */}
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <img src="/logo.png" alt="Açaí da Rose" className="h-8 w-auto object-contain drop-shadow-xs" />
+                  <span className="font-cursive text-2xl sm:text-3xl text-purple-950 font-bold leading-none">
+                    Açaí da Rose
+                  </span>
+                  <span className="text-pink-600 font-black text-xs sm:text-sm uppercase tracking-wider ml-1">
+                    · {storeName}
+                  </span>
+                </div>
+
                 {/* 1º: Nome do Cliente com a Imagem da Coroa Oficial na 1ª Letra (Tamanho Gigante Sem Corte) */}
-                <div className="font-sans font-black text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-6">
+                <div className="font-sans font-black text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-2">
                   <span className="max-w-full inline-block">
                     {renderCrownName(getHeroCustomerName(heroOrder.customerName, heroOrder.tableNumber))}
                   </span>
@@ -492,12 +512,15 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center space-y-3 my-auto">
-                <img src="/logo.png" alt="Açaí da Rose" className="h-20 sm:h-24 w-auto object-contain drop-shadow-md mb-1" />
-                <div className="font-cursive text-5xl sm:text-6xl lg:text-7xl text-purple-950 font-bold">
+              <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 my-auto">
+                <img src="/logo.png" alt="Açaí da Rose" className="h-24 sm:h-28 lg:h-32 w-auto object-contain drop-shadow-md mb-2" />
+                <div className="font-cursive text-5xl sm:text-6xl lg:text-7xl text-purple-950 font-bold leading-none">
                   Açaí da Rose
                 </div>
-                <div className="text-pink-600 font-black text-base sm:text-lg lg:text-xl uppercase tracking-widest">
+                <div className="text-pink-600 font-black text-xl sm:text-2xl lg:text-3xl uppercase tracking-widest mt-1">
+                  {storeName}
+                </div>
+                <div className="text-purple-900/80 font-bold text-xs sm:text-sm uppercase tracking-wider pt-2">
                   Pronto para Servir com Amor
                 </div>
               </div>
@@ -559,11 +582,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         </section>
       </main>
 
-      {/* 3. RODAPÉ AMPLIADO: MARQUEE DE PEDIDOS EM PREPARAÇÃO + HORÁRIO DE LISBOA + BOTÃO ECRÃ INTEIRO */}
-      <footer className="pt-2.5 border-t border-white/15 flex flex-col sm:flex-row items-center gap-3">
-        {/* Barra do Marquee: Renderiza se houver comunicado da loja OU se showCompletedOrders estiver ativado */}
+      {/* 3. RODAPÉ AMPLIADO EM LARGURA TOTAL (100%): MARQUEE DE PEDIDOS EM PREPARAÇÃO */}
+      <footer className="pt-2.5 border-t border-white/15 w-full">
+        {/* Barra do Marquee em Largura Total */}
         {(Boolean(customMarquee) || displayConfig.showCompletedOrders !== false) && (
-          <div className="flex-1 w-full flex items-center gap-4 bg-black/80 rounded-3xl px-6 py-4 sm:py-5 border-2 border-white/15 text-lg sm:text-xl text-white font-bold shadow-2xl overflow-hidden">
+          <div className="w-full flex items-center gap-4 bg-black/80 rounded-3xl px-6 py-4 sm:py-5 border-2 border-white/15 text-lg sm:text-xl text-white font-bold shadow-2xl overflow-hidden">
             {/* Badge Fixa do Marquee (Em Preparação) */}
             <div
               className={`flex items-center gap-2.5 shrink-0 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider ${
@@ -580,7 +603,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
               <span>{customMarquee ? 'Comunicado da Loja' : 'Em Preparação'}</span>
             </div>
 
-            {/* Área Rolante Contínua (Marquee Ticker de Pedidos em Preparação) */}
+            {/* Área Rolante Contínua (Marquee Ticker de Pedidos em Preparação de Ponta a Ponta) */}
             <div className="relative flex-1 overflow-hidden whitespace-nowrap">
               <div className="inline-block animate-[marquee_25s_linear_infinite] whitespace-nowrap text-lg sm:text-xl lg:text-2xl font-black uppercase tracking-wider">
                 {customMarquee ? (
@@ -614,28 +637,6 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             </div>
           </div>
         )}
-
-        {/* Widgets no Canto Inferior Direito: Relógio Oficial de Lisboa & Botão EcrÃ Inteiro */}
-        <div className={`flex items-center gap-3 shrink-0 ${!customMarquee && displayConfig.showCompletedOrders === false ? 'ml-auto' : ''}`}>
-          {/* Relógio Travado em Portugal (Europe/Lisbon) */}
-          <div className="flex items-center gap-2.5 px-5 py-4 sm:py-5 rounded-3xl bg-black/80 border-2 border-white/20 text-base sm:text-lg font-mono font-black text-white shadow-2xl">
-            <Clock className="h-5 w-5 text-pink-400 shrink-0" />
-            <span>{currentTime || '00:00:00'}</span>
-            <span className="text-xs text-purple-300 font-sans uppercase font-extrabold">Lisboa</span>
-          </div>
-
-          {/* Ecrã Inteiro */}
-          <Button
-            type="button"
-            onClick={toggleFullscreen}
-            variant="outline"
-            size="sm"
-            className="h-14 w-14 sm:h-16 sm:w-16 p-0 rounded-3xl border-2 border-white/20 bg-white/10 hover:bg-white/20 text-white cursor-pointer shadow-2xl"
-            title="Ecrã Inteiro"
-          >
-            {isFullscreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
-          </Button>
-        </div>
 
         {/* Estilo CSS do Keyframes Marquee embutido para compatibilidade total em Smart TVs */}
         <style jsx>{`
