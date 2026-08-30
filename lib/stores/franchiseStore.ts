@@ -6,7 +6,7 @@ import { Tenant } from '@/types'
 
 export const DEFAULT_AVEIRO_TENANT: Tenant = {
   id: '11111111-1111-1111-1111-111111111111',
-  name: 'Loja 1 — Sede Franqueadora & Matriz Aveiro',
+  name: 'Loja 1 - Aveiro',
   slug: 'aveiro',
   nif: '500123456',
   address: 'Aveiro, Portugal',

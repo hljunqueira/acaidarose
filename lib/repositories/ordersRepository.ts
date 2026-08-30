@@ -1,14 +1,22 @@
 import { Order, DayReportSummary } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
+import { getTenantByIdOrSlug } from './tenantsRepository'
 
 export async function createOrder(payload: any): Promise<Order> {
   const orderId = payload.id || uuidv4()
-  const tenantId = payload.tenantId || '11111111-1111-1111-1111-111111111111'
+  
+  // Normalizar Tenant ID canônico
+  let tenantId = '11111111-1111-1111-1111-111111111111'
+  if (payload.tenantId || payload.loja) {
+    const resolvedTenant = await getTenantByIdOrSlug(payload.tenantId || payload.loja)
+    if (resolvedTenant) tenantId = resolvedTenant.id
+  }
+
   const subtotal = (payload.items || []).reduce((s: number, i: any) => s + (Number(i.lineTotal) || 0), 0)
   const total = +subtotal.toFixed(2)
   const vatTotal = +(total * 0.13).toFixed(2) // IVA taxa padrão restauração Portugal (13%)
-  const tableNum = payload.tableNumber ? parseInt(String(payload.tableNumber), 10) || null : null
+  const tableNum = payload.tableNumber ? parseInt(String(payload.tableNumber).replace(/\D/g, ''), 10) || null : null
 
   // Calcular próximo order_number diário no fuso de Portugal
   const seqRes = await query(
@@ -53,6 +61,38 @@ export async function createOrder(payload: any): Promise<Order> {
       itemsJson,
     ]
   )
+
+  // Atualizar a comanda da mesa no salão se for pedido em mesa
+  if (tableNum && tenantId) {
+    try {
+      const tableRes = await query(
+        `SELECT id, status, total_amount, items_json FROM tables WHERE tenant_id::text = $1 AND table_number = $2 AND deleted_at IS NULL LIMIT 1`,
+        [tenantId, tableNum]
+      )
+      if (tableRes.rows?.[0]) {
+        const t = tableRes.rows[0]
+        let existingItems = []
+        try {
+          existingItems = typeof t.items_json === 'string' ? JSON.parse(t.items_json) : (t.items_json || [])
+        } catch {}
+        const newItems = [...existingItems, ...(payload.items || [])]
+        const newTableTotal = +(Number(t.total_amount || 0) + total).toFixed(2)
+        await query(
+          `UPDATE tables 
+           SET status = 'OCCUPIED', 
+               total_amount = $1, 
+               items_json = $2, 
+               current_order_id = $3,
+               activated_at = COALESCE(activated_at, to_char(now() AT TIME ZONE 'Europe/Lisbon', 'HH24:MI')),
+               updated_at = now() 
+           WHERE id = $4`,
+          [newTableTotal, JSON.stringify(newItems), orderId, t.id]
+        )
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar mesa do pedido:', err)
+    }
+  }
 
   const row = res.rows[0]
 
