@@ -106,6 +106,22 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
       return isMatch && isActive
     })
 
+    const isOrderPaid = (o: any) => {
+      return (
+        o.paymentStatus === 'PAID' ||
+        o.payment_status === 'PAID' ||
+        o.status === 'PAID' ||
+        o.status === 'COMPLETED'
+      )
+    }
+
+    const paidOrders = tableActiveOrders.filter(isOrderPaid)
+    const pendingOrders = tableActiveOrders.filter((o) => !isOrderPaid(o))
+
+    const paidAmount = paidOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+    const pendingAmount = pendingOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+    const totalValue = paidAmount + pendingAmount
+
     const customerNames = Array.from(
       new Set(
         tableActiveOrders
@@ -114,18 +130,26 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
       )
     )
 
-    const totalValue = tableActiveOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
     const activeItemsCount = tableActiveOrders.reduce((sum, o) => {
       if (Array.isArray(o.items)) return sum + o.items.length
       return sum + 1
     }, 0)
 
+    const isFullyPaid = tableActiveOrders.length > 0 && pendingOrders.length === 0
+    const hasPendingPayment = pendingOrders.length > 0
+
     return {
       activeOrders: tableActiveOrders,
-      customerNames,
+      paidOrders,
+      pendingOrders,
+      paidAmount,
+      pendingAmount,
       totalValue,
+      customerNames,
       activeItemsCount,
       isOccupied: tableActiveOrders.length > 0,
+      isFullyPaid,
+      hasPendingPayment,
     }
   }, [orders])
 
@@ -137,7 +161,14 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
     return data.isOccupied || t.status === 'OCCUPIED'
   }).length
 
-  const completedOrders = orders.filter((o) => o.status === 'COMPLETED' || o.status === 'PAID')
+  // Qualquer pedido com pagamento confirmado entra imediatamente no Faturamento e Vendas do Turno
+  const completedOrders = orders.filter(
+    (o) =>
+      o.paymentStatus === 'PAID' ||
+      o.payment_status === 'PAID' ||
+      o.status === 'PAID' ||
+      o.status === 'COMPLETED'
+  )
   const salesCount = completedOrders.length
   const totalRevenue = completedOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
 
@@ -242,8 +273,8 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
       </div>
 
       {/* 2. Contadores Rápidos de Produção & Balcão no Topo */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Em Preparação</div>
             <div className="text-[10px] text-purple-600 dark:text-purple-300">Cozinha / KDS</div>
@@ -251,7 +282,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           <div className="text-2xl font-black text-amber-500 font-mono">{preparingOrdersCount}</div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Prontos p/ Retirar</div>
             <div className="text-[10px] text-purple-600 dark:text-purple-300">Balcão / Chamar</div>
@@ -259,7 +290,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           <div className="text-2xl font-black text-pink-600 font-mono">{readyOrdersCount}</div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Mesas Ativas</div>
             <div className="text-[10px] text-purple-600 dark:text-purple-300">Em Atendimento</div>
@@ -267,10 +298,10 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           <div className="text-2xl font-black text-purple-950 dark:text-white font-mono">{activeTablesCount}</div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Faturado no Turno</div>
-            <div className="text-[10px] text-purple-600 dark:text-purple-300">{salesCount} vendas finalizadas</div>
+            <div className="text-[10px] text-purple-600 dark:text-purple-300">{salesCount} venda(s) recebida(s)</div>
           </div>
           <div className="text-base sm:text-lg font-black text-emerald-600 font-mono">{formatCurrency(totalRevenue)}</div>
         </div>
@@ -343,7 +374,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
               <div className="flex items-center gap-4 text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-md bg-purple-700 dark:bg-pink-600 shadow-xs"></span>
-                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Ocupada (Clique p/ Ver Pedidos)</span>
+                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Ocupada</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-md bg-purple-50 dark:bg-white/10 border border-purple-200 dark:border-white/20"></span>
@@ -361,7 +392,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                 Nenhuma mesa configurada. Aceda ao menu "Mesas" para criar a numeração do salão.
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {tables.map((t) => {
                   const tableData = getTableActiveData(t.number)
                   const isOccupied = tableData.isOccupied || t.status === 'OCCUPIED'
@@ -375,21 +406,27 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                         if (isOccupied) handleSelectTable(t)
                         else handleOpenFreeTable(t)
                       }}
-                      className={`min-h-[120px] rounded-2xl border flex flex-col items-center justify-between p-3.5 text-center transition-all duration-150 cursor-pointer ${
+                      className={`min-h-[135px] rounded-2xl border flex flex-col items-center justify-between p-4 text-center transition-all duration-150 cursor-pointer ${
                         isOccupied
                           ? 'bg-gradient-to-br from-purple-100/90 to-pink-100/90 dark:from-pink-950/80 dark:to-purple-950/90 border-purple-400 dark:border-pink-500 text-purple-950 dark:text-white shadow-md dark:shadow-pink-600/20 hover:scale-[1.02]'
                           : 'bg-purple-50/50 dark:bg-white/[0.04] text-purple-950 dark:text-white border-purple-200 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50 hover:bg-purple-100/60 dark:hover:bg-white/10 hover:scale-[1.02]'
                       }`}
                     >
-                      {/* Topo do Card: Número da Mesa + Badge */}
+                      {/* Topo do Card: Número da Mesa + Badge com Status de Pagamento */}
                       <div className="flex items-center justify-between w-full">
-                        <span className="text-xl font-black text-purple-950 dark:text-white">
+                        <span className="text-lg font-black text-purple-950 dark:text-white">
                           Mesa {t.number}
                         </span>
                         {isOccupied ? (
-                          <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0">
-                            € {displayTotal.toFixed(2)}
-                          </Badge>
+                          tableData.isFullyPaid ? (
+                            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-xs">
+                              € {displayTotal.toFixed(2)} ✓ Pago
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-xs">
+                              € {displayTotal.toFixed(2)}
+                            </Badge>
+                          )
                         ) : (
                           <Badge variant="outline" className="text-[9px] font-bold border-purple-200 dark:border-white/20 text-purple-700 dark:text-purple-300 py-0 px-1.5">
                             Livre
@@ -398,13 +435,13 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                       </div>
 
                       {/* Corpo do Card: Nomes dos Clientes na Mesa ou Status */}
-                      <div className="py-1 w-full text-center">
+                      <div className="py-2 w-full text-center">
                         {isOccupied && tableData.customerNames.length > 0 ? (
                           <div className="space-y-0.5">
-                            <div className="text-[11px] font-black text-purple-950 dark:text-pink-200 truncate px-1">
+                            <div className="text-xs font-black text-purple-950 dark:text-pink-200 truncate px-1">
                               {tableData.customerNames.join(', ')}
                             </div>
-                            <div className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">
+                            <div className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold">
                               {tableData.activeItemsCount} taça(s) em consumo
                             </div>
                           </div>
@@ -415,14 +452,20 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                         )}
                       </div>
 
-                      {/* Rodapé: Ação */}
-                      <div className="w-full pt-1.5 border-t border-purple-200/60 dark:border-white/10 text-[10px] font-black">
+                      {/* Rodapé: Ação Inteligente (Ver Comanda vs Cobrar no Caixa vs + Abrir Mesa) */}
+                      <div className="w-full pt-2 border-t border-purple-200/60 dark:border-white/10 text-[10.5px] font-black">
                         {isOccupied ? (
-                          <span className="text-purple-800 dark:text-pink-300 block">
-                            Ver Pedidos & Receber ›
-                          </span>
+                          tableData.isFullyPaid ? (
+                            <span className="text-purple-900 dark:text-pink-200 block font-black">
+                              Ver Comanda ›
+                            </span>
+                          ) : (
+                            <span className="text-emerald-700 dark:text-emerald-300 block font-black">
+                              Cobrar no Caixa ›
+                            </span>
+                          )
                         ) : (
-                          <span className="text-purple-600/70 dark:text-purple-300/60 block">
+                          <span className="text-purple-600/70 dark:text-purple-300/60 block font-bold">
                             + Abrir Mesa
                           </span>
                         )}
