@@ -41,6 +41,7 @@ export default function PDVView({
   // Tipo de Pedido: BALCAO vs MESA
   const [orderType, setOrderType] = useState<'BALCAO' | 'MESA'>(initialTable ? 'MESA' : 'BALCAO')
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(initialTable || null)
+  const [customerNameInput, setCustomerNameInput] = useState<string>('')
   const [allTables, setAllTables] = useState<RestaurantTable[]>([])
 
   const { items, draft, startDraft, resetDraft, toggleBase, toggleTopping, addDraftToCart, removeItem, clearCart, total } = useCartStore()
@@ -82,7 +83,8 @@ export default function PDVView({
     setSubmitting(true)
     try {
       const isTable = orderType === 'MESA' && selectedTable
-      const tableNumber = isTable ? `Mesa ${selectedTable.number.toString().padStart(2, '0')}` : 'Balcão'
+      const finalCustomerName = customer.name?.trim() || customerNameInput.trim() || (isTable ? `Cliente Mesa ${selectedTable?.number}` : 'Balcão')
+      const tableNumber = isTable ? String(selectedTable?.number || '1') : 'Balcão'
 
       // 1. Criar pedido oficial
       const res = await fetch('/api/orders', {
@@ -92,7 +94,7 @@ export default function PDVView({
           tenantId,
           items,
           paymentMethod: method,
-          customerName: customer.name || (isTable ? `Cliente ${tableNumber}` : 'Balcão'),
+          customerName: finalCustomerName,
           customerPhone: customer.phone,
           isTableOrder: isTable,
           tableNumber,
@@ -106,7 +108,7 @@ export default function PDVView({
       if (!res.ok) throw new Error('Falha ao registar comanda')
       const order = await res.json()
 
-      // 2. Se for mesa, atualizar/desocupar mesa ou sincronizar
+      // 2. Se for mesa, sincronizar mesa
       if (isTable && selectedTable) {
         await fetch(`/api/tables/${selectedTable.id}`, {
           method: 'PUT',
@@ -117,6 +119,7 @@ export default function PDVView({
 
       setLastOrder(order)
       clearCart()
+      setCustomerNameInput('')
       setPayOpen(false)
       setReceiptOpen(true)
       toast.success('Comanda finalizada e enviada para a produção!')
@@ -130,35 +133,35 @@ export default function PDVView({
   return (
     <div className="space-y-4">
       {/* Seletor de Tipo de Atendimento & Mesa */}
-      <div className="p-3 bg-white border border-purple-100 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-2">
+      <div className="p-3.5 bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2">
           {onBackToTables && (
             <Button
               variant="outline"
               size="sm"
               onClick={onBackToTables}
-              className="h-8.5 text-xs font-bold border-purple-200 text-purple-950 hover:bg-purple-50 gap-1 cursor-pointer"
+              className="h-9 text-xs font-bold border-purple-200 dark:border-white/15 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/5 cursor-pointer rounded-xl"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-3.5 w-3.5 mr-1" />
               <span>Salão</span>
             </Button>
           )}
 
-          <div className="flex bg-purple-50 p-1 rounded-xl gap-1">
+          <div className="flex bg-purple-50 dark:bg-white/5 p-1 rounded-xl gap-1 border border-purple-100 dark:border-white/10">
             <button
               type="button"
               onClick={() => {
                 setOrderType('BALCAO')
                 setSelectedTable(null)
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
                 orderType === 'BALCAO'
-                  ? 'bg-purple-700 text-white shadow-xs'
-                  : 'text-purple-900 hover:bg-purple-100'
+                  ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                  : 'text-purple-900 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-white/10'
               }`}
             >
               <ShoppingBag className="h-3.5 w-3.5" />
-              <span>Pedido Balcão / Takeaway</span>
+              <span>Balcão / Takeaway</span>
             </button>
 
             <button
@@ -169,10 +172,10 @@ export default function PDVView({
                   setSelectedTable(allTables[0])
                 }
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
                 orderType === 'MESA'
-                  ? 'bg-purple-700 text-white shadow-xs'
-                  : 'text-purple-900 hover:bg-purple-100'
+                  ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                  : 'text-purple-900 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-white/10'
               }`}
             >
               <Store className="h-3.5 w-3.5" />
@@ -181,25 +184,39 @@ export default function PDVView({
           </div>
         </div>
 
-        {orderType === 'MESA' && (
+        <div className="flex flex-wrap items-center gap-3">
+          {orderType === 'MESA' && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-purple-900/70 dark:text-purple-300">Mesa:</span>
+              <select
+                value={selectedTable?.id || ''}
+                onChange={(e) => {
+                  const tbl = allTables.find((t) => t.id === e.target.value) || null
+                  setSelectedTable(tbl)
+                }}
+                className="h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-[#1f0337] text-xs font-black text-purple-950 dark:text-white cursor-pointer"
+              >
+                {allTables.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    Mesa {t.number}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Campo Opcional do Nome do Cliente para Identificação da Comanda */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-muted-foreground">Mesa:</span>
-            <select
-              value={selectedTable?.id || ''}
-              onChange={(e) => {
-                const tbl = allTables.find((t) => t.id === e.target.value) || null
-                setSelectedTable(tbl)
-              }}
-              className="h-9 px-3 rounded-xl border border-purple-200 bg-purple-50/50 text-xs font-black text-purple-950 cursor-pointer"
-            >
-              {allTables.map((t) => (
-                <option key={t.id} value={t.id}>
-                  Mesa {t.number} ({t.nickname || (t.status === 'AVAILABLE' ? 'Livre' : 'Ocupada')})
-                </option>
-              ))}
-            </select>
+            <span className="text-xs font-bold text-purple-900/70 dark:text-purple-300">Cliente:</span>
+            <input
+              type="text"
+              value={customerNameInput}
+              onChange={(e) => setCustomerNameInput(e.target.value)}
+              placeholder="Ex: Valdair"
+              className="h-9 px-3 w-32 sm:w-40 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-[#1f0337] text-xs font-bold text-purple-950 dark:text-white placeholder:text-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-600"
+            />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Grid Principal: Montador + Resumo da Comanda */}

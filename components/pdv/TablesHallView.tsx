@@ -11,7 +11,7 @@ import TableCheckoutDetail from './TableCheckoutDetail'
 import QuickProductSearchDialog from './QuickProductSearchDialog'
 import CashierOperationsDialog from './CashierOperationsDialog'
 import PDVView from './PDVView'
-import { Store, ShoppingBag, RefreshCw, Printer } from 'lucide-react'
+import { Store, ShoppingBag } from 'lucide-react'
 
 interface TablesHallViewProps {
   tenantId: string
@@ -34,7 +34,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
     createdAt: string
   }>>([])
 
-  // ID da Mesa Selecionada (ID estável evita loops de re-render)
+  // ID da Mesa Selecionada
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
 
   // Mesa Inicial para Montador
@@ -91,22 +91,57 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
 
   useEffect(() => {
     fetchTables()
-    // Polling a cada 5s para sincronização em tempo real das mesas e pedidos
-    const timer = setInterval(fetchTables, 5000)
+    // Polling a cada 3s para sincronização em tempo real das mesas e pedidos
+    const timer = setInterval(fetchTables, 3000)
     return () => clearInterval(timer)
   }, [fetchTables])
 
-  const selectedTable = tables.find((t) => t.id === selectedTableId) || null
-  const activeTablesCount = tables.filter((t) => t.status === 'OCCUPIED').length
+  // Helper para obter dados de pedidos e clientes ativos de cada mesa
+  const getTableActiveData = useCallback((tableNumber: number) => {
+    const targetStr = String(tableNumber)
+    const tableActiveOrders = orders.filter((o) => {
+      const oTable = o.tableNumber ? String(o.tableNumber).replace(/^Mesa\s*/i, '').trim() : ''
+      const isMatch = oTable === targetStr
+      const isActive = o.status === 'NEW' || o.status === 'PREPARING' || o.status === 'READY' || o.status === 'OPEN' || o.status === 'AWAITING_PAYMENT'
+      return isMatch && isActive
+    })
 
-  // Cálculo Dinâmico das Métricas do Turno
-  const completedOrders = orders.filter(
-    (o) => o.status === 'COMPLETED' || o.status === 'PAID' || o.status === 'READY' || o.status === 'PREPARING'
-  )
-  const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED')
+    const customerNames = Array.from(
+      new Set(
+        tableActiveOrders
+          .map((o) => o.customerName?.trim())
+          .filter((name): name is string => Boolean(name && name.toLowerCase() !== 'balcão' && name.toLowerCase() !== 'balcao'))
+      )
+    )
+
+    const totalValue = tableActiveOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+    const activeItemsCount = tableActiveOrders.reduce((sum, o) => {
+      if (Array.isArray(o.items)) return sum + o.items.length
+      return sum + 1
+    }, 0)
+
+    return {
+      activeOrders: tableActiveOrders,
+      customerNames,
+      totalValue,
+      activeItemsCount,
+      isOccupied: tableActiveOrders.length > 0,
+    }
+  }, [orders])
+
+  // Contadores Globais em Tempo Real
+  const preparingOrdersCount = orders.filter((o) => o.status === 'PREPARING' || o.status === 'NEW').length
+  const readyOrdersCount = orders.filter((o) => o.status === 'READY').length
+  const activeTablesCount = tables.filter((t) => {
+    const data = getTableActiveData(t.number)
+    return data.isOccupied || t.status === 'OCCUPIED'
+  }).length
+
+  const completedOrders = orders.filter((o) => o.status === 'COMPLETED' || o.status === 'PAID')
   const salesCount = completedOrders.length
-  const cancelCount = cancelledOrders.length
   const totalRevenue = completedOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+
+  const selectedTable = tables.find((t) => t.id === selectedTableId) || null
 
   const handleSelectTable = (t: RestaurantTable) => {
     setSelectedTableId(t.id)
@@ -118,29 +153,35 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
   }
 
   // Se estiver na tela detalhada de fechamento da mesa
-  if (selectedTable && selectedTable.status === 'OCCUPIED') {
-    return (
-      <TableCheckoutDetail
-        table={selectedTable}
-        allTables={tables}
-        storePhone={storePhone}
-        onBack={() => {
-          setSelectedTableId(null)
-        }}
-        onSelectOtherTable={(other) => setSelectedTableId(other.id)}
-        onAddMoreItems={() => {
-          setMontadorTable(selectedTable)
-          setActiveTab('BALCAO')
-          setSelectedTableId(null)
-        }}
-        onTableUpdated={fetchTables}
-      />
-    )
+  if (selectedTable) {
+    const tableActiveInfo = getTableActiveData(selectedTable.number)
+    if (tableActiveInfo.isOccupied || selectedTable.status === 'OCCUPIED') {
+      return (
+        <TableCheckoutDetail
+          table={{
+            ...selectedTable,
+            total: tableActiveInfo.totalValue > 0 ? tableActiveInfo.totalValue : (selectedTable.total || 0),
+          }}
+          allTables={tables}
+          storePhone={storePhone}
+          onBack={() => {
+            setSelectedTableId(null)
+          }}
+          onSelectOtherTable={(other) => setSelectedTableId(other.id)}
+          onAddMoreItems={() => {
+            setMontadorTable(selectedTable)
+            setActiveTab('BALCAO')
+            setSelectedTableId(null)
+          }}
+          onTableUpdated={fetchTables}
+        />
+      )
+    }
   }
 
   return (
     <div className="space-y-5">
-      {/* Barra de Abas Superiores (MESAS vs BALCÃO) */}
+      {/* 1. Barra de Abas Superiores (MESAS vs BALCÃO) + Ações */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
         <div className="flex bg-white dark:bg-white/5 border border-purple-200 dark:border-white/10 p-1 rounded-2xl gap-1 shadow-xs">
           <button
@@ -152,14 +193,14 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             }}
             className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'MESAS'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20'
                 : 'text-purple-800 dark:text-purple-200/80 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
             }`}
           >
             <Store className="h-3.5 w-3.5" />
             <span>MESAS DO SALÃO</span>
             {activeTablesCount > 0 && (
-              <Badge className="bg-white/20 text-white text-[9px] py-0 px-1.5 font-bold ml-0.5 border-0">
+              <Badge className="bg-white/25 text-white text-[9px] py-0 px-1.5 font-black ml-0.5 border-0">
                 {activeTablesCount}
               </Badge>
             )}
@@ -170,7 +211,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             onClick={() => setActiveTab('BALCAO')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'BALCAO'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20'
                 : 'text-purple-800 dark:text-purple-200/80 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
             }`}
           >
@@ -200,14 +241,49 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
         </div>
       </div>
 
-      {/* BANNER DE CHAMADOS DE MESA / ATENDENTE */}
+      {/* 2. Contadores Rápidos de Produção & Balcão no Topo */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Em Preparação</div>
+            <div className="text-[10px] text-purple-600 dark:text-purple-300">Cozinha / KDS</div>
+          </div>
+          <div className="text-2xl font-black text-amber-500 font-mono">{preparingOrdersCount}</div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Prontos p/ Retirar</div>
+            <div className="text-[10px] text-purple-600 dark:text-purple-300">Balcão / Chamar</div>
+          </div>
+          <div className="text-2xl font-black text-pink-600 font-mono">{readyOrdersCount}</div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Mesas Ativas</div>
+            <div className="text-[10px] text-purple-600 dark:text-purple-300">Em Atendimento</div>
+          </div>
+          <div className="text-2xl font-black text-purple-950 dark:text-white font-mono">{activeTablesCount}</div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Faturado no Turno</div>
+            <div className="text-[10px] text-purple-600 dark:text-purple-300">{salesCount} vendas finalizadas</div>
+          </div>
+          <div className="text-base sm:text-lg font-black text-emerald-600 font-mono">{formatCurrency(totalRevenue)}</div>
+        </div>
+      </div>
+
+      {/* 3. Chamados de Mesa / Garçom */}
       {waiterCalls.length > 0 && (
-        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-500/40 animate-pulse space-y-2">
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-500/40 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-ping" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
               <span className="text-xs font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider">
-                {waiterCalls.length} Chamado(s) de Mesa Ativo(s)
+                {waiterCalls.length} Chamado(s) de Mesa
               </span>
             </div>
             <span className="text-[10px] text-amber-700 dark:text-amber-200 font-bold">Autoatendimento QR Code</span>
@@ -228,27 +304,13 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      window.print()
-                      toast.success(`Ticket da ${call.tableLabel} impresso!`)
-                    }}
-                    title="Imprimir ticket do chamado"
-                    className="h-8 w-8 p-0 border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 rounded-lg cursor-pointer"
-                  >
-                    <Printer className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleResolveCall(call.id)}
-                    className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded-lg cursor-pointer"
-                  >
-                    Atendido
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleResolveCall(call.id)}
+                  className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded-lg cursor-pointer"
+                >
+                  Atendido
+                </Button>
               </div>
             ))}
           </div>
@@ -271,7 +333,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* ========================================================= */}
-          {/* SALÃO DE MESAS (LIVRES vs OCUPADAS)                       */}
+          {/* SALÃO DE MESAS (LIVRES vs OCUPADAS MULTI-CLIENTE)          */}
           {/* ========================================================= */}
           <div className="lg:col-span-8 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-6 shadow-xs dark:shadow-xl">
             <div className="flex items-center justify-between mb-5 pb-3 border-b border-purple-100 dark:border-white/10">
@@ -281,7 +343,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
               <div className="flex items-center gap-4 text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-md bg-purple-700 dark:bg-pink-600 shadow-xs"></span>
-                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Ocupada (Clique p/ Ver Pedido)</span>
+                  <span className="text-purple-900/80 dark:text-purple-200/90 font-medium">Ocupada (Clique p/ Ver Pedidos)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-md bg-purple-50 dark:bg-white/10 border border-purple-200 dark:border-white/20"></span>
@@ -301,7 +363,9 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
                 {tables.map((t) => {
-                  const isOccupied = t.status === 'OCCUPIED'
+                  const tableData = getTableActiveData(t.number)
+                  const isOccupied = tableData.isOccupied || t.status === 'OCCUPIED'
+                  const displayTotal = tableData.totalValue > 0 ? tableData.totalValue : (t.total || 0)
 
                   return (
                     <button
@@ -311,19 +375,20 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                         if (isOccupied) handleSelectTable(t)
                         else handleOpenFreeTable(t)
                       }}
-                      className={`min-h-[110px] rounded-2xl border flex flex-col items-center justify-between p-3 text-center transition-all duration-150 cursor-pointer ${
+                      className={`min-h-[120px] rounded-2xl border flex flex-col items-center justify-between p-3.5 text-center transition-all duration-150 cursor-pointer ${
                         isOccupied
-                          ? 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-pink-950/80 dark:to-purple-950/90 border-purple-400 dark:border-pink-500 text-purple-950 dark:text-white shadow-md dark:shadow-pink-600/20 hover:scale-[1.02]'
+                          ? 'bg-gradient-to-br from-purple-100/90 to-pink-100/90 dark:from-pink-950/80 dark:to-purple-950/90 border-purple-400 dark:border-pink-500 text-purple-950 dark:text-white shadow-md dark:shadow-pink-600/20 hover:scale-[1.02]'
                           : 'bg-purple-50/50 dark:bg-white/[0.04] text-purple-950 dark:text-white border-purple-200 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50 hover:bg-purple-100/60 dark:hover:bg-white/10 hover:scale-[1.02]'
                       }`}
                     >
+                      {/* Topo do Card: Número da Mesa + Badge */}
                       <div className="flex items-center justify-between w-full">
                         <span className="text-xl font-black text-purple-950 dark:text-white">
-                          {t.number}
+                          Mesa {t.number}
                         </span>
                         {isOccupied ? (
                           <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0">
-                            € {t.total?.toFixed(2) || '0.00'}
+                            € {displayTotal.toFixed(2)}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-[9px] font-bold border-purple-200 dark:border-white/20 text-purple-700 dark:text-purple-300 py-0 px-1.5">
@@ -332,23 +397,32 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                         )}
                       </div>
 
-                      <div className="py-1">
-                        <div
-                          className={`text-xs font-bold truncate max-w-[130px] ${
-                            isOccupied ? 'text-purple-900 dark:text-pink-200' : 'text-purple-700/80 dark:text-purple-200/70'
-                          }`}
-                        >
-                          {t.nickname || (isOccupied ? 'Em Consumo' : 'Disponível')}
-                        </div>
+                      {/* Corpo do Card: Nomes dos Clientes na Mesa ou Status */}
+                      <div className="py-1 w-full text-center">
+                        {isOccupied && tableData.customerNames.length > 0 ? (
+                          <div className="space-y-0.5">
+                            <div className="text-[11px] font-black text-purple-950 dark:text-pink-200 truncate px-1">
+                              {tableData.customerNames.join(', ')}
+                            </div>
+                            <div className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">
+                              {tableData.activeItemsCount} taça(s) em consumo
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs font-bold text-purple-700/80 dark:text-purple-200/70">
+                            {isOccupied ? 'Em Consumo' : 'Disponível'}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="w-full pt-1 border-t border-purple-200/60 dark:border-white/10 text-[10px] font-black">
+                      {/* Rodapé: Ação */}
+                      <div className="w-full pt-1.5 border-t border-purple-200/60 dark:border-white/10 text-[10px] font-black">
                         {isOccupied ? (
-                          <span className="text-purple-800 dark:text-pink-300 flex items-center justify-center gap-1">
-                            Ver Pedido & Receber ›
+                          <span className="text-purple-800 dark:text-pink-300 block">
+                            Ver Pedidos & Receber ›
                           </span>
                         ) : (
-                          <span className="text-purple-600/70 dark:text-purple-300/60">
+                          <span className="text-purple-600/70 dark:text-purple-300/60 block">
                             + Abrir Mesa
                           </span>
                         )}
@@ -393,16 +467,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                   <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{salesCount}</div>
                 </div>
 
-                {/* Cancelamentos */}
-                <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-purple-950 dark:text-white">Cancelamentos</div>
-                    <div className="text-[10px] text-purple-700/70 dark:text-purple-200/60 font-medium">Estornos do dia</div>
-                  </div>
-                  <div className="text-2xl font-black text-pink-600 dark:text-pink-400 font-mono">{cancelCount}</div>
-                </div>
-
-                {/* Faturamento do Turno */}
+                {/* Total Faturado */}
                 <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 flex items-center justify-between">
                   <div>
                     <div className="text-xs font-bold text-emerald-950 dark:text-emerald-200">Total Faturado</div>
@@ -415,7 +480,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
               </div>
             </div>
 
-            {/* Botão Verde "Abrir Mesa / Pedido Balcão" */}
+            {/* Botão Principal "Novo Pedido / Montar Açaí" */}
             <Button
               type="button"
               onClick={() => setActiveTab('BALCAO')}
