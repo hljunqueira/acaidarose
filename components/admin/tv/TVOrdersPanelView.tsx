@@ -276,12 +276,17 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return true // Sempre exibe a coroa dourada real para dar destaque VIP a todos os pedidos de clientes e mesas
   }
 
-  // Determina se o último chamado já foi finalizado/entregue
+  // Determina se o último chamado já foi finalizado/entregue, cancelado ou excluído da base
   const isLastCalledCompleted = lastCalled
-    ? orders.some((o) => {
+    ? !orders.some((o) => {
         const tNum = `#${String(o.orderNumber || 1).padStart(3, '0')}`
-        const matches = tNum === lastCalled.ticket || String(o.orderNumber) === lastCalled.ticket.replace('#', '')
-        return matches && (o.status === 'COMPLETED' || o.status === 'PAID' || o.status === 'CANCELLED')
+        const matches =
+          tNum === lastCalled.ticket ||
+          String(o.orderNumber) === lastCalled.ticket.replace('#', '') ||
+          (lastCalled.customerName && o.customerName && o.customerName.trim().toUpperCase() === lastCalled.customerName.trim().toUpperCase())
+        
+        // Deve ser um pedido ativo
+        return matches && o.status !== 'COMPLETED' && o.status !== 'PAID' && o.status !== 'CANCELLED'
       })
     : false
 
@@ -295,14 +300,14 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       })
     : null
 
-  // Determina o pedido principal em destaque na CAIXA GIGANTE:
+  // Determina o pedido principal em destaque na CAIXA GIGANTE (Hero):
   const heroOrder: {
     ticket: string
     customerName?: string | null
     tableNumber?: string | number | null
     orderNumber?: number
     isQRCode?: boolean
-  } | null = (lastCalled && !isLastCalledCompleted)
+  } | null = (!isLastCalledCompleted && lastCalled)
     ? {
         ticket: lastCalled.ticket,
         customerName: lastCalled.customerName || matchedOrder?.customerName,

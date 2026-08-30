@@ -59,3 +59,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const tenantId = searchParams.get('tenantId') || 'default'
+
+    delete lastCallsByTenant[tenantId]
+    delete lastCallsByTenant['default']
+
+    return NextResponse.json({
+      success: true,
+      message: 'Chamada da TV limpa com sucesso',
+    })
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+}
+

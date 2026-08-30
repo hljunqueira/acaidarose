@@ -73,12 +73,26 @@ export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>, tenantId?:
  * Limpa a senha em exibição na Smart TV
  */
 export function broadcastTVClearCall(tenantId?: string) {
+  // 1. Limpa na API Backend
   if (typeof window !== 'undefined') {
     try {
-      localStorage.removeItem(getCallKey(tenantId))
+      const url = tenantId ? `/api/tv/call?tenantId=${encodeURIComponent(tenantId)}` : '/api/tv/call'
+      fetch(url, { method: 'DELETE' }).catch(() => {})
     } catch {}
   }
 
+  // 2. Limpa no LocalStorage
+  if (typeof window !== 'undefined') {
+    try {
+      if (tenantId) {
+        localStorage.removeItem(getCallKey(tenantId))
+      }
+      localStorage.removeItem(getCallKey(undefined))
+      localStorage.setItem('acai_tv_last_call_trigger', String(Date.now()))
+    } catch {}
+  }
+
+  // 3. Notifica via BroadcastChannel
   if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
     try {
       const channel = new BroadcastChannel(CHANNEL_NAME)
