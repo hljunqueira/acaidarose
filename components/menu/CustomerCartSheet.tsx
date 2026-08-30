@@ -34,6 +34,7 @@ interface CustomerCartSheetProps {
   tenantName?: string
   isTable?: boolean
   tableNumber?: string | number
+  qrConfig?: any
 }
 
 type CheckoutStep = 'CART' | 'MBWAY_WAITING' | 'SUCCESS_PAID' | 'SUCCESS_COUNTER'
@@ -49,7 +50,9 @@ export default function CustomerCartSheet({
   tenantName,
   isTable,
   tableNumber,
+  qrConfig,
 }: CustomerCartSheetProps) {
+  const allowMbway = qrConfig?.allowMbwayPayment !== false
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerNif, setCustomerNif] = useState('')
@@ -58,6 +61,13 @@ export default function CustomerCartSheet({
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('CART')
   const [createdOrder, setCreatedOrder] = useState<any | null>(null)
   const [countdown, setCountdown] = useState<number>(240) // 4 min para autorização MB WAY
+
+  // Sincroniza forma de pagamento com a configuração do QR Code
+  useEffect(() => {
+    if (!allowMbway && paymentMethod === 'MBWAY') {
+      setPaymentMethod('BALCAO')
+    }
+  }, [allowMbway, paymentMethod])
 
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const activeOrderIdRef = useRef<string | null>(null)
@@ -107,13 +117,25 @@ export default function CustomerCartSheet({
     }
   }, [checkoutStep, createdOrder])
 
+  const isNameRequired = qrConfig?.customerNameRule !== 'OPTIONAL'
+  const isPhoneRequired = qrConfig?.customerPhoneRule === 'REQUIRED'
+  const showPhoneField = qrConfig?.customerPhoneRule !== 'NONE' || paymentMethod === 'MBWAY'
+  const isNifRequired = qrConfig?.customerNifRule === 'REQUIRED'
+  const showNifField = qrConfig?.customerNifRule !== 'NONE'
+  const isViewOnly = qrConfig?.mode === 'VIEW_ONLY'
+
   const handleCheckout = async () => {
+    if (isViewOnly) {
+      toast.error('O cardápio está em modo de apenas visualização. Faça o seu pedido diretamente no balcão.')
+      return
+    }
+
     if (cart.length === 0) {
       toast.error('O seu pedido está vazio')
       return
     }
 
-    if (!customerName.trim()) {
+    if (isNameRequired && !customerName.trim()) {
       toast.error('Por favor, informe o seu nome para identificação no pedido')
       return
     }
@@ -124,6 +146,14 @@ export default function CustomerCartSheet({
         toast.error('Informe um número de telemóvel válido (9 dígitos) para o MB WAY')
         return
       }
+    } else if (isPhoneRequired && !customerPhone.trim()) {
+      toast.error('Por favor, informe o seu contacto telefónico')
+      return
+    }
+
+    if (isNifRequired && !customerNif.trim()) {
+      toast.error('Por favor, informe o NIF para a fatura')
+      return
     }
 
     setIsSubmitting(true)
@@ -478,11 +508,23 @@ export default function CustomerCartSheet({
 
                   {/* Dados do Cliente */}
                   <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 space-y-3 text-left">
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">Identificação para Chamada:</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">Identificação do Pedido:</div>
+                      {qrConfig?.pickupModel === 'TABLE_SERVICE' ? (
+                        <span className="text-[10px] font-bold text-purple-700 dark:text-pink-300 bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded-md">
+                          🛎️ Serviço de Mesa
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/30 px-2 py-0.5 rounded-md">
+                          📺 Chamada na Smart TV
+                        </span>
+                      )}
+                    </div>
 
+                    {/* Nome do Cliente */}
                     <div className="space-y-1">
                       <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
-                        O seu Nome (Obrigatório para chamada na TV):
+                        {isNameRequired ? 'O seu Nome (Obrigatório):' : 'O seu Nome (Opcional):'}
                       </label>
                       <input
                         type="text"
@@ -498,46 +540,73 @@ export default function CustomerCartSheet({
                       <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
                         Forma de Pagamento:
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('MBWAY')}
-                          className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            paymentMethod === 'MBWAY'
-                              ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm'
-                              : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
-                          }`}
-                        >
-                          <Smartphone className="h-4 w-4 text-pink-600 dark:text-pink-400" />
-                          <span>MB WAY</span>
-                        </button>
+                      {allowMbway ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod('MBWAY')}
+                            className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                              paymentMethod === 'MBWAY'
+                                ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm'
+                                : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
+                            }`}
+                          >
+                            <Smartphone className="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                            <span>MB WAY</span>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('BALCAO')}
-                          className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            paymentMethod === 'BALCAO'
-                              ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm'
-                              : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
-                          }`}
-                        >
-                          <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                          <span>No Balcão</span>
-                        </button>
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod('BALCAO')}
+                            className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                              paymentMethod === 'BALCAO'
+                                ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm'
+                                : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
+                            }`}
+                          >
+                            <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            <span>No Balcão</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30 text-[11px] text-amber-900 dark:text-amber-200 font-bold flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-amber-600 shrink-0" />
+                          <span>Pagamento efetuado diretamente no balcão / caixa</span>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Campo Telemóvel condicional para MB WAY */}
-                    {paymentMethod === 'MBWAY' && (
+                    {/* Campo Telemóvel */}
+                    {showPhoneField && (
                       <div className="space-y-1 pt-1">
                         <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
-                          Nº Telemóvel MB WAY (9 dígitos):
+                          {paymentMethod === 'MBWAY'
+                            ? 'Nº Telemóvel MB WAY (9 dígitos):'
+                            : isPhoneRequired
+                            ? 'Contacto Telefónico (Obrigatório):'
+                            : 'Contacto Telefónico (Opcional):'}
                         </label>
                         <input
                           type="tel"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(e.target.value)}
                           placeholder="912 345 678"
+                          className="w-full h-11 px-3.5 rounded-xl bg-white border border-purple-200 dark:bg-white/5 dark:border-white/15 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono"
+                        />
+                      </div>
+                    )}
+
+                    {/* Campo NIF */}
+                    {showNifField && (
+                      <div className="space-y-1 pt-1">
+                        <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
+                          {isNifRequired ? 'NIF na Fatura (Obrigatório):' : 'NIF na Fatura (Opcional):'}
+                        </label>
+                        <input
+                          type="text"
+                          value={customerNif}
+                          onChange={(e) => setCustomerNif(e.target.value)}
+                          placeholder="Ex: 123456789"
                           className="w-full h-11 px-3.5 rounded-xl bg-white border border-purple-200 dark:bg-white/5 dark:border-white/15 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono"
                         />
                       </div>

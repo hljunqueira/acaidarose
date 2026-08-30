@@ -289,27 +289,16 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return true // Sempre exibe a coroa dourada real para dar destaque VIP a todos os pedidos de clientes e mesas
   }
 
-  // Determina se o último chamado já foi finalizado/entregue, cancelado ou excluído da base
-  const isLastCalledCompleted = lastCalled
-    ? !orders.some((o) => {
+  // Determina se o último chamado é um pedido REALMENTE ATIVO no banco (READY ou PREPARING)
+  const activeOrderForLastCall = lastCalled
+    ? orders.find((o) => {
         const tNum = `#${String(o.orderNumber || 1).padStart(3, '0')}`
         const matches =
           tNum === lastCalled.ticket ||
           String(o.orderNumber) === lastCalled.ticket.replace('#', '') ||
           (lastCalled.customerName && o.customerName && o.customerName.trim().toUpperCase() === lastCalled.customerName.trim().toUpperCase())
         
-        // Deve ser um pedido ativo
-        return matches && o.status !== 'COMPLETED' && o.status !== 'PAID' && o.status !== 'CANCELLED'
-      })
-    : false
-
-  // Cruzamento inteligente com a lista real de pedidos do banco para recuperar a mesa exata do cliente
-  const matchedOrder = (lastCalled || readyOrders.length > 0)
-    ? orders.find((o) => {
-        const ticketToFind = lastCalled?.ticket || (readyOrders[0] ? `#${String(readyOrders[0].orderNumber || 1).padStart(3, '0')}` : '')
-        if (!ticketToFind) return false
-        const tNum = `#${String(o.orderNumber || 1).padStart(3, '0')}`
-        return tNum === ticketToFind || String(o.orderNumber) === ticketToFind.replace('#', '')
+        return matches && (o.status === 'READY' || o.status === 'PREPARING')
       })
     : null
 
@@ -320,18 +309,19 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     tableNumber?: string | number | null
     orderNumber?: number
     isQRCode?: boolean
-  } | null = (!isLastCalledCompleted && lastCalled)
+  } | null = activeOrderForLastCall
     ? {
-        ticket: lastCalled.ticket,
-        customerName: lastCalled.customerName || matchedOrder?.customerName,
-        tableNumber: lastCalled.tableNumber ?? matchedOrder?.tableNumber,
+        ticket: `#${String(activeOrderForLastCall.orderNumber || 1).padStart(3, '0')}`,
+        customerName: activeOrderForLastCall.customerName,
+        tableNumber: activeOrderForLastCall.tableNumber,
+        orderNumber: activeOrderForLastCall.orderNumber,
         isQRCode: true,
       }
     : readyOrders.length > 0
     ? {
         ticket: `#${String(readyOrders[0].orderNumber || 1).padStart(3, '0')}`,
-        customerName: readyOrders[0].customerName || matchedOrder?.customerName,
-        tableNumber: readyOrders[0].tableNumber ?? matchedOrder?.tableNumber,
+        customerName: readyOrders[0].customerName,
+        tableNumber: readyOrders[0].tableNumber,
         orderNumber: readyOrders[0].orderNumber,
         isQRCode: true,
       }

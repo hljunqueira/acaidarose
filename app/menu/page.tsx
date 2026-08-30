@@ -246,6 +246,7 @@ function MenuContent() {
         tenantName={tenant?.name}
         isTable={isTable}
         tableNumber={currentTableNum}
+        qrConfig={qrConfig}
       />
 
       {/* 7. Modal Chamada de Garçom */}

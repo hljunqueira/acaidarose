@@ -36,7 +36,7 @@ import {
 } from 'lucide-react'
 
 import { playOrderNotificationSound } from '@/lib/utils/soundNotification'
-import { broadcastTVCall } from '@/lib/utils/tvBroadcast'
+import { broadcastTVCall, broadcastTVClearCall } from '@/lib/utils/tvBroadcast'
 import OrderHistoryAuditModal from './OrderHistoryAuditModal'
 import OrderEditDialog from './OrderEditDialog'
 import CancelReasonDialog from './CancelReasonDialog'
@@ -249,6 +249,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
         body: JSON.stringify({ reason }),
       })
       if (!res.ok) throw new Error('Erro ao cancelar comanda')
+      broadcastTVClearCall(orderToCancel?.tenantId)
       toast.success(`Comanda #${formattedNum} cancelada: ${reason}`)
       setCancelConfirmOpen(false)
       setSelectedOrderForAudit(null)
@@ -293,6 +294,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
         body: JSON.stringify({ reason: 'Exclusão direta pelo operador', permanent: true }),
       })
       if (!res.ok) throw new Error('Falha ao excluir comanda')
+      broadcastTVClearCall(orderToDelete.tenantId)
       setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id))
       setSelectedOrderForItems(null)
       setSelectedOrderForAudit(null)
