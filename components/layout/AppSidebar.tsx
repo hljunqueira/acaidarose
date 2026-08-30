@@ -167,8 +167,7 @@ export default function AppSidebar({
         icon: Server,
         accentClass: 'text-indigo-600 dark:text-indigo-400',
         items: [
-          { id: 'dev_hub', label: 'Status & Telemetria VPS', subtitle: 'PostgreSQL 16 & Vercel Edge', show: true },
-          { id: 'prevention_center', label: 'Diagnóstico & Integridade', subtitle: 'Gateways, KDS & Triggers', show: true },
+          { id: 'dev_hub', label: 'Status & Integridade VPS', subtitle: 'PostgreSQL 16 & Gateways', show: true },
           { id: 'audit_logs', label: 'Logs & Auditoria TI', subtitle: 'Histórico Imutável de Eventos', show: true },
         ],
       },

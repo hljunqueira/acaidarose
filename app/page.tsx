@@ -50,10 +50,12 @@ import SupplyHubView from '@/components/admin/supply/SupplyHubView'
 import TVOrdersControlView from '@/components/admin/tv/TVOrdersControlView'
 import InventoryManagementView from '@/components/admin/inventory/InventoryManagementView'
 import StoreSupplyOrdersView from '@/components/admin/inventory/StoreSupplyOrdersView'
+import { useAdminTheme } from '@/lib/hooks/useIsolatedTheme'
 
 export default function HomePage() {
   const { user, logout, checkAuth, authFetch } = useAuthStore()
   const { currentTenant, setCurrentTenant } = useFranchiseStore()
+  const { isDark: isAdminDark } = useAdminTheme()
 
   // Modo de visualização: 'LANDING' (site público) ou 'PDV' (área interna)
   const [appMode, setAppMode] = useState<'LANDING' | 'PDV'>('LANDING')
@@ -172,8 +174,8 @@ export default function HomePage() {
   const activeTenantId = effectiveTenant.id
 
   return (
-    <div className="flex h-screen bg-[#f8f6fc] dark:bg-[#0e0117] text-slate-900 dark:text-white overflow-hidden selection:bg-purple-500 selection:text-white transition-colors duration-150">
-      <Toaster position="top-center" richColors />
+    <div className={`flex h-screen overflow-hidden selection:bg-purple-500 selection:text-white transition-colors duration-150 ${isAdminDark ? 'dark bg-[#0e0117] text-white' : 'bg-[#f8f6fc] text-slate-900'}`}>
+      <Toaster position="top-center" richColors theme={isAdminDark ? 'dark' : 'light'} />
 
       {/* Sidebar de Navegação */}
       <AppSidebar
@@ -246,8 +248,7 @@ export default function HomePage() {
         {/* Conteúdo Dinâmico das Views do PDV / Admin */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-[#f8f6fc] dark:bg-[#0e0117] transition-colors duration-150">
           {/* 1. CENTRAL MASTER TI */}
-          {view === 'dev_hub' && isSuperAdmin && <DevMasterView />}
-          {view === 'prevention_center' && isSuperAdmin && <PreventionCenterView />}
+          {(view === 'dev_hub' || view === 'prevention_center') && isSuperAdmin && <DevMasterView />}
           {view === 'audit_logs' && isSuperAdmin && <AuditLogsView />}
 
           {/* 2. FRANQUEADORA MASTER */}

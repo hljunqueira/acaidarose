@@ -20,10 +20,12 @@ import CustomerCartSheet from '@/components/menu/CustomerCartSheet'
 import CallWaiterModal from '@/components/menu/CallWaiterModal'
 import SwitchTableModal from '@/components/menu/SwitchTableModal'
 import { Info } from 'lucide-react'
+import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 
 function MenuContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { isDark: isCustomerDark } = useCustomerTheme()
   const rawLoja = searchParams.get('loja') || searchParams.get('tenantId') || searchParams.get('tenant') || '1'
   const paramNumero = searchParams.get('numero') || searchParams.get('mesa') || searchParams.get('table') || ''
 
@@ -99,21 +101,23 @@ function MenuContent() {
       .catch(() => {})
   }, [rawLoja])
 
-  const handleTableSwitched = (newNum: string) => {
-    setCurrentTableNum(newNum)
-    router.replace(`/menu?loja=${encodeURIComponent(rawLoja)}&numero=${encodeURIComponent(newNum)}`)
-  }
-
-  const handleSelectContainer = (container: ProductContainer) => {
-    if (isCatalogOnly) {
+  const handleSelectContainer = (container: ProductContainer, showInfoOnly = false) => {
+    if (showInfoOnly) {
       setInfoModalProduct(container)
     } else {
       setSelectedContainer(container)
     }
   }
 
+  const handleTableSwitched = (newTableNumber: string) => {
+    setCurrentTableNum(newTableNumber)
+    const url = new URL(window.location.href)
+    url.searchParams.set('numero', newTableNumber)
+    router.replace(url.pathname + url.search)
+  }
+
   return (
-    <div className="min-h-dvh bg-[#f8f5fc] text-slate-900 dark:bg-[#0E0117] dark:text-white flex flex-col selection:bg-pink-500 selection:text-white transition-colors duration-200 overflow-x-hidden max-w-full">
+    <div className={`min-h-dvh flex flex-col selection:bg-pink-500 selection:text-white transition-colors duration-200 overflow-x-hidden max-w-full ${isCustomerDark ? 'dark bg-[#0E0117] text-white' : 'bg-[#f8f5fc] text-slate-900'}`}>
       {/* 1. Header do Cardápio com Troca de Mesa */}
       <CustomerMenuHeader
         tenant={tenant}

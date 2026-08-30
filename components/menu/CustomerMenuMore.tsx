@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { MapPin, Phone, Clock, Star, ExternalLink, Heart, CheckCircle2, Sun, Moon } from 'lucide-react'
-import { useTheme } from 'next-themes'
+import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 
 interface CustomerMenuMoreProps {
   tenant: Tenant | null
 }
 
 export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useCustomerTheme()
   const [ratingOpen, setRatingOpen] = useState(false)
   const [ratingStars, setRatingStars] = useState(5)
   const [ratingComment, setRatingComment] = useState('')

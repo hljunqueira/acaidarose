@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { useTheme } from 'next-themes'
+import React from 'react'
+import { useAdminTheme } from '@/lib/hooks/useIsolatedTheme'
 import { Sun, Moon } from 'lucide-react'
 
 interface ThemeToggleProps {
@@ -9,20 +9,13 @@ interface ThemeToggleProps {
 }
 
 export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
-  const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const { theme, setTheme, mounted, isDark } = useAdminTheme()
 
   if (!mounted) {
     return (
       <div className={`h-8 w-8 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 ${className}`} />
     )
   }
-
-  const isDark = resolvedTheme === 'dark'
 
   return (
     <button
@@ -50,3 +43,4 @@ export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
     </button>
   )
 }
+
