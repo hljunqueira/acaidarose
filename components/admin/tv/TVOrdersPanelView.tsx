@@ -64,10 +64,6 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         const data = await res.json()
         if (Array.isArray(data.orders)) {
           setOrders(data.orders)
-          const currentReady = data.orders.filter((o: Order) => o.status === 'READY')
-          if (currentReady.length === 0) {
-            setLastCalled(null)
-          }
         }
       }
     } catch {
@@ -86,7 +82,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
   // 2. Ouvinte de Chamadas em Tempo Real via BroadcastChannel e LocalStorage
   useEffect(() => {
-    const initialCall = getLastTVCall()
+    const initialCall = getLastTVCall(tenantId)
     if (initialCall) {
       setLastCalled({
         ticket: initialCall.ticket,
@@ -94,32 +90,39 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       })
     }
 
-    const unsubscribe = subscribeToTVCalls((event: TVCallEvent) => {
-      const isQR = Boolean(event.customerName?.includes('Mesa') || event.ticket.startsWith('#0'))
-      
-      const newCall = {
-        ticket: event.ticket,
-        customerName: event.customerName,
-        isQRCode: isQR,
-      }
+    const unsubscribe = subscribeToTVCalls(
+      (event: TVCallEvent) => {
+        const isQR = Boolean(event.customerName?.includes('Mesa') || event.ticket.startsWith('#0'))
+        
+        const newCall = {
+          ticket: event.ticket,
+          customerName: event.customerName,
+          isQRCode: isQR,
+        }
 
-      setLastCalled(newCall)
+        setLastCalled(newCall)
 
-      // Adiciona ao histórico de já chamados
-      setCalledHistory((prev) => {
-        const filtered = prev.filter((item) => item.ticket !== event.ticket)
-        return [newCall, ...filtered].slice(0, 10)
-      })
+        // Adiciona ao histórico de já chamados
+        setCalledHistory((prev) => {
+          const filtered = prev.filter((item) => item.ticket !== event.ticket)
+          return [newCall, ...filtered].slice(0, 10)
+        })
 
-      if (audioEnabled) {
-        announceTVCall(event.ticket, event.customerName)
-      }
+        if (audioEnabled) {
+          announceTVCall(event.ticket, event.customerName)
+        }
 
-      fetchLiveOrders()
-    })
+        fetchLiveOrders()
+      },
+      () => {
+        // Limpar chamada da TV
+        setLastCalled(null)
+      },
+      tenantId
+    )
 
     return () => unsubscribe()
-  }, [audioEnabled, fetchLiveOrders])
+  }, [audioEnabled, fetchLiveOrders, tenantId])
 
   // Ouvinte de mensagem customizada do Marquee em tempo real
   useEffect(() => {

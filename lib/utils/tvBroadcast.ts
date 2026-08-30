@@ -8,12 +8,14 @@ export interface TVCallEvent {
 }
 
 const CHANNEL_NAME = 'acai_tv_orders_channel'
-const STORAGE_KEY = 'acai_tv_last_call'
+const STORAGE_KEY_PREFIX = 'acai_tv_last_call'
+
+const getCallKey = (tenantId?: string) => `${STORAGE_KEY_PREFIX}_${tenantId || 'default'}`
 
 /**
  * Transmite um evento de chamada de senha para a TV
  */
-export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>) {
+export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>, tenantId?: string) {
   const payload: TVCallEvent = {
     ...data,
     timestamp: Date.now(),
@@ -23,7 +25,7 @@ export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>) {
   if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
     try {
       const channel = new BroadcastChannel(CHANNEL_NAME)
-      channel.postMessage(payload)
+      channel.postMessage({ type: 'CALL', payload, tenantId })
       channel.close()
     } catch {
       // fallback silencioso
@@ -33,7 +35,7 @@ export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>) {
   // 2. LocalStorage (dispara evento 'storage' entre abas e persiste o último chamado)
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+      localStorage.setItem(getCallKey(tenantId), JSON.stringify(payload))
     } catch {
       // fallback silencioso
     }
@@ -41,9 +43,32 @@ export function broadcastTVCall(data: Omit<TVCallEvent, 'timestamp'>) {
 }
 
 /**
+ * Limpa a senha em exibição na Smart TV
+ */
+export function broadcastTVClearCall(tenantId?: string) {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(getCallKey(tenantId))
+    } catch {}
+  }
+
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      const channel = new BroadcastChannel(CHANNEL_NAME)
+      channel.postMessage({ type: 'CLEAR', tenantId })
+      channel.close()
+    } catch {}
+  }
+}
+
+/**
  * Registra um ouvinte para receber chamadas de senha na TV
  */
-export function subscribeToTVCalls(callback: (event: TVCallEvent) => void) {
+export function subscribeToTVCalls(
+  callback: (event: TVCallEvent) => void,
+  onClear?: () => void,
+  targetTenantId?: string
+) {
   if (typeof window === 'undefined') return () => {}
 
   let channel: BroadcastChannel | null = null
@@ -52,7 +77,14 @@ export function subscribeToTVCalls(callback: (event: TVCallEvent) => void) {
     try {
       channel = new BroadcastChannel(CHANNEL_NAME)
       channel.onmessage = (msg) => {
-        if (msg.data && msg.data.ticket) {
+        if (!msg.data) return
+        if (targetTenantId && msg.data.tenantId && msg.data.tenantId !== targetTenantId) return
+
+        if (msg.data.type === 'CLEAR') {
+          onClear?.()
+        } else if (msg.data.type === 'CALL' && msg.data.payload?.ticket) {
+          callback(msg.data.payload)
+        } else if (msg.data.ticket) {
           callback(msg.data)
         }
       }
@@ -62,14 +94,17 @@ export function subscribeToTVCalls(callback: (event: TVCallEvent) => void) {
   }
 
   const handleStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY && e.newValue) {
-      try {
-        const data = JSON.parse(e.newValue)
-        if (data && data.ticket) {
-          callback(data)
-        }
-      } catch {
-        // ignore
+    const key = getCallKey(targetTenantId)
+    if (e.key === key) {
+      if (!e.newValue) {
+        onClear?.()
+      } else {
+        try {
+          const data = JSON.parse(e.newValue)
+          if (data && data.ticket) {
+            callback(data)
+          }
+        } catch {}
       }
     }
   }
@@ -87,10 +122,10 @@ export function subscribeToTVCalls(callback: (event: TVCallEvent) => void) {
 /**
  * Obtém a última chamada salva
  */
-export function getLastTVCall(): TVCallEvent | null {
+export function getLastTVCall(tenantId?: string): TVCallEvent | null {
   if (typeof window === 'undefined') return null
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(getCallKey(tenantId))
     if (!raw) return null
     return JSON.parse(raw)
   } catch {

@@ -5,16 +5,19 @@ import { Input } from '@/components/ui/input'
 import { useAuthStore } from '@/lib/stores/authStore'
 import {
   broadcastTVCall,
+  broadcastTVClearCall,
+  getLastTVCall,
   broadcastTVMarquee,
   getCustomTVMarquee,
   getStoreTVVideos,
   broadcastTVVideos,
   TVVideoItem,
   DEFAULT_OFFICIAL_VIDEOS,
+  TVCallEvent,
 } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order, OrderStatus } from '@/types'
-import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Link, Check, Plus, AlertCircle, Play } from 'lucide-react'
+import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Check, Plus, AlertCircle, Tv, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TVOrdersControlViewProps {
@@ -29,6 +32,9 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const [marqueeText, setMarqueeText] = useState('')
   const [showMarqueeEditor, setShowMarqueeEditor] = useState(false)
 
+  // Controle de Senha em Exibição na Smart TV
+  const [currentTVCall, setCurrentTVCall] = useState<TVCallEvent | null>(null)
+
   // Estados do Gestor de Vídeos da TV
   const [showVideosManager, setShowVideosManager] = useState(false)
   const [storeVideos, setStoreVideos] = useState<TVVideoItem[]>([])
@@ -37,6 +43,11 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const [videoTitleInput, setVideoTitleInput] = useState('')
   const [editingVideo, setEditingVideo] = useState<TVVideoItem | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Estado para a Central de Chamada de Senha (ativa por padrão ou sob demanda)
+  const [showCallModal, setShowCallModal] = useState(true)
+  const [manualTicket, setManualTicket] = useState('')
+  const [manualClient, setManualClient] = useState('')
 
   const storeSlug = tenantId === '22222222-2222-2222-2222-222222222222' 
     ? 'torres-novas' 
@@ -49,6 +60,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   useEffect(() => {
     setMarqueeText(getCustomTVMarquee())
     setStoreVideos(getStoreTVVideos(tenantId))
+    setCurrentTVCall(getLastTVCall(tenantId))
   }, [tenantId])
 
   const handleSaveMarquee = () => {
@@ -96,6 +108,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       url: fileUrl,
       active: true,
       isOfficial: false,
+      tagPosition: 'BOTTOM',
+      showTags: true,
     }
 
     const updated = [newVideo, ...storeVideos]
@@ -118,6 +132,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       url: videoUrlInput.trim(),
       active: true,
       isOfficial: false,
+      tagPosition: 'BOTTOM',
+      showTags: true,
     }
 
     const updated = [newVideo, ...storeVideos]
@@ -159,11 +175,11 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
 
   const updateStatus = async (orderId: string, status: OrderStatus) => {
     try {
-      const res = await authFetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
+      await authFetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       })
-      if (!res.ok) throw new Error('Falha ao atualizar pedido')
       
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status } : o))
@@ -177,11 +193,21 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
 
   const handleMarkAsReadyAndCall = (order: Order) => {
     const ticket = `#${String(order.orderNumber || 1).padStart(3, '0')}`
+    const client = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
     
-    broadcastTVCall({
+    broadcastTVCall(
+      {
+        ticket,
+        customerName: client,
+        status: 'READY',
+      },
+      tenantId
+    )
+
+    setCurrentTVCall({
       ticket,
-      customerName: order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão'),
-      status: 'READY',
+      customerName: client,
+      timestamp: Date.now(),
     })
 
     if (audioEnabled) {
@@ -194,10 +220,21 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
 
   const handleReCall = (order: Order) => {
     const ticket = `#${String(order.orderNumber || 1).padStart(3, '0')}`
-    broadcastTVCall({
+    const client = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+
+    broadcastTVCall(
+      {
+        ticket,
+        customerName: client,
+        status: 'READY',
+      },
+      tenantId
+    )
+
+    setCurrentTVCall({
       ticket,
-      customerName: order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão'),
-      status: 'READY',
+      customerName: client,
+      timestamp: Date.now(),
     })
 
     if (audioEnabled) {
@@ -211,21 +248,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     updateStatus(order.id, 'COMPLETED')
   }
 
-  const preparingOrders = orders.filter(
-    (o) =>
-      (o.status as string) === 'PREPARING' ||
-      (o.status as string) === 'NEW' ||
-      (o.status as string) === 'OPEN' ||
-      (o.status as string) === 'WAITING_PAYMENT' ||
-      (o.status as string) === 'AWAITING_PAYMENT'
-  )
-  const readyOrders = orders.filter((o) => o.status === 'READY')
-
-  // Estado para chamada manual de senha
-  const [showCallModal, setShowCallModal] = useState(false)
-  const [manualTicket, setManualTicket] = useState('')
-  const [manualClient, setManualClient] = useState('')
-
   const handleManualCall = () => {
     if (!manualTicket.trim()) {
       toast.error('Informe o número da senha (ex: 005 ou 5)')
@@ -235,10 +257,19 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     const ticketFormatted = `#${manualTicket.trim().replace('#', '').padStart(3, '0')}`
     const clientFormatted = manualClient.trim() || 'Balcão'
 
-    broadcastTVCall({
+    broadcastTVCall(
+      {
+        ticket: ticketFormatted,
+        customerName: clientFormatted,
+        status: 'READY',
+      },
+      tenantId
+    )
+
+    setCurrentTVCall({
       ticket: ticketFormatted,
       customerName: clientFormatted,
-      status: 'READY',
+      timestamp: Date.now(),
     })
 
     if (audioEnabled) {
@@ -248,8 +279,23 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     toast.success(`Senha ${ticketFormatted} (${clientFormatted}) chamada na Smart TV!`)
     setManualTicket('')
     setManualClient('')
-    setShowCallModal(false)
   }
+
+  const handleClearTVDisplay = () => {
+    broadcastTVClearCall(tenantId)
+    setCurrentTVCall(null)
+    toast.success('Grade da Smart TV liberada com sucesso!')
+  }
+
+  const preparingOrders = orders.filter(
+    (o) =>
+      (o.status as string) === 'PREPARING' ||
+      (o.status as string) === 'NEW' ||
+      (o.status as string) === 'OPEN' ||
+      (o.status as string) === 'WAITING_PAYMENT' ||
+      (o.status as string) === 'AWAITING_PAYMENT'
+  )
+  const readyOrders = orders.filter((o) => o.status === 'READY')
 
   return (
     <div className="space-y-4">
@@ -264,22 +310,22 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Botão de Destaque Primário: Chamar Senha */}
+        <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto shrink-0 pb-0.5">
+          {/* Botão 1: Chamar Senha */}
           <Button
             type="button"
-            onClick={() => {
-              setShowCallModal(!showCallModal)
-              if (showVideosManager) setShowVideosManager(false)
-              if (showMarqueeEditor) setShowMarqueeEditor(false)
-            }}
-            className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl text-xs font-black bg-pink-600 hover:bg-pink-700 text-white cursor-pointer shadow-sm gap-1.5 transition-all"
+            size="sm"
+            onClick={() => setShowCallModal(!showCallModal)}
+            className={`h-8 px-3 rounded-xl text-xs font-black cursor-pointer shadow-xs transition-all shrink-0 ${
+              showCallModal
+                ? 'bg-pink-700 text-white ring-2 ring-pink-400'
+                : 'bg-pink-600 hover:bg-pink-700 text-white'
+            }`}
           >
-            <Megaphone className="h-3.5 w-3.5" />
-            <span>Chamar Senha</span>
+            Chamar Senha
           </Button>
 
-          {/* Vídeos TV */}
+          {/* Botão 2: Vídeos TV */}
           <Button
             type="button"
             variant="outline"
@@ -287,17 +333,15 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             onClick={() => {
               setShowVideosManager(!showVideosManager)
               if (showMarqueeEditor) setShowMarqueeEditor(false)
-              if (showCallModal) setShowCallModal(false)
             }}
-            className={`h-8 sm:h-9 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-purple-200 dark:border-white/15 ${
-              showVideosManager ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black' : ''
+            className={`h-8 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-purple-200 dark:border-white/15 shrink-0 ${
+              showVideosManager ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black' : 'text-purple-950 dark:text-white'
             }`}
           >
-            <Film className="h-3.5 w-3.5 mr-1" />
-            <span>Vídeos TV 🎥</span>
+            Vídeos TV
           </Button>
 
-          {/* Marquee */}
+          {/* Botão 3: Editar Marquee */}
           <Button
             type="button"
             variant="outline"
@@ -305,17 +349,15 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             onClick={() => {
               setShowMarqueeEditor(!showMarqueeEditor)
               if (showVideosManager) setShowVideosManager(false)
-              if (showCallModal) setShowCallModal(false)
             }}
-            className={`h-8 sm:h-9 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-purple-200 dark:border-white/15 ${
-              showMarqueeEditor ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black' : ''
+            className={`h-8 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-purple-200 dark:border-white/15 shrink-0 ${
+              showMarqueeEditor ? 'bg-purple-100 dark:bg-white/15 text-purple-950 dark:text-white font-black' : 'text-purple-950 dark:text-white'
             }`}
           >
-            <Megaphone className="h-3.5 w-3.5 mr-1" />
-            <span>Editar Marquee</span>
+            Editar Marquee
           </Button>
 
-          {/* Áudio Local */}
+          {/* Botão 4: Ativar Áudio */}
           <Button
             type="button"
             variant="outline"
@@ -325,65 +367,229 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               setAudioEnabled(next)
               if (next) announceTVCall('Teste', 'Açaí da Rose')
             }}
-            className={`h-8 sm:h-9 px-3 rounded-xl text-xs font-bold border-purple-200 dark:border-white/15 transition-all cursor-pointer ${
-              audioEnabled ? 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 border-pink-300' : ''
+            className={`h-8 px-3 rounded-xl text-xs font-bold border-purple-200 dark:border-white/15 transition-all cursor-pointer shrink-0 ${
+              audioEnabled ? 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 border-pink-300' : 'text-purple-950 dark:text-white'
             }`}
           >
-            <span>{audioEnabled ? 'Áudio Ativo' : 'Ativar Áudio'}</span>
+            {audioEnabled ? 'Áudio Ativo' : 'Ativar Áudio'}
           </Button>
 
-          {/* Abrir Tela Cheia TV */}
+          {/* Botão 5: Abrir Tela TV */}
           <Button
             type="button"
+            size="sm"
             onClick={() => {
               const origin = typeof window !== 'undefined' && window.location.origin.includes('localhost') ? window.location.origin : 'https://acaidarose.vercel.app'
               window.open(`${origin}/tv/${storeSlug}`, '_blank')
             }}
-            className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl text-xs font-bold bg-[#7C3AED] hover:bg-[#6D28D9] text-white shadow-sm cursor-pointer transition-all"
+            className="h-8 px-3 rounded-xl text-xs font-bold bg-[#7C3AED] hover:bg-[#6D28D9] text-white shadow-xs cursor-pointer transition-all shrink-0"
           >
-            <span>Abrir Tela de TV (Tela Cheia)</span>
+            Abrir Tela TV
           </Button>
         </div>
       </div>
 
-      {/* PAINEL DE CHAMADA MANUAL DE SENHA */}
+      {/* CENTRAL DE CHAMADA DE SENHA & FILA DE PEDIDOS (Exibida ao clicar no botão Chamar Senha) */}
       {showCallModal && (
-        <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-pink-200 dark:border-pink-900/40 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10">
-            <div className="flex items-center gap-2 text-xs sm:text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
-              <Megaphone className="h-4 w-4 text-pink-600" />
-              <span>Chamar Senha Avulsa na Smart TV</span>
+        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* Card 1: Controle de Exibição & Chamador Rápido */}
+          <div className="p-5 rounded-3xl bg-pink-50/70 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900/40 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-pink-200/60 dark:border-pink-900/30">
+              <div className="flex items-center gap-2 text-sm font-black text-pink-950 dark:text-white uppercase tracking-wider">
+                <Megaphone className="h-4 w-4 text-pink-600" />
+                <span>Chamada Instantânea na Smart TV</span>
+              </div>
+
+              {/* Status Atual da TV & Botão de Limpar Grade */}
+              <div className="flex items-center gap-2">
+                {currentTVCall ? (
+                  <div className="flex items-center gap-2 bg-white dark:bg-[#160228] px-3 py-1 rounded-xl border border-pink-200 dark:border-white/10 text-xs shadow-xs">
+                    <Tv className="h-3.5 w-3.5 text-emerald-600 animate-pulse shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-300 font-bold">
+                      Na TV:{' '}
+                      <strong className="font-mono text-purple-950 dark:text-white">
+                        {currentTVCall.ticket}
+                      </strong>{' '}
+                      ({currentTVCall.customerName || 'Balcão'})
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleClearTVDisplay}
+                      className="h-6 px-2 text-[10px] text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer ml-1"
+                      title="Limpar a grade grande da Smart TV"
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Limpar Tela
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-500 font-medium">
+                    TV aguardando chamadas
+                  </span>
+                )}
+              </div>
             </div>
-            <span className="text-xs text-pink-600 dark:text-pink-400 font-bold">
-              Chamada Instantânea com Voz e Destaque
-            </span>
+
+            {/* Formulário de Chamada Rápida */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="w-full sm:w-1/4">
+                <Input
+                  value={manualTicket}
+                  onChange={(e) => setManualTicket(e.target.value)}
+                  placeholder="Nº Senha (ex: 005)"
+                  className="h-10 text-xs font-mono font-black bg-white dark:bg-[#160228] border-pink-200 dark:border-white/20 text-pink-950 dark:text-white"
+                />
+              </div>
+              <div className="w-full sm:flex-1">
+                <Input
+                  value={manualClient}
+                  onChange={(e) => setManualClient(e.target.value)}
+                  placeholder="Nome do Cliente ou Mesa (ex: Henrique ou Mesa 04)"
+                  className="h-10 text-xs bg-white dark:bg-[#160228] border-pink-200 dark:border-white/20 text-purple-950 dark:text-white"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleManualCall}
+                className="w-full sm:w-auto h-10 px-6 bg-pink-600 hover:bg-pink-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-md shadow-pink-600/30 shrink-0 gap-1.5"
+              >
+                <Megaphone className="h-4 w-4" />
+                <span>Chamar na TV 🔔</span>
+              </Button>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <div className="w-full sm:w-1/4">
-              <Input
-                value={manualTicket}
-                onChange={(e) => setManualTicket(e.target.value)}
-                placeholder="Nº Senha (ex: 005)"
-                className="h-10 text-xs font-mono font-black bg-purple-50/40 dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
-              />
+          {/* Card 2: Colunas dos Pedidos (Em Preparação & Pronto para Retirar) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Coluna 1: Em Preparação */}
+            <div className="rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                    Em Preparação
+                  </h2>
+                </div>
+                <Badge variant="outline" className="text-xs font-bold text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+                  {preparingOrders.length} pedidos
+                </Badge>
+              </div>
+
+              <div className="space-y-3 min-h-[160px]">
+                {preparingOrders.length === 0 ? (
+                  <div className="h-[140px] flex items-center justify-center text-xs text-slate-400 dark:text-slate-500 font-bold">
+                    Nenhum pedido em preparação no momento.
+                  </div>
+                ) : (
+                  preparingOrders.map((order) => {
+                    const ticket = `#${String(order.orderNumber || 1).padStart(3, '0')}`
+                    return (
+                      <div
+                        key={order.id}
+                        className="p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between gap-3 transition-all hover:border-purple-200"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-base text-purple-950 dark:text-white">
+                              {ticket}
+                            </span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                              {order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {order.items?.length || 1} {order.items?.length === 1 ? 'item' : 'itens'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleMarkAsReadyAndCall(order)}
+                            className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm gap-1"
+                          >
+                            <Check className="h-3 w-3" />
+                            <span>Pronto & Chamar</span>
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
             </div>
-            <div className="w-full sm:flex-1">
-              <Input
-                value={manualClient}
-                onChange={(e) => setManualClient(e.target.value)}
-                placeholder="Nome do Cliente ou Mesa (ex: Henrique ou Mesa 04)"
-                className="h-10 text-xs bg-purple-50/40 dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
-              />
+
+            {/* Coluna 2: Pronto para Retirar */}
+            <div className="rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    Pronto para Retirar
+                  </h2>
+                </div>
+                <Badge variant="outline" className="text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10">
+                  {readyOrders.length} pedidos
+                </Badge>
+              </div>
+
+              <div className="space-y-3 min-h-[160px]">
+                {readyOrders.length === 0 ? (
+                  <div className="h-[140px] flex items-center justify-center text-xs text-slate-400 dark:text-slate-500 font-bold">
+                    Nenhum pedido aguardando retirada.
+                  </div>
+                ) : (
+                  readyOrders.map((order) => {
+                    const ticket = `#${String(order.orderNumber || 1).padStart(3, '0')}`
+                    return (
+                      <div
+                        key={order.id}
+                        className="p-3.5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between gap-3 transition-all"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-base text-emerald-950 dark:text-emerald-200">
+                              {ticket}
+                            </span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                              {order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">
+                            Aguardando Cliente no Balcão
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReCall(order)}
+                            className="h-8 px-2.5 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-900 dark:text-purple-200 cursor-pointer"
+                            title="Chamar novamente na TV"
+                          >
+                            <Megaphone className="h-3 w-3 mr-1" />
+                            <span>Re-chamar</span>
+                          </Button>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleDeliver(order)}
+                            className="h-8 px-3 bg-purple-700 hover:bg-purple-800 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm gap-1"
+                          >
+                            <Check className="h-3 w-3" />
+                            <span>Entregue</span>
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
             </div>
-            <Button
-              type="button"
-              onClick={handleManualCall}
-              className="w-full sm:w-auto h-10 px-6 bg-pink-600 hover:bg-pink-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm shrink-0 gap-1.5"
-            >
-              <Megaphone className="h-4 w-4" />
-              <span>Tocar & Chamar na TV 🔔</span>
-            </Button>
           </div>
         </div>
       )}
@@ -393,7 +599,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
         <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-100 dark:border-white/10">
             <div>
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
                 <Film className="h-4 w-4 text-fuchsia-600" />
                 <span>Gerenciar Vídeos Promocionais da Smart TV</span>
               </div>
@@ -418,7 +624,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           </div>
 
           {/* Orientações Técnicas com Badges Claras */}
-          <div className="p-3 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="p-3 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-1.5 text-purple-950 dark:text-white font-bold">
               <AlertCircle className="h-4 w-4 text-pink-600 shrink-0" />
               <span>Orientações de Resolução & Tamanho:</span>
@@ -437,7 +643,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           </div>
 
           {/* Área de Inserção: Dropzone Principal com Alternador de URL */}
-          <div className="p-4 rounded-2xl bg-purple-50/30 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-3">
+          <div className="p-4 rounded-2xl bg-purple-50/30 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
                 Adicionar Novo Vídeo
@@ -452,7 +658,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             </div>
 
             {videoInputMode === 'FILE' ? (
-              /* Dropzone de Upload */
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-purple-200 dark:border-white/20 hover:border-pink-500 dark:hover:border-pink-500 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-white dark:bg-white/5 hover:bg-purple-50/60 group"
@@ -475,7 +680,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                 />
               </div>
             ) : (
-              /* Formulário por URL */
               <div className="flex flex-col sm:flex-row items-center gap-2">
                 <Input
                   value={videoTitleInput}
@@ -814,137 +1018,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           </div>
         </div>
       )}
-
-      {/* Colunas dos Pedidos (Em Preparação & Pronto para Retirar) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Coluna 1: Em Preparação */}
-        <div className="rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 p-5 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                Em Preparação
-              </h2>
-            </div>
-            <Badge variant="outline" className="text-xs font-bold text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
-              {preparingOrders.length} pedidos
-            </Badge>
-          </div>
-
-          <div className="space-y-3 min-h-[220px]">
-            {preparingOrders.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center text-xs text-slate-400 dark:text-slate-500 font-bold">
-                Nenhum pedido em preparação no momento.
-              </div>
-            ) : (
-              preparingOrders.map((order) => {
-                const ticket = `#${String(order.orderNumber || 1).padStart(3, '0')}`
-                return (
-                  <div
-                    key={order.id}
-                    className="p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between gap-3 transition-all hover:border-purple-200"
-                  >
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-base text-purple-950 dark:text-white">
-                          {ticket}
-                        </span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                          {order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {order.items?.length || 1} {order.items?.length === 1 ? 'item' : 'itens'}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => handleMarkAsReadyAndCall(order)}
-                        className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm gap-1"
-                      >
-                        <Check className="h-3 w-3" />
-                        <span>Pronto & Chamar</span>
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Coluna 2: Pronto para Retirar */}
-        <div className="rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 p-5 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                Pronto para Retirar
-              </h2>
-            </div>
-            <Badge variant="outline" className="text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10">
-              {readyOrders.length} pedidos
-            </Badge>
-          </div>
-
-          <div className="space-y-3 min-h-[220px]">
-            {readyOrders.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center text-xs text-slate-400 dark:text-slate-500 font-bold">
-                Nenhum pedido aguardando retirada.
-              </div>
-            ) : (
-              readyOrders.map((order) => {
-                const ticket = `#${String(order.orderNumber || 1).padStart(3, '0')}`
-                return (
-                  <div
-                    key={order.id}
-                    className="p-3.5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between gap-3 transition-all"
-                  >
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-base text-emerald-950 dark:text-emerald-200">
-                          {ticket}
-                        </span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                          {order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">
-                        Aguardando Cliente no Balcão
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleReCall(order)}
-                        className="h-8 px-2.5 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-900 dark:text-purple-200 cursor-pointer"
-                        title="Chamar novamente na TV"
-                      >
-                        <Megaphone className="h-3 w-3 mr-1" />
-                        <span>Re-chamar</span>
-                      </Button>
-
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => handleDeliver(order)}
-                        className="h-8 px-3 bg-purple-700 hover:bg-purple-800 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm gap-1"
-                      >
-                        <Check className="h-3 w-3" />
-                        <span>Entregue</span>
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
