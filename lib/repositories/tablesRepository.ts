@@ -121,16 +121,52 @@ export async function createBatchTables(
 }
 
 export async function updateTable(id: string, payload: Partial<RestaurantTable>): Promise<RestaurantTable | null> {
+  const tenantId = payload.tenantId || '11111111-1111-1111-1111-111111111111'
+  const tableNumber = payload.number !== undefined ? payload.number : null
+  const code = payload.code || (tableNumber ? `QR-MESA-${tableNumber}` : null)
+  const status = payload.status || null
+  const totalAmount = payload.total !== undefined ? payload.total : null
+
+  // 1. Tenta atualizar a mesa existente por ID
   const res = await query(
     `UPDATE tables 
-     SET status = COALESCE($2, status),
-         total_amount = COALESCE($3, total_amount),
+     SET table_number = COALESCE($2, table_number),
+         qr_code_token = COALESCE($3, qr_code_token),
+         status = COALESCE($4, status),
+         total_amount = COALESCE($5, total_amount),
          updated_at = timezone('utc'::text, now())
-     WHERE id::text = $1
+     WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING *`,
-    [id, payload.status || null, payload.total !== undefined ? payload.total : null]
+    [id, tableNumber, code, status, totalAmount]
   )
+
   if (res.rows?.[0]) return getTableById(id)
+
+  // 2. Se a mesa ainda não existia no banco (ex: ID virtual table-tenant-X), insere nova linha persistida
+  const newId = uuidv4()
+  const insertRes = await query(
+    `INSERT INTO tables (id, tenant_id, table_number, qr_code_token, status, total_amount, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, timezone('utc'::text, now()), timezone('utc'::text, now()))
+     RETURNING *`,
+    [newId, tenantId, tableNumber || 1, code || `QR-MESA-${tableNumber || 1}`, status || 'AVAILABLE', totalAmount || 0]
+  )
+  if (insertRes.rows?.[0]) {
+    const t = insertRes.rows[0]
+    return {
+      id: t.id,
+      tenantId: t.tenant_id,
+      number: t.table_number,
+      code: t.qr_code_token || `MESA-${t.table_number}`,
+      nickname: payload.nickname || `Mesa ${t.table_number}`,
+      status: (t.status || 'AVAILABLE') as TableStatus,
+      total: Number(t.total_amount) || 0,
+      activatedAt: t.activated_at,
+      items: [],
+      createdAt: t.created_at,
+      updatedAt: t.updated_at,
+    }
+  }
+
   return null
 }
 

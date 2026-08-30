@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useRef } from 'react'
 import { RestaurantTable } from '@/types/tables'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { QRCodeSVG } from 'qrcode.react'
+import { Printer, Scissors } from 'lucide-react'
 
 interface BatchTablesQRPrintDialogProps {
   tables: RestaurantTable[]
@@ -23,70 +24,231 @@ const STORE_LABELS: Record<string, string> = {
 }
 
 export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }: BatchTablesQRPrintDialogProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.vercel.app'
 
   const handlePrint = () => {
-    window.print()
+    if (!containerRef.current) {
+      window.print()
+      return
+    }
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1000')
+    if (!printWindow) {
+      window.print()
+      return
+    }
+
+    const contentHtml = containerRef.current.innerHTML
+
+    printWindow.document.open()
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt">
+      <head>
+        <meta charset="utf-8" />
+        <title>Placas de Mesas — Açaí da Rose</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800;900&display=swap" rel="stylesheet">
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            background: #ffffff;
+            color: #1b032e;
+            padding: 0;
+            margin: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .print-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8mm;
+            width: 100%;
+          }
+          .print-card {
+            border: 2px dashed #9333ea;
+            border-radius: 20px;
+            padding: 20px 14px;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            position: relative;
+          }
+          .print-card img.logo {
+            height: 38px;
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 4px;
+          }
+          .print-card .branch {
+            font-size: 9px;
+            font-weight: 900;
+            color: #7e22ce;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+          }
+          .print-card .qr-wrapper {
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 16px;
+            border: 1.5px solid #e9d5ff;
+            margin-bottom: 12px;
+            display: inline-block;
+          }
+          .print-card .qr-wrapper svg {
+            display: block;
+          }
+          .print-card .table-num {
+            font-size: 20px;
+            font-weight: 900;
+            color: #1b032e;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+          }
+          .print-card .table-extra {
+            font-size: 10px;
+            font-weight: 800;
+            color: #db2777;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+          }
+          .print-card .instruction {
+            font-size: 9.5px;
+            font-weight: 800;
+            color: #6b21a8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 6px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-grid">
+          ${contentHtml}
+        </div>
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.focus();
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="text-base font-black text-foreground">
-            Folha de Impressão — Todas as Placas de Mesas ({tables.length})
+      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
+        <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10">
+          <DialogTitle className="text-base font-black text-purple-950 dark:text-white flex items-center gap-2">
+            <span>Folha de Impressão — Placas de Mesas ({tables.length})</span>
           </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Pronto para impressão em folha A4 com corte. As placas incluem a logo oficial do Açaí da Rose e a filial correspondente.
+          <p className="text-xs text-purple-700/80 dark:text-purple-300/80">
+            Layout em grade A4 otimizado com linhas de corte para tesoura. Cada placa contém QR Code em alta definição e identificação da mesa.
           </p>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-4">
+        {/* Container renderizado na tela e capturado para impressão perfeita */}
+        <div
+          ref={containerRef}
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-4"
+        >
           {tables.map((table) => {
             const lojaSlug = STORE_SLUGS[table.tenantId] || 'aveiro'
-            const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${table.number.toString().padStart(2, '0')}&loja=${lojaSlug}`
+            const formattedNum = table.number.toString().padStart(2, '0')
+            const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${formattedNum}&loja=${lojaSlug}`
             const branchLabel = STORE_LABELS[table.tenantId] || 'Açaí da Rose'
+
+            // Evita duplicar "Mesa 5" abaixo de "MESA 05"
+            const isRedundantNickname =
+              !table.nickname ||
+              /^mesa\s*\d+$/i.test(table.nickname.trim()) ||
+              table.nickname.trim().toLowerCase() === 'salão' ||
+              table.nickname.trim().toLowerCase() === 'salao'
 
             return (
               <div
                 key={table.id}
-                className="p-4 rounded-3xl border-2 border-purple-200 bg-white flex flex-col items-center text-center shadow-xs page-break-inside-avoid"
+                className="print-card p-4 rounded-3xl border-2 border-dashed border-purple-300 dark:border-white/20 bg-gradient-to-b from-purple-50/60 via-white to-purple-50/30 dark:from-white/10 dark:via-[#160228] dark:to-white/5 flex flex-col items-center text-center shadow-xs"
               >
-                <img src="/logo.png" alt="Açaí da Rose" className="h-9 w-auto object-contain mb-1" />
-                <div className="text-[8px] font-black text-purple-700 uppercase tracking-widest mb-2">
+                <img
+                  src="/logo.png"
+                  alt="Açaí da Rose"
+                  className="logo h-9 w-auto object-contain mb-1 drop-shadow-xs"
+                />
+                <div className="branch text-[8.5px] font-black text-purple-700 dark:text-pink-400 uppercase tracking-widest mb-2">
                   {branchLabel}
                 </div>
 
-                <div className="p-1 bg-white rounded-xl shadow-xs border border-purple-100 mb-2">
+                <div className="qr-wrapper p-2 bg-white rounded-2xl shadow-xs border border-purple-100 dark:border-white/15 mb-2.5">
                   <QRCodeSVG
                     value={tableUrl}
-                    size={140}
+                    size={135}
                     level="H"
-                    includeMargin
+                    includeMargin={false}
                     fgColor="#1b032e"
                   />
                 </div>
 
-                <div className="text-base font-black text-purple-950">MESA {table.number.toString().padStart(2, '0')}</div>
-                <div className="text-[9px] text-muted-foreground font-semibold truncate max-w-[140px]">
-                  {table.nickname || 'Salão'}
+                <div className="table-num text-lg font-black text-purple-950 dark:text-white font-mono tracking-tight">
+                  MESA {formattedNum}
+                </div>
+
+                {!isRedundantNickname && (
+                  <div className="table-extra text-[10px] font-extrabold text-pink-600 dark:text-pink-400 uppercase tracking-wider mt-0.5">
+                    {table.nickname?.trim()}
+                  </div>
+                )}
+
+                <div className="instruction text-[9px] font-bold text-purple-700/80 dark:text-purple-300/80 uppercase tracking-wider mt-1">
+                  Aponte a câmara para pedir
                 </div>
               </div>
             )
           })}
         </div>
 
-        <DialogFooter className="flex justify-between items-center">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="text-xs">
+        <DialogFooter className="pt-3 border-t border-purple-100 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto h-8 text-xs rounded-xl"
+          >
             Fechar
           </Button>
+
           <Button
+            type="button"
             size="sm"
             onClick={handlePrint}
             disabled={tables.length === 0}
-            className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs"
+            className="w-full sm:w-auto h-8 bg-purple-900 hover:bg-purple-950 dark:bg-pink-600 dark:hover:bg-pink-700 text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            Imprimir Todas as Placas
+            <Printer className="h-3.5 w-3.5" />
+            <span>Imprimir Todas as Placas (A4)</span>
           </Button>
         </DialogFooter>
       </DialogContent>

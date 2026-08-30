@@ -76,8 +76,123 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
     window.open(tableUrl, '_blank')
   }
 
+  const cardRef = React.useRef<HTMLDivElement>(null)
+
   const handlePrint = () => {
-    window.print()
+    if (!cardRef.current) {
+      window.print()
+      return
+    }
+
+    const printWindow = window.open('', '_blank', 'width=600,height=750')
+    if (!printWindow) {
+      window.print()
+      return
+    }
+
+    const cardContent = cardRef.current.innerHTML
+
+    printWindow.document.open()
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt">
+      <head>
+        <meta charset="utf-8" />
+        <title>Placa Mesa ${formattedTableNumber} — Açaí da Rose</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800;900&display=swap" rel="stylesheet">
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 15mm;
+          }
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            background: #ffffff;
+            color: #1b032e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .print-card-single {
+            border: 2.5px dashed #9333ea;
+            border-radius: 24px;
+            padding: 30px 24px;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            max-width: 320px;
+            width: 100%;
+          }
+          .print-card-single img {
+            height: 48px;
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 6px;
+          }
+          .print-card-single .branch {
+            font-size: 11px;
+            font-weight: 900;
+            color: #7e22ce;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+          }
+          .print-card-single .qr-box {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 20px;
+            border: 2px solid #e9d5ff;
+            margin-bottom: 16px;
+            display: inline-block;
+          }
+          .print-card-single .qr-box svg {
+            display: block;
+          }
+          .print-card-single .table-num {
+            font-size: 26px;
+            font-weight: 900;
+            color: #1b032e;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+          }
+          .print-card-single .instruction {
+            font-size: 11px;
+            font-weight: 800;
+            color: #6b21a8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-card-single">
+          ${cardContent}
+        </div>
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.focus();
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
   }
 
   return (
@@ -179,7 +294,10 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
 
           {/* COLUNA 2: PREVIEW DA PLACA FÍSICA DE MESA */}
           <div className="flex flex-col items-center justify-center">
-            <div className="w-full max-w-[260px] p-5 rounded-3xl border-2 border-purple-200 dark:border-white/20 bg-gradient-to-b from-purple-50/70 via-white to-purple-50/40 dark:from-white/10 dark:via-[#160228] dark:to-white/5 flex flex-col items-center text-center shadow-lg print:border-none print:shadow-none">
+            <div
+              ref={cardRef}
+              className="w-full max-w-[260px] p-5 rounded-3xl border-2 border-purple-200 dark:border-white/20 bg-gradient-to-b from-purple-50/70 via-white to-purple-50/40 dark:from-white/10 dark:via-[#160228] dark:to-white/5 flex flex-col items-center text-center shadow-lg print:border-none print:shadow-none"
+            >
               <img
                 src="/logo.png"
                 alt="Açaí da Rose"

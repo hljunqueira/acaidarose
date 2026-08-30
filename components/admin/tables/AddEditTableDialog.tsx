@@ -70,11 +70,12 @@ export default function AddEditTableDialog({
         if (!res.ok) throw new Error('Falha ao criar lote de mesas')
         toast.success(`${totalBatchCount} mesas criadas com sucesso!`)
       } else {
+        const tableNum = table ? table.number : (Number(number) || 1)
         const payload = {
           tenantId,
-          number: Number(number),
-          code: number,
-          nickname: nickname || `Mesa ${number.padStart(2, '0')}`,
+          number: tableNum,
+          code: table?.code || `QR-MESA-${tableNum}`,
+          nickname: nickname.trim() || `Mesa ${tableNum.toString().padStart(2, '0')}`,
           serviceChargePercent: 0,
           status: table?.status || 'AVAILABLE',
         }
@@ -88,8 +89,11 @@ export default function AddEditTableDialog({
           body: JSON.stringify(payload),
         })
 
-        if (!res.ok) throw new Error('Falha ao guardar mesa')
-        toast.success(table ? 'Mesa atualizada!' : `Mesa ${number} adicionada ao salão!`)
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.error || 'Falha ao guardar mesa')
+        }
+        toast.success(table ? `Mesa ${tableNum} atualizada com sucesso!` : `Mesa ${tableNum} adicionada ao salão!`)
       }
 
       onSuccess()
@@ -179,16 +183,33 @@ export default function AddEditTableDialog({
             /* Formulário Unitário */
             <div className="space-y-3">
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-purple-950 dark:text-white">Número da Mesa *</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Número da Mesa *</Label>
+                  {table && (
+                    <span className="text-[10px] text-muted-foreground font-semibold">
+                      (Bloqueado na edição)
+                    </span>
+                  )}
+                </div>
                 <Input
                   type="number"
                   min="1"
-                  value={number}
+                  value={table ? table.number : number}
                   onChange={(e) => setNumber(e.target.value)}
                   placeholder="Ex: 1"
                   required
-                  className="h-10 text-xs rounded-xl font-bold font-mono"
+                  disabled={Boolean(table)}
+                  className={`h-10 text-xs rounded-xl font-bold font-mono ${
+                    table
+                      ? 'bg-purple-100/50 dark:bg-white/5 opacity-70 cursor-not-allowed border-dashed'
+                      : ''
+                  }`}
                 />
+                {table && (
+                  <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
+                    O número da mesa não pode ser alterado após a criação. Para usar outro número, exclua esta mesa e adicione uma nova.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">
