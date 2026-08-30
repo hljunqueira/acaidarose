@@ -1,8 +1,15 @@
-'use client'
-
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { subscribeToTVCalls, getLastTVCall, TVCallEvent, subscribeToTVMarquee, getCustomTVMarquee } from '@/lib/utils/tvBroadcast'
+import {
+  subscribeToTVCalls,
+  getLastTVCall,
+  TVCallEvent,
+  subscribeToTVMarquee,
+  getCustomTVMarquee,
+  subscribeToTVVideos,
+  getStoreTVVideos,
+  TVVideoItem,
+} from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
 import { Maximize, Minimize, Crown, Clock } from 'lucide-react'
@@ -10,13 +17,6 @@ import { Maximize, Minimize, Crown, Clock } from 'lucide-react'
 interface TVOrdersPanelViewProps {
   tenantId?: string
 }
-
-const ACAI_VIDEOS = [
-  '/videos/hero_cup_rotation.mp4',
-  '/videos/hero_gliding_texture.mp4',
-  '/videos/hero_orbiting_cup.mp4',
-  '/videos/hero_revealing_cup.mp4',
-]
 
 export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) {
   const [orders, setOrders] = useState<Order[]>([])
@@ -28,6 +28,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   const [currentTime, setCurrentTime] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [customMarquee, setCustomMarquee] = useState('')
+  const [storeVideos, setStoreVideos] = useState<TVVideoItem[]>([])
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -129,9 +130,24 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return () => unsubscribeMarquee()
   }, [])
 
+  // Ouvinte e Carregamento de Vídeos da Playlist da Loja em tempo real
+  useEffect(() => {
+    setStoreVideos(getStoreTVVideos(tenantId))
+    const unsubscribeVideos = subscribeToTVVideos((videos) => {
+      setStoreVideos(videos)
+    }, tenantId)
+    return () => unsubscribeVideos()
+  }, [tenantId])
+
+  // Filtra estritamente os vídeos ativos na playlist da loja
+  const activeVideos = storeVideos.filter((v) => v.active)
+  const currentVideo = activeVideos.length > 0 ? activeVideos[currentVideoIndex % activeVideos.length] : null
+
   // 3. Rotação contínua de vídeos em loop
   const handleVideoEnded = () => {
-    setCurrentVideoIndex((prev) => (prev + 1) % ACAI_VIDEOS.length)
+    if (activeVideos.length > 0) {
+      setCurrentVideoIndex((prev) => (prev + 1) % activeVideos.length)
+    }
   }
 
   // Alternar tela cheia
@@ -220,33 +236,36 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       ref={panelRef}
       className="min-h-screen w-full bg-[#180424] text-white p-3 sm:p-5 flex flex-col justify-between select-none overflow-hidden font-sans"
     >
-      {/* 1. TOPO INTEGRADO: PEDIDOS PRONTOS (Esq), LOGO CENTRALIZADO (Centro) e EM PREPARAÇÃO (Dir) */}
-      <header className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pb-2.5 border-b border-white/15">
-        {/* Título Oficial Esquerda: PEDIDOS PRONTOS em Branco */}
-        <div className="lg:col-span-6 flex items-center">
-          <h2 className="text-3xl sm:text-5xl lg:text-5xl font-black text-white uppercase tracking-tight font-sans drop-shadow-sm leading-none">
-            PEDIDOS PRONTOS
-          </h2>
-        </div>
+      {/* 1. TOPO ALINHADO MILIMETRICAMENTE: Logo no Centro Absoluto (50%) e Títulos alinhados às colunas */}
+      <header className="relative w-full pb-2.5 border-b border-white/15">
+        {/* Grid de 12 colunas para casamento perfeito com as caixas */}
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          {/* 8 Colunas da Esquerda: PEDIDOS PRONTOS */}
+          <div className="lg:col-span-8 flex items-center">
+            <h2 className="text-3xl sm:text-5xl lg:text-5xl font-black text-white uppercase tracking-tight font-sans drop-shadow-sm leading-none">
+              PEDIDOS PRONTOS
+            </h2>
+          </div>
 
-        {/* Logo Centralizado da Marca */}
-        <div className="lg:col-span-3 flex items-center justify-center gap-2.5">
-          <img src="/logo.png" alt="Açaí da Rose" className="h-8 sm:h-10 w-auto object-contain" />
-          <div className="flex flex-col text-left">
-            <span className="text-sm sm:text-base font-black uppercase tracking-tight text-white leading-tight">
-              Açaí da Rose
-            </span>
-            <span className="text-pink-400 font-bold text-[11px] sm:text-xs leading-none">
-              {storeName}
-            </span>
+          {/* 4 Colunas da Direita: EM PREPARAÇÃO (Alinhado exatamente com o início da caixa branca da direita) */}
+          <div className="lg:col-span-4 flex items-center justify-start">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-400 uppercase tracking-tight font-sans drop-shadow-sm leading-none text-left">
+              EM PREPARAÇÃO
+            </h2>
           </div>
         </div>
 
-        {/* Título Oficial Direita: EM PREPARAÇÃO em Amarelo/Dourado */}
-        <div className="lg:col-span-3 flex items-center justify-end">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-400 uppercase tracking-tight font-sans drop-shadow-sm leading-none text-right">
-            EM PREPARAÇÃO
-          </h2>
+        {/* Logotipo e Nome da Loja Centralizados no CENTRO GEOMÉTRICO ABSOLUTO (50% da Tela) */}
+        <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 items-center gap-2.5 z-10 pointer-events-none">
+          <img src="/logo.png" alt="Açaí da Rose" className="h-9 w-auto object-contain" />
+          <div className="flex flex-col text-left">
+            <span className="text-base font-black uppercase tracking-tight text-white leading-tight">
+              Açaí da Rose
+            </span>
+            <span className="text-pink-400 font-bold text-xs leading-none">
+              {storeName}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -374,20 +393,30 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             )}
           </div>
 
-          {/* Espaço Multimídia AMPLIADO: Vídeo Oficial de Alta Qualidade */}
+          {/* Espaço Multimídia AMPLIADO: Apenas Vídeos Ativos da Loja (Sem Fallback) */}
           <div className="h-36 sm:h-48 lg:h-52 rounded-2xl overflow-hidden bg-black border-2 border-white/20 shadow-2xl relative">
-            <video
-              ref={videoRef}
-              key={ACAI_VIDEOS[currentVideoIndex]}
-              src={ACAI_VIDEOS[currentVideoIndex]}
-              autoPlay
-              muted
-              playsInline
-              onEnded={handleVideoEnded}
-              className="w-full h-full object-cover"
-            />
+            {activeVideos.length > 0 && currentVideo ? (
+              <video
+                ref={videoRef}
+                key={currentVideo.url}
+                src={currentVideo.url}
+                autoPlay
+                muted
+                playsInline
+                onEnded={handleVideoEnded}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#2a0845] to-[#160228] p-4 text-center">
+                <img src="/logo.png" alt="Açaí da Rose" className="h-10 w-auto object-contain mb-1.5" />
+                <span className="text-xs font-black text-white uppercase tracking-wider">Açaí da Rose</span>
+                <span className="text-[10px] text-pink-400 font-bold">O Verdadeiro Açaí Artesanal</span>
+              </div>
+            )}
             <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-xs text-white font-black drop-shadow-lg">
-              <span className="bg-black/60 px-2 py-0.5 rounded-md">Açaí Puro Artesanal</span>
+              <span className="bg-black/60 px-2 py-0.5 rounded-md truncate max-w-[180px]">
+                {currentVideo?.title || 'Açaí Puro Artesanal'}
+              </span>
               <span className="text-pink-300 bg-black/60 px-2 py-0.5 rounded-md">acaidarose.pt</span>
             </div>
           </div>

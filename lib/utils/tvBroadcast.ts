@@ -163,3 +163,101 @@ export function getCustomTVMarquee(): string {
   } catch {}
   return ''
 }
+
+export interface TVVideoItem {
+  id: string
+  title: string
+  url: string
+  active: boolean
+  isOfficial?: boolean
+}
+
+export const DEFAULT_OFFICIAL_VIDEOS: TVVideoItem[] = [
+  { id: 'v1', title: 'Açaí Puro Artesanal (Rotação)', url: '/videos/hero_cup_rotation.mp4', active: true, isOfficial: true },
+  { id: 'v2', title: 'Textura Cremosa Amazônica', url: '/videos/hero_gliding_texture.mp4', active: true, isOfficial: true },
+  { id: 'v3', title: 'Frutas & Acompanhamentos Nobres', url: '/videos/hero_orbiting_cup.mp4', active: true, isOfficial: true },
+  { id: 'v4', title: 'Taça Gourmet Completa', url: '/videos/hero_revealing_cup.mp4', active: true, isOfficial: true },
+]
+
+const VIDEOS_CHANNEL = 'acai_tv_videos_channel'
+const VIDEOS_STORAGE_PREFIX = 'acai_tv_store_videos_'
+
+/**
+ * Retorna os vídeos configurados da loja (apenas ativos para a TV, ou toda a lista para o admin)
+ */
+export function getStoreTVVideos(tenantId?: string): TVVideoItem[] {
+  if (typeof window === 'undefined') return DEFAULT_OFFICIAL_VIDEOS
+  const key = `${VIDEOS_STORAGE_PREFIX}${tenantId || 'default'}`
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed
+      }
+    }
+  } catch {}
+  return DEFAULT_OFFICIAL_VIDEOS
+}
+
+/**
+ * Transmite e salva a lista de vídeos da loja
+ */
+export function broadcastTVVideos(videos: TVVideoItem[], tenantId?: string) {
+  if (typeof window === 'undefined') return
+  const key = `${VIDEOS_STORAGE_PREFIX}${tenantId || 'default'}`
+
+  try {
+    localStorage.setItem(key, JSON.stringify(videos))
+  } catch {}
+
+  if ('BroadcastChannel' in window) {
+    try {
+      const channel = new BroadcastChannel(VIDEOS_CHANNEL)
+      channel.postMessage({ tenantId: tenantId || 'default', videos, timestamp: Date.now() })
+      channel.close()
+    } catch {}
+  }
+}
+
+/**
+ * Registra um ouvinte para receber atualizações de vídeos da TV em tempo real
+ */
+export function subscribeToTVVideos(callback: (videos: TVVideoItem[]) => void, tenantId?: string) {
+  if (typeof window === 'undefined') return () => {}
+
+  let channel: BroadcastChannel | null = null
+  const expectedTenant = tenantId || 'default'
+
+  if ('BroadcastChannel' in window) {
+    try {
+      channel = new BroadcastChannel(VIDEOS_CHANNEL)
+      channel.onmessage = (msg) => {
+        if (msg.data && Array.isArray(msg.data.videos)) {
+          if (!msg.data.tenantId || msg.data.tenantId === expectedTenant || expectedTenant === 'default') {
+            callback(msg.data.videos)
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const key = `${VIDEOS_STORAGE_PREFIX}${expectedTenant}`
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === key && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue)
+        if (Array.isArray(parsed)) {
+          callback(parsed)
+        }
+      } catch {}
+    }
+  }
+
+  window.addEventListener('storage', handleStorage)
+
+  return () => {
+    if (channel) channel.close()
+    window.removeEventListener('storage', handleStorage)
+  }
+}
