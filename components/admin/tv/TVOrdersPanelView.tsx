@@ -281,21 +281,23 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return false
   }
 
-  // Determina o pedido principal em destaque na CAIXA GIGANTE:
-  const matchedReady = lastCalled
-    ? readyOrders.find((o) => {
+  // Determina se o último chamado já foi finalizado/entregue
+  const isLastCalledCompleted = lastCalled
+    ? orders.some((o) => {
         const tNum = `#${String(o.orderNumber || 1).padStart(3, '0')}`
-        return tNum === lastCalled.ticket || String(o.orderNumber) === lastCalled.ticket.replace('#', '')
+        const matches = tNum === lastCalled.ticket || String(o.orderNumber) === lastCalled.ticket.replace('#', '')
+        return matches && (o.status === 'COMPLETED' || o.status === 'PAID' || o.status === 'CANCELLED')
       })
-    : null
+    : false
 
+  // Determina o pedido principal em destaque na CAIXA GIGANTE:
   const heroOrder: {
     ticket: string
     customerName?: string | null
     tableNumber?: string | number | null
     orderNumber?: number
     isQRCode?: boolean
-  } | null = lastCalled
+  } | null = (lastCalled && !isLastCalledCompleted)
     ? {
         ticket: lastCalled.ticket,
         customerName: lastCalled.customerName,
@@ -336,7 +338,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       isQRCode: h.isQRCode,
     }))
 
-  // Itens em preparação para a esteira horizontal
+  // Itens em preparação para a esteira horizontal (apenas pedidos com status ativo de preparação)
   const preparingItems = preparingOrders
 
   const handleUnlockAudio = () => {
@@ -425,7 +427,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
               </h3>
             </div>
 
-            {/* Esteira Horizontal de Cards 2x Maiores de Preparação */}
+            {/* Esteira Horizontal de Cards 2x Maiores de Preparação (Apenas pedidos reais em preparação) */}
             <div className="w-full overflow-hidden">
               {preparingItems.length > 4 ? (
                 <div className="flex gap-3.5 animate-[marquee_20s_linear_infinite] whitespace-nowrap py-1">
@@ -449,7 +451,6 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                   {[0, 1, 2, 3].map((idx) => {
                     const order = preparingItems[idx]
-                    const historyFallback = !order ? otherHistoryCalls[idx] : null
 
                     return (
                       <div
@@ -465,15 +466,6 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                             <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center gap-1.5 mt-2 leading-tight">
                               {isCrownOrder(order) && <Crown className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" />}
                               <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
-                            </div>
-                          </>
-                        ) : historyFallback ? (
-                          <>
-                            <div className="font-mono font-black text-2xl sm:text-3xl text-slate-700 leading-none">
-                              {historyFallback.ticket}
-                            </div>
-                            <div className="font-sans font-black text-xs sm:text-sm text-slate-600 uppercase truncate w-full mt-1.5 leading-tight">
-                              {historyFallback.customerName || 'BALCÃO'}
                             </div>
                           </>
                         ) : (
