@@ -50,9 +50,20 @@ export default function OrderItemsModal({
   const isPaid = order.paymentStatus === 'PAID'
   const isWaitingPayment = !isPaid || order.status === 'WAITING_PAYMENT'
 
+  const orderTotal =
+    typeof order.total === 'number' && !isNaN(order.total)
+      ? order.total
+      : typeof (order as any).totalAmount === 'number'
+      ? (order as any).totalAmount
+      : typeof (order as any).finalAmount === 'number'
+      ? (order as any).finalAmount
+      : Array.isArray(order.items) && order.items.length > 0
+      ? order.items.reduce((acc: number, it: any) => acc + (it.lineTotal || it.unitPrice || 0), 0)
+      : 0
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-5 md:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         {/* Header com Ticket, Mesa e Nome */}
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
           <div className="flex items-center justify-between gap-2">
@@ -74,11 +85,11 @@ export default function OrderItemsModal({
             <div>
               {isPaid ? (
                 <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 font-black text-[10px] py-0.5 px-2">
-                  ✓ {order.paymentMethod === 'MBWAY' ? 'PAGO VIA MB WAY' : 'PAGO NO CAIXA'}
+                  ✓ {order.paymentMethod === 'MBWAY' ? 'PAGO VIA MB WAY' : 'PAGO'}
                 </Badge>
               ) : (
                 <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 font-black text-[10px] py-0.5 px-2">
-                  ⏳ A PAGAR NO BALCÃO
+                  ⏳ A PAGAR
                 </Badge>
               )}
             </div>
@@ -86,7 +97,7 @@ export default function OrderItemsModal({
 
           <div className="flex items-center gap-1.5 text-xs text-purple-700/80 dark:text-purple-200/70 pt-1 font-semibold">
             <User className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-            <span>Cliente: <strong className="text-purple-950 dark:text-white font-bold">{order.customerName || 'Cliente na Mesa'}</strong></span>
+            <span>Cliente: <strong className="text-purple-950 dark:text-white font-bold">{order.customerName || (isTable ? 'Cliente na Mesa' : 'Balcão')}</strong></span>
             {order.customerPhone && (
               <span className="font-mono text-[11px]">· Tel: {order.customerPhone}</span>
             )}
@@ -94,7 +105,7 @@ export default function OrderItemsModal({
         </DialogHeader>
 
         {/* Lista Detalhada de Itens da Comanda */}
-        <div className="space-y-3 py-2 max-h-[380px] overflow-y-auto pr-1">
+        <div className="space-y-3 py-2 max-h-[360px] overflow-y-auto pr-1">
           <div className="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-pink-300 flex items-center gap-1">
             <Layers className="h-3.5 w-3.5" />
             <span>Composição dos Itens ({order.items?.length || 0})</span>
@@ -112,7 +123,7 @@ export default function OrderItemsModal({
                 >
                   <div className="flex items-center justify-between font-black text-purple-950 dark:text-white">
                     <span className="text-sm">
-                      {item.quantity || 1}x {item.containerName || item.container?.name || 'Açaí Personalizado'}
+                      {item.quantity || 1}x {item.containerName || item.container?.name || 'Açaí'}
                     </span>
                     <span className="font-mono text-purple-700 dark:text-pink-300 font-bold">
                       {formatCurrency(item.lineTotal || item.unitPrice || 0)}
@@ -121,7 +132,7 @@ export default function OrderItemsModal({
 
                   {/* Bases & Cremes */}
                   {bases.length > 0 && (
-                    <div className="text-[11px] text-purple-900 dark:text-purple-100">
+                    <div className="text-[11px] text-purple-900 dark:text-purple-100 break-words">
                       <span className="font-bold text-purple-700/80 dark:text-purple-200/70">Bases/Cremes:</span>{' '}
                       {bases.map((b: any) => b.name).join(', ')}
                     </div>
@@ -129,7 +140,7 @@ export default function OrderItemsModal({
 
                   {/* Toppings / Frutas / Caldas */}
                   {toppings.length > 0 && (
-                    <div className="text-[11px] text-purple-900 dark:text-purple-100">
+                    <div className="text-[11px] text-purple-900 dark:text-purple-100 break-words">
                       <span className="font-bold text-purple-700/80 dark:text-purple-200/70">Acompanhamentos:</span>{' '}
                       {toppings.map((t: any) => t.name).join(', ')}
                     </div>
@@ -160,16 +171,16 @@ export default function OrderItemsModal({
         </div>
 
         {/* Resumo Financeiro */}
-        <div className="p-3 rounded-2xl bg-purple-50/80 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-between text-xs">
-          <span className="font-bold text-purple-950 dark:text-white">Valor Total do Pedido:</span>
-          <span className="text-lg font-black text-purple-950 dark:text-pink-300 font-mono">
-            {formatCurrency(order.total || order.totalAmount || 0)}
+        <div className="p-3.5 rounded-2xl bg-purple-50/80 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-between text-xs">
+          <span className="font-bold text-purple-950 dark:text-white text-sm">Valor Total do Pedido:</span>
+          <span className="text-xl font-black text-purple-950 dark:text-pink-300 font-mono">
+            {formatCurrency(orderTotal)}
           </span>
         </div>
 
-        {/* Rodapé com Ações: Confirmar Pagamento, Excluir e Imprimir */}
-        <DialogFooter className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-purple-100 dark:border-white/10">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Rodapé com Ações (Layout Flex-Wrap Organizado) */}
+        <DialogFooter className="pt-3 border-t border-purple-100 dark:border-white/10 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 flex-wrap">
             {onDeleteOrder && (
               <Button
                 type="button"
@@ -179,7 +190,7 @@ export default function OrderItemsModal({
                 className="h-8 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border-red-200 dark:border-red-500/30 rounded-xl cursor-pointer gap-1"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>Eliminar Comanda</span>
+                <span>Eliminar</span>
               </Button>
             )}
 
@@ -197,15 +208,15 @@ export default function OrderItemsModal({
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {onCallTV && (
               <Button
                 type="button"
                 size="sm"
                 onClick={() => onCallTV(order)}
-                className="h-8 bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                className="h-8 px-3 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
-                <span>Chamar na Smart TV</span>
+                <span>Chamar Smart TV</span>
               </Button>
             )}
 
@@ -214,10 +225,10 @@ export default function OrderItemsModal({
                 type="button"
                 size="sm"
                 onClick={() => onConfirmPayment(order)}
-                className="h-8 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-sm cursor-pointer gap-1"
+                className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer gap-1"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>Confirmar Pagamento</span>
+                <span>Receber</span>
               </Button>
             )}
 
@@ -226,7 +237,7 @@ export default function OrderItemsModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 cursor-pointer"
+              className="h-8 px-3 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 cursor-pointer"
             >
               Fechar
             </Button>

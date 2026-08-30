@@ -664,20 +664,36 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                             )}
                           </div>
 
-                          {/* Badge Dinâmica de SLA ou Cancelado */}
-                          {isCancelled ? (
-                            <div className="text-[9px] font-black px-1.5 py-0.2 rounded-md border bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-500/40 shrink-0">
-                              Cancelado
-                            </div>
-                          ) : (
-                            <div
-                              className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border flex items-center gap-1 shrink-0 ${sla.className}`}
-                              title={`${elapsedMinutes} min desde o envio`}
+                          {/* Lado Direito do Topo: SLA + Botão Discreto de Excluir */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isCancelled ? (
+                              <div className="text-[9px] font-black px-1.5 py-0.2 rounded-md border bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-500/40 shrink-0">
+                                Cancelado
+                              </div>
+                            ) : (
+                              <div
+                                className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border flex items-center gap-1 shrink-0 ${sla.className}`}
+                                title={`${elapsedMinutes} min desde o envio`}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${sla.dotClass}`} />
+                                <span>{sla.label}</span>
+                              </div>
+                            )}
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteOrderPermanently(order)
+                              }}
+                              className="h-5 w-5 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md cursor-pointer transition shrink-0"
+                              title="Eliminar comanda"
                             >
-                              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${sla.dotClass}`} />
-                              <span>{sla.label}</span>
-                            </div>
-                          )}
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
 
                         {/* Cliente e Resumo de Itens */}
@@ -731,8 +747,8 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                             </div>
                           )}
 
-                          {/* Botões de Ação Rápida no Card */}
-                          <div className="flex items-center justify-between gap-1 pt-1">
+                          {/* Botões de Ação Rápida no Card (Layout Limpo e Alinhado) */}
+                          <div className="flex items-center gap-1.5 pt-1">
                             <Button
                               size="sm"
                               variant="outline"
@@ -740,52 +756,36 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
                                 e.stopPropagation()
                                 setSelectedOrderForItems(order)
                               }}
-                              className="h-8 px-2.5 rounded-xl border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/5 text-[11px] font-bold text-purple-950 dark:text-white cursor-pointer"
+                              className="h-7 flex-1 px-2 rounded-lg border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/5 text-[10.5px] font-bold text-purple-950 dark:text-white cursor-pointer"
                             >
                               <span>Ver Itens</span>
                             </Button>
 
-                            <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleCallTicketOnTV(order)
+                              }}
+                              className="h-7 px-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[10.5px] font-black cursor-pointer shrink-0"
+                              title="Chamar senha na Smart TV"
+                            >
+                              <span>Chamar TV</span>
+                            </Button>
+
+                            {order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && (
                               <Button
-                                type="button"
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleCallTicketOnTV(order)
+                                  handleConfirmCounterPayment(order)
                                 }}
-                                className="h-8 px-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-[10.5px] font-bold cursor-pointer"
-                                title="Chamar senha na Smart TV"
+                                className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10.5px] font-black shadow-xs cursor-pointer shrink-0"
                               >
-                                <span>Chamar TV</span>
+                                <span>Receber</span>
                               </Button>
-
-                              {order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && (
-                                <Button
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleConfirmCounterPayment(order)
-                                  }}
-                                  className="h-8 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-xs cursor-pointer"
-                                >
-                                  <span>Receber</span>
-                                </Button>
-                              )}
-
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDeleteOrderPermanently(order)
-                                }}
-                                className="h-6 w-6 p-0 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer"
-                                title="Excluir comanda"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
+                            )}
                           </div>
                         </div>
 

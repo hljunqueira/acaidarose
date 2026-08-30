@@ -157,6 +157,9 @@ export default function CustomerCartSheet({
         itemsJson: itemsPayload,
         subtotal: cartTotal,
         total: cartTotal,
+        channel: 'QR_CODE',
+        isQRCode: true,
+        cashierName: 'Autoatendimento QR Code',
         notes: isTable ? `Mesa ${tableNumber} · ${paymentMethod === 'MBWAY' ? 'MB WAY' : 'Pagar no Balcão'}` : 'Balcão',
       }
 

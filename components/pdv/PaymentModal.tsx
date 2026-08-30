@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import MBWayQRCodeView from './MBWayQRCodeView'
 import { Coins, CreditCard, Smartphone, Truck, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface PaymentModalProps {
   open: boolean
@@ -42,25 +43,37 @@ export default function PaymentModal({
   const [amountReceived, setAmountReceived] = useState<string>('')
 
   const handleSelectMethod = (code: PaymentMethodCode) => {
+    if (!customerName.trim()) {
+      toast.error('Por favor, introduza o nome do cliente para a chamada de senha.')
+      return
+    }
     if (code === 'MB_WAY') {
       setSelectedMethod('MB_WAY')
     } else if (code === 'NUMERARIO') {
       setSelectedMethod('NUMERARIO')
       setAmountReceived(total.toFixed(2))
     } else {
-      onPay(code, { name: customerName, phone: customerPhone })
+      onPay(code, { name: customerName.trim(), phone: customerPhone })
     }
   }
 
   const handleConfirmMBWay = () => {
-    onPay('MB_WAY', { name: customerName, phone: customerPhone || storePhone || '' })
+    if (!customerName.trim()) {
+      toast.error('Por favor, introduza o nome do cliente para a chamada de senha.')
+      return
+    }
+    onPay('MB_WAY', { name: customerName.trim(), phone: customerPhone || storePhone || '' })
   }
 
   const numReceived = parseFloat(amountReceived.replace(',', '.')) || 0
   const changeDue = Math.max(0, numReceived - total)
 
   const handleConfirmCash = () => {
-    onPay('NUMERARIO', { name: customerName, phone: customerPhone })
+    if (!customerName.trim()) {
+      toast.error('Por favor, introduza o nome do cliente para a chamada de senha.')
+      return
+    }
+    onPay('NUMERARIO', { name: customerName.trim(), phone: customerPhone })
   }
 
   return (
@@ -162,16 +175,23 @@ export default function PaymentModal({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs font-bold">Nome do Cliente (opcional)</Label>
+                <Label className="text-xs font-black text-purple-950 dark:text-purple-200">
+                  Nome do Cliente <span className="text-pink-600">* (Obrigatório)</span>
+                </Label>
                 <Input
                   placeholder="Ex: Maria"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="h-9 text-xs mt-1"
+                  className={`h-9 text-xs mt-1 font-semibold ${
+                    !customerName.trim()
+                      ? 'border-pink-300 dark:border-pink-500/50 focus-visible:ring-pink-500'
+                      : 'border-purple-200'
+                  }`}
+                  autoFocus
                 />
               </div>
               <div>
-                <Label className="text-xs font-bold">Telemóvel (opcional)</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Telemóvel (opcional)</Label>
                 <Input
                   placeholder="912 345 678"
                   value={customerPhone}

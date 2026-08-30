@@ -158,6 +158,15 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return 'Balcão'
   }
 
+  // Determina se o pedido deve exibir a Coroa Dourada (apenas pedidos feitos pelo cliente via autoatendimento QR Code no telemóvel)
+  const isCrownOrder = (order: any) => {
+    if (!order) return false
+    if (order.isQRCode === true) return true
+    if (order.channel === 'QR_CODE') return true
+    if (order.cashierName === 'Autoatendimento QR Code' || order.cashierName === 'QR Code') return true
+    return false
+  }
+
   // Pedido principal pronto em exibição no quadrante grande:
   // - Se readyOrders tiver pedidos: prioriza o último chamado que ainda esteja pronto, ou pega o primeiro pronto.
   // - Se readyOrders estiver VAZIO (pedido finalizado ou excluído): heroOrder é null (tela limpa).
@@ -234,9 +243,9 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                   #{String(heroOrder.orderNumber || 1).padStart(3, '0')}
                 </div>
 
-                {/* Nome do Cliente com Coroa se for QR Code / Mesa */}
+                {/* Nome do Cliente com Coroa se for estritamente QR Code */}
                 <div className="text-2xl sm:text-4xl font-black text-slate-900 flex items-center justify-center gap-2 pt-2">
-                  {(heroOrder.isTableOrder || heroOrder.tableNumber) && (
+                  {isCrownOrder(heroOrder) && (
                     <Crown className="h-7 w-7 sm:h-9 sm:w-9 text-amber-500 fill-amber-500 shrink-0" />
                   )}
                   <span className="truncate max-w-md sm:max-w-lg">
@@ -259,7 +268,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
           <div className="grid grid-cols-3 gap-3">
             {[0, 1, 2].map((idx) => {
               const order = nextReadyOrders[idx]
-              const isQR = Boolean(order?.isTableOrder || order?.tableNumber)
+              const showCrown = isCrownOrder(order)
 
               return (
                 <div
@@ -272,7 +281,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                         #{String(order.orderNumber || 1).padStart(3, '0')}
                       </div>
                       <div className="text-xs sm:text-sm font-bold text-slate-800 truncate w-full flex items-center justify-center gap-1 mt-1">
-                        {isQR && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                        {showCrown && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
                         <span className="truncate">{getDisplayName(order.customerName, order.tableNumber)}</span>
                       </div>
                     </>
@@ -302,7 +311,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             {preparingOrders.length > 0 ? (
               <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                 {preparingOrders.slice(0, 6).map((order) => {
-                  const isQR = Boolean(order.isTableOrder || order.tableNumber)
+                  const showCrown = isCrownOrder(order)
                   const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
                   const clientName = getDisplayName(order.customerName, order.tableNumber)
 
@@ -312,7 +321,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                       className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between font-sans"
                     >
                       <div className="flex items-center gap-1.5 truncate">
-                        {isQR && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                        {showCrown && <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
                         <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
                           {clientName}
                         </span>
