@@ -146,14 +146,26 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   )
   const readyOrders = orders.filter((o) => o.status === 'READY')
 
-  // Helper para exibir nome correto: se tiver nome exibe o nome, se for mesa exibe Mesa XX, se for balcão sem nome exibe 'Balcão'
+  // Helper para exibir nome e mesa:
+  // - Se tiver nome e mesa: "Henrique (Mesa 07)"
+  // - Se tiver só nome: "Henrique"
+  // - Se tiver só mesa: "Mesa 07"
+  // - Se não tiver nenhum: "Balcão"
   const getDisplayName = (customerName?: string | null, tableNumber?: string | number | null) => {
-    if (customerName && customerName.trim()) {
-      return customerName.trim()
+    const rawName = customerName?.trim() || ''
+    const rawTable = tableNumber ? String(tableNumber).replace(/^Mesa\s*/i, '').trim() : ''
+    const isTable = rawTable !== '' && rawTable.toLowerCase() !== 'balcão' && rawTable.toLowerCase() !== 'balcao'
+
+    const tableLabel = isTable ? `Mesa ${rawTable.padStart(2, '0')}` : ''
+
+    if (rawName && tableLabel) {
+      return `${rawName} (${tableLabel})`
     }
-    if (tableNumber) {
-      const tableStr = String(tableNumber).replace(/^Mesa\s*/i, '').trim()
-      return `Mesa ${tableStr.padStart(2, '0')}`
+    if (rawName) {
+      return rawName
+    }
+    if (tableLabel) {
+      return tableLabel
     }
     return 'Balcão'
   }

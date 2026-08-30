@@ -188,7 +188,12 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
                 {preparingOrders.map((order) => {
                   const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
-                  const clientName = order.customerName?.trim() || (order.tableNumber ? `Mesa ${String(order.tableNumber).padStart(2, '0')}` : 'Balcão')
+                  const rawName = order.customerName?.trim() || ''
+                  const rawTable = order.tableNumber ? String(order.tableNumber).replace(/^Mesa\s*/i, '').trim() : ''
+                  const isTable = rawTable !== '' && rawTable.toLowerCase() !== 'balcão' && rawTable.toLowerCase() !== 'balcao'
+                  const tableLabel = isTable ? `Mesa ${rawTable.padStart(2, '0')}` : ''
+                  const clientName = rawName && tableLabel ? `${rawName} (${tableLabel})` : rawName || tableLabel || 'Balcão'
+
                   return (
                     <div
                       key={order.id}
@@ -235,7 +240,12 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
                 {readyOrders.map((order) => {
                   const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
-                  const clientName = order.customerName?.trim() || (order.tableNumber ? `Mesa ${String(order.tableNumber).padStart(2, '0')}` : 'Balcão')
+                  const rawName = order.customerName?.trim() || ''
+                  const rawTable = order.tableNumber ? String(order.tableNumber).replace(/^Mesa\s*/i, '').trim() : ''
+                  const isTable = rawTable !== '' && rawTable.toLowerCase() !== 'balcão' && rawTable.toLowerCase() !== 'balcao'
+                  const tableLabel = isTable ? `Mesa ${rawTable.padStart(2, '0')}` : ''
+                  const clientName = rawName && tableLabel ? `${rawName} (${tableLabel})` : rawName || tableLabel || 'Balcão'
+
                   return (
                     <div
                       key={order.id}
