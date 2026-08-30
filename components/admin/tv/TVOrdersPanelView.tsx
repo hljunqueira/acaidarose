@@ -656,6 +656,24 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                       <span className="opacity-40">★</span>
                       <span>{marqueeConfig.promoText.trim()}</span>
                     </span>
+                  ) : showPreparing && hasIdle ? (
+                    <span className="inline-flex items-center gap-6 mx-4">
+                      {preparingOrders.map((o, idx) => (
+                        <React.Fragment key={o.id || idx}>
+                          <span className="inline-flex items-center gap-3">
+                            <span className="font-mono text-amber-300">
+                              ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
+                            </span>
+                            <span className="text-white font-extrabold">
+                              {getDisplayName(o.customerName, o.tableNumber)}
+                            </span>
+                          </span>
+                          <span className="opacity-40">•</span>
+                        </React.Fragment>
+                      ))}
+                      <span>{marqueeConfig.idleText.trim()}</span>
+                      <span className="opacity-40">•</span>
+                    </span>
                   ) : showPreparing ? (
                     preparingOrders.map((o, idx) => (
                       <span key={o.id || idx} className="inline-flex items-center gap-3 mx-6 uppercase">

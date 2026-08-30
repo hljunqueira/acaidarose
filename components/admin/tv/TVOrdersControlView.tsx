@@ -1036,18 +1036,17 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
         </div>
       )}
 
-      {/* ABA 3: EDIÇÃO DO MARQUEE (RODAPÉ 100% CUSTOMIZÁVEL & LIVE PREVIEW) */}
+      {/* ABA 3: EDIÇÃO DO MARQUEE (RODAPÉ DA SMART TV) */}
       {activeTab === 'MARQUEE' && (
         <div className="p-5 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 space-y-6 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* Header da Aba */}
+          {/* Cabeçalho da Aba */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-100 dark:border-white/10">
             <div>
-              <div className="flex items-center gap-2 text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
-                <Sparkles className="h-4 w-4 text-pink-600" />
-                <span>Personalização Total do Rodapé da Smart TV</span>
-              </div>
+              <h2 className="text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
+                Configuração do Rodapé da Smart TV
+              </h2>
               <p className="text-xs text-purple-700/80 dark:text-purple-300/80 font-medium mt-0.5">
-                Defina textos livres, cores, tipografia, tamanho e velocidade de rolagem sem mensagens travadas.
+                Edite os textos rolantes, cores e velocidade exibidos na parte inferior da TV.
               </p>
             </div>
 
@@ -1072,12 +1071,11 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             </div>
           </div>
 
-          {/* 1. SIMULADOR & LIVE PREVIEW EM TEMPO REAL */}
+          {/* 1. PRÉ-VISUALIZAÇÃO DA TV */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
-                <Tv className="h-3.5 w-3.5 text-pink-600" />
-                <span>Live Preview da Smart TV (Em Tempo Real)</span>
+              <span className="text-[11px] font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                Pré-visualização da TV
               </span>
               <span className="text-[11px] text-purple-600 dark:text-purple-300 font-bold">
                 Velocidade: {marqueeConfig.speedSeconds || 25}s · Cor: {marqueeConfig.textColor || '#E9D5FF'}
@@ -1086,7 +1084,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
 
             <div className="w-full bg-black rounded-2xl p-3 sm:p-4 border-2 border-purple-300 dark:border-white/20 shadow-xl overflow-hidden">
               <div className="flex items-center gap-3 w-full">
-                {/* Badge do Live Preview */}
+                {/* Badge do Preview */}
                 <div
                   className={`flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider ${
                     marqueeConfig.promoText?.trim()
@@ -1110,11 +1108,11 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                       ? 'Comunicado'
                       : marqueeConfig.showPreparingOrders
                       ? 'Em Preparação'
-                      : 'Aviso'}
+                      : 'Institucional'}
                   </span>
                 </div>
 
-                {/* Ticker Animado no Live Preview */}
+                {/* Ticker Animado */}
                 <div className="relative flex-1 overflow-hidden whitespace-nowrap">
                   <div
                     className={`inline-block whitespace-nowrap font-black uppercase tracking-wider ${
@@ -1137,17 +1135,29 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                         <span className="opacity-40">★</span>
                         <span>{marqueeConfig.promoText.trim()}</span>
                       </span>
-                    ) : marqueeConfig.showPreparingOrders ? (
+                    ) : marqueeConfig.showPreparingOrders && marqueeConfig.idleText?.trim() ? (
                       <span className="inline-flex items-center gap-4 mx-4">
                         <span className="text-amber-300 font-mono">⏳ #001 JOÃO SILVA — MESA 02</span>
                         <span className="opacity-40">•</span>
                         <span className="text-amber-300 font-mono">⏳ #002 MARIA SANTOS — BALCÃO</span>
                         <span className="opacity-40">•</span>
-                        <span>{marqueeConfig.idleText?.trim() || 'AÇAÍ DA ROSE · O VERDADEIRO AÇAÍ ARTESANAL'}</span>
+                        <span>{marqueeConfig.idleText.trim()}</span>
+                      </span>
+                    ) : marqueeConfig.showPreparingOrders ? (
+                      <span className="inline-flex items-center gap-4 mx-4">
+                        <span className="text-amber-300 font-mono">⏳ #001 JOÃO SILVA — MESA 02</span>
+                        <span className="opacity-40">•</span>
+                        <span className="text-amber-300 font-mono">⏳ #002 MARIA SANTOS — BALCÃO</span>
+                      </span>
+                    ) : marqueeConfig.idleText?.trim() ? (
+                      <span className="inline-flex items-center gap-4 mx-4">
+                        <span>{marqueeConfig.idleText.trim()}</span>
+                        <span className="opacity-40">•</span>
+                        <span>{marqueeConfig.idleText.trim()}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-4 mx-4">
-                        <span>{marqueeConfig.idleText?.trim() || 'DEFINA SEU TEXTO PERSONALIZADO ABAIXO'}</span>
+                      <span className="inline-flex items-center gap-4 mx-4 opacity-50 text-xs">
+                        (Nenhum texto configurado no rodapé)
                       </span>
                     )}
                   </div>
@@ -1167,62 +1177,55 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             `}</style>
           </div>
 
-          {/* 2. CONTEÚDO DOS TEXTOS (ZERO TEXTOS FORÇADOS) */}
+          {/* 2. CAMPOS DE TEXTO LIVRE */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Campo 1: Mensagem Promocional */}
             <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
-                  <Megaphone className="h-3.5 w-3.5 text-pink-600" />
-                  <span>Mensagem Promocional / Destaque Livre</span>
+                <label className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                  Mensagem Promocional / Comunicado
                 </label>
-                <span className="text-[10px] text-pink-600 font-bold uppercase">Prioridade Alta</span>
+                <span className="text-[10px] text-pink-600 font-bold uppercase">Prioritário</span>
               </div>
               <Input
                 value={marqueeConfig.promoText || ''}
                 onChange={(e) => setMarqueeConfig({ ...marqueeConfig, promoText: e.target.value })}
-                placeholder="Ex: PROMOÇÃO HOJE: Peça 1 Taça de 500ml e ganhe 1 Acompanhamento extra!"
+                placeholder="Ex: Promoção do dia: Peça 1 Taça de 500ml e ganhe 1 Acompanhamento extra"
                 className="h-10 text-xs bg-white dark:bg-[#160228] border-purple-200 dark:border-white/20 text-purple-950 dark:text-white font-medium"
               />
               <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
-                Texto em destaque no rodapé. Se preenchido, será exibido no ticker da Smart TV.
+                Texto de aviso temporário. Quando preenchido, tem prioridade na exibição da TV.
               </p>
             </div>
 
-            {/* Campo 2: Mensagem da Loja / Standby */}
+            {/* Campo 2: Mensagem Institucional da Loja */}
             <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-                  <span>Mensagem Institucional / Aviso Geral</span>
+                <label className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                  Mensagem Institucional da Loja
                 </label>
-                <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold uppercase">Fila Livre</span>
+                <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold uppercase">Padrão</span>
               </div>
               <Input
                 value={marqueeConfig.idleText || ''}
                 onChange={(e) => setMarqueeConfig({ ...marqueeConfig, idleText: e.target.value })}
-                placeholder="Ex: O verdadeiro Açaí Artesanal da Amazônia. Peça no Balcão ou via QR Code na Mesa."
+                placeholder="Ex: Açaí da Rose · O verdadeiro açaí artesanal da Amazônia"
                 className="h-10 text-xs bg-white dark:bg-[#160228] border-purple-200 dark:border-white/20 text-purple-950 dark:text-white font-medium"
               />
               <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
-                Texto institucional exibido quando não houver pedidos na fila ou como complemento da loja.
+                Texto padrão exibido quando não houver comunicados ou intercalado com os pedidos.
               </p>
             </div>
           </div>
 
-          {/* 3. CONTROLE DE EXIBIÇÃO DE PEDIDOS EM PREPARAÇÃO */}
+          {/* 3. EXIBIÇÃO DE PEDIDOS EM PREPARAÇÃO */}
           <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-0.5">
-              <div className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                {marqueeConfig.showPreparingOrders ? (
-                  <Eye className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-                ) : (
-                  <EyeOff className="h-4 w-4 text-red-500 dark:text-red-400" />
-                )}
-                <span>Exibir Pedidos em Preparação no Marquee</span>
+              <div className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
+                Exibição de Pedidos em Preparação
               </div>
               <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80 font-medium">
-                Intercala as comandas ativas em preparação (⏳ #001 NOME — MESA XX) na esteira rolante do rodapé.
+                Quando ativado, as comandas que estão sendo preparadas são intercaladas na esteira do rodapé.
               </p>
             </div>
 
@@ -1237,7 +1240,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                     : 'bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-slate-700 dark:text-slate-300 hover:bg-purple-50'
                 }`}
               >
-                <span>✓ Exibir Pedidos</span>
+                <span>Exibir Pedidos</span>
               </Button>
               <Button
                 type="button"
@@ -1249,19 +1252,18 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                     : 'bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-slate-700 dark:text-slate-300 hover:bg-purple-50'
                 }`}
               >
-                <span>✕ Apenas Textos</span>
+                <span>Ocultar Pedidos</span>
               </Button>
             </div>
           </div>
 
-          {/* 4. PERSONALIZAÇÃO VISUAL (COR, FONTE, TAMANHO, VELOCIDADE) */}
+          {/* 4. CONFIGURAÇÕES VISUAIS (COR, FONTE, TAMANHO, VELOCIDADE) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Coluna A: Cor do Texto */}
             <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
-                  <Palette className="h-3.5 w-3.5 text-pink-600" />
-                  <span>Cor do Texto</span>
+                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                  Cor do Texto
                 </span>
                 <span className="text-xs font-mono font-bold text-purple-900 dark:text-purple-200">
                   {marqueeConfig.textColor || '#E9D5FF'}
@@ -1284,7 +1286,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                 />
               </div>
 
-              {/* Paleta Rápida com 1 Clique */}
+              {/* Paleta Rápida de Cores */}
               <div className="space-y-1">
                 <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold uppercase">Atalhos de Cores:</span>
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -1314,9 +1316,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             {/* Coluna B: Tipografia */}
             <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1.5">
-                  <Type className="h-3.5 w-3.5 text-purple-600" />
-                  <span>Estilo da Fonte</span>
+                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                  Estilo da Fonte
                 </span>
               </div>
 
@@ -1364,7 +1365,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                     { id: 'text-lg', label: 'Grande' },
                     { id: 'text-xl', label: 'TV (XL)' },
                     { id: 'text-2xl', label: 'Gigante' },
-                    { id: 'text-3xl', label: 'Max' },
+                    { id: 'text-3xl', label: 'Máximo' },
                   ].map((s) => (
                     <button
                       key={s.id}
@@ -1385,9 +1386,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               {/* Slider de Velocidade */}
               <div className="space-y-1.5 pt-1 border-t border-purple-100 dark:border-white/10">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider flex items-center gap-1">
-                    <Gauge className="h-3 w-3 text-pink-600" />
-                    <span>Duração da Rolagem</span>
+                  <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                    Velocidade da Rolagem
                   </span>
                   <span className="text-xs font-black text-purple-900 dark:text-purple-200 font-mono">
                     {marqueeConfig.speedSeconds || 25}s
