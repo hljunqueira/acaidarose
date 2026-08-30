@@ -490,76 +490,71 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 </div>
               </div>
             ) : (
-              <div className="text-slate-400 font-bold text-xl sm:text-2xl">
-                Aguardando conclusão de pedidos...
+              <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
+                <div className="font-cursive text-4xl sm:text-5xl lg:text-6xl text-purple-950 font-bold">
+                  Açaí da Rose
+                </div>
+                <div className="text-pink-600 font-black text-sm sm:text-base lg:text-lg uppercase tracking-widest">
+                  Pronto para Servir com Amor
+                </div>
               </div>
             )}
           </div>
 
-          {/* Seção Inferior: Título "EM PREPARAÇÃO" Centralizado no Topo da Caixa e Cards 2x Maiores com Rolagem */}
-          <div className="w-full flex flex-col justify-end">
-            <div className="flex items-center justify-center gap-3 mb-2.5 px-1 text-center">
-              <span className="h-4 w-4 rounded-full bg-amber-400 animate-pulse shrink-0" />
-              <h3 className="font-cursive text-3xl sm:text-4xl lg:text-5xl font-bold text-amber-400 leading-none">
-                Em Preparação
-              </h3>
-            </div>
+          {/* Seção Inferior: Apenas exibe "Em Preparação" se houver pedidos reais na esteira */}
+          {preparingItems.length > 0 && (
+            <div className="w-full flex flex-col justify-end animate-in fade-in duration-300">
+              <div className="flex items-center justify-center gap-3 mb-2.5 px-1 text-center">
+                <span className="h-4 w-4 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                <h3 className="font-cursive text-3xl sm:text-4xl lg:text-5xl font-bold text-amber-400 leading-none">
+                  Em Preparação
+                </h3>
+              </div>
 
-            {/* Esteira Horizontal de Cards 2x Maiores de Preparação (Apenas pedidos reais em preparação) */}
-            <div className="w-full overflow-hidden">
-              {preparingItems.length > 4 ? (
-                <div className="flex gap-3.5 animate-[marquee_20s_linear_infinite] whitespace-nowrap py-1">
-                  {preparingItems.map((order) => (
-                    <div
-                      key={order.id}
-                      className="min-w-[210px] sm:min-w-[240px] h-32 sm:h-38 lg:h-42 rounded-3xl bg-white border-2 border-white text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl shrink-0"
-                    >
-                      <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl text-[#180424] leading-none">
-                        <span className="text-amber-500 text-lg">⏳</span>
-                        <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
-                      </div>
-                      <div className="font-sans font-black text-sm sm:text-base lg:text-lg text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
-                        <span className="truncate">
-                          {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber))}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-                  {[0, 1, 2, 3].map((idx) => {
-                    const order = preparingItems[idx]
-
-                    return (
+              {/* Esteira Horizontal de Cards (Exclusivamente pedidos reais) */}
+              <div className="w-full overflow-hidden">
+                {preparingItems.length > 4 ? (
+                  <div className="flex gap-3.5 animate-[marquee_20s_linear_infinite] whitespace-nowrap py-1">
+                    {preparingItems.map((order) => (
                       <div
-                        key={idx}
+                        key={order.id}
+                        className="min-w-[210px] sm:min-w-[240px] h-32 sm:h-38 lg:h-42 rounded-3xl bg-white border-2 border-white text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl shrink-0"
+                      >
+                        <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl text-[#180424] leading-none">
+                          <span className="text-amber-500 text-lg">⏳</span>
+                          <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
+                        </div>
+                        <div className="font-sans font-black text-sm sm:text-base lg:text-lg text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
+                          <span className="truncate">
+                            {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber))}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                    {preparingItems.map((order) => (
+                      <div
+                        key={order.id}
                         className="h-32 sm:h-38 lg:h-42 rounded-3xl bg-white border-2 border-white text-slate-900 p-4 flex flex-col items-center justify-center text-center shadow-xl transition-transform"
                       >
-                        {order ? (
-                          <>
-                            <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl lg:text-5xl text-[#180424] leading-none">
-                              <span className="text-amber-500 text-base sm:text-lg">⏳</span>
-                              <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
-                            </div>
-                            <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
-                              <span className="truncate">
-                                {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber))}
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-slate-300 font-mono font-bold text-3xl">
-                            ---
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5 font-mono font-black text-3xl sm:text-4xl lg:text-5xl text-[#180424] leading-none">
+                          <span className="text-amber-500 text-base sm:text-lg">⏳</span>
+                          <span>#{String(order.orderNumber || 1).padStart(3, '0')}</span>
+                        </div>
+                        <div className="font-sans font-black text-xs sm:text-sm lg:text-base text-slate-900 uppercase truncate w-full flex items-center justify-center mt-2 leading-tight pt-1">
+                          <span className="truncate">
+                            {renderSmallCrownName(getDisplayName(order.customerName, order.tableNumber))}
+                          </span>
+                        </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
         {/* ========================================================================= */}
