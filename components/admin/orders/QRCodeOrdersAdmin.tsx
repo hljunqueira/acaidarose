@@ -45,6 +45,7 @@ import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 
 interface QRCodeOrdersAdminProps {
   tenantId: string
+  onOpenPDV?: () => void
 }
 
 interface KanbanColumn {
@@ -111,7 +112,7 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
   },
 ]
 
-export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) {
+export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersAdminProps) {
   const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -120,6 +121,17 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
   const [originFilter, setOriginFilter] = useState<'ALL' | 'TABLES' | 'COUNTER'>('ALL')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [prevCount, setPrevCount] = useState(0)
+
+  const handleOpenNewOrder = () => {
+    if (onOpenPDV) {
+      onOpenPDV()
+    } else {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('acaidarose_admin_view', 'pdv')
+      }
+      router.push('/?view=pdv')
+    }
+  }
 
   // Drag and Drop state
   const [draggedOrderId, setDraggedOrderId] = useState<string | null>(null)
@@ -560,7 +572,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
 
           <Button
             size="sm"
-            onClick={() => router.push('/admin/pdv')}
+            onClick={handleOpenNewOrder}
             className="h-8 text-xs font-black bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white shadow-sm rounded-xl cursor-pointer px-3.5"
           >
             <span>Nova Comanda (PDV)</span>

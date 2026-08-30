@@ -52,7 +52,7 @@ export async function PUT(
            customer_phone = COALESCE($5, customer_phone),
            table_number = COALESCE($6, table_number),
            total = COALESCE($7, total),
-           items_json = CASE WHEN $8::text IS NOT NULL THEN $8 ELSE items_json END,
+           items_json = CASE WHEN $8::text IS NOT NULL THEN $8::jsonb ELSE items_json END,
            cancel_reason = COALESCE($9, cancel_reason)
        WHERE id::text = $1
        RETURNING *`,

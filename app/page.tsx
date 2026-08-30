@@ -70,6 +70,12 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const viewParam = urlParams.get('view') as AppViewId | null
+      if (viewParam) {
+        setView(viewParam)
+        return
+      }
       const savedView = localStorage.getItem('acaidarose_admin_view') as AppViewId | null
       if (savedView) {
         setView(savedView)
@@ -265,7 +271,12 @@ export default function HomePage() {
               currentUser={loggedUser}
             />
           )}
-          {view === 'qrcode' && <QRCodeOrdersAdmin tenantId={activeTenantId} />}
+          {view === 'qrcode' && (
+            <QRCodeOrdersAdmin
+              tenantId={activeTenantId}
+              onOpenPDV={() => setView('pdv')}
+            />
+          )}
           {view === 'tv_panel' && <TVOrdersControlView tenantId={activeTenantId} />}
           {view === 'tables' && isAdmin && <TablesManagementView tenantId={activeTenantId} />}
 
