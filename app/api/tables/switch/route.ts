@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nova mesa é obrigatória' }, { status: 400 })
     }
 
-    // Normalizar tenant
+    // Normalizar tenant ID canônico
     const t = await getTenantByIdOrSlug(rawTenantId || rawTenant || '1')
     const tenantId = t ? t.id : '11111111-1111-1111-1111-111111111111'
 
@@ -22,66 +22,62 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Número de mesa inválido' }, { status: 400 })
     }
 
-    // 1. Se houver pedidos em andamento na mesa antiga para este tenant, atualiza a mesa em orders
     let updatedOrdersCount = 0
-    if (oldNum) {
+    if (oldNum && oldNum !== newNum) {
+      // 1. Atualizar pedidos em andamento da mesa antiga para a nova mesa na tabela orders
       const orderRes = await query(
         `UPDATE orders 
-         SET table_number = $1,
-             updated_at = timezone('utc'::text, now())
+         SET table_number = $1
          WHERE tenant_id::text = $2 
            AND table_number = $3 
            AND status IN ('NEW', 'OPEN', 'WAITING_PAYMENT', 'PREPARING', 'READY')
-         RETURNING id`,
+         RETURNING id, order_number, table_number`,
         [newNum, tenantId, oldNum]
       )
       updatedOrdersCount = orderRes.rowCount || 0
-    }
 
-    // 2. Se houver registro da mesa antiga na tabela tables, transferir ocupação e liberar a mesa antiga
-    if (oldNum && oldNum !== newNum) {
-      const oldTableRes = await query(
-        `SELECT id, total_amount, items_json, current_order_id, activated_at 
-         FROM tables 
-         WHERE tenant_id::text = $1 AND table_number = $2 AND deleted_at IS NULL LIMIT 1`,
-        [tenantId, oldNum]
-      )
-
-      if (oldTableRes.rows?.[0]) {
-        const oldT = oldTableRes.rows[0]
-
-        // Atualizar nova mesa com o consumo acumulado
-        await query(
-          `UPDATE tables 
-           SET status = 'OCCUPIED',
-               total_amount = $1,
-               items_json = $2,
-               current_order_id = $3,
-               activated_at = COALESCE(activated_at, $4),
-               updated_at = now()
-           WHERE tenant_id::text = $5 AND table_number = $6 AND deleted_at IS NULL`,
-          [
-            oldT.total_amount || 0,
-            oldT.items_json || '[]',
-            oldT.current_order_id || null,
-            oldT.activated_at || null,
-            tenantId,
-            newNum,
-          ]
+      // 2. Se a tabela tables existir, tenta migrar o status da mesa
+      try {
+        const oldTableRes = await query(
+          `SELECT id, total_amount, items_json, current_order_id, activated_at 
+           FROM tables 
+           WHERE tenant_id::text = $1 AND table_number = $2 AND deleted_at IS NULL LIMIT 1`,
+          [tenantId, oldNum]
         )
 
-        // Liberar mesa antiga
-        await query(
-          `UPDATE tables 
-           SET status = 'AVAILABLE',
-               total_amount = 0,
-               items_json = '[]',
-               current_order_id = null,
-               activated_at = null,
-               updated_at = now()
-           WHERE id = $1`,
-          [oldT.id]
-        )
+        if (oldTableRes.rows?.[0]) {
+          const oldT = oldTableRes.rows[0]
+          await query(
+            `UPDATE tables 
+             SET status = 'OCCUPIED',
+                 total_amount = $1,
+                 items_json = $2,
+                 current_order_id = $3,
+                 activated_at = COALESCE(activated_at, $4)
+             WHERE tenant_id::text = $5 AND table_number = $6 AND deleted_at IS NULL`,
+            [
+              oldT.total_amount || 0,
+              oldT.items_json || '[]',
+              oldT.current_order_id || null,
+              oldT.activated_at || null,
+              tenantId,
+              newNum,
+            ]
+          )
+
+          await query(
+            `UPDATE tables 
+             SET status = 'AVAILABLE',
+                 total_amount = 0,
+                 items_json = '[]',
+                 current_order_id = null,
+                 activated_at = null
+             WHERE id = $1`,
+            [oldT.id]
+          )
+        }
+      } catch (tableErr) {
+        // Tabela tables opcional
       }
     }
 

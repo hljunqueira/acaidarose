@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { CatalogData, ProductContainer, Tenant } from '@/types'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ import { Info } from 'lucide-react'
 
 function MenuContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const rawLoja = searchParams.get('loja') || searchParams.get('tenantId') || searchParams.get('tenant') || '1'
   const paramNumero = searchParams.get('numero') || searchParams.get('mesa') || searchParams.get('table') || ''
 
@@ -100,11 +101,7 @@ function MenuContent() {
 
   const handleTableSwitched = (newNum: string) => {
     setCurrentTableNum(newNum)
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      url.searchParams.set('numero', newNum)
-      window.history.replaceState(null, '', url.toString())
-    }
+    router.replace(`/menu?loja=${encodeURIComponent(rawLoja)}&numero=${encodeURIComponent(newNum)}`)
   }
 
   const handleSelectContainer = (container: ProductContainer) => {
