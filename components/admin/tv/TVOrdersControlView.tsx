@@ -35,6 +35,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const [videoInputMode, setVideoInputMode] = useState<'FILE' | 'URL'>('FILE')
   const [videoUrlInput, setVideoUrlInput] = useState('')
   const [videoTitleInput, setVideoTitleInput] = useState('')
+  const [editingVideo, setEditingVideo] = useState<TVVideoItem | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const storeSlug = tenantId === '22222222-2222-2222-2222-222222222222' 
@@ -552,18 +553,29 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-1 border-t border-purple-100 dark:border-white/10">
+                  <div className="flex items-center justify-between pt-1 border-t border-purple-100 dark:border-white/10 gap-1.5">
                     <Button
                       type="button"
                       size="sm"
                       onClick={() => handleToggleVideoActive(video.id)}
-                      className={`h-7 px-2.5 text-[10px] font-black uppercase rounded-lg cursor-pointer transition ${
+                      className={`h-7 px-2 text-[10px] font-black uppercase rounded-lg cursor-pointer transition ${
                         video.active
                           ? 'bg-amber-500 hover:bg-amber-600 text-white'
                           : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                       }`}
                     >
-                      {video.active ? 'Pausar' : 'Ativar na TV'}
+                      {video.active ? 'Pausar' : 'Ativar'}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditingVideo(video)}
+                      className="h-7 px-2 text-[10px] font-bold rounded-lg border-purple-200 dark:border-white/15 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer"
+                      title="Personalizar tags e posição nas extremidades"
+                    >
+                      <span>🏷️ Tags</span>
                     </Button>
 
                     <Button
@@ -571,7 +583,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                       size="sm"
                       variant="ghost"
                       onClick={() => handleDeleteVideo(video.id)}
-                      className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer"
+                      className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer ml-auto"
                       title="Excluir vídeo da lista"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -579,6 +591,197 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EDIÇÃO DE TAGS COM LIVE PREVIEW EM TEMPO REAL */}
+      {editingVideo && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-xl bg-white dark:bg-[#160228] border border-purple-200 dark:border-white/15 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-black text-purple-950 dark:text-white uppercase tracking-tight">
+                  🏷️ Personalizar Tags do Vídeo
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingVideo(null)}
+                className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </Button>
+            </div>
+
+            {/* LIVE PREVIEW DO VÍDEO COM AS TAGS NAS EXTREMIDADES */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-black uppercase text-purple-900 dark:text-purple-300 tracking-wider">
+                Live Preview na Smart TV:
+              </span>
+              <div className="h-44 sm:h-52 w-full rounded-2xl overflow-hidden bg-black relative border-2 border-purple-300 dark:border-white/20 shadow-lg">
+                <video
+                  src={editingVideo.url}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+
+                {/* Renderização das Tags no Live Preview conforme a Posição das Extremidades */}
+                {(editingVideo.showTags ?? true) && (
+                  <>
+                    {/* Tag Esquerda (Principal) */}
+                    <div
+                      className={`absolute px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-xs text-xs font-black text-white shadow-md transition-all ${
+                        editingVideo.tagPosition === 'TOP' || editingVideo.tagPosition === 'SPLIT'
+                          ? 'top-2.5 left-3'
+                          : 'bottom-2.5 left-3'
+                      }`}
+                    >
+                      <span>{editingVideo.tagLeft || editingVideo.title || 'Açaí Puro Artesanal'}</span>
+                    </div>
+
+                    {/* Tag Direita (Secundária) */}
+                    <div
+                      className={`absolute px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-xs text-xs font-black text-pink-300 shadow-md transition-all ${
+                        editingVideo.tagPosition === 'TOP'
+                          ? 'top-2.5 right-3'
+                          : 'bottom-2.5 right-3'
+                      }`}
+                    >
+                      <span>{editingVideo.tagRight || 'acaidarose.pt'}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* FORMULÁRIO DE CONFIGURAÇÃO */}
+            <div className="space-y-3 pt-1">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-purple-950 dark:text-white">
+                  Tag Principal (Canto Esquerdo):
+                </label>
+                <Input
+                  value={editingVideo.tagLeft || ''}
+                  onChange={(e) => setEditingVideo({ ...editingVideo, tagLeft: e.target.value })}
+                  placeholder="Ex: Açaí Puro Artesanal ou Promoção 500ml"
+                  className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/15"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-purple-950 dark:text-white">
+                  Tag Secundária (Canto Direito):
+                </label>
+                <Input
+                  value={editingVideo.tagRight || ''}
+                  onChange={(e) => setEditingVideo({ ...editingVideo, tagRight: e.target.value })}
+                  placeholder="Ex: acaidarose.pt ou Peça na Mesa"
+                  className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/15"
+                />
+              </div>
+
+              {/* Seletor de Posição nas Extremidades (Nunca no meio) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-purple-950 dark:text-white">
+                  Posição das Tags nas Extremidades:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'BOTTOM' })}
+                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                      (editingVideo.tagPosition || 'BOTTOM') === 'BOTTOM'
+                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                        : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                    }`}
+                  >
+                    ⬇️ Inferior (Base)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'TOP' })}
+                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                      editingVideo.tagPosition === 'TOP'
+                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                        : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                    }`}
+                  >
+                    ⬆️ Superior (Topo)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'SPLIT' })}
+                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                      editingVideo.tagPosition === 'SPLIT'
+                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                        : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                    }`}
+                  >
+                    ↗️ Misto (Diagonal)
+                  </button>
+                </div>
+              </div>
+
+              {/* Toggle de Ativar/Desativar Tags Sobrepostas */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10">
+                <span className="text-xs font-bold text-purple-950 dark:text-white">
+                  Exibir tags sobrepostas neste vídeo
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setEditingVideo({
+                      ...editingVideo,
+                      showTags: editingVideo.showTags === false ? true : false,
+                    })
+                  }
+                  className={`h-7 px-3 text-xs font-bold rounded-xl cursor-pointer ${
+                    (editingVideo.showTags ?? true)
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-stone-200 text-stone-700'
+                  }`}
+                >
+                  {(editingVideo.showTags ?? true) ? 'Ativado' : 'Oculto'}
+                </Button>
+              </div>
+            </div>
+
+            {/* BOTÕES DE AÇÃO DO MODAL */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-purple-100 dark:border-white/10">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingVideo(null)}
+                className="h-10 px-4 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  const updated = storeVideos.map((v) =>
+                    v.id === editingVideo.id ? editingVideo : v
+                  )
+                  setStoreVideos(updated)
+                  broadcastTVVideos(updated, tenantId)
+                  setEditingVideo(null)
+                  toast.success('Tags e posicionamento do vídeo atualizados com sucesso!')
+                }}
+                className="h-10 px-6 bg-purple-700 hover:bg-purple-800 text-white text-xs font-black rounded-xl cursor-pointer shadow-md"
+              >
+                Salvar & Aplicar na TV
+              </Button>
             </div>
           </div>
         </div>

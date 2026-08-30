@@ -440,12 +440,32 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 <span className="text-[10px] text-pink-400 font-bold">O Verdadeiro Açaí Artesanal</span>
               </div>
             )}
-            <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-xs text-white font-black drop-shadow-lg">
-              <span className="bg-black/60 px-2 py-0.5 rounded-md truncate max-w-[180px]">
-                {currentVideo?.title || 'Açaí Puro Artesanal'}
-              </span>
-              <span className="text-pink-300 bg-black/60 px-2 py-0.5 rounded-md">acaidarose.pt</span>
-            </div>
+            {/* Renderização Dinâmica das Tags nas Extremidades do Vídeo (Nunca no meio) */}
+            {(currentVideo?.showTags ?? true) && (
+              <>
+                {/* Tag Canto Esquerdo */}
+                <div
+                  className={`absolute px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-xs text-xs text-white font-black drop-shadow-md transition-all pointer-events-none max-w-[200px] truncate ${
+                    currentVideo?.tagPosition === 'TOP' || currentVideo?.tagPosition === 'SPLIT'
+                      ? 'top-2.5 left-3'
+                      : 'bottom-2.5 left-3'
+                  }`}
+                >
+                  <span>{currentVideo?.tagLeft || currentVideo?.title || 'Açaí Puro Artesanal'}</span>
+                </div>
+
+                {/* Tag Canto Direito */}
+                <div
+                  className={`absolute px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-xs text-xs text-pink-300 font-black drop-shadow-md transition-all pointer-events-none ${
+                    currentVideo?.tagPosition === 'TOP'
+                      ? 'top-2.5 right-3'
+                      : 'bottom-2.5 right-3'
+                  }`}
+                >
+                  <span>{currentVideo?.tagRight || 'acaidarose.pt'}</span>
+                </div>
+              </>
+            )}
           </div>
         </section>
 

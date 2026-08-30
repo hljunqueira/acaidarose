@@ -170,13 +170,57 @@ export interface TVVideoItem {
   url: string
   active: boolean
   isOfficial?: boolean
+  tagLeft?: string
+  tagRight?: string
+  tagPosition?: 'BOTTOM' | 'TOP' | 'SPLIT'
+  showTags?: boolean
 }
 
 export const DEFAULT_OFFICIAL_VIDEOS: TVVideoItem[] = [
-  { id: 'v1', title: 'Açaí Puro Artesanal (Rotação)', url: '/videos/hero_cup_rotation.mp4', active: true, isOfficial: true },
-  { id: 'v2', title: 'Textura Cremosa Amazônica', url: '/videos/hero_gliding_texture.mp4', active: true, isOfficial: true },
-  { id: 'v3', title: 'Frutas & Acompanhamentos Nobres', url: '/videos/hero_orbiting_cup.mp4', active: true, isOfficial: true },
-  { id: 'v4', title: 'Taça Gourmet Completa', url: '/videos/hero_revealing_cup.mp4', active: true, isOfficial: true },
+  {
+    id: 'v1',
+    title: 'Açaí Puro Artesanal (Rotação)',
+    url: '/videos/hero_cup_rotation.mp4',
+    active: true,
+    isOfficial: true,
+    tagLeft: 'Açaí Puro Artesanal',
+    tagRight: 'acaidarose.pt',
+    tagPosition: 'BOTTOM',
+    showTags: true,
+  },
+  {
+    id: 'v2',
+    title: 'Textura Cremosa Amazônica',
+    url: '/videos/hero_gliding_texture.mp4',
+    active: true,
+    isOfficial: true,
+    tagLeft: 'Cremoso & Nobre',
+    tagRight: 'acaidarose.pt',
+    tagPosition: 'BOTTOM',
+    showTags: true,
+  },
+  {
+    id: 'v3',
+    title: 'Frutas & Acompanhamentos Nobres',
+    url: '/videos/hero_orbiting_cup.mp4',
+    active: true,
+    isOfficial: true,
+    tagLeft: 'Frutas & Acompanhamentos',
+    tagRight: 'acaidarose.pt',
+    tagPosition: 'BOTTOM',
+    showTags: true,
+  },
+  {
+    id: 'v4',
+    title: 'Taça Gourmet Completa',
+    url: '/videos/hero_revealing_cup.mp4',
+    active: true,
+    isOfficial: true,
+    tagLeft: 'Taça Gourmet Completa',
+    tagRight: 'acaidarose.pt',
+    tagPosition: 'BOTTOM',
+    showTags: true,
+  },
 ]
 
 const VIDEOS_CHANNEL = 'acai_tv_videos_channel'
