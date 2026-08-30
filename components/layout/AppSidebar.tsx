@@ -194,7 +194,7 @@ export default function AppSidebar({
           {
             id: 'store_requests',
             label: 'Solicitações das Lojas',
-            subtitle: 'Ajustes de Preço & Cardápio',
+            subtitle: 'Preços, Produtos & Destaques',
             badge: storeRequestsCount > 0 ? String(storeRequestsCount) : undefined,
             show: true,
           },
@@ -226,7 +226,6 @@ export default function AppSidebar({
           { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Copos, Frutas & Toppings', show: true },
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
           { id: 'menu_menus', label: 'Menus & Horários', subtitle: 'Regras de Disponibilidade', show: true },
-          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Vídeos & Banners Promocionais', show: true },
         ],
       },
       {
@@ -278,7 +277,7 @@ export default function AppSidebar({
           {
             id: 'store_requests',
             label: 'Solicitações das Lojas',
-            subtitle: 'Ajustes de Preço & Cardápio',
+            subtitle: 'Preços, Produtos & Destaques',
             badge: storeRequestsCount > 0 ? String(storeRequestsCount) : undefined,
             show: true,
           },
@@ -310,7 +309,6 @@ export default function AppSidebar({
           { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Copos, Frutas & Toppings', show: true },
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
           { id: 'menu_menus', label: 'Menus & Horários', subtitle: 'Regras de Disponibilidade', show: true },
-          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Vídeos & Banners Promocionais', show: true },
         ],
       },
       {
@@ -359,11 +357,10 @@ export default function AppSidebar({
         items: [
           { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Consulta & Gramaturas', show: true },
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
-          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Promoções da Loja', show: true },
           {
             id: 'store_requests',
             label: 'Solicitações à Franqueadora',
-            subtitle: 'Ajustes de Preço & Cardápio',
+            subtitle: 'Preços, Produtos & Destaques',
             show: true,
           },
         ],

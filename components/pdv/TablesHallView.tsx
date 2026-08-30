@@ -208,9 +208,9 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
 
   return (
     <div className="space-y-5">
-      {/* 1. Barra de Abas Superiores (MESAS vs BALCÃO) + Ações */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
-        <div className="flex bg-white dark:bg-white/5 border border-purple-200 dark:border-white/10 p-1 rounded-2xl gap-1 shadow-xs">
+      {/* 1. Barra Superior Unificada: Abas + Contadores na Mesma Linha */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
+        <div className="flex bg-white dark:bg-white/5 border border-purple-200 dark:border-white/10 p-1 rounded-2xl gap-1 shadow-xs shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -218,7 +218,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
               setMontadorTable(null)
               setSelectedTableId(null)
             }}
-            className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'MESAS'
                 ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20'
                 : 'text-purple-800 dark:text-purple-200/80 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
@@ -236,7 +236,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           <button
             type="button"
             onClick={() => setActiveTab('BALCAO')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'BALCAO'
                 ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20'
                 : 'text-purple-800 dark:text-purple-200/80 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
@@ -246,40 +246,40 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             <span>MONTADOR BALCÃO</span>
           </button>
         </div>
-      </div>
 
-      {/* 2. Contadores Rápidos de Produção & Balcão no Topo */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Em Preparação</div>
-            <div className="text-[10px] text-purple-600 dark:text-purple-300">Cozinha / KDS</div>
+        {/* 4 Contadores Rápidos na mesma linha */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 flex-1 xl:max-w-3xl">
+          <div className="px-3.5 py-2 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Em Preparação</div>
+              <div className="text-[9px] text-purple-600 dark:text-purple-300">Cozinha / KDS</div>
+            </div>
+            <div className="text-xl font-black text-amber-500 font-mono">{preparingOrdersCount}</div>
           </div>
-          <div className="text-2xl font-black text-amber-500 font-mono">{preparingOrdersCount}</div>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Prontos p/ Retirar</div>
-            <div className="text-[10px] text-purple-600 dark:text-purple-300">Balcão / Chamar</div>
+          <div className="px-3.5 py-2 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Prontos</div>
+              <div className="text-[9px] text-purple-600 dark:text-purple-300">Balcão / Chamar</div>
+            </div>
+            <div className="text-xl font-black text-pink-600 font-mono">{readyOrdersCount}</div>
           </div>
-          <div className="text-2xl font-black text-pink-600 font-mono">{readyOrdersCount}</div>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Mesas Ativas</div>
-            <div className="text-[10px] text-purple-600 dark:text-purple-300">Em Atendimento</div>
+          <div className="px-3.5 py-2 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Mesas Ativas</div>
+              <div className="text-[9px] text-purple-600 dark:text-purple-300">Em Atendimento</div>
+            </div>
+            <div className="text-xl font-black text-purple-950 dark:text-white font-mono">{activeTablesCount}</div>
           </div>
-          <div className="text-2xl font-black text-purple-950 dark:text-white font-mono">{activeTablesCount}</div>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-[11px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Faturado no Turno</div>
-            <div className="text-[10px] text-purple-600 dark:text-purple-300">{salesCount} venda(s) recebida(s)</div>
+          <div className="px-3.5 py-2 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-purple-900/70 dark:text-purple-200/70 uppercase">Faturado Turno</div>
+              <div className="text-[9px] text-purple-600 dark:text-purple-300">{salesCount} venda(s)</div>
+            </div>
+            <div className="text-sm font-black text-emerald-600 font-mono">{formatCurrency(totalRevenue)}</div>
           </div>
-          <div className="text-base sm:text-lg font-black text-emerald-600 font-mono">{formatCurrency(totalRevenue)}</div>
         </div>
       </div>
 
