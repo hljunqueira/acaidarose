@@ -537,9 +537,6 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 <div className="text-pink-600 font-black text-xl sm:text-2xl lg:text-3xl uppercase tracking-widest mt-1">
                   {storeName}
                 </div>
-                <div className="text-purple-900/80 font-bold text-xs sm:text-sm uppercase tracking-wider pt-2">
-                  Pronto para Servir com Amor
-                </div>
               </div>
             )}
           </div>
