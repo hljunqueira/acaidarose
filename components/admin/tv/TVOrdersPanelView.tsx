@@ -603,10 +603,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       {(() => {
         const hasPromo = Boolean(marqueeConfig.promoText?.trim())
         const hasIdle = Boolean(marqueeConfig.idleText?.trim())
-        const showPreparing = marqueeConfig.showPreparingOrders !== false && preparingOrders.length > 0
+        const isPreparingEnabled = marqueeConfig.showPreparingOrders !== false
+        const hasRealPreparingOrders = preparingOrders.length > 0
 
-        // Se não houver comunicado, não houver texto institucional e não houver pedidos no salão:
-        if (!hasPromo && !hasIdle && !showPreparing) {
+        // Se o usuário não digitou texto e desativou a exibição de pedidos
+        if (!hasPromo && !hasIdle && !isPreparingEnabled) {
           return null
         }
 
@@ -622,14 +623,21 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             : 'font-sans'
 
         const sizeClass = marqueeConfig.fontSize || 'text-xl sm:text-2xl'
-        const badgeTitle = hasPromo ? 'Comunicado' : showPreparing ? 'Em Preparação' : 'Institucional'
+        
+        // Determina a badge e cor de acordo com a prioridade e escolha do operador
+        const badgeTitle = hasPromo 
+          ? 'Comunicado' 
+          : isPreparingEnabled 
+          ? 'Em Preparação' 
+          : 'Institucional'
+
         const badgeColor = hasPromo
           ? 'bg-purple-500/25 text-purple-200 border-purple-500/40'
-          : showPreparing
+          : isPreparingEnabled
           ? 'bg-amber-500/25 text-amber-300 border-amber-500/40'
           : 'bg-pink-500/25 text-pink-200 border-pink-500/40'
 
-        const pulseColor = hasPromo ? 'bg-purple-400' : showPreparing ? 'bg-amber-400' : 'bg-pink-400'
+        const pulseColor = hasPromo ? 'bg-purple-400' : isPreparingEnabled ? 'bg-amber-400' : 'bg-pink-400'
 
         return (
           <footer className="pt-2.5 border-t border-white/15 w-full">
@@ -649,65 +657,74 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                     animationDuration: `${marqueeConfig.speedSeconds || 25}s`,
                   }}
                 >
-                  {hasPromo && showPreparing ? (
-                    <span className="inline-flex items-center gap-6 mx-4">
-                      <span className="text-white drop-shadow-xs">{marqueeConfig.promoText.trim()}</span>
-                      <span className="opacity-40">★</span>
-                      {preparingOrders.map((o, idx) => (
-                        <React.Fragment key={o.id || idx}>
-                          <span className="inline-flex items-center gap-3">
-                            <span className="font-mono text-amber-300">
-                              ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
-                            </span>
-                            <span className="text-white font-extrabold">
-                              {getDisplayName(o.customerName, o.tableNumber)}
-                            </span>
-                          </span>
-                          <span className="opacity-40">•</span>
-                        </React.Fragment>
-                      ))}
-                    </span>
-                  ) : hasPromo ? (
+                  {hasPromo ? (
                     <span className="inline-flex items-center gap-6 mx-4">
                       <span>{marqueeConfig.promoText.trim()}</span>
                       <span className="opacity-40">★</span>
+                      {hasRealPreparingOrders && (
+                        <>
+                          {preparingOrders.map((o, idx) => (
+                            <React.Fragment key={o.id || idx}>
+                              <span className="inline-flex items-center gap-3">
+                                <span className="font-mono text-amber-300">
+                                  ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
+                                </span>
+                                <span className="text-white font-extrabold">
+                                  {getDisplayName(o.customerName, o.tableNumber)}
+                                </span>
+                              </span>
+                              <span className="opacity-40">•</span>
+                            </React.Fragment>
+                          ))}
+                        </>
+                      )}
                       <span>{marqueeConfig.promoText.trim()}</span>
                       <span className="opacity-40">★</span>
                       <span>{marqueeConfig.promoText.trim()}</span>
                     </span>
-                  ) : showPreparing && hasIdle ? (
+                  ) : isPreparingEnabled ? (
                     <span className="inline-flex items-center gap-6 mx-4">
-                      {preparingOrders.map((o, idx) => (
-                        <React.Fragment key={o.id || idx}>
-                          <span className="inline-flex items-center gap-3">
-                            <span className="font-mono text-amber-300">
-                              ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
-                            </span>
-                            <span className="text-white font-extrabold">
-                              {getDisplayName(o.customerName, o.tableNumber)}
-                            </span>
-                          </span>
-                          <span className="opacity-40">•</span>
-                        </React.Fragment>
-                      ))}
-                      <span>{idleMessage}</span>
-                      <span className="opacity-40">•</span>
-                    </span>
-                  ) : showPreparing ? (
-                    <span className="inline-flex items-center gap-6 mx-4">
-                      {preparingOrders.map((o, idx) => (
-                        <React.Fragment key={o.id || idx}>
-                          <span className="inline-flex items-center gap-3">
-                            <span className="font-mono text-amber-300">
-                              ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
-                            </span>
-                            <span className="text-white font-extrabold">
-                              {getDisplayName(o.customerName, o.tableNumber)}
-                            </span>
-                          </span>
-                          <span className="opacity-40">•</span>
-                        </React.Fragment>
-                      ))}
+                      {hasRealPreparingOrders ? (
+                        <>
+                          {preparingOrders.map((o, idx) => (
+                            <React.Fragment key={o.id || idx}>
+                              <span className="inline-flex items-center gap-3">
+                                <span className="font-mono text-amber-300">
+                                  ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
+                                </span>
+                                <span className="text-white font-extrabold">
+                                  {getDisplayName(o.customerName, o.tableNumber)}
+                                </span>
+                              </span>
+                              <span className="opacity-40">•</span>
+                            </React.Fragment>
+                          ))}
+                          {hasIdle && (
+                            <>
+                              <span>{idleMessage}</span>
+                              <span className="opacity-40">•</span>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {hasIdle ? (
+                            <>
+                              <span>{idleMessage}</span>
+                              <span className="opacity-40">•</span>
+                              <span>{idleMessage}</span>
+                              <span className="opacity-40">•</span>
+                              <span>{idleMessage}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-amber-300">⏳ Acompanhe seu pedido pelo painel</span>
+                              <span className="opacity-40">•</span>
+                              <span className="text-amber-300">⏳ Acompanhe seu pedido pelo painel</span>
+                            </>
+                          )}
+                        </>
+                      )}
                     </span>
                   ) : hasIdle ? (
                     <span className="inline-flex items-center gap-6 mx-4">
@@ -721,18 +738,6 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 </div>
               </div>
             </div>
-
-            {/* Estilo CSS do Keyframes Marquee embutido para compatibilidade total em Smart TVs */}
-            <style jsx>{`
-              @keyframes marquee {
-                0% {
-                  transform: translateX(100%);
-                }
-                100% {
-                  transform: translateX(-100%);
-                }
-              }
-            `}</style>
           </footer>
         )
       })()}
