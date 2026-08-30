@@ -643,10 +643,10 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
               {/* Área Rolante Contínua (Ticker Dinâmico) */}
               <div className="relative flex-1 overflow-hidden whitespace-nowrap">
                 <div
-                  className={`inline-block whitespace-nowrap font-black uppercase tracking-wider ${fontClass} ${sizeClass}`}
+                  className={`animate-tv-marquee font-black uppercase tracking-wider ${fontClass} ${sizeClass}`}
                   style={{
                     color: marqueeConfig.textColor || '#E9D5FF',
-                    animation: `marquee ${marqueeConfig.speedSeconds || 25}s linear infinite`,
+                    animationDuration: `${marqueeConfig.speedSeconds || 25}s`,
                   }}
                 >
                   {hasPromo && showPreparing ? (

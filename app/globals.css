@@ -104,3 +104,22 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(168, 85, 247, 0.4);
 }
+
+/* Animação Contínua e Fluida do Rodapé da Smart TV (Hardware-Accelerated) */
+@keyframes tvMarquee {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-tv-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation-name: tvMarquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}

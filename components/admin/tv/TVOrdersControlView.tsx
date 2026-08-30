@@ -1123,7 +1123,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                 {/* Ticker Animado */}
                 <div className="relative flex-1 overflow-hidden whitespace-nowrap">
                   <div
-                    className={`inline-block whitespace-nowrap font-black uppercase tracking-wider ${
+                    className={`animate-tv-marquee font-black uppercase tracking-wider ${
                       marqueeConfig.fontFamily === 'cursive'
                         ? 'font-cursive'
                         : marqueeConfig.fontFamily === 'mono'
@@ -1134,7 +1134,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                     } ${marqueeConfig.fontSize || 'text-xl'}`}
                     style={{
                       color: marqueeConfig.textColor || '#E9D5FF',
-                      animation: `marqueePreview ${marqueeConfig.speedSeconds || 25}s linear infinite`,
+                      animationDuration: `${marqueeConfig.speedSeconds || 25}s`,
                     }}
                   >
                     {marqueeConfig.promoText?.trim() ? (
