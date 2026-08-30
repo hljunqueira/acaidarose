@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { RestaurantTable } from '@/types/tables'
 import { CatalogData } from '@/types'
+import { formatCurrency } from '@/lib/i18n/formatters'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -22,6 +23,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
   const [activeTab, setActiveTab] = useState<'MESAS' | 'BALCAO'>('MESAS')
   const [tables, setTables] = useState<RestaurantTable[]>([])
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
+  const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   // Chamados de Garçom / Mesa
@@ -44,21 +46,28 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
 
   const fetchTables = useCallback(async () => {
     try {
-      const [resTables, resCatalog, resCalls] = await Promise.all([
+      const [resTables, resCatalog, resCalls, resOrders] = await Promise.all([
         fetch(`/api/tables?tenantId=${encodeURIComponent(tenantId)}`),
         fetch(`/api/products?tenantId=${encodeURIComponent(tenantId)}`),
         fetch(`/api/call-waiter?tenantId=${encodeURIComponent(tenantId)}`),
+        fetch(`/api/orders?tenantId=${encodeURIComponent(tenantId)}`),
       ])
 
-      const dataTables = await resTables.json()
-      const dataCatalog = await resCatalog.json()
-      const dataCalls = await resCalls.json()
+      const [dataTables, dataCatalog, dataCalls, dataOrders] = await Promise.all([
+        resTables.json(),
+        resCatalog.json(),
+        resCalls.json(),
+        resOrders.json(),
+      ])
 
       if (dataTables?.tables) {
         setTables(dataTables.tables)
       }
       if (dataCatalog) setCatalog(dataCatalog)
       if (dataCalls?.calls) setWaiterCalls(dataCalls.calls)
+      if (Array.isArray(dataOrders?.orders)) {
+        setOrders(dataOrders.orders)
+      }
     } catch {
       // Falha suave
     } finally {
@@ -82,13 +91,22 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
 
   useEffect(() => {
     fetchTables()
-    // Polling a cada 8s para sincronização em tempo real das mesas
-    const timer = setInterval(fetchTables, 8000)
+    // Polling a cada 5s para sincronização em tempo real das mesas e pedidos
+    const timer = setInterval(fetchTables, 5000)
     return () => clearInterval(timer)
   }, [fetchTables])
 
   const selectedTable = tables.find((t) => t.id === selectedTableId) || null
   const activeTablesCount = tables.filter((t) => t.status === 'OCCUPIED').length
+
+  // Cálculo Dinâmico das Métricas do Turno
+  const completedOrders = orders.filter(
+    (o) => o.status === 'COMPLETED' || o.status === 'PAID' || o.status === 'READY' || o.status === 'PREPARING'
+  )
+  const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED')
+  const salesCount = completedOrders.length
+  const cancelCount = cancelledOrders.length
+  const totalRevenue = completedOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
 
   const handleSelectTable = (t: RestaurantTable) => {
     setSelectedTableId(t.id)
@@ -347,9 +365,14 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           {/* ========================================================= */}
           <div className="lg:col-span-4 bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 p-6 shadow-xs dark:shadow-xl flex flex-col justify-between space-y-4">
             <div>
-              <h2 className="text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider mb-4 border-b border-purple-100 dark:border-white/10 pb-2">
-                Status Caixa
-              </h2>
+              <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10 mb-4">
+                <h2 className="text-sm font-black text-purple-950 dark:text-white uppercase tracking-wider">
+                  Status Caixa
+                </h2>
+                <Badge variant="outline" className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10">
+                  Turno Ativo
+                </Badge>
+              </div>
 
               <div className="space-y-3">
                 {/* Mesas Ativas */}
@@ -358,16 +381,16 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                     <div className="text-xs font-bold text-purple-950 dark:text-white">Mesas Ativas</div>
                     <div className="text-[10px] text-purple-700/70 dark:text-purple-200/60 font-medium">Em atendimento no salão</div>
                   </div>
-                  <div className="text-2xl font-black text-purple-950 dark:text-white">{activeTablesCount}</div>
+                  <div className="text-2xl font-black text-purple-950 dark:text-white font-mono">{activeTablesCount}</div>
                 </div>
 
-                {/* Vendas */}
+                {/* Vendas do Turno */}
                 <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between">
                   <div>
                     <div className="text-xs font-bold text-purple-950 dark:text-white">Vendas do Turno</div>
                     <div className="text-[10px] text-purple-700/70 dark:text-purple-200/60 font-medium">Comandas finalizadas</div>
                   </div>
-                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">1</div>
+                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{salesCount}</div>
                 </div>
 
                 {/* Cancelamentos */}
@@ -376,7 +399,18 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                     <div className="text-xs font-bold text-purple-950 dark:text-white">Cancelamentos</div>
                     <div className="text-[10px] text-purple-700/70 dark:text-purple-200/60 font-medium">Estornos do dia</div>
                   </div>
-                  <div className="text-2xl font-black text-pink-600 dark:text-pink-400">0</div>
+                  <div className="text-2xl font-black text-pink-600 dark:text-pink-400 font-mono">{cancelCount}</div>
+                </div>
+
+                {/* Faturamento do Turno */}
+                <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-emerald-950 dark:text-emerald-200">Total Faturado</div>
+                    <div className="text-[10px] text-emerald-700/80 dark:text-emerald-300/70 font-medium">Recebido no turno</div>
+                  </div>
+                  <div className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono">
+                    {formatCurrency(totalRevenue)}
+                  </div>
                 </div>
               </div>
             </div>
