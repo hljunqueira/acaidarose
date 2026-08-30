@@ -64,7 +64,7 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
       const res = await fetch('/api/franchise-requests')
       const data = await res.json()
       if (Array.isArray(data.requests)) {
-        const storeList = data.requests.filter((r: any) => r.type !== 'FRANCHISE_APPLICATION')
+        const storeList = data.requests.filter((r: any) => r.type !== 'FRANCHISE_APPLICATION' && r.type !== 'CONTACT_REQUEST')
         setRequests(storeList)
         if (isManual) {
           toast.success('Solicitações das lojas atualizadas')

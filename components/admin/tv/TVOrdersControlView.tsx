@@ -61,7 +61,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status } : o))
       )
-      toast.success(`Pedido movido para: ${status}`)
+      const statusLabel = status === 'READY' ? 'Pronto para Retirar' : status === 'COMPLETED' || status === 'PAID' ? 'Entregue & Finalizado' : 'Em Preparação'
+      toast.success(`Pedido movido para: ${statusLabel}`)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao atualizar pedido')
     }
@@ -69,7 +70,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
 
   // Ação de Chamar na TV & Mudar status para Pronto
   const handleMarkAsReadyAndCall = async (order: Order) => {
-    const ticketNum = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`
+    const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
     const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
 
     // 1. Atualizar status no Banco de Dados
@@ -86,12 +87,12 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       announceTVCall(ticketNum, clientName)
     }
 
-    toast.success(`Senha ${ticketNum} chamada na TV de Salão!`)
+    toast.success(`Senha ${ticketNum} chamada na TV do Salão!`)
   }
 
   // Ação de Re-chamar senha já pronta
   const handleReCall = (order: Order) => {
-    const ticketNum = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`
+    const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
     const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
 
     broadcastTVCall({
@@ -104,11 +105,13 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       announceTVCall(ticketNum, clientName)
     }
 
-    toast.success(`Senha ${ticketNum} re-chamada na TV de Salão!`)
+    toast.success(`Senha ${ticketNum} re-chamada na TV do Salão!`)
   }
 
   const handleDeliver = async (order: Order) => {
+    const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
     await updateStatus(order.id, 'COMPLETED')
+    toast.success(`Pedido ${ticketNum} entregue com sucesso!`)
   }
 
   const preparingOrders = orders.filter((o) => o.status === 'PREPARING' || o.status === 'NEW')

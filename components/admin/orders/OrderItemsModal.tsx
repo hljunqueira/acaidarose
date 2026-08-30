@@ -179,7 +179,7 @@ export default function OrderItemsModal({
                 className="h-8 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border-red-200 dark:border-red-500/30 rounded-xl cursor-pointer gap-1"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>Excluir Comanda</span>
+                <span>Eliminar Comanda</span>
               </Button>
             )}
 
@@ -205,7 +205,7 @@ export default function OrderItemsModal({
                 onClick={() => onCallTV(order)}
                 className="h-8 bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
-                <span>Chamar no Painel TV</span>
+                <span>Chamar na Smart TV</span>
               </Button>
             )}
 

@@ -19,11 +19,11 @@ export async function GET(request: NextRequest) {
       if (t) tenantId = t.id
     }
 
-    let sql = `SELECT * FROM orders WHERE deleted_at IS NULL`
+    let sql = `SELECT * FROM orders`
     const params: any[] = []
 
     if (tenantId) {
-      sql += ` AND tenant_id::text = $1`
+      sql += ` WHERE tenant_id::text = $1`
       params.push(tenantId)
     }
 
@@ -31,23 +31,31 @@ export async function GET(request: NextRequest) {
 
     const res = await query(sql, params)
 
-    const orders = (res.rows || []).map((o: any) => ({
-      id: o.id,
-      tenantId: o.tenant_id,
-      cashierId: o.cashier_id,
-      customerName: o.customer_name,
-      customerPhone: o.customer_phone,
-      orderNumber: o.daily_order_seq,
-      subtotal: Number(o.subtotal) || 0,
-      total: Number(o.total_amount) || 0,
-      status: o.status,
-      paymentStatus: o.payment_status,
-      paymentMethod: o.payment_method,
-      tableNumber: o.table_number,
-      isTableOrder: o.order_type === 'DINE_IN',
-      notes: o.notes,
-      createdAt: o.created_at,
-    }))
+    const orders = (res.rows || []).map((o: any) => {
+      let items = []
+      try {
+        items = typeof o.items_json === 'string' ? JSON.parse(o.items_json) : (o.items_json || [])
+      } catch {}
+
+      return {
+        id: o.id,
+        tenantId: o.tenant_id,
+        cashierId: o.cashier_id,
+        customerName: o.customer_name,
+        customerPhone: o.customer_phone,
+        orderNumber: o.order_number,
+        subtotal: Number(o.subtotal) || 0,
+        total: Number(o.total) || 0,
+        status: o.status,
+        paymentStatus: o.status === 'PAID' || o.status === 'PREPARING' || o.status === 'READY' ? 'PAID' : 'PENDING',
+        paymentMethod: o.payment_method,
+        tableNumber: o.table_number,
+        isTableOrder: o.is_table_order !== false,
+        notes: o.cancel_reason || '',
+        items,
+        createdAt: o.created_at,
+      }
+    })
 
     return NextResponse.json({ orders })
   } catch (error: any) {

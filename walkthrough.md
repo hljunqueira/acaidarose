@@ -83,3 +83,31 @@ Todas as tarefas solicitadas pelo usuário foram concluídas, testadas e enviada
   - Executado o reload no container Nginx: `docker exec ic-nginx-PHXo nginx -s reload`.
 - **Validação com cURL**: Testes de requisição HTTP simulando o Host `acaidarose.pt` e `api.acaidarose.pt` retornaram `200 OK` (com o tamanho e Etag do index estático) e os cabeçalhos de resposta corretos da Vercel (`X-Vercel-Cache`).
 
+### E. Unificação do Banco de Dados Vercel ↔ VPS
+- **Ajuste de Conexão de Produção na Vercel**: Removemos as variáveis `DATABASE_URL` e `DIRECT_URL` antigas da Vercel (que apontavam para o Supabase vazio) e adicionamos novos valores apontando diretamente para o PostgreSQL de produção da VPS (`198.50.117.110`).
+- **Otimização do Deploy (.vercelignore)**: Criamos o arquivo `.vercelignore` na raiz para ignorar a pasta `legacy-static` (evitando o limite de upload de 15.000 arquivos da Vercel) e rodamos o redeploy de produção com `npx vercel --prod --yes`.
+- **Ajuste DDL de Compatibilidade**: Corrigimos a tabela `franchise_requests` no Postgres da VPS adicionando as colunas esperadas pelo código da API do Next.js:
+  ```sql
+  ALTER TABLE franchise_requests ADD COLUMN response_notes text;
+  ALTER TABLE franchise_requests ADD COLUMN updated_at timestamp with time zone DEFAULT now();
+  ```
+- **Validação de Exibição**: A rota `/api/franchise-requests` na Vercel agora retorna com sucesso o status `200 OK` e lista em JSON todos os **12 leads históricos** migrados.
+
+### F. CRUD Completo de Candidaturas de Franquia
+- **Identificação da View Ativa**: Diagnosticamos que a aba do menu administrativo "Candidaturas de Franquia" carrega o componente `FranchiseCandidatesView.tsx` (e não o genérico `FranchiseRequestsView.tsx`).
+- **Implementação do CRUD no Frontend**:
+  - Adicionado o botão **`Novo Candidato`** no cabeçalho de `FranchiseCandidatesView.tsx`, abrindo um Dialog com formulário completo para cadastro manual e salvamento via `POST`.
+  - Adicionado o botão de lixeira (de exclusão definitiva) de candidatos com um Dialog de confirmação segura de deleção.
+- **Implementação do CRUD no Backend**: Adicionado o método `DELETE` na API `/api/franchise-requests/route.ts` para receber o `id` do lead e removê-lo fisicamente do Postgres da VPS.
+- **Resolução de Conflitos TS Locais**: Adicionada a pasta `legacy-static` na lista `exclude` do `tsconfig.json` para evitar erros de checagem do compilador TypeScript sobre os scripts legados do WordPress localmente.
+- **Deploy e Validação**: Compilado com sucesso (`npm run build`) e implantado na Vercel (`npx vercel --prod`), liberando as novas funcionalidades de gestão em tempo real.
+
+### G. Ativação do SSL / Proxy Cloudflare
+- **Proxy Ativo**: Confirmamos que o domínio `acaidarose.pt`, `www.acaidarose.pt` e `api.acaidarose.pt` foram ativados no modo **Proxied (Nuvem Laranja)** no painel de DNS da Cloudflare.
+- **Validação de Rota Pública**:
+  - nslookup comprovou que as consultas de DNS estão resolvendo para os endereços anycast seguros da Cloudflare (`104.21.67.145` / `172.67.177.87`).
+  - cURL em `https://acaidarose.pt` via SSL da Cloudflare retornou `200 OK` (Server: `cloudflare`) servindo com sucesso os arquivos de index estáticos da VPS sobre criptografia SSL segura.
+- **Resolução de Cache de DNS Local**: Orientamos o usuário a efetuar a limpeza de cache local (`ipconfig /flushdns` e `chrome://net-internals/#dns`) para ignorar o IP direto antigo da VPS cacheado no sistema.
+
+
+

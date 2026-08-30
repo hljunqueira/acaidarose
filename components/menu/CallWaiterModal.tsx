@@ -87,29 +87,29 @@ export default function CallWaiterModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[92vw] sm:w-full max-w-md p-5 sm:p-6 bg-[#160228] text-white border border-white/20 rounded-3xl shadow-2xl">
+      <DialogContent className="w-[92vw] sm:w-full max-w-md p-5 sm:p-6 bg-white text-slate-900 border border-purple-100 dark:bg-[#160228] dark:text-white dark:border-white/20 rounded-3xl shadow-2xl transition-colors duration-200">
         <DialogHeader className="text-left space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-pink-600/30 border border-pink-500/40 text-pink-300">
+            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-pink-100 text-pink-700 border border-pink-200 dark:bg-pink-600/30 dark:border-pink-500/40 dark:text-pink-300">
               {tableLabel} · Chamado Rápido
             </span>
-            <Bell className="h-4 w-4 text-pink-400 animate-bounce" />
+            <Bell className="h-4 w-4 text-pink-600 dark:text-pink-400 animate-bounce" />
           </div>
-          <DialogTitle className="text-xl font-black text-white">
+          <DialogTitle className="text-xl font-black text-slate-900 dark:text-white">
             Chamar Atendente
           </DialogTitle>
-          <p className="text-xs text-purple-200/70">
+          <p className="text-xs text-slate-600 dark:text-purple-200/70 font-medium">
             Selecione a opção com 1 toque e a equipa irá até à sua mesa:
           </p>
         </DialogHeader>
 
         {sentSuccess ? (
           <div className="py-8 text-center space-y-3">
-            <div className="h-16 w-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/40">
+            <div className="h-16 w-16 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/40">
               <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-black text-white">Chamado Enviado!</h3>
-            <p className="text-xs text-purple-200/80 max-w-xs mx-auto">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">Chamado Enviado!</h3>
+            <p className="text-xs text-slate-600 dark:text-purple-200/80 max-w-xs mx-auto">
               A equipa já recebeu o alerta de <strong>{sentReason}</strong> para a <strong>{tableLabel}</strong> e o ticket foi enviado para o atendimento.
             </p>
           </div>
@@ -125,10 +125,10 @@ export default function CallWaiterModal({
                   type="button"
                   disabled={Boolean(callingId)}
                   onClick={() => handleCallOption(opt)}
-                  className={`w-full p-4 rounded-2xl bg-white/[0.04] border ${opt.borderColor} hover:bg-white/[0.08] transition-all flex items-center justify-between text-left cursor-pointer group hover:scale-[1.02] active:scale-[0.98]`}
+                  className="w-full p-4 rounded-2xl bg-purple-50/70 border border-purple-200/80 hover:bg-purple-100/80 dark:bg-white/[0.04] dark:border-white/10 dark:hover:bg-white/[0.08] transition-all flex items-center justify-between text-left cursor-pointer group hover:scale-[1.01] active:scale-[0.99] text-slate-900 dark:text-white shadow-xs"
                 >
                   <div className="flex items-center gap-3.5">
-                    <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${opt.color} text-white flex items-center justify-center shadow-lg`}>
+                    <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${opt.color} text-white flex items-center justify-center shadow-md`}>
                       {isCalling ? (
                         <Loader2 className="h-6 w-6 animate-spin" />
                       ) : (
@@ -136,16 +136,16 @@ export default function CallWaiterModal({
                       )}
                     </div>
                     <div>
-                      <div className="text-sm font-black text-white group-hover:text-pink-300 transition-colors">
+                      <div className="text-sm font-black text-slate-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-300 transition-colors">
                         {opt.title}
                       </div>
-                      <div className="text-[11px] text-purple-200/70 mt-0.5">
+                      <div className="text-[11px] text-slate-600 dark:text-purple-200/70 mt-0.5 font-medium">
                         {opt.desc}
                       </div>
                     </div>
                   </div>
 
-                  <span className="text-xs font-bold text-pink-400 group-hover:translate-x-1 transition-transform">
+                  <span className="text-xs font-bold text-pink-600 dark:text-pink-400 group-hover:translate-x-1 transition-transform">
                     {isCalling ? 'Enviando...' : 'Chamar ›'}
                   </span>
                 </button>
@@ -155,12 +155,12 @@ export default function CallWaiterModal({
         )}
 
         {!sentSuccess && (
-          <div className="pt-3 border-t border-white/10 flex justify-end">
+          <div className="pt-3 border-t border-purple-100 dark:border-white/10 flex justify-end">
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="text-xs text-purple-300 hover:text-white"
+              className="text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-purple-300 dark:hover:text-white cursor-pointer"
             >
               Cancelar
             </Button>

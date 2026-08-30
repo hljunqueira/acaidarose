@@ -96,10 +96,10 @@ export default function AppSidebar({
         .then((data) => {
           if (Array.isArray(data.requests)) {
             const candPending = data.requests.filter(
-              (r: any) => r.type === 'FRANCHISE_APPLICATION' && r.status === 'PENDING'
+              (r: any) => (r.type === 'FRANCHISE_APPLICATION' || r.type === 'CONTACT_REQUEST') && r.status === 'PENDING'
             ).length
             const storePending = data.requests.filter(
-              (r: any) => r.type !== 'FRANCHISE_APPLICATION' && r.status === 'PENDING'
+              (r: any) => r.type !== 'FRANCHISE_APPLICATION' && r.type !== 'CONTACT_REQUEST' && r.status === 'PENDING'
             ).length
 
             setCandidatesCount(candPending)

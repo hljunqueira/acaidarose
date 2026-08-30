@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 import { toast } from 'sonner'
 import {
   UserCheck,
@@ -24,11 +25,13 @@ import {
   CheckCircle2,
   XCircle,
   Trash2,
+  Plus,
+  Edit,
 } from 'lucide-react'
 
 export interface FranchiseCandidate {
   id: string
-  type: 'FRANCHISE_APPLICATION'
+  type: 'FRANCHISE_APPLICATION' | 'CONTACT_REQUEST'
   candidateName: string
   email: string
   phone: string
@@ -58,6 +61,20 @@ export default function FranchiseCandidatesView() {
   const [candidateNotes, setCandidateNotes] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
 
+  const [activeTab, setActiveTab] = useState<'CANDIDATES' | 'OPTIONS'>('CANDIDATES')
+  
+  // Estados de gestão de opções de investimento
+  const [franchiseOptions, setFranchiseOptions] = useState<any[]>([])
+  const [optionsLoading, setOptionsLoading] = useState(false)
+  const [optionModalOpen, setOptionModalOpen] = useState(false)
+  const [editingOption, setEditingOption] = useState<any | null>(null)
+  const [optionForm, setOptionForm] = useState({
+    name: '',
+    valueText: '',
+    active: true,
+    displayOrder: 1,
+  })
+
   // Estados do CRUD Adicional
   const [newCandidateOpen, setNewCandidateOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -68,9 +85,111 @@ export default function FranchiseCandidatesView() {
     telefone: '',
     cidade: '',
     distrito: '',
-    investimento: '5.000€',
+    investimento: 'Delivery: 10.000€',
     motivo: '',
   })
+
+  const fetchOptions = useCallback(async () => {
+    setOptionsLoading(true)
+    try {
+      const res = await fetch('/api/franchise-options')
+      const data = await res.json()
+      if (Array.isArray(data.options)) {
+        setFranchiseOptions(data.options)
+      }
+    } catch {
+      toast.error('Erro ao carregar opções de franquia')
+    } finally {
+      setOptionsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchOptions()
+  }, [fetchOptions])
+
+  useEffect(() => {
+    const activeOpts = franchiseOptions.filter(o => o.active)
+    if (activeOpts.length > 0) {
+      const firstOptVal = `${activeOpts[0].name}: ${activeOpts[0].valueText}`
+      setFormData(prev => ({
+        ...prev,
+        investimento: firstOptVal
+      }))
+    }
+  }, [franchiseOptions])
+
+  const handleOpenOptionModal = (option: any | null) => {
+    if (option) {
+      setEditingOption(option)
+      setOptionForm({
+        name: option.name,
+        valueText: option.valueText,
+        active: option.active,
+        displayOrder: option.displayOrder || 1,
+      })
+    } else {
+      setEditingOption(null)
+      setOptionForm({
+        name: '',
+        valueText: '',
+        active: true,
+        displayOrder: franchiseOptions.length + 1,
+      })
+    }
+    setOptionModalOpen(true)
+  }
+
+  const handleSaveOption = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setOptionsLoading(true)
+    try {
+      const method = editingOption ? 'PATCH' : 'POST'
+      const payload = editingOption 
+        ? { id: editingOption.id, ...optionForm }
+        : optionForm
+
+      const res = await fetch('/api/franchise-options', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) throw new Error('Erro ao salvar opção')
+      toast.success(editingOption ? 'Opção atualizada com sucesso!' : 'Nova opção criada com sucesso!')
+      setOptionModalOpen(false)
+      fetchOptions()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao processar requisição')
+    } finally {
+      setOptionsLoading(false)
+    }
+  }
+
+  const [optionToDelete, setOptionToDelete] = useState<string | null>(null)
+  const [deleteOptionLoading, setDeleteOptionLoading] = useState(false)
+
+  const handleDeleteOption = (id: string) => {
+    setOptionToDelete(id)
+  }
+
+  const handleConfirmDeleteOption = async () => {
+    if (!optionToDelete) return
+    setDeleteOptionLoading(true)
+    try {
+      const res = await fetch(`/api/franchise-options?id=${optionToDelete}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Erro ao excluir opção')
+      toast.success('Opção de investimento excluída com sucesso!')
+      setOptionToDelete(null)
+      fetchOptions()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao excluir opção')
+    } finally {
+      setDeleteOptionLoading(false)
+    }
+  }
 
   const handleCreateCandidate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,13 +206,17 @@ export default function FranchiseCandidatesView() {
       if (!res.ok) throw new Error('Erro ao registrar candidatura')
       toast.success('Candidatura manual registrada com sucesso!')
       setNewCandidateOpen(false)
+      const activeOpts = franchiseOptions.filter(o => o.active)
+      const defaultInvest = activeOpts.length > 0
+        ? `${activeOpts[0].name}: ${activeOpts[0].valueText}`
+        : 'Delivery: 10.000€'
       setFormData({
         nome: '',
         email: '',
         telefone: '',
         cidade: '',
         distrito: '',
-        investimento: '5.000€',
+        investimento: defaultInvest,
         motivo: '',
       })
       fetchCandidates(false)
@@ -129,7 +252,7 @@ export default function FranchiseCandidatesView() {
       const res = await fetch('/api/franchise-requests')
       const data = await res.json()
       if (Array.isArray(data.requests)) {
-        const candList = data.requests.filter((r: any) => r.type === 'FRANCHISE_APPLICATION')
+        const candList = data.requests.filter((r: any) => r.type === 'FRANCHISE_APPLICATION' || r.type === 'CONTACT_REQUEST')
         setCandidates(candList)
         if (isManual) {
           toast.success('Candidaturas sincronizadas')
@@ -193,7 +316,7 @@ export default function FranchiseCandidatesView() {
       ? `351${cleanPhone}`
       : cleanPhone
     const msg = encodeURIComponent(
-      `Olá ${name}, agradecemos o seu interesse na franquia Açaí da Rose! Podemos conversar sobre a sua candidatura?`
+      `Olá ${name}, meu nome é José Valdair, agradecemos o seu interesse na franquia Açaí da Rose! Podemos conversar sobre a sua candidatura?`
     )
     window.open(`https://wa.me/${finalPhone}?text=${msg}`, '_blank')
   }
@@ -234,7 +357,22 @@ export default function FranchiseCandidatesView() {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            onClick={() => setNewCandidateOpen(true)}
+            onClick={() => {
+              const activeOpts = franchiseOptions.filter(o => o.active)
+              const defaultInvest = activeOpts.length > 0
+                ? `${activeOpts[0].name}: ${activeOpts[0].valueText}`
+                : 'Delivery: 10.000€'
+              setFormData({
+                nome: '',
+                email: '',
+                telefone: '',
+                cidade: '',
+                distrito: '',
+                investimento: defaultInvest,
+                motivo: '',
+              })
+              setNewCandidateOpen(true)
+            }}
             className="h-9 text-xs font-bold rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white cursor-pointer shadow-xs"
           >
             <span>Novo Candidato</span>
@@ -253,8 +391,34 @@ export default function FranchiseCandidatesView() {
         </div>
       </div>
 
-      {/* 4 Cards de Métricas do Funil de Expansão */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Abas de Navegação */}
+      <div className="flex border-b border-purple-100 dark:border-white/10 gap-6 mb-2">
+        <button
+          onClick={() => setActiveTab('CANDIDATES')}
+          className={`pb-2 text-sm font-bold border-b-2 px-1 cursor-pointer transition-colors ${
+            activeTab === 'CANDIDATES'
+              ? 'border-purple-600 text-purple-900 dark:text-pink-400 dark:border-pink-500'
+              : 'border-transparent text-purple-700/60 dark:text-purple-300/60 hover:text-purple-900 dark:hover:text-white'
+          }`}
+        >
+          Candidaturas & Contactos
+        </button>
+        <button
+          onClick={() => setActiveTab('OPTIONS')}
+          className={`pb-2 text-sm font-bold border-b-2 px-1 cursor-pointer transition-colors ${
+            activeTab === 'OPTIONS'
+              ? 'border-purple-600 text-purple-900 dark:text-pink-400 dark:border-pink-500'
+              : 'border-transparent text-purple-700/60 dark:text-purple-300/60 hover:text-purple-900 dark:hover:text-white'
+          }`}
+        >
+          Valores & Opções de Franquia
+        </button>
+      </div>
+
+      {activeTab === 'CANDIDATES' && (
+        <>
+          {/* 4 Cards de Métricas do Funil de Expansão */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] shadow-xs rounded-3xl p-4">
           <div className="text-xs font-bold text-purple-900/70 dark:text-purple-300/70 uppercase">Total de Leads</div>
           <div className="text-2xl font-black text-purple-950 dark:text-white mt-1">{totalLeads}</div>
@@ -339,7 +503,14 @@ export default function FranchiseCandidatesView() {
                   filteredCandidates.map((cand) => (
                     <tr key={cand.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-purple-950 dark:text-white text-xs">{cand.candidateName}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-purple-950 dark:text-white text-xs">{cand.candidateName}</span>
+                          {cand.type === 'CONTACT_REQUEST' && (
+                            <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[9px] scale-90 py-0 px-1 font-bold">
+                              Contacto
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-[11px] text-purple-700/80 dark:text-purple-300/70">{cand.email}</div>
                         <div className="text-[11px] font-mono text-purple-900/70 dark:text-purple-200/60">{cand.phone}</div>
                       </td>
@@ -430,6 +601,179 @@ export default function FranchiseCandidatesView() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
+
+      {activeTab === 'OPTIONS' && (
+        <Card className="border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] shadow-xs rounded-3xl p-6">
+          <div className="flex items-center justify-between gap-4 pb-4 border-b border-purple-100 dark:border-white/10 mb-4">
+            <div>
+              <h2 className="text-md font-black text-purple-950 dark:text-white">Opções de Investimento Inicial</h2>
+              <p className="text-[11px] text-purple-700/70 dark:text-purple-300/70">
+                Configure os valores exibidos na landing page e nos formulários estáticos
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => handleOpenOptionModal(null)}
+              className="rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 text-white font-bold text-xs gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Adicionar Opção</span>
+            </Button>
+          </div>
+
+          {optionsLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-purple-700/50 dark:text-purple-300/50 gap-2">
+              <RefreshCw className="h-6 w-6 animate-spin text-purple-600 dark:text-pink-400" />
+              <span className="text-xs font-bold">Carregando configurações...</span>
+            </div>
+          ) : franchiseOptions.length === 0 ? (
+            <div className="text-center py-12 text-xs font-medium text-purple-700/50 dark:text-purple-300/50">
+              Nenhuma opção configurada no momento. Clique em &quot;Adicionar Opção&quot; para criar a primeira.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-purple-100 dark:border-white/10 text-purple-900/60 dark:text-purple-300/60 text-[10px] uppercase font-black">
+                    <th className="py-2.5 px-4">Nome / Tipo</th>
+                    <th className="py-2.5 px-4">Valor Estimado</th>
+                    <th className="py-2.5 px-4">Ordem</th>
+                    <th className="py-2.5 px-4">Estado</th>
+                    <th className="py-2.5 px-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-purple-100/50 dark:divide-white/5 text-xs">
+                  {franchiseOptions.map((opt) => (
+                    <tr key={opt.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
+                      <td className="py-3 px-4 font-bold text-purple-950 dark:text-white">{opt.name}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-purple-700 dark:text-pink-300">{opt.valueText}</td>
+                      <td className="py-3 px-4 text-purple-900/70 dark:text-purple-200/60 font-mono">{opt.displayOrder}</td>
+                      <td className="py-3 px-4">
+                        {opt.active ? (
+                          <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[10px] font-bold">
+                            Ativo
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-purple-500/10 text-purple-700/60 dark:text-purple-400 border border-purple-500/20 text-[10px] font-medium">
+                            Inativo
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleOpenOptionModal(opt)}
+                            className="h-8 w-8 text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white cursor-pointer rounded-lg"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeleteOption(opt.id)}
+                            className="h-8 w-8 text-purple-700/70 dark:text-purple-300/70 hover:text-red-600 hover:bg-red-500/10 cursor-pointer rounded-lg"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Modal de Adicionar/Editar Opção */}
+      <Dialog open={optionModalOpen} onOpenChange={setOptionModalOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 rounded-3xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-md font-black text-purple-950 dark:text-white">
+              {editingOption ? 'Editar Opção de Investimento' : 'Adicionar Opção de Investimento'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-purple-700/70 dark:text-purple-300/70 font-medium">
+              Esta configuração altera os campos exibidos no formulário de candidatura no site principal e legado.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveOption} className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <Label className="text-[11px] font-bold">Nome / Tipo da Loja</Label>
+              <Input
+                required
+                placeholder="Ex: Delivery, Loja Pequena, Quiosque..."
+                value={optionForm.name}
+                onChange={(e) => setOptionForm({ ...optionForm, name: e.target.value })}
+                className="h-10 rounded-xl border-purple-200 dark:border-white/15 text-xs bg-purple-50/20 dark:bg-white/5"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold">Valor ou Faixa de Preço</Label>
+                <Input
+                  required
+                  placeholder="Ex: 10.000€, 15.000€ a 20.000€..."
+                  value={optionForm.valueText}
+                  onChange={(e) => setOptionForm({ ...optionForm, valueText: e.target.value })}
+                  className="h-10 rounded-xl border-purple-200 dark:border-white/15 text-xs bg-purple-50/20 dark:bg-white/5"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold">Ordem de Exibição</Label>
+                <Input
+                  type="number"
+                  required
+                  placeholder="Ex: 1, 2, 3..."
+                  value={optionForm.displayOrder}
+                  onChange={(e) => setOptionForm({ ...optionForm, displayOrder: Number(e.target.value) })}
+                  className="h-10 rounded-xl border-purple-200 dark:border-white/15 text-xs bg-purple-50/20 dark:bg-white/5"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="option-active"
+                checked={optionForm.active}
+                onChange={(e) => setOptionForm({ ...optionForm, active: e.target.checked })}
+                className="h-4 w-4 rounded accent-purple-600 cursor-pointer"
+              />
+              <label htmlFor="option-active" className="text-xs font-bold text-purple-900/90 dark:text-purple-200/90 cursor-pointer">
+                Exibir esta opção nos formulários (Ativo)
+              </label>
+            </div>
+
+            <DialogFooter className="pt-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOptionModalOpen(false)}
+                className="rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={optionsLoading}
+                className="rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 text-white font-bold text-xs shadow-xs cursor-pointer"
+              >
+                {optionsLoading ? 'Guardando...' : 'Guardar Opção'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* Modal de Gestão & Entrevistas */}
       {selectedCandidate && (
@@ -608,11 +952,19 @@ export default function FranchiseCandidatesView() {
                   onChange={(e) => setFormData({ ...formData, investimento: e.target.value })}
                   className="w-full h-9 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/20 dark:bg-[#160228] px-3.5 text-xs font-medium focus:outline-none"
                 >
-                  <option value="5.000€">Até 5.000€</option>
-                  <option value="5.000€ - 10.000€">5.000€ a 10.000€</option>
-                  <option value="10.000€ - 20.000€">10.000€ a 20.000€</option>
-                  <option value="20.000€ - 50.000€">20.000€ a 50.000€</option>
-                  <option value="Mais de 50.000€">Mais de 50.000€</option>
+                  {franchiseOptions.length > 0 ? (
+                    franchiseOptions.filter(o => o.active).map(o => (
+                      <option key={o.id} value={`${o.name}: ${o.valueText}`}>
+                        {o.name}: {o.valueText}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Delivery: 10.000€">Delivery: 10.000€</option>
+                      <option value="Loja pequena até 20 metros quadrados: 15.000€ a 20.000€">Loja pequena até 20 metros quadrados: 15.000€ a 20.000€</option>
+                      <option value="Loja até 60 metros quadrados: 25.000€ a 30.000€">Loja até 60 metros quadrados: 25.000€ a 30.000€</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>
@@ -673,6 +1025,19 @@ export default function FranchiseCandidatesView() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmação de Exclusão de Opção de Franquia */}
+      <ConfirmActionDialog
+        open={Boolean(optionToDelete)}
+        onOpenChange={(open) => !open && setOptionToDelete(null)}
+        title="Excluir Opção de Investimento?"
+        description="Tem certeza que deseja excluir esta opção de franquia? Novos candidatos não poderão mais selecioná-la."
+        confirmLabel="Sim, Excluir Opção"
+        cancelLabel="Cancelar"
+        variant="destructive"
+        loading={deleteOptionLoading}
+        onConfirm={handleConfirmDeleteOption}
+      />
     </div>
   )
 }

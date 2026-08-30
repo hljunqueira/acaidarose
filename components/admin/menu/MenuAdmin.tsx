@@ -11,7 +11,8 @@ import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import ProductSection from './ProductSection'
 import ProductEditDialog from './ProductEditDialog'
 import TableQRCodeGeneratorDialog from './TableQRCodeGeneratorDialog'
-import { UtensilsCrossed, RefreshCw, Store, QrCode } from 'lucide-react'
+import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
+import { UtensilsCrossed, RefreshCw, Store, QrCode, Eye, Tv } from 'lucide-react'
 
 interface MenuAdminProps {
   tenantId: string
@@ -23,6 +24,8 @@ export default function MenuAdmin({ tenantId }: MenuAdminProps) {
   const [syncing, setSyncing] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<{ collection: string; id: string } | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [editing, setEditing] = useState<{ collection: 'containers' | 'bases' | 'toppings'; item: any }>({
     collection: 'containers',
     item: null,
@@ -62,15 +65,23 @@ export default function MenuAdmin({ tenantId }: MenuAdminProps) {
     }
   }
 
-  const handleDelete = async (col: string, id: string) => {
-    if (!confirm('Deseja remover este item do cardápio master?')) return
+  const handleDelete = (col: string, id: string) => {
+    setItemToDelete({ collection: col, id })
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return
+    setDeleteLoading(true)
     try {
-      const res = await authFetch(`/api/products/${col}/${id}`, { method: 'DELETE' })
+      const res = await authFetch(`/api/products/${itemToDelete.collection}/${itemToDelete.id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Erro ao remover')
-      toast.success('Item removido!')
+      toast.success('Item removido com sucesso!')
+      setItemToDelete(null)
       loadData()
     } catch (e: any) {
       toast.error(e.message || 'Erro')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -151,16 +162,52 @@ export default function MenuAdmin({ tenantId }: MenuAdminProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Botão de Visualizar Cardápio da Loja Ativa */}
+          <Button
+            size="sm"
+            variant="outline"
+            asChild
+            className="text-xs font-bold gap-1.5 rounded-xl border-purple-200 hover:bg-purple-50 h-9 cursor-pointer"
+          >
+            <a
+              href={`/menu?tenantId=${encodeURIComponent(tenantId)}&loja=${encodeURIComponent(currentTenant.slug || 'torres-novas')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Abrir o Cardápio QR Code desta Loja"
+            >
+              <Eye className="h-4 w-4 text-pink-600" />
+              <span>Visualizar Cardápio</span>
+            </a>
+          </Button>
+
+          {/* Botão de Abrir Painel TV do Salão */}
+          <Button
+            size="sm"
+            variant="outline"
+            asChild
+            className="text-xs font-bold gap-1.5 rounded-xl border-purple-200 hover:bg-purple-50 h-9 cursor-pointer"
+          >
+            <a
+              href="/chamada"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Abrir Painel de TV de Senhas & Vídeos da Loja"
+            >
+              <Tv className="h-4 w-4 text-purple-600" />
+              <span>Painel TV Salão</span>
+            </a>
+          </Button>
+
           {/* Botão de Placas de QR Code para Mesas */}
           <Button
             size="sm"
             variant="outline"
             onClick={() => setQrDialogOpen(true)}
-            className="text-xs font-bold gap-1.5 rounded-xl border-purple-200 hover:bg-purple-50 h-9"
+            className="text-xs font-bold gap-1.5 rounded-xl border-purple-200 hover:bg-purple-50 h-9 cursor-pointer"
           >
             <QrCode className="h-4 w-4 text-purple-600" />
-            <span>Placas QR Code de Mesas</span>
+            <span>Placas QR Code</span>
           </Button>
 
           {isSuperAdmin && (
@@ -168,7 +215,7 @@ export default function MenuAdmin({ tenantId }: MenuAdminProps) {
               size="sm"
               onClick={handleSyncAllStores}
               disabled={syncing}
-              className="bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs h-9 rounded-xl shadow-xs gap-1.5"
+              className="bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs h-9 rounded-xl shadow-xs gap-1.5 cursor-pointer"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
               <span>Sincronizar Todas as Lojas</span>
@@ -275,6 +322,19 @@ export default function MenuAdmin({ tenantId }: MenuAdminProps) {
         onOpenChange={setQrDialogOpen}
         tenantId={tenantId}
         storeName={currentTenant.name}
+      />
+
+      {/* Modal de Confirmação de Remoção de Item do Cardápio */}
+      <ConfirmActionDialog
+        open={Boolean(itemToDelete)}
+        onOpenChange={(open) => !open && setItemToDelete(null)}
+        title="Remover Item do Cardápio?"
+        description="Tem certeza que deseja remover este item do cardápio master? Ele não aparecerá mais para as lojas e clientes."
+        confirmLabel="Sim, Remover Item"
+        cancelLabel="Cancelar"
+        variant="destructive"
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   )

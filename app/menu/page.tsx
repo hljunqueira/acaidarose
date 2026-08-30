@@ -16,6 +16,7 @@ import CustomerMenuHome from '@/components/menu/CustomerMenuHome'
 import CustomerMenuSearch from '@/components/menu/CustomerMenuSearch'
 import CustomerMenuMore from '@/components/menu/CustomerMenuMore'
 import CustomerProductDetail from '@/components/menu/CustomerProductDetail'
+import CustomerCartSheet from '@/components/menu/CustomerCartSheet'
 import CallWaiterModal from '@/components/menu/CallWaiterModal'
 import { Info } from 'lucide-react'
 
@@ -82,7 +83,7 @@ function MenuContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E0117] text-white flex flex-col selection:bg-pink-500 selection:text-white pb-24">
+    <div className="min-h-dvh bg-[#f8f5fc] text-slate-900 dark:bg-[#0E0117] dark:text-white flex flex-col selection:bg-pink-500 selection:text-white transition-colors duration-200 overflow-x-hidden max-w-full">
       {/* 1. Header do Cardápio */}
       <CustomerMenuHeader
         tenant={tenant}
@@ -94,8 +95,8 @@ function MenuContent() {
 
       {/* Aviso de Modo Catálogo Vitrine (quando acessado diretamente sem QR Code de mesa) */}
       {isCatalogOnly && (
-        <div className="bg-purple-950/80 border-b border-purple-800/40 px-4 py-2.5 text-center text-xs text-purple-200 flex items-center justify-center gap-2">
-          <Info className="h-4 w-4 text-pink-400 shrink-0" />
+        <div className="bg-purple-100 text-purple-950 dark:bg-purple-950/80 dark:text-purple-200 border-b border-purple-200 dark:border-purple-800/40 px-4 py-2.5 text-center text-xs flex items-center justify-center gap-2">
+          <Info className="h-4 w-4 text-pink-500 shrink-0" />
           <span>
             <strong>Modo Catálogo Digital:</strong> Para fazer pedidos e pagamentos na mesa, faça a leitura do QR Code da sua mesa física.
           </span>
@@ -103,7 +104,7 @@ function MenuContent() {
       )}
 
       {/* 2. Conteúdo Principal por Aba */}
-      <main className="flex-1">
+      <main className="flex-1 w-full max-w-full pb-20">
         {activeTab === 'menu' && (
           <CustomerMenuHome
             catalog={catalog}
@@ -154,30 +155,30 @@ function MenuContent() {
       {/* 5. Modal Informativo de Detalhes (Em Modo Catálogo Vitrine) */}
       {infoModalProduct && (
         <Dialog open={Boolean(infoModalProduct)} onOpenChange={() => setInfoModalProduct(null)}>
-          <DialogContent className="bg-[#18022B] text-white border border-white/15 rounded-3xl max-w-md p-6">
+          <DialogContent className="bg-white text-slate-900 border border-purple-100 dark:bg-[#18022B] dark:text-white dark:border-white/15 rounded-3xl max-w-md p-6 shadow-2xl transition-colors duration-200">
             <DialogHeader>
-              <DialogTitle className="text-xl font-black text-white">
+              <DialogTitle className="text-xl font-black text-slate-900 dark:text-white">
                 {infoModalProduct.name}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-2 text-xs text-purple-200">
-              <p className="leading-relaxed">
+            <div className="space-y-4 pt-2 text-xs text-slate-600 dark:text-purple-200">
+              <p className="leading-relaxed font-medium">
                 {infoModalProduct.description || 'Delicioso açaí artesanal preparado na hora com os melhores ingredientes selecionados.'}
               </p>
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-center">
-                <span className="font-bold text-white">Preço Base:</span>
-                <span className="text-base font-black text-pink-400 font-mono">
+              <div className="p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200/80 dark:bg-white/5 dark:border-white/10 flex justify-between items-center">
+                <span className="font-bold text-slate-900 dark:text-white">Preço Base:</span>
+                <span className="text-base font-black text-fuchsia-600 dark:text-pink-400 font-mono">
                   {formatCurrency(infoModalProduct.precoBase)}
                 </span>
               </div>
-              <div className="text-[11px] text-purple-300/80 bg-purple-900/30 p-3 rounded-xl border border-purple-500/20">
+              <div className="text-[11px] font-medium text-purple-900 bg-purple-100 p-3 rounded-xl border border-purple-200 dark:text-purple-300/80 dark:bg-purple-900/30 dark:border-purple-500/20">
                 Disponível para consumo no salão e take-away na unidade {tenant?.name || 'Açaí da Rose'}.
               </div>
             </div>
             <DialogFooter className="pt-2">
               <Button
                 onClick={() => setInfoModalProduct(null)}
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold cursor-pointer"
+                className="w-full bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold cursor-pointer h-10"
               >
                 Fechar
               </Button>
@@ -186,7 +187,36 @@ function MenuContent() {
         </Dialog>
       )}
 
-      {/* 6. Modal Chamada de Garçom */}
+      {/* 6. Gaveta / Modal do Carrinho e Pedido */}
+      <CustomerCartSheet
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        cart={cart}
+        onUpdateQuantity={(index, newQty) => {
+          setCart((prev) => {
+            const next = [...prev]
+            if (next[index]) {
+              next[index] = {
+                ...next[index],
+                quantity: newQty,
+                lineTotal: +(next[index].unitPrice * newQty).toFixed(2),
+              }
+            }
+            return next
+          })
+        }}
+        onRemoveItem={(index) => {
+          setCart((prev) => prev.filter((_, i) => i !== index))
+          toast.info('Item removido do pedido')
+        }}
+        onClearCart={() => setCart([])}
+        tenantId={tenant?.id}
+        tenantName={tenant?.name}
+        isTable={isTable}
+        tableNumber={paramNumero}
+      />
+
+      {/* 7. Modal Chamada de Garçom */}
       {isTable && (
         <CallWaiterModal
           open={waiterModalOpen}

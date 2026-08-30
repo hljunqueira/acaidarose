@@ -570,9 +570,9 @@ gtag("config", "GT-NGM93T5J");
 			<div class="select-caret-down-wrapper">
 				<svg aria-hidden="true" class="e-font-icon-svg e-eicon-caret-down" viewBox="0 0 571.4 571.4" xmlns="http://www.w3.org/2000/svg"><path d="M571 393Q571 407 561 418L311 668Q300 679 286 679T261 668L11 418Q0 407 0 393T11 368 36 357H536Q550 357 561 368T571 393Z"></path></svg>			</div>
 			<select name="form_fields[field_602f504]" id="form-field-field_602f504" class="elementor-field-textual elementor-size-sm">
-									<option value="5.000€">5.000€</option>
-									<option value="10.000€ à 14.000€">10.000€ à 14.000€</option>
-									<option value="14.000€ à 18.000€">14.000€ à 18.000€</option>
+									<option value="Delivery: 10.000€">Delivery: 10.000€</option>
+									<option value="Loja pequena até 20 metros quadrados: 15.000€ a 20.000€">Loja pequena até 20 metros quadrados: 15.000€ a 20.000€</option>
+									<option value="Loja até 60 metros quadrados: 25.000€ a 30.000€">Loja até 60 metros quadrados: 25.000€ a 30.000€</option>
 							</select>
 		</div>
 						</div>
@@ -869,9 +869,38 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 
 
 <!-- Injetado por Antigravity para integração de formulário CORS -->
+<!-- Injetado por Antigravity para integração de formulário CORS -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  const forms = document.querySelectorAll("form");
+  // 1. Carregamento dinâmico de opções de investimento
+  const selectElement = document.getElementById("form-field-field_602f504");
+  if (selectElement) {
+    const optionsApiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? '/api/franchise-options'
+      : 'https://api.acaidarose.pt/api/franchise-options';
+    
+    fetch(optionsApiUrl)
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data.options)) {
+          const activeOpts = data.options.filter(o => o.active);
+          if (activeOpts.length > 0) {
+            selectElement.innerHTML = "";
+            activeOpts.forEach(opt => {
+              const valueText = `${opt.name}: ${opt.valueText}`;
+              const option = document.createElement("option");
+              option.value = valueText;
+              option.textContent = valueText;
+              selectElement.appendChild(option);
+            });
+          }
+        }
+      })
+      .catch(err => console.error("Erro ao carregar opções de investimento dinâmicas:", err));
+  }
+
+  // 2. Intercepção e submissão via CORS
+  const forms = document.querySelectorAll("form.elementor-form");
   forms.forEach(form => {
     form.addEventListener("submit", function(e) {
       e.preventDefault();
@@ -885,13 +914,13 @@ document.addEventListener("DOMContentLoaded", function() {
       // Mapear campos do formulário para o formato que a API do Next.js espera
       const payload = {
         type: "FRANCHISE_APPLICATION",
-        nome: data["name"] || data["nome"] || data["nome-completo"] || data["field_name"] || "",
-        email: data["email"] || data["e-mail"] || data["field_email"] || "",
-        telefone: data["field_ef92446"] || data["telefone"] || data["phone"] || data["field_phone"] || "",
-        cidade: data["field_78af9af"] || data["cidade"] || data["city"] || "",
-        distrito: data["field_c58d2aa"] || data["distrito"] || data["district"] || "",
-        investimento: data["field_602f504"] || data["investimento"] || data["investment"] || "",
-        motivo: data["message"] || data["mensagem"] || data["motivo"] || "",
+        nome: data["form_fields[name]"] || data["name"] || "",
+        email: data["form_fields[email]"] || data["email"] || "",
+        telefone: data["form_fields[field_ef92446]"] || "",
+        cidade: data["form_fields[field_78af9af]"] || "",
+        distrito: data["form_fields[field_c58d2aa]"] || "",
+        investimento: data["form_fields[field_602f504]"] || "",
+        motivo: data["form_fields[message]"] || data["message"] || "",
         preferenciaContato: {
           whatsapp: true,
           telefone: false,
@@ -900,17 +929,21 @@ document.addEventListener("DOMContentLoaded", function() {
         termosAceitos: true
       };
 
-      console.log("Enviando candidatura de teste via AJAX:", payload);
+      console.log("Enviando candidatura de franquia via AJAX CORS:", payload);
 
       const submitButton = form.querySelector('button[type="submit"]') || form.querySelector('input[type="submit"]');
       const originalText = submitButton ? (submitButton.textContent || submitButton.value) : "Enviar";
       if (submitButton) {
-        if (submitButton.tagName === 'INPUT') submitButton.value = "Enviando...";
-        else submitButton.textContent = "Enviando...";
+        if (submitButton.tagName === 'INPUT') submitButton.value = "A enviar...";
+        else submitButton.textContent = "A enviar...";
         submitButton.disabled = true;
       }
 
-      fetch("https://api.acaidarose.pt/api/franchise-requests", {
+      const requestsApiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? '/api/franchise-requests'
+        : 'https://api.acaidarose.pt/api/franchise-requests';
+
+      fetch(requestsApiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -918,17 +951,17 @@ document.addEventListener("DOMContentLoaded", function() {
         body: JSON.stringify(payload)
       })
       .then(response => {
-        if (!response.ok) throw new Error("Erro na rede");
+        if (!response.ok) throw new Error("Erro na rede ao enviar candidatura");
         return response.json();
       })
       .then(res => {
-        console.log("Sucesso ao registrar lead:", res);
+        console.log("Sucesso ao registrar candidatura:", res);
         alert("Enviado com sucesso! Entraremos em contacto brevemente.");
         form.reset();
       })
       .catch(err => {
         console.error("Erro ao enviar:", err);
-        alert("Ocorreu um erro ao enviar. Por favor, tente novamente.");
+        alert("Ocorreu um erro ao enviar a candidatura. Por favor, tente novamente.");
       })
       .finally(() => {
         if (submitButton) {

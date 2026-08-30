@@ -13,7 +13,7 @@ function ChamadaContent() {
     : '11111111-1111-1111-1111-111111111111'
 
   return (
-    <div className="min-h-screen bg-[#0A0612] p-4 sm:p-6 md:p-8 flex flex-col justify-center">
+    <div className="min-h-screen w-full bg-[#0e011a] flex flex-col justify-center">
       <TVOrdersPanelView tenantId={tenantId} />
     </div>
   )

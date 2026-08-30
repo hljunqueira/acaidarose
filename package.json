@@ -8,7 +8,10 @@
         "start": "next start",
         "deploy": "vercel --prod",
         "deploy:preview": "vercel",
-        "env:sync": "node scripts/set-vercel-env.js"
+        "env:sync": "node scripts/set-vercel-env.js",
+        "deploy-acaidarose-back": "node scripts/deploy-back.js",
+        "deploy-acaidarose-sitelegado": "node scripts/deploy-sitelegado.js",
+        "deploy-acaidarose-plataforma": "node scripts/deploy-plataforma.js"
     },
     "dependencies": {
         "@hookform/resolvers": "5.1.1",

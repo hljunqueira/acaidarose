@@ -1,13 +1,21 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/lib/stores/authStore'
 import { subscribeToTVCalls, getLastTVCall, TVCallEvent } from '@/lib/utils/tvBroadcast'
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
+import {
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
+  Crown,
+  Clock,
+  Sparkles,
+  ChefHat,
+} from 'lucide-react'
 
 interface TVOrdersPanelViewProps {
   tenantId?: string
@@ -21,21 +29,36 @@ const ACAI_VIDEOS = [
 ]
 
 export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) {
-  const { authFetch } = useAuthStore()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(false)
-  const [lastCalled, setLastCalled] = useState<{ ticket: string; customerName?: string } | null>(null)
+  const [lastCalled, setLastCalled] = useState<{ ticket: string; customerName?: string; isQRCode?: boolean; tableNumber?: number | null } | null>(null)
+  const [calledHistory, setCalledHistory] = useState<Array<{ ticket: string; customerName?: string; isQRCode?: boolean; tableNumber?: number | null }>>([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const [currentTime, setCurrentTime] = useState('')
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  const storeName = tenantId === '22222222-2222-2222-2222-222222222222' ? 'Torres Novas' : 'Matriz Aveiro'
   const storeSlug = tenantId === '22222222-2222-2222-2222-222222222222' ? 'torres-novas' : 'aveiro'
 
-  // 1. Carregamento de pedidos reais da loja ativa
+  // Relógio digital em tempo real
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+    }
+    updateTime()
+    const timer = setInterval(updateTime, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // 1. Carregamento de pedidos reais da loja ativa (público para TV do salão)
   const fetchLiveOrders = useCallback(async () => {
     try {
-      const url = tenantId ? `/api/orders?tenantId=${tenantId}` : '/api/orders'
-      const res = await authFetch(url)
+      const url = tenantId ? `/api/orders?tenantId=${encodeURIComponent(tenantId)}` : '/api/orders'
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
         if (Array.isArray(data.orders)) {
@@ -43,11 +66,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         }
       }
     } catch {
-      // fallback silencioso para não interromper a exibição contínua da TV
+      // fallback silencioso para manter exibição contínua
     } finally {
       setLoading(false)
     }
-  }, [tenantId, authFetch])
+  }, [tenantId])
 
   // Polling de 3 segundos para sincronização contínua com PostgreSQL
   useEffect(() => {
@@ -58,7 +81,6 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
 
   // 2. Ouvinte de Chamadas em Tempo Real via BroadcastChannel e LocalStorage
   useEffect(() => {
-    // Carrega última chamada salva se existir
     const initialCall = getLastTVCall()
     if (initialCall) {
       setLastCalled({
@@ -68,9 +90,20 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     }
 
     const unsubscribe = subscribeToTVCalls((event: TVCallEvent) => {
-      setLastCalled({
+      const isQR = Boolean(event.customerName?.includes('Mesa') || event.ticket.startsWith('#0'))
+      
+      const newCall = {
         ticket: event.ticket,
         customerName: event.customerName,
+        isQRCode: isQR,
+      }
+
+      setLastCalled(newCall)
+
+      // Adiciona ao histórico de já chamados sem duplicar no topo
+      setCalledHistory((prev) => {
+        const filtered = prev.filter((item) => item.ticket !== event.ticket)
+        return [newCall, ...filtered].slice(0, 8)
       })
 
       if (audioEnabled) {
@@ -89,31 +122,67 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     setCurrentVideoIndex((prev) => (prev + 1) % ACAI_VIDEOS.length)
   }
 
+  // Alternar tela cheia
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      panelRef.current?.requestFullscreen().catch(() => {})
+      setIsFullscreen(true)
+    } else {
+      document.exitFullscreen().catch(() => {})
+      setIsFullscreen(false)
+    }
+  }
+
   // Filtragem dos pedidos reais por status
-  const preparingOrders = orders.filter((o) => o.status === 'PREPARING' || o.status === 'NEW')
+  const preparingOrders = orders.filter((o) => (o.status as string) === 'PREPARING' || (o.status as string) === 'NEW' || (o.status as string) === 'AWAITING_PAYMENT' || (o.status as string) === 'OPEN' || (o.status as string) === 'WAITING_PAYMENT')
   const readyOrders = orders.filter((o) => o.status === 'READY')
 
-  return (
-    <div className="min-h-[88vh] bg-[#0c0114] text-white rounded-3xl p-4 sm:p-6 lg:p-8 flex flex-col justify-between shadow-2xl border border-purple-900/40 relative overflow-hidden animate-in fade-in duration-300">
-      {/* Glow de Fundo */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-pink-600/15 rounded-full blur-3xl pointer-events-none" />
+  // Identifica o pedido de destaque atual
+  const activeHeroOrder = readyOrders[0] || (lastCalled ? {
+    id: 'last-called',
+    orderNumber: lastCalled.ticket.replace('#', ''),
+    customerName: lastCalled.customerName,
+    isTableOrder: lastCalled.isQRCode,
+    tableNumber: lastCalled.tableNumber,
+  } : null)
 
-      {/* Header do Painel TV */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/10 z-10">
+  const otherReadyOrders = readyOrders.slice(1, 7)
+
+  return (
+    <div
+      ref={panelRef}
+      className="min-h-screen w-full bg-[#0e011a] text-white p-3 sm:p-5 lg:p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden font-sans select-none"
+    >
+      {/* Background Decorativo com Iluminação Neon Açaí */}
+      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-pink-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/3 w-[400px] h-[400px] bg-fuchsia-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* 1. HEADER DO PAINEL TV */}
+      <header className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-purple-800/40 relative z-10">
         <div className="flex items-center gap-3.5">
-          <img src="/logo.png" alt="Açaí da Rose" className="h-12 w-auto object-contain" />
+          <img src="/logo.png" alt="Açaí da Rose" className="h-10 sm:h-12 lg:h-14 w-auto object-contain drop-shadow-md" />
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white">
-              Painel de Chamada de Pedidos
-            </h1>
-            <p className="text-xs sm:text-sm text-purple-300/70 font-semibold">
-              Acompanhe o estado da sua taça em tempo real
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-black uppercase tracking-tight text-white flex items-center gap-2">
+                <span>Açaí da Rose</span>
+                <span className="text-pink-400 font-extrabold text-sm sm:text-base">· {storeName}</span>
+              </h1>
+            </div>
+            <p className="text-[11px] sm:text-xs text-purple-300/70 font-semibold tracking-wide">
+              Painel Oficial de Retirada & Senhas no Salão
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {/* Relógio em Tempo Real */}
+          <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-950/80 border border-purple-700/40 text-xs sm:text-sm font-mono font-bold text-pink-300 shadow-inner">
+            <Clock className="h-4 w-4 text-pink-400" />
+            <span>{currentTime || '00:00:00'}</span>
+          </div>
+
+          {/* Botão Ativar Áudio TTS */}
           <Button
             type="button"
             onClick={() => {
@@ -123,167 +192,257 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 announceTVCall('Áudio Ativado', 'Bem-vindo ao Açaí da Rose')
               }
             }}
-            className={`h-9 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`h-9 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               audioEnabled
-                ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-md shadow-pink-600/30'
+                ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md shadow-pink-600/30'
                 : 'bg-white/10 hover:bg-white/15 text-purple-200 border border-white/10'
             }`}
           >
-            <span>{audioEnabled ? 'Áudio de Chamada Ativo' : 'Ativar Áudio de Chamada'}</span>
+            {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            <span className="hidden sm:inline">{audioEnabled ? 'Voz Ativa' : 'Ativar Voz'}</span>
           </Button>
 
-          <div className="hidden sm:flex items-center px-3 py-1 rounded-xl bg-purple-950/60 border border-purple-800/40 text-[11px] font-mono text-purple-300">
-            {new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-          </div>
+          {/* Botão Fullscreen */}
+          <Button
+            type="button"
+            onClick={toggleFullscreen}
+            variant="outline"
+            className="h-9 w-9 p-0 rounded-xl border-purple-700/40 bg-white/10 hover:bg-white/15 text-purple-200 cursor-pointer"
+            title="Tela Cheia"
+          >
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Destaque de Última Senha Chamada no Balcão */}
-      {lastCalled && (
-        <div className="my-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-pink-600/25 via-purple-600/25 to-pink-600/25 border-2 border-pink-500/60 shadow-lg shadow-pink-600/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 z-10 animate-pulse">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-widest text-pink-300">
-              Senha Chamada no Balcão
+      {/* 2. ESTRUTURA PRINCIPAL ESTILO FAST FOOD / BURGER KING */}
+      <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 my-4 flex-1 relative z-10">
+        
+        {/* ========================================================================= */}
+        {/* BLOCO ESQUERDA (8 COLUNAS): "PEDIDOS PRONTOS" (DESTAQUE FAST FOOD)      */}
+        {/* ========================================================================= */}
+        <section className="lg:col-span-8 flex flex-col rounded-3xl bg-gradient-to-b from-[#200336]/90 via-[#18022b]/90 to-[#120120]/90 border-2 border-fuchsia-600/40 shadow-2xl p-4 sm:p-6 overflow-hidden">
+          
+          {/* Header do Bloco: PEDIDOS PRONTOS */}
+          <div className="pb-3 border-b-2 border-fuchsia-500/30 flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-4 w-4 rounded-full bg-emerald-500 animate-ping" />
+              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white uppercase tracking-wider font-sans drop-shadow-md">
+                Pedidos Prontos
+              </h2>
             </div>
-            <div className="text-lg sm:text-2xl font-black text-white mt-0.5">
-              {lastCalled.customerName || 'Cliente Balcão'}
-            </div>
+            <Badge className="bg-emerald-500 text-white font-black text-xs sm:text-sm px-3 py-1 uppercase tracking-wider shadow-lg shadow-emerald-500/30">
+              Balcão de Retirada
+            </Badge>
           </div>
-          <div className="text-3xl sm:text-5xl font-black text-white tracking-widest bg-gradient-to-r from-pink-600 to-purple-600 px-6 py-2 rounded-xl shadow-md font-mono self-stretch sm:self-auto text-center">
-            {lastCalled.ticket}
-          </div>
-        </div>
-      )}
 
-      {/* Layout Principal: Fila de Pedidos + Espaço de Vídeo do Açaí */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 my-4 z-10 flex-1">
-        {/* Coluna de Pedidos (7 Colunas em telas grandes) */}
-        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* 1. EM PREPARO */}
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5 flex flex-col justify-between">
+          {/* Slot de Destaque Principal do Pedido Chamado no Momento */}
+          {activeHeroOrder ? (
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-pink-600/30 via-purple-600/30 to-pink-600/30 border-2 border-pink-500/70 p-5 sm:p-7 shadow-xl shadow-pink-600/20 mb-4 animate-pulse flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1.5 text-center sm:text-left">
+                <div className="text-xs sm:text-sm font-black uppercase tracking-widest text-pink-300 flex items-center justify-center sm:justify-start gap-1.5">
+                  <Sparkles className="h-4 w-4 text-pink-400" />
+                  <span>Dirija-se ao Balcão para Retirar</span>
+                </div>
+                
+                {/* Nome do Cliente com Coroa se for QR Code */}
+                <div className="text-2xl sm:text-4xl font-black text-white tracking-tight flex items-center justify-center sm:justify-start gap-2">
+                  {(activeHeroOrder.isTableOrder || activeHeroOrder.tableNumber) && (
+                    <Crown className="h-6 w-6 sm:h-8 sm:w-8 text-amber-400 fill-amber-400 shrink-0 drop-shadow-md" />
+                  )}
+                  <span className="truncate max-w-sm sm:max-w-md">
+                    {activeHeroOrder.customerName || (activeHeroOrder.tableNumber ? `Mesa ${activeHeroOrder.tableNumber}` : 'Cliente')}
+                  </span>
+                </div>
+
+                {activeHeroOrder.tableNumber && (
+                  <div className="text-xs font-bold text-purple-200/90">
+                    Pedido da Mesa {String(activeHeroOrder.tableNumber).padStart(2, '0')}
+                  </div>
+                )}
+              </div>
+
+              {/* Número da Senha em Tamanho Gigante */}
+              <div className="bg-gradient-to-r from-pink-600 to-fuchsia-600 text-white font-mono font-black text-4xl sm:text-6xl lg:text-7xl px-7 py-3 rounded-2xl shadow-2xl border-2 border-white/30 tracking-tight text-center">
+                #{String(activeHeroOrder.orderNumber || 1).padStart(3, '0')}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-white/5 border border-white/10 p-8 text-center text-purple-300/50 font-bold mb-4">
+              Aguardando conclusão de pedidos pela copa...
+            </div>
+          )}
+
+          {/* Grid de Slots Inferiores para Múltiplos Pedidos Prontos */}
+          <div className="flex-1 flex flex-col justify-end">
+            <div className="text-[11px] font-black uppercase tracking-wider text-purple-300/70 mb-2 flex items-center justify-between">
+              <span>Também Prontos para Retirada:</span>
+              <span>{otherReadyOrders.length} aguardando</span>
+            </div>
+
+            {otherReadyOrders.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {otherReadyOrders.map((order) => {
+                  const isQR = Boolean(order.isTableOrder || order.tableNumber)
+                  const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
+                  const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Cliente')
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-400/50 shadow-md shadow-emerald-500/10 flex flex-col justify-between gap-1 hover:border-emerald-400 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-black text-2xl sm:text-3xl text-emerald-300">
+                          {ticketNum}
+                        </span>
+                        {isQR && (
+                          <Crown className="h-4 w-4 text-amber-400 fill-amber-400 shrink-0" />
+                        )}
+                      </div>
+                      <div className="text-xs font-bold text-white truncate">
+                        {clientName}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center text-xs text-purple-300/40">
+                Nenhum outro pedido pronto na fila
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* BLOCO DIREITA (4 COLUNAS): "PEDIDOS JÁ CHAMADOS" + "EM PREPARO" + VÍDEO  */}
+        {/* ========================================================================= */}
+        <section className="lg:col-span-4 flex flex-col gap-4">
+          
+          {/* 1. Pedidos Já Chamados (Estilo BK Amarelo/Âmbar) */}
+          <div className="rounded-3xl bg-gradient-to-b from-[#221004]/90 via-[#180a02]/90 to-[#10011a]/90 border-2 border-amber-500/40 shadow-xl p-4 sm:p-5 flex-1 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
-                <h2 className="text-base sm:text-lg font-black text-amber-400 uppercase tracking-wider">
-                  Em Preparo
-                </h2>
-                <Badge variant="outline" className="text-amber-300 border-amber-400/40 text-[11px] font-bold">
-                  {preparingOrders.length} {preparingOrders.length === 1 ? 'pedido' : 'pedidos'}
+              <div className="pb-2.5 border-b-2 border-amber-500/30 flex items-center justify-between mb-3">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-amber-400 uppercase tracking-wider font-sans">
+                  Pedidos Já Chamados
+                </h3>
+                <Badge variant="outline" className="text-amber-300 border-amber-400/40 text-[10px] font-bold">
+                  Últimos Chamados
                 </Badge>
               </div>
 
-              {preparingOrders.length === 0 ? (
-                <div className="py-12 text-center text-xs text-purple-300/40">
-                  Nenhum pedido em preparação no momento
+              {calledHistory.length > 0 ? (
+                <div className="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto pr-1">
+                  {calledHistory.slice(0, 5).map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        {item.isQRCode && <Crown className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />}
+                        <span className="text-xs font-bold text-amber-100 truncate max-w-[120px]">
+                          {item.customerName || 'Cliente'}
+                        </span>
+                      </div>
+                      <span className="font-mono font-black text-base text-amber-300">{item.ticket}</span>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
-                  {preparingOrders.map((order) => {
-                    const ticketNum = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`
-                    const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
-                    return (
-                      <div
-                        key={order.id}
-                        className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 flex items-center justify-between shadow-inner"
-                      >
-                        <span className="font-mono font-black text-lg sm:text-xl text-amber-300">{ticketNum}</span>
-                        <span className="text-xs font-bold text-white/90 truncate max-w-[130px]">{clientName}</span>
-                      </div>
-                    )
-                  })}
+                <div className="py-4 text-center text-xs text-amber-300/40 font-semibold">
+                  Histórico de chamadas limpo
                 </div>
               )}
             </div>
 
-            <div className="text-[10px] text-amber-300/60 uppercase tracking-wider pt-2 border-t border-white/5 mt-3 text-center font-bold">
-              Copa & Montagem em Andamento
-            </div>
-          </div>
-
-          {/* 2. PRONTO PARA RETIRAR */}
-          <div className="rounded-2xl bg-emerald-950/20 border border-emerald-500/30 p-4 sm:p-5 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-emerald-500/30 mb-3">
-                <h2 className="text-base sm:text-lg font-black text-emerald-400 uppercase tracking-wider">
-                  Pronto para Retirar
-                </h2>
-                <Badge className="bg-emerald-500 text-white font-bold text-[11px]">
-                  Balcão de Entrega
-                </Badge>
+            {/* Sub-bloco: Em Preparação (Copa) */}
+            <div className="pt-3 border-t border-amber-500/20 mt-2">
+              <div className="flex items-center justify-between text-[11px] font-bold text-purple-300 mb-1.5">
+                <span className="flex items-center gap-1">
+                  <ChefHat className="h-3.5 w-3.5 text-pink-400" />
+                  <span>A Preparar na Cozinha:</span>
+                </span>
+                <span className="text-pink-400 font-mono font-bold">{preparingOrders.length}</span>
               </div>
 
-              {readyOrders.length === 0 ? (
-                <div className="py-12 text-center text-xs text-purple-300/40">
-                  Nenhum pedido aguardando retirada
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
-                  {readyOrders.map((order) => {
-                    const ticketNum = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`
-                    const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+              {preparingOrders.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {preparingOrders.slice(0, 8).map((order) => {
+                    const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
                     return (
-                      <div
+                      <span
                         key={order.id}
-                        className="p-3 rounded-xl bg-emerald-500/20 border-2 border-emerald-400 text-white flex items-center justify-between shadow-lg shadow-emerald-500/20 animate-pulse"
+                        className="px-2 py-0.5 rounded-lg bg-purple-950/80 border border-purple-700/40 text-purple-200 text-xs font-mono font-bold"
                       >
-                        <span className="font-mono font-black text-xl sm:text-2xl text-emerald-300">{ticketNum}</span>
-                        <span className="text-xs font-black text-white truncate max-w-[130px]">{clientName}</span>
-                      </div>
+                        {ticketNum}
+                      </span>
                     )
                   })}
+                  {preparingOrders.length > 8 && (
+                    <span className="px-1.5 py-0.5 text-[10px] text-purple-400 font-bold">
+                      +{preparingOrders.length - 8}
+                    </span>
+                  )}
                 </div>
+              ) : (
+                <span className="text-[11px] text-purple-300/40 italic">Nenhum pedido na fila</span>
               )}
             </div>
-
-            <div className="text-[10px] text-emerald-300/70 uppercase tracking-wider pt-2 border-t border-emerald-500/20 mt-3 text-center font-bold">
-              Dirija-se ao Balcão
-            </div>
-          </div>
-        </div>
-
-        {/* Coluna Multimídia de Vídeos do Açaí (5 Colunas em telas grandes) */}
-        <div className="lg:col-span-5 rounded-3xl bg-gradient-to-b from-[#1c022e] to-[#12011f] border border-purple-800/40 p-4 flex flex-col justify-between overflow-hidden shadow-xl">
-          <div className="pb-3 border-b border-white/10 flex items-center justify-between">
-            <div className="text-xs font-black uppercase tracking-wider text-pink-300">
-              Experiência Açaí da Rose
-            </div>
-            <span className="text-[10px] text-purple-300/60 font-semibold">100% Artesanal Puro</span>
           </div>
 
-          {/* Video Player Integrado */}
-          <div className="relative w-full h-[230px] sm:h-[270px] rounded-2xl overflow-hidden bg-black/40 border border-white/10 my-3 shadow-inner">
-            <video
-              ref={videoRef}
-              key={ACAI_VIDEOS[currentVideoIndex]}
-              src={ACAI_VIDEOS[currentVideoIndex]}
-              autoPlay
-              muted
-              playsInline
-              onEnded={handleVideoEnded}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute bottom-3 left-3 right-3 text-white">
-              <div className="text-xs font-black tracking-wide drop-shadow-md">
-                Polpa de Açaí Batida na Hora
+          {/* 2. Espaço Dedicado Multimídia para Vídeos do Açaí da Rose */}
+          <div className="rounded-3xl bg-gradient-to-b from-[#1c022e] to-[#12011f] border border-purple-800/40 p-3.5 flex flex-col justify-between overflow-hidden shadow-xl">
+            <div className="pb-2 border-b border-white/10 flex items-center justify-between">
+              <div className="text-[11px] font-black uppercase tracking-wider text-pink-300 flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-pink-400" />
+                <span>Experiência Açaí da Rose</span>
               </div>
-              <div className="text-[10px] text-purple-200/80 drop-shadow-md">
-                Sabor autêntico brasileiro com cremosidade incomparável
+              <span className="text-[9px] text-purple-300/60 font-semibold">100% Artesanal Puro</span>
+            </div>
+
+            {/* Video Player Integrado em Loop */}
+            <div className="relative w-full h-[140px] sm:h-[160px] lg:h-[180px] rounded-2xl overflow-hidden bg-black/40 border border-white/10 my-2 shadow-inner">
+              <video
+                ref={videoRef}
+                key={ACAI_VIDEOS[currentVideoIndex]}
+                src={ACAI_VIDEOS[currentVideoIndex]}
+                autoPlay
+                muted
+                playsInline
+                onEnded={handleVideoEnded}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-2 left-2.5 right-2.5 text-white">
+                <div className="text-[11px] font-black tracking-wide drop-shadow-md">
+                  Polpa de Açaí Batida na Hora
+                </div>
+                <div className="text-[9px] text-purple-200/80 drop-shadow-md">
+                  Cremosidade autêntica com frutas frescas
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-purple-300/70">
-            <span>Frutas frescas & acompanhamentos nobres</span>
-            <span className="font-bold text-pink-400">Torres Novas & Aveiro</span>
+            <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px] text-purple-300/70 font-semibold">
+              <span>Frutas frescas & toppings nobres</span>
+              <span className="font-bold text-pink-400">{storeName}</span>
+            </div>
           </div>
+        </section>
+
+      </main>
+
+      {/* 3. FOOTER INFORMATIVO DA SMART TV */}
+      <footer className="pt-3 border-t border-purple-800/40 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-purple-300/70 font-bold relative z-10">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-pink-500 animate-pulse" />
+          <span>Por favor, dirija-se ao balcão quando a sua senha for anunciada</span>
         </div>
-      </div>
-
-      {/* Footer da TV */}
-      <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-purple-300/60 font-bold z-10">
-        <span>Açaí da Rose · Experiência Premium</span>
-        <span>Aceda ao menu digital: acaidarose.pt/menu?loja={storeSlug}</span>
-      </div>
+        <div className="text-[11px] text-purple-300/60 font-medium">
+          Aceda ao menu na mesa pelo QR Code · <span className="text-pink-400 font-bold">acaidarose.pt</span>
+        </div>
+      </footer>
     </div>
   )
 }

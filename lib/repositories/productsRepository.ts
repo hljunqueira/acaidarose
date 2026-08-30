@@ -103,19 +103,66 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
     console.error('Erro ao consultar catálogo no PostgreSQL:', err)
   }
 
-  // Tamanhos canônicos caso a categoria ainda não esteja semeada no banco
+  // Catálogo Canônico Padrão Oficial do Açaí da Rose
   const defaultContainers: ProductContainer[] = [
     { id: 'cnt-250', name: 'Açaí 250g', precoBase: 6.90, weightGrams: 250, limiteCremes: 1, limiteFrutas: 2, limiteToppings: 3, isAvailableInStore: true, emoji: '', active: true },
-    { id: 'cnt-350', name: 'Açaí 350g', precoBase: 8.90, weightGrams: 350, limiteCremes: 1, limiteFrutas: 2, limiteToppings: 3, isAvailableInStore: true, emoji: '', active: true },
+    { id: 'cnt-350', name: 'Açaí 350g', precoBase: 8.90, weightGrams: 350, limiteCremes: 1, limiteFrutas: 3, limiteToppings: 3, isAvailableInStore: true, emoji: '', active: true },
     { id: 'cnt-500', name: 'Açaí 500g', precoBase: 12.90, weightGrams: 500, limiteCremes: 1, limiteFrutas: 99, limiteToppings: 99, isAvailableInStore: true, emoji: '', active: true },
     { id: 'cnt-750', name: 'Açaí 750g', precoBase: 17.90, weightGrams: 750, limiteCremes: 1, limiteFrutas: 99, limiteToppings: 99, isAvailableInStore: true, emoji: '', active: true },
     { id: 'cnt-1000', name: 'Açaí 1kg', precoBase: 22.90, weightGrams: 1000, limiteCremes: 1, limiteFrutas: 99, limiteToppings: 99, isAvailableInStore: true, emoji: '', active: true },
   ]
 
+  const defaultBases: ProductBase[] = [
+    { id: 'base-acai', name: 'Açaí Tradicional', description: 'Açaí puro e cremoso batido na hora', displayOrder: 1, active: true, isAvailableInStore: true },
+    { id: 'base-coco', name: 'Creme de Coco', description: 'Cremoso e artesanal', displayOrder: 2, active: true, isAvailableInStore: true },
+    { id: 'base-morango', name: 'Creme de Morango', description: 'Feito com morangos frescos', displayOrder: 3, active: true, isAvailableInStore: true },
+    { id: 'base-cupuacu', name: 'Creme de Cupuaçu', description: 'Sabor autêntico da Amazônia', displayOrder: 4, active: true, isAvailableInStore: true },
+    { id: 'base-manga', name: 'Creme de Manga', description: 'Doce e refrescante', displayOrder: 5, active: true, isAvailableInStore: true },
+    { id: 'base-goiaba', name: 'Creme de Goiaba', description: 'Artesanal e aveludado', displayOrder: 6, active: true, isAvailableInStore: true },
+    { id: 'base-leite-po', name: 'Creme de Leite em pó', description: 'Sabor suave e irresistível', displayOrder: 7, active: true, isAvailableInStore: true },
+    { id: 'base-graviola', name: 'Creme de Graviola', description: 'Fruta tropical brasileira', displayOrder: 8, active: true, isAvailableInStore: true },
+    { id: 'base-pitaya', name: 'Creme de Pitaya', description: 'Cor vibrante e rico em nutrientes', displayOrder: 9, active: true, isAvailableInStore: true },
+    { id: 'base-maracuja', name: 'Creme de Maracujá', description: 'Toque cítrico e refrescante', displayOrder: 10, active: true, isAvailableInStore: true },
+  ]
+
+  const defaultToppings: ProductTopping[] = [
+    // Frutas Frescas
+    { id: 'top-banana', name: 'Banana', category: 'Frutas', isPremium: false, precoExtra: 0, displayOrder: 1, active: true, isAvailableInStore: true },
+    { id: 'top-kiwi', name: 'Kiwi', category: 'Frutas', isPremium: false, precoExtra: 0, displayOrder: 2, active: true, isAvailableInStore: true },
+    { id: 'top-manga', name: 'Manga', category: 'Frutas', isPremium: false, precoExtra: 0, displayOrder: 3, active: true, isAvailableInStore: true },
+    { id: 'top-morango', name: 'Morango', category: 'Frutas', isPremium: false, precoExtra: 0, displayOrder: 4, active: true, isAvailableInStore: true },
+    { id: 'top-uva', name: 'Uva', category: 'Frutas', isPremium: false, precoExtra: 0, displayOrder: 5, active: true, isAvailableInStore: true },
+
+    // Toppings Tradicionais
+    { id: 'top-biscoff-creme', name: 'Biscoff creme', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 10, active: true, isAvailableInStore: true },
+    { id: 'top-mel', name: 'Mel', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 11, active: true, isAvailableInStore: true },
+    { id: 'top-biscoff-picado', name: 'Biscoff picado', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 12, active: true, isAvailableInStore: true },
+    { id: 'top-oreo-inteiro', name: 'Oreo inteiro', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 13, active: true, isAvailableInStore: true },
+    { id: 'top-canudo-crocante', name: 'Canudo crocante', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 14, active: true, isAvailableInStore: true },
+    { id: 'top-oreo-picado', name: 'Oreo picado', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 15, active: true, isAvailableInStore: true },
+    { id: 'top-chocobol', name: 'Chocobol', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 16, active: true, isAvailableInStore: true },
+    { id: 'top-ovomaltine', name: 'Ovomaltine', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 17, active: true, isAvailableInStore: true },
+    { id: 'top-granola', name: 'Granola', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 18, active: true, isAvailableInStore: true },
+    { id: 'top-pacoca', name: 'Paçoca', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 19, active: true, isAvailableInStore: true },
+    { id: 'top-iogurte', name: 'Iogurte natural', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 20, active: true, isAvailableInStore: true },
+    { id: 'top-pepitas-chocolate', name: 'Pepitas de chocolate', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 21, active: true, isAvailableInStore: true },
+    { id: 'top-leite-condensado', name: 'Leite condensado', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 22, active: true, isAvailableInStore: true },
+    { id: 'top-pintarolas', name: 'Pintarolas', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 23, active: true, isAvailableInStore: true },
+    { id: 'top-leite-em-po', name: 'Leite em pó', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 24, active: true, isAvailableInStore: true },
+    { id: 'top-manteiga-amendoim', name: 'Manteiga de amendoim', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 25, active: true, isAvailableInStore: true },
+    { id: 'top-marshmallow', name: 'Marshmallow', category: 'Toppings', isPremium: false, precoExtra: 0, displayOrder: 26, active: true, isAvailableInStore: true },
+
+    // Adicionais / Especiais Premium
+    { id: 'top-creme-ninho', name: 'Creme de Leite em pó', category: 'Adicionais', isPremium: true, precoExtra: 1.0, displayOrder: 30, active: true, isAvailableInStore: true },
+    { id: 'top-creme-pistache', name: 'Creme de Pistache', category: 'Adicionais', isPremium: true, precoExtra: 2.0, displayOrder: 31, active: true, isAvailableInStore: true },
+    { id: 'top-nutella', name: 'Nutella', category: 'Adicionais', isPremium: true, precoExtra: 1.0, displayOrder: 32, active: true, isAvailableInStore: true },
+  ]
+
+  // Se a consulta no banco não trouxe registros (ou trouxe vazio), mescla com os canônicos padrão
   return {
     containers: containers.length > 0 ? containers : defaultContainers,
-    bases,
-    toppings,
+    bases: bases.length > 0 ? bases : defaultBases,
+    toppings: toppings.length > 0 ? toppings : defaultToppings,
   }
 }
 

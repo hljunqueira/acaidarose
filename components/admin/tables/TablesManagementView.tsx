@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import SingleTableQRDialog from './SingleTableQRDialog'
 import BatchTablesQRPrintDialog from './BatchTablesQRPrintDialog'
 import AddEditTableDialog from './AddEditTableDialog'
+import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 
 interface TablesManagementViewProps {
   tenantId: string
@@ -24,6 +25,8 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
   const [singleQROpen, setSingleQROpen] = useState(false)
   const [selectedQRTable, setSelectedQRTable] = useState<RestaurantTable | null>(null)
   const [batchQROpen, setBatchQROpen] = useState(false)
+  const [tableToDelete, setTableToDelete] = useState<RestaurantTable | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -57,16 +60,23 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
     setSingleQROpen(true)
   }
 
-  const handleDeleteTable = async (t: RestaurantTable) => {
-    if (!confirm(`Tem a certeza que deseja eliminar a Mesa ${t.number}?`)) return
+  const handleDeleteTable = (t: RestaurantTable) => {
+    setTableToDelete(t)
+  }
 
+  const handleConfirmDeleteTable = async () => {
+    if (!tableToDelete) return
+    setDeleteLoading(true)
     try {
-      const res = await fetch(`/api/tables/${t.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/tables/${tableToDelete.id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Falha ao eliminar mesa')
-      toast.success(`Mesa ${t.number} eliminada!`)
+      toast.success(`Mesa ${tableToDelete.number} eliminada com sucesso!`)
+      setTableToDelete(null)
       fetchData()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao eliminar')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -217,6 +227,19 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
         table={editingTable}
         tenantId={tenantId}
         onSuccess={fetchData}
+      />
+
+      {/* Modal de Confirmação de Eliminação de Mesa */}
+      <ConfirmActionDialog
+        open={Boolean(tableToDelete)}
+        onOpenChange={(open) => !open && setTableToDelete(null)}
+        title={`Eliminar Mesa ${tableToDelete?.number}?`}
+        description="Tem a certeza que deseja eliminar esta mesa? O QR Code impresso para esta mesa deixará de ser reconhecido."
+        confirmLabel="Sim, Eliminar Mesa"
+        cancelLabel="Cancelar"
+        variant="destructive"
+        loading={deleteLoading}
+        onConfirm={handleConfirmDeleteTable}
       />
     </div>
   )

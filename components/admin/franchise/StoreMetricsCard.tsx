@@ -91,14 +91,27 @@ export default function StoreMetricsCard({
 
       {/* Ações */}
       <div className="pt-3 border-t border-purple-150 dark:border-white/10 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => onViewDetails(storeOverview)}
-          className="text-xs font-bold text-purple-700 dark:text-pink-400 hover:text-purple-950 dark:hover:text-pink-300 flex items-center gap-1 p-1 hover:underline cursor-pointer"
-        >
-          <Eye className="h-3.5 w-3.5" />
-          <span>Ver Raio-X</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onViewDetails(storeOverview)}
+            className="text-xs font-bold text-purple-700 dark:text-pink-400 hover:text-purple-950 dark:hover:text-pink-300 flex items-center gap-1 p-1 hover:underline cursor-pointer"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>Ver Raio-X</span>
+          </button>
+
+          <a
+            href={`/menu?tenantId=${encodeURIComponent(tenant.id)}&loja=${encodeURIComponent(tenant.slug || 'torres-novas')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-bold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 hover:underline inline-flex items-center gap-1"
+            title="Abrir o Cardápio QR Code desta Loja"
+          >
+            <span>Cardápio</span>
+            <span>↗</span>
+          </a>
+        </div>
 
         <button
           type="button"

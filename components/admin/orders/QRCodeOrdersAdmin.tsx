@@ -39,6 +39,7 @@ import OrderEditDialog from './OrderEditDialog'
 import NewOrderManualModal from './NewOrderManualModal'
 import CancelReasonDialog from './CancelReasonDialog'
 import OrderItemsModal from './OrderItemsModal'
+import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 
 interface QRCodeOrdersAdminProps {
   tenantId: string
@@ -184,7 +185,17 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
             : o
         )
       )
-      toast.success(`Comanda movida para: ${status}`)
+      const getStatusLabelPT = (s: OrderStatus) => {
+        switch (s) {
+          case 'NEW': return 'Novos Pedidos'
+          case 'PREPARING': return 'Em Preparação'
+          case 'READY': return 'Prontos para Retirar'
+          case 'PAID': return 'Finalizados'
+          case 'CANCELLED': return 'Cancelados'
+          default: return s
+        }
+      }
+      toast.success(`Comanda movida para: ${getStatusLabelPT(status)}`)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao atualizar comanda')
     }
@@ -197,6 +208,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
       body: JSON.stringify(payload),
     })
     if (!res.ok) throw new Error('Erro ao criar comanda manual')
+    toast.success('Nova comanda manual registada com sucesso!')
     loadOrders()
   }
 
@@ -206,13 +218,15 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
       method: 'PUT',
       body: JSON.stringify(updatedData),
     })
-    if (!res.ok) throw new Error('Erro ao salvar alterações do pedido')
+    if (!res.ok) throw new Error('Erro ao guardar alterações da comanda')
+    toast.success('Alterações da comanda guardadas com sucesso!')
     loadOrders()
   }
 
   // Cancelamento seguro de pedido com motivo para auditoria
   const handleConfirmCancel = async (orderId: string, reason: string) => {
     setCancelLoading(true)
+    const formattedNum = String(orderToCancel?.orderNumber || 1).padStart(3, '0')
     try {
       const res = await authFetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
@@ -220,7 +234,7 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         body: JSON.stringify({ reason }),
       })
       if (!res.ok) throw new Error('Erro ao cancelar comanda')
-      toast.success(`Comanda #${orderToCancel?.orderNumber || 100} cancelada: ${reason}`)
+      toast.success(`Comanda #${formattedNum} cancelada: ${reason}`)
       setCancelConfirmOpen(false)
       setSelectedOrderForAudit(null)
       loadOrders()
@@ -242,22 +256,38 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
     toast.success(`Comanda #${order.orderNumber || 100} enviada para a impressora térmica!`)
   }
 
-  // Exclusão definitiva de comanda / pedido de teste
-  const handleDeleteOrderPermanently = async (order: Order) => {
-    if (!confirm(`Deseja excluir a Comanda #${order.orderNumber || ''} de "${order.customerName || 'Cliente'}"?`)) return
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Dispara abertura do modal estilizado de exclusão definitiva
+  const handleDeleteOrderPermanently = (order: Order) => {
+    setOrderToDelete(order)
+    setDeleteDialogOpen(true)
+  }
+
+  // Execução da exclusão definitiva após confirmação no modal
+  const handleConfirmDeletePermanently = async () => {
+    if (!orderToDelete) return
+    setDeleteLoading(true)
+    const formattedNum = String(orderToDelete.orderNumber || 1).padStart(3, '0')
     try {
-      const res = await authFetch(`/api/orders/${order.id}`, {
+      const res = await authFetch(`/api/orders/${orderToDelete.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: 'Exclusão direta pelo operador' }),
+        body: JSON.stringify({ reason: 'Exclusão direta pelo operador', permanent: true }),
       })
       if (!res.ok) throw new Error('Falha ao excluir comanda')
-      setOrders((prev) => prev.filter((o) => o.id !== order.id))
+      setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id))
       setSelectedOrderForItems(null)
       setSelectedOrderForAudit(null)
-      toast.success(`Comanda #${order.orderNumber || 100} excluída com sucesso!`)
+      setDeleteDialogOpen(false)
+      setOrderToDelete(null)
+      toast.success(`Comanda #${formattedNum} excluída com sucesso!`)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao excluir comanda')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -855,6 +885,19 @@ export default function QRCodeOrdersAdmin({ tenantId }: QRCodeOrdersAdminProps) 
         order={orderToCancel}
         onConfirmCancel={handleConfirmCancel}
         loading={cancelLoading}
+      />
+
+      {/* 8. Modal de Confirmação de Exclusão Definitiva de Comanda */}
+      <ConfirmActionDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={`Excluir Comanda #${orderToDelete ? String(orderToDelete.orderNumber || 1).padStart(3, '0') : ''}?`}
+        description={`Tem certeza que deseja remover permanentemente o pedido de "${orderToDelete?.customerName || 'Cliente'}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Sim, Excluir Pedido"
+        cancelLabel="Voltar"
+        variant="destructive"
+        loading={deleteLoading}
+        onConfirm={handleConfirmDeletePermanently}
       />
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,15 +32,13 @@ const DISTRITOS_PT = [
   'Outro País / Espanha',
 ]
 
-const INVEST_OPTIONS = [
-  '5.000€',
-  '10.000€',
-  '20.000€',
-  '30.000€',
-  '50.000€+',
-]
-
 export default function LandingFranchise() {
+  const [investOptions, setInvestOptions] = useState<string[]>([
+    'Delivery: 10.000€',
+    'Loja pequena até 20 metros quadrados: 15.000€ a 20.000€',
+    'Loja até 60 metros quadrados: 25.000€ a 30.000€'
+  ])
+
   const [form, setForm] = useState({
     nome: '',
     email: '',
@@ -48,7 +46,7 @@ export default function LandingFranchise() {
     cidade: '',
     distrito: 'Aveiro',
     motivo: '',
-    investimento: '5.000€',
+    investimento: 'Delivery: 10.000€',
     preferenciaContato: {
       whatsapp: true,
       telefone: false,
@@ -56,6 +54,29 @@ export default function LandingFranchise() {
     },
     termosAceitos: false,
   })
+
+  useEffect(() => {
+    fetch('/api/franchise-options')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data.options)) {
+          const activeOpts = data.options
+            .filter((o: any) => o.active)
+            .map((o: any) => `${o.name}: ${o.valueText}`)
+          
+          if (activeOpts.length > 0) {
+            setInvestOptions(activeOpts)
+            setForm(prev => ({
+              ...prev,
+              investimento: prev.investimento === 'Delivery: 10.000€' || prev.investimento === '5.000€'
+                ? activeOpts[0]
+                : prev.investimento
+            }))
+          }
+        }
+      })
+      .catch(err => console.error('Erro ao carregar opções de investimento:', err))
+  }, [])
 
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -290,7 +311,7 @@ export default function LandingFranchise() {
                   onChange={(e) => setForm({ ...form, investimento: e.target.value })}
                   className="w-full bg-[#200336] border border-white/15 text-white rounded-xl h-12 text-sm px-3.5 focus:outline-none focus:border-pink-500 cursor-pointer"
                 >
-                  {INVEST_OPTIONS.map((inv) => (
+                  {investOptions.map((inv) => (
                     <option key={inv} value={inv} className="bg-[#200336] text-white">
                       {inv}
                     </option>

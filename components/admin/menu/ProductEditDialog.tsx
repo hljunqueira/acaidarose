@@ -60,7 +60,7 @@ const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
       { id: 'f-2', name: 'Banana Fatiada', code: '202', price: 0.0, description: 'Banana fresca', active: true },
       { id: 'f-3', name: 'Kiwi Especial', code: '203', price: 0.0, description: 'Kiwi em fatias', active: true },
       { id: 'f-4', name: 'Manga Doce', code: '204', price: 0.0, description: 'Manga madura em cubos', active: true },
-      { id: 'f-5', name: 'Abacaxi em Cubos', code: '205', price: 0.0, description: 'Abacaxi fresco', active: true },
+      { id: 'f-5', name: 'Uva Fresca', code: '205', price: 0.0, description: 'Uva sem sementes', active: true },
     ],
   },
   {
@@ -73,7 +73,7 @@ const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
     active: true,
     options: [
       { id: 't-1', name: 'Granola Tradicional Crocante', code: '301', price: 0.0, description: 'Granola dourada crocante', active: true },
-      { id: 't-2', name: 'Leite Ninho em Pó', code: '302', price: 0.0, description: 'Leite em pó puro', active: true },
+      { id: 't-2', name: 'Leite em pó', code: '302', price: 0.0, description: 'Leite em pó puro', active: true },
       { id: 't-3', name: 'Paçoca de Amendoim', code: '303', price: 0.0, description: 'Paçoca esfarelada', active: true },
       { id: 't-4', name: 'Chocoball Crocante', code: '304', price: 0.0, description: 'Bolinhas crocantes de chocolate', active: true },
       { id: 't-5', name: 'Amendoim Triturado', code: '305', price: 0.0, description: 'Amendoim torrado moído', active: true },
@@ -90,10 +90,10 @@ const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
     active: true,
     options: [
       { id: 'c-1', name: 'Nutella Original', code: '401', price: 1.0, description: 'Creme de avelã com cacau puro', active: true },
-      { id: 'c-2', name: 'Creme de Leite Ninho Nobre', code: '402', price: 1.0, description: 'Creme aveludado de Ninho', active: true },
-      { id: 'c-3', name: 'Pasta de Pistache Artesanal', code: '403', price: 1.2, description: 'Pasta nobre de pistache italiano', active: true },
-      { id: 'c-4', name: 'Leite Condensado Moça', code: '404', price: 0.8, description: 'Leite condensado cremoso', active: true },
-      { id: 'c-5', name: 'Mel Puro Silvestre', code: '405', price: 0.8, description: 'Mel natural de abelha', active: true },
+      { id: 'c-2', name: 'Creme de Leite em pó', code: '402', price: 1.0, description: 'Creme aveludado de leite em pó', active: true },
+      { id: 'c-3', name: 'Creme de Pistache', code: '403', price: 2.0, description: 'Creme artesanal de pistache', active: true },
+      { id: 'c-4', name: 'Leite Condensado', code: '404', price: 0.8, description: 'Leite condensado cremoso', active: true },
+      { id: 'c-5', name: 'Mel Puro', code: '405', price: 0.8, description: 'Mel natural', active: true },
     ],
   },
 ]

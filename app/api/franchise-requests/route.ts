@@ -17,20 +17,23 @@ export async function GET() {
     const requests = (res.rows || []).map((r: any) => {
       const rawData = r.requested_changes_json
       const data = typeof rawData === 'string' ? JSON.parse(rawData || '{}') : (rawData || {})
-      const isApplication = r.request_type === 'FRANCHISE_APPLICATION' || data.type === 'FRANCHISE_APPLICATION'
+      const isApplication = r.request_type === 'FRANCHISE_APPLICATION' || 
+                            data.type === 'FRANCHISE_APPLICATION' || 
+                            r.request_type === 'CONTACT_REQUEST' || 
+                            data.type === 'CONTACT_REQUEST'
 
       if (isApplication) {
         return {
           id: r.id,
           tenantId: r.tenant_id,
-          type: 'FRANCHISE_APPLICATION',
-          candidateName: data.nome || data.name || r.title || 'Candidato',
+          type: data.type || r.request_type || 'FRANCHISE_APPLICATION',
+          candidateName: data.nome || data.name || r.title || (data.type === 'CONTACT_REQUEST' ? 'Contacto' : 'Candidato'),
           email: data.email || '',
           phone: data.telefone || data.phone || '',
           city: data.cidade || data.city || '',
-          district: data.distrito || data.district || 'Aveiro',
-          investment: data.investimento || data.investment || '20.000€',
-          reason: r.description || data.motivo || data.reason || 'Interesse em franquia Açaí da Rose',
+          district: data.distrito || data.district || '',
+          investment: data.investimento || data.investment || (data.type === 'CONTACT_REQUEST' ? 'Contacto Geral' : 'N/A'),
+          reason: r.description || data.motivo || data.reason || 'Mensagem de contacto',
           preferredContact: data.preferenciaContato || { whatsapp: true, telefone: false, email: false },
           status: r.status || 'PENDING',
           responseNotes: r.response_notes,
@@ -70,15 +73,23 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const id = uuidv4()
-    const isApplication = body.type === 'FRANCHISE_APPLICATION' || body.investimento || body.distrito
+    const isApplication = body.type === 'FRANCHISE_APPLICATION' || 
+                          body.type === 'CONTACT_REQUEST' || 
+                          body.investimento || 
+                          body.distrito
 
     const tenantId = isApplication
       ? '11111111-1111-1111-1111-111111111111' // Franqueadora Master Matriz
       : body.tenantId || '22222222-2222-2222-2222-222222222222'
 
+    // Gravamos no BD como FRANCHISE_APPLICATION para não quebrar a check constraint, mas mantemos o JSON original contendo CONTACT_REQUEST
     const requestType = isApplication ? 'FRANCHISE_APPLICATION' : (body.type || 'PRICE_CHANGE')
-    const title = isApplication ? `Candidatura: ${body.nome || body.name || 'Novo Interessado'}` : (body.productName || 'Alteração de Preço')
-    const description = isApplication ? (body.motivo || body.reason || `Interesse em ${body.distrito || 'Portugal'}`) : (body.reason || 'Ajuste de preço solicitado pela filial')
+    const title = isApplication 
+      ? (body.type === 'CONTACT_REQUEST' ? `Contacto: ${body.nome || 'Novo Utilizador'}` : `Candidatura: ${body.nome || body.name || 'Novo Interessado'}`) 
+      : (body.productName || 'Alteração de Preço')
+    const description = isApplication 
+      ? (body.type === 'CONTACT_REQUEST' ? (body.motivo || 'Mensagem de contacto geral') : (body.motivo || body.reason || `Interesse em ${body.distrito || 'Portugal'}`)) 
+      : (body.reason || 'Ajuste de preço solicitado pela filial')
 
     const res = await query(
       `INSERT INTO franchise_requests (id, tenant_id, request_type, title, description, status, requested_changes_json, created_at)

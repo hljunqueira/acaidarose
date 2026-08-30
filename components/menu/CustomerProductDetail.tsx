@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Check, Plus, Minus, X, Heart, AlertCircle } from 'lucide-react'
+import { Check, Plus, Minus } from 'lucide-react'
 
 interface CustomerProductDetailProps {
   container: ProductContainer | null
@@ -26,6 +26,26 @@ const CUP_IMAGES: Record<number, string> = {
   1000: '/images/official/acai_balde_1kg.jpg',
 }
 
+const CUP_VIDEOS: Record<number, string> = {
+  250: '/videos/hero_revealing_cup.mp4',
+  350: '/videos/hero_orbiting_cup.mp4',
+  500: '/videos/hero_cup_rotation.mp4',
+  750: '/videos/hero_gliding_texture.mp4',
+  1000: '/videos/hero_cup_rotation.mp4',
+}
+
+function getPremiumPrice(toppingName: string, weightGrams: number): number {
+  const name = toppingName.toLowerCase()
+  const isLarge = weightGrams > 500
+  if (name.includes('pistache')) {
+    return isLarge ? 4.0 : 2.0
+  }
+  if (name.includes('nutella') || name.includes('leite em p') || name.includes('ninho')) {
+    return isLarge ? 2.0 : 1.0
+  }
+  return isLarge ? 2.0 : 1.0
+}
+
 export default function CustomerProductDetail({
   container,
   catalog,
@@ -36,139 +56,156 @@ export default function CustomerProductDetail({
 }: CustomerProductDetailProps) {
   if (!container) return null
 
-  const [selectedBases, setSelectedBases] = useState<ProductBase[]>([catalog.bases?.[0]].filter(Boolean))
+  const bases = catalog.bases || []
+  const allToppings = catalog.toppings || []
+
+  const [selectedBases, setSelectedBases] = useState<ProductBase[]>([bases?.[0]].filter(Boolean))
   const [selectedToppings, setSelectedToppings] = useState<ProductTopping[]>([])
-  const [quantity, setQuantity] = useState(1)
   const [notes, setNotes] = useState('')
+  const quantity = 1
 
   const isUnlimited = container.weightGrams >= 500
-  const maxBases = container.limiteCremes || container.limiteBases || 1
-  const maxFrutas = container.limiteFrutas || (isUnlimited ? 999 : 2)
-  const maxToppings = container.limiteToppings || (isUnlimited ? 999 : 3)
+  const maxFrutas = container.limiteFrutas || (isUnlimited ? 999 : container.weightGrams === 250 ? 2 : 3)
+  const maxToppingsGratis = container.limiteToppings || (isUnlimited ? 999 : 3)
 
-  const allToppings = catalog.toppings || []
-  const bases = catalog.bases || []
-
-  // Separação de Categorias
   const frutas = useMemo(() => {
-    return allToppings.filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
+    return allToppings.filter((t) => 
+      t.category === 'Frutas' || 
+      ['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f))
+    )
   }, [allToppings])
 
   const toppingsTradicionais = useMemo(() => {
-    return allToppings.filter((t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
+    return allToppings.filter((t) => 
+      !t.isPremium && 
+      t.category !== 'Frutas' && 
+      t.category !== 'Adicionais' && 
+      !['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f))
+    )
   }, [allToppings])
 
   const caldasPremium = useMemo(() => {
-    return allToppings.filter((t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0))
+    return allToppings.filter((t) => 
+      t.isPremium || 
+      t.category === 'Adicionais' || 
+      (t.precoExtra && t.precoExtra > 0)
+    )
   }, [allToppings])
 
   const selectedFrutas = selectedToppings.filter((t) => frutas.some((f) => f.id === t.id))
   const selectedExtras = selectedToppings.filter((t) => toppingsTradicionais.some((top) => top.id === t.id))
   const selectedPremiums = selectedToppings.filter((t) => caldasPremium.some((p) => p.id === t.id))
 
-  // Alternar Base
+  // Regras de Preços Canônicas
+  const basePrice = container.precoBase
+  const extraBasesCount = Math.max(0, selectedBases.length - 1)
+  const extraBasesPrice = extraBasesCount * 2.0
+
+  const extraToppingsCount = isUnlimited ? 0 : Math.max(0, selectedExtras.length - maxToppingsGratis)
+  const extraToppingsPrice = extraToppingsCount * 0.50
+
+  const premiumsPrice = selectedPremiums.reduce((acc, top) => {
+    return acc + getPremiumPrice(top.name, container.weightGrams)
+  }, 0)
+  const extraPremiumsPrice = premiumsPrice
+
+  const unitTotal = +(basePrice + extraBasesPrice + extraToppingsPrice + premiumsPrice).toFixed(2)
+  const lineTotal = +(unitTotal * quantity).toFixed(2)
+
   const toggleBase = (base: ProductBase) => {
-    const exists = selectedBases.find((b) => b.id === base.id)
-    if (exists) {
-      if (selectedBases.length > 1) {
-        setSelectedBases(selectedBases.filter((b) => b.id !== base.id))
+    if (selectedBases.some((b) => b.id === base.id)) {
+      if (selectedBases.length === 1) {
+        toast.info('Selecione pelo menos 1 base para a sua taça')
+        return
       }
+      setSelectedBases((prev) => prev.filter((b) => b.id !== base.id))
     } else {
-      if (selectedBases.length >= maxBases) {
-        setSelectedBases([...selectedBases.slice(1), base])
-      } else {
-        setSelectedBases([...selectedBases, base])
-      }
+      setSelectedBases((prev) => [...prev, base])
     }
   }
 
-  // Alternar Fruta
   const toggleFruta = (item: ProductTopping) => {
-    const exists = selectedToppings.find((t) => t.id === item.id)
-    if (exists) {
-      setSelectedToppings(selectedToppings.filter((t) => t.id !== item.id))
+    const isSelected = selectedToppings.some((t) => t.id === item.id)
+    if (isSelected) {
+      setSelectedToppings((prev) => prev.filter((t) => t.id !== item.id))
     } else {
       if (!isUnlimited && selectedFrutas.length >= maxFrutas) {
-        toast.info(`Limite de ${maxFrutas} frutas atingido para este tamanho.`)
+        toast.warning(`Limite de ${maxFrutas} frutas atingido para esta taça!`)
         return
       }
-      setSelectedToppings([...selectedToppings, item])
+      setSelectedToppings((prev) => [...prev, item])
     }
   }
 
-  // Alternar Topping Tradicional
   const toggleTopping = (item: ProductTopping) => {
-    const exists = selectedToppings.find((t) => t.id === item.id)
-    if (exists) {
-      setSelectedToppings(selectedToppings.filter((t) => t.id !== item.id))
+    const isSelected = selectedToppings.some((t) => t.id === item.id)
+    if (isSelected) {
+      setSelectedToppings((prev) => prev.filter((t) => t.id !== item.id))
     } else {
-      if (!isUnlimited && selectedExtras.length >= maxToppings) {
-        toast.info(`Limite de ${maxToppings} acompanhamentos atingido para este tamanho.`)
-        return
-      }
-      setSelectedToppings([...selectedToppings, item])
+      setSelectedToppings((prev) => [...prev, item])
     }
   }
 
-  // Alternar Calda / Adicional Premium
   const togglePremium = (item: ProductTopping) => {
-    const exists = selectedToppings.find((t) => t.id === item.id)
-    if (exists) {
-      setSelectedToppings(selectedToppings.filter((t) => t.id !== item.id))
+    const isSelected = selectedToppings.some((t) => t.id === item.id)
+    if (isSelected) {
+      setSelectedToppings((prev) => prev.filter((t) => t.id !== item.id))
     } else {
-      setSelectedToppings([...selectedToppings, item])
+      setSelectedToppings((prev) => [...prev, item])
     }
   }
-
-  // Preço Total
-  const basePrice = container.precoBase
-  const extraPrice = selectedPremiums.reduce((acc, t) => acc + (t.priceTierLow || t.precoExtra || t.precoCobrado || 1.0), 0)
-  const unitTotal = basePrice + extraPrice
-  const lineTotal = +(unitTotal * quantity).toFixed(2)
 
   const handleConfirm = () => {
     if (selectedBases.length === 0) {
-      toast.error('Selecione pelo menos 1 base gelada de açaí')
+      toast.error('Selecione pelo menos 1 base')
       return
     }
 
     onAddToCart({
       id: `${container.id}-${Date.now()}`,
+      containerId: container.id,
+      containerName: container.name,
+      containerWeight: container.weightGrams,
       container,
       bases: selectedBases,
       toppings: selectedToppings,
+      extraBasesCount,
+      extraToppingsCount,
       quantity,
       unitPrice: unitTotal,
       lineTotal,
       notes: notes.trim(),
     })
 
-    toast.success(`${container.name} adicionado à comanda!`)
+    toast.success(`${container.name} adicionado ao pedido!`)
     onClose()
   }
 
+  const video = container.videoUrl || CUP_VIDEOS[container.weightGrams]
+
   return (
     <Dialog open={Boolean(container)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[90vh] overflow-hidden p-0 bg-[#150226] text-white border border-white/20 rounded-3xl flex flex-col shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[90vh] overflow-hidden p-0 bg-white text-slate-900 border border-purple-100 dark:bg-[#150226] dark:text-white dark:border-white/20 rounded-3xl flex flex-col shadow-2xl transition-colors duration-200">
         {/* Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/10 bg-[#1e0333]/90 pr-14">
-          <DialogTitle className="text-base font-black text-white">
-            {viewOnly ? `Conheça os Ingredientes: ${container.name}` : `Personalize o seu ${container.name}`}
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-purple-100 dark:border-white/10 bg-purple-50 dark:bg-[#1e0333]/90 pr-14">
+          <DialogTitle className="text-base font-black text-slate-900 dark:text-white">
+            {viewOnly ? `Ingredientes: ${container.name}` : `Personalize o seu ${container.name}`}
           </DialogTitle>
         </div>
 
-        {/* Corpo Principal com 2 Colunas no Desktop */}
-        <div className="overflow-y-auto p-4 sm:p-5 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
-          {/* Coluna Esquerda: Imagem & Resumo do Tamanho */}
+        {/* Corpo Principal */}
+        <div className="overflow-y-auto p-4 sm:p-5 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 text-slate-900 dark:text-white">
+          {/* Coluna Esquerda */}
           <div className="md:col-span-4 space-y-4">
-            <div className="rounded-3xl overflow-hidden border border-white/15 bg-purple-950/40 shadow-lg">
-              {container.videoUrl ? (
+            <div className="rounded-3xl overflow-hidden border border-purple-100 dark:border-white/15 bg-purple-50 dark:bg-purple-950/40 shadow-sm">
+              {video ? (
                 <video
-                  src={container.videoUrl}
+                  src={video}
                   autoPlay
                   muted
                   loop
                   playsInline
+                  preload="auto"
                   className="w-full h-36 sm:h-44 object-cover"
                 />
               ) : (
@@ -180,53 +217,66 @@ export default function CustomerProductDetail({
               )}
             </div>
 
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 sm:space-y-2">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50/80 border border-purple-100 dark:bg-white/5 dark:border-white/10 space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-black text-sm text-white">{container.name}</span>
-                <span className="font-black text-fuchsia-300 font-mono text-sm">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white">{container.name}</span>
+                <span className="font-black text-fuchsia-600 dark:text-fuchsia-300 font-mono text-sm">
                   {formatCurrency(container.precoBase)}
                 </span>
               </div>
-              <p className="text-[11px] text-purple-200/70">
+              <p className="text-xs text-slate-600 dark:text-purple-200/70 leading-relaxed font-medium">
                 {isUnlimited
-                  ? 'Tamanho Especial: Frutas frescas e acompanhamentos tradicionais à vontade!'
-                  : `Inclui até ${maxFrutas} frutas e até ${maxToppings} toppings tradicionais gratuitos.`}
+                  ? 'Frutas frescas e acompanhamentos tradicionais à vontade.'
+                  : `Inclui até ${maxFrutas} frutas e até ${maxToppingsGratis} acompanhamentos.`}
               </p>
             </div>
 
-            {/* Quantidade */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
-              <span className="text-xs font-bold text-purple-200">Quantidade:</span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="h-7 w-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center font-black cursor-pointer text-white"
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-                <span className="font-mono font-black text-sm text-white">{quantity}</span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="h-7 w-7 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-700 flex items-center justify-center font-black cursor-pointer text-white"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
+            {/* Resumo da Composição e Acréscimos em Tempo Real */}
+            <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200/80 dark:bg-white/5 dark:border-white/10 space-y-2 text-left">
+              <div className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
+                Resumo dos Valores:
+              </div>
+              <div className="space-y-1.5 text-xs text-slate-700 dark:text-purple-200/80 font-mono">
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-purple-200">Base da Taça:</span>
+                  <span className="text-slate-900 dark:text-white font-bold">{formatCurrency(basePrice)}</span>
+                </div>
+                {extraBasesCount > 0 && (
+                  <div className="flex justify-between text-emerald-700 dark:text-emerald-300 font-semibold">
+                    <span>{extraBasesCount}x Creme Extra (+2€):</span>
+                    <span>+{formatCurrency(extraBasesPrice)}</span>
+                  </div>
+                )}
+                {extraToppingsCount > 0 && (
+                  <div className="flex justify-between text-emerald-700 dark:text-emerald-300 font-semibold">
+                    <span>{extraToppingsCount}x Topping (+0,50€):</span>
+                    <span>+{formatCurrency(extraToppingsPrice)}</span>
+                  </div>
+                )}
+                {extraPremiumsPrice > 0 && (
+                  <div className="flex justify-between text-amber-700 dark:text-amber-300 font-semibold">
+                    <span>Adicionais Especiais:</span>
+                    <span>+{formatCurrency(extraPremiumsPrice)}</span>
+                  </div>
+                )}
+                <div className="border-t border-purple-200 dark:border-white/10 pt-1.5 flex justify-between text-xs text-fuchsia-700 dark:text-fuchsia-300 font-black">
+                  <span>Total Desta Taça:</span>
+                  <span>{formatCurrency(unitTotal)}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Coluna Direita: Seleção de Ingredientes */}
+          {/* Coluna Direita: Seleção */}
           <div className="md:col-span-8 space-y-5">
-            {/* ETAPA 1: BASES & CREMES GELADOS */}
+            {/* ETAPA 1: BASES & CREMES */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase text-white flex items-center gap-1.5">
-                  <span>1. Escolha a sua Base Gelada</span>
-                  <span className="text-fuchsia-400">({selectedBases.length}/{maxBases})</span>
+                <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>1. Base / Cremes</span>
+                  <span className="text-fuchsia-600 dark:text-fuchsia-400 font-bold">({selectedBases.length})</span>
                 </label>
-                <span className="text-[10px] text-emerald-400 font-bold">Obrigatório (1 incluso)</span>
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">1 p/unid. Adicional mais 2€</span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -239,19 +289,19 @@ export default function CustomerProductDetail({
                       type="button"
                       disabled={!isAvailable}
                       onClick={() => isAvailable && toggleBase(base)}
-                      className={`p-2.5 rounded-2xl text-left text-xs font-bold transition flex items-center justify-between border ${
+                      className={`p-2.5 rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
                         !isAvailable
-                          ? 'bg-white/5 border-white/5 opacity-40 cursor-not-allowed'
+                          ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                           : isSelected
-                          ? 'bg-fuchsia-600/30 border-fuchsia-400 text-white shadow-md cursor-pointer'
-                          : 'bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10 cursor-pointer'
+                          ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
+                          : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                       }`}
                     >
-                      <span className="truncate">{base.emoji || '🟣'} {base.name}</span>
+                      <span className="truncate">{base.name}</span>
                       {isSelected ? (
-                        <Check className="h-3.5 w-3.5 text-fuchsia-400 flex-shrink-0 ml-1" />
+                        <Check className="h-3.5 w-3.5 text-white dark:text-fuchsia-300 flex-shrink-0 ml-1" />
                       ) : !isAvailable ? (
-                        <span className="text-[9px] text-amber-400">Esgotado</span>
+                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold">Esgotado</span>
                       ) : null}
                     </button>
                   )
@@ -262,13 +312,13 @@ export default function CustomerProductDetail({
             {/* ETAPA 2: FRUTAS FRESCAS */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase text-white flex items-center gap-1.5">
+                <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
                   <span>2. Frutas Frescas</span>
-                  <span className="text-purple-300">
+                  <span className="text-purple-700 dark:text-purple-300 font-bold">
                     ({selectedFrutas.length}{isUnlimited ? '' : `/${maxFrutas}`})
                   </span>
                 </label>
-                <span className="text-[10px] text-purple-300 font-semibold">
+                <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold">
                   {isUnlimited ? 'Sem limite' : `Até ${maxFrutas} inclusas`}
                 </span>
               </div>
@@ -283,19 +333,19 @@ export default function CustomerProductDetail({
                       type="button"
                       disabled={!isAvailable}
                       onClick={() => isAvailable && toggleFruta(fruta)}
-                      className={`p-2.5 rounded-2xl text-left text-xs font-bold transition flex items-center justify-between border ${
+                      className={`p-2.5 rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
                         !isAvailable
-                          ? 'bg-white/5 border-white/5 opacity-40 cursor-not-allowed'
+                          ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                           : isSelected
-                          ? 'bg-purple-700 border-fuchsia-400 text-white shadow-md cursor-pointer'
-                          : 'bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10 cursor-pointer'
+                          ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
+                          : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                       }`}
                     >
                       <span className="truncate">{fruta.name}</span>
                       {isSelected ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0 ml-1" />
+                        <Check className="h-3.5 w-3.5 text-white dark:text-emerald-400 flex-shrink-0 ml-1" />
                       ) : !isAvailable ? (
-                        <span className="text-[9px] text-amber-400">Esgotado</span>
+                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold">Esgotado</span>
                       ) : null}
                     </button>
                   )
@@ -303,17 +353,17 @@ export default function CustomerProductDetail({
               </div>
             </div>
 
-            {/* ETAPA 3: TOPPINGS & CROCANTES */}
+            {/* ETAPA 3: TOPPINGS */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase text-white flex items-center gap-1.5">
-                  <span>3. Toppings & Crocantes Tradicionais</span>
-                  <span className="text-purple-300">
-                    ({selectedExtras.length}{isUnlimited ? '' : `/${maxToppings}`})
+                <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>3. Toppings</span>
+                  <span className="text-purple-700 dark:text-purple-300 font-bold">
+                    ({selectedExtras.length}{isUnlimited ? '' : `/${maxToppingsGratis}`})
                   </span>
                 </label>
-                <span className="text-[10px] text-purple-300 font-semibold">
-                  {isUnlimited ? 'Sem limite' : `Até ${maxToppings} inclusos`}
+                <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold">
+                  {isUnlimited ? 'À vontade' : `Até ${maxToppingsGratis} inclusos`}
                 </span>
               </div>
 
@@ -327,19 +377,19 @@ export default function CustomerProductDetail({
                       type="button"
                       disabled={!isAvailable}
                       onClick={() => isAvailable && toggleTopping(top)}
-                      className={`p-2 rounded-2xl text-left text-[11px] font-bold transition flex items-center justify-between border ${
+                      className={`p-2 rounded-2xl text-left text-[11px] font-semibold transition flex items-center justify-between border cursor-pointer ${
                         !isAvailable
-                          ? 'bg-white/5 border-white/5 opacity-40 cursor-not-allowed'
+                          ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                           : isSelected
-                          ? 'bg-purple-700 border-fuchsia-400 text-white shadow-md cursor-pointer'
-                          : 'bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10 cursor-pointer'
+                          ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
+                          : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                       }`}
                     >
                       <span className="truncate">{top.name}</span>
                       {isSelected ? (
-                        <Check className="h-3 w-3 text-emerald-400 flex-shrink-0 ml-1" />
+                        <Check className="h-3 w-3 text-white dark:text-emerald-400 flex-shrink-0 ml-1" />
                       ) : !isAvailable ? (
-                        <span className="text-[9px] text-amber-400">Esgotado</span>
+                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold">Esgotado</span>
                       ) : null}
                     </button>
                   )
@@ -347,44 +397,49 @@ export default function CustomerProductDetail({
               </div>
             </div>
 
-            {/* ETAPA 4: CALDAS & ESPECIAIS PREMIUM */}
+            {/* ETAPA 4: ADICIONAIS */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase text-white flex items-center gap-1.5">
-                  <span>4. Caldas & Especiais Premium</span>
-                  <Badge className="bg-amber-400 text-purple-950 font-black text-[9px] py-0 px-1.5 border-0">
+                <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>4. Adicionais</span>
+                  <Badge className="bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-400 dark:text-purple-950 font-bold text-[9px] py-0 px-1.5">
                     Opcional
                   </Badge>
                 </label>
+                <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold">
+                  Mais toppings 0,50€ cada
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {caldasPremium.map((add) => {
                   const isSelected = selectedToppings.some((t) => t.id === add.id)
                   const isAvailable = add.active !== false
-                  const price = add.priceTierLow || add.precoExtra || 1.0
+                  const dynamicPrice = getPremiumPrice(add.name, container.weightGrams)
                   return (
                     <button
                       key={add.id}
                       type="button"
                       disabled={!isAvailable}
                       onClick={() => isAvailable && togglePremium(add)}
-                      className={`p-3 rounded-2xl text-left text-xs font-bold transition flex items-center justify-between border ${
+                      className={`p-3 rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
                         !isAvailable
-                          ? 'bg-white/5 border-white/5 opacity-40 cursor-not-allowed'
+                          ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400'
                           : isSelected
-                          ? 'bg-gradient-to-r from-fuchsia-900 to-purple-900 border-amber-400 text-white shadow-lg cursor-pointer'
-                          : 'bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10 cursor-pointer'
+                          ? 'bg-gradient-to-r from-purple-800 to-amber-900 border-amber-400 text-white shadow-lg dark:from-fuchsia-900 dark:to-purple-900 dark:border-amber-400'
+                          : 'bg-amber-50/70 border-amber-200/80 text-slate-900 hover:bg-amber-100 hover:border-amber-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                       }`}
                     >
                       <div>
-                        <div className="truncate font-black">{add.name}</div>
-                        <div className="text-[10px] text-amber-300 font-mono mt-0.5">+{formatCurrency(price)}</div>
+                        <div className="truncate font-bold">{add.name}</div>
+                        <div className={`text-[10px] font-mono font-bold mt-0.5 ${isSelected ? 'text-amber-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                          +{formatCurrency(dynamicPrice)}
+                        </div>
                       </div>
                       {isSelected ? (
                         <Check className="h-4 w-4 text-amber-300 flex-shrink-0 ml-1" />
                       ) : !isAvailable ? (
-                        <span className="text-[9px] text-amber-400">Esgotado</span>
+                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold">Esgotado</span>
                       ) : null}
                     </button>
                   )
@@ -394,27 +449,27 @@ export default function CustomerProductDetail({
 
             {/* ETAPA 5: OBSERVAÇÕES */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-purple-200">
-                Observações para a Copa / Atendimento:
+              <label className="text-xs font-bold text-slate-800 dark:text-purple-200">
+                Observações:
               </label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="ex: pouco leite condensado, frutas no fundo do copo..."
-                className="w-full h-10 px-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-white placeholder:text-purple-300/40 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                placeholder="Ex: pouco leite condensado..."
+                className="w-full h-11 px-3.5 rounded-2xl bg-white border border-purple-200 text-base sm:text-xs text-slate-900 placeholder:text-slate-400 dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder:text-purple-300/40 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 font-medium"
               />
             </div>
           </div>
         </div>
 
-        {/* Rodapé Fixo com Preço Total e Botão Condicional */}
-        <div className="px-6 py-4 border-t border-white/10 bg-[#1e0333] flex items-center justify-between gap-4">
+        {/* Rodapé Fixo */}
+        <div className="px-6 py-4 border-t border-purple-100 dark:border-white/10 bg-white dark:bg-[#1e0333] flex items-center justify-between gap-4">
           <div>
-            <div className="text-[10px] text-purple-300 font-bold uppercase">
+            <div className="text-[10px] text-slate-500 dark:text-purple-300 font-bold uppercase">
               {viewOnly ? 'Preço Base' : 'Total do Item'}
             </div>
-            <div className="text-xl sm:text-2xl font-black text-fuchsia-300 font-mono">
+            <div className="text-xl sm:text-2xl font-black text-purple-950 dark:text-fuchsia-300 font-mono">
               {formatCurrency(viewOnly ? basePrice : lineTotal)}
             </div>
           </div>
@@ -424,9 +479,9 @@ export default function CustomerProductDetail({
               <Button
                 type="button"
                 onClick={onClose}
-                className="h-11 px-6 rounded-2xl bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-pink-600/30 cursor-pointer"
+                className="h-11 px-6 rounded-2xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-600/30 cursor-pointer"
               >
-                Concluir Visualização
+                Fechar
               </Button>
             ) : (
               <>
@@ -434,16 +489,16 @@ export default function CustomerProductDetail({
                   type="button"
                   variant="ghost"
                   onClick={onClose}
-                  className="text-xs text-purple-200 hover:text-white"
+                  className="text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-purple-200 dark:hover:text-white cursor-pointer"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="button"
                   onClick={handleConfirm}
-                  className="h-11 px-6 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-purple-700 hover:from-fuchsia-500 hover:to-purple-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-fuchsia-600/30 cursor-pointer"
+                  className="h-11 px-6 rounded-2xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-600/30 cursor-pointer"
                 >
-                  + Adicionar à Comanda
+                  + Adicionar ao Pedido
                 </Button>
               </>
             )}
@@ -453,3 +508,4 @@ export default function CustomerProductDetail({
     </Dialog>
   )
 }
+

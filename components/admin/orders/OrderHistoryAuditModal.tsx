@@ -54,8 +54,8 @@ export default function OrderHistoryAuditModal({
   const getStatusBadge = () => {
     if (isNew) return <Badge className="bg-amber-500 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg border-0">Novo Pedido</Badge>
     if (isPrep) return <Badge className="bg-purple-600 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg border-0">Em Preparação</Badge>
-    if (isReady) return <Badge className="bg-emerald-600 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg border-0">Pronto p/ Entrega</Badge>
-    if (isPaid) return <Badge className="bg-zinc-800 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg border-0">Finalizado & Pago</Badge>
+    if (isReady) return <Badge className="bg-emerald-600 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg border-0">Pronto para Retirar</Badge>
+    if (isPaid) return <Badge className="bg-zinc-800 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg border-0">Finalizado & Entregue</Badge>
     if (isCancelled) return <Badge className="bg-red-600 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg border-0">Cancelado</Badge>
     return <Badge variant="secondary">Pendente</Badge>
   }
@@ -103,7 +103,7 @@ export default function OrderHistoryAuditModal({
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-[11px] font-semibold border-gray-200 text-gray-700 py-0.5">
-                  Balcão / Viagem
+                  Balcão / Para Levar
                 </Badge>
               )}
             </div>

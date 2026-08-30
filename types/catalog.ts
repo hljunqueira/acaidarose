@@ -51,7 +51,7 @@ export interface ProductTopping {
   isSpecialAddon?: boolean
   priceTierLow?: number // até 500g (ex: +1€ ou +2€)
   priceTierHigh?: number // acima de 500g (ex: +2€ ou +4€)
-  emoji: string
+  emoji?: string
   videoUrl?: string | null
   videoPoster?: string | null
   availableHours?: any

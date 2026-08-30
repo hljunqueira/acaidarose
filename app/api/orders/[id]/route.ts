@@ -30,30 +30,27 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
+    const tableNum = body.tableNumber !== undefined ? (parseInt(String(body.tableNumber), 10) || null) : undefined
+    const totalVal = body.total !== undefined ? Number(body.total) : undefined
 
     const res = await query(
       `UPDATE orders 
        SET status = COALESCE($2, status),
-           payment_status = COALESCE($3, payment_status),
-           payment_method = COALESCE($4, payment_method),
-           customer_name = COALESCE($5, customer_name),
-           customer_phone = COALESCE($6, customer_phone),
-           table_number = COALESCE($7, table_number),
-           notes = COALESCE($8, notes),
-           total_amount = COALESCE($9, total_amount),
-           updated_at = timezone('utc'::text, now())
-       WHERE id::text = $1 AND deleted_at IS NULL
+           payment_method = COALESCE($3, payment_method),
+           customer_name = COALESCE($4, customer_name),
+           customer_phone = COALESCE($5, customer_phone),
+           table_number = COALESCE($6, table_number),
+           total = COALESCE($7, total)
+       WHERE id::text = $1
        RETURNING *`,
       [
         id,
         body.status || null,
-        body.paymentStatus || null,
         body.paymentMethod || null,
         body.customerName || null,
         body.customerPhone || null,
-        body.tableNumber || null,
-        body.notes || null,
-        body.total !== undefined ? Number(body.total) : null,
+        tableNum !== undefined ? tableNum : null,
+        totalVal !== undefined ? totalVal : null,
       ]
     )
 
@@ -77,16 +74,27 @@ export async function DELETE(
     const user = await getAuthUser(request)
 
     let cancelReason = 'Cancelado pelo operador'
+    let isPermanent = false
     try {
       const body = await request.json()
-      if (body.reason) cancelReason = body.reason
+      if (body?.reason) cancelReason = body.reason
+      if (body?.permanent || body?.delete) isPermanent = true
     } catch {}
 
+    if (isPermanent) {
+      await query(`DELETE FROM orders WHERE id::text = $1`, [id])
+      return jsonResponse({ success: true, message: 'Comanda excluída definitivamente' })
+    }
+
     const order = await cancelOrder(id, cancelReason, user)
-    if (!order) return errorResponse('Comanda não encontrada', 404)
+    if (!order) {
+      // Se não encontrou para update, tenta deletar diretamente
+      await query(`DELETE FROM orders WHERE id::text = $1`, [id])
+      return jsonResponse({ success: true, message: 'Comanda removida' })
+    }
 
     return jsonResponse({ success: true, message: 'Pedido cancelado com sucesso', order })
   } catch (err: any) {
-    return errorResponse(err?.message || 'Erro ao cancelar pedido', 500)
+    return errorResponse(err?.message || 'Erro ao processar exclusão da comanda', 500)
   }
 }

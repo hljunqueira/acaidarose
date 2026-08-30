@@ -36,6 +36,16 @@ export interface TenantSetting {
   value: any
 }
 
+export interface FranchiseInvestmentOption {
+  id: string
+  name: string
+  valueText: string
+  active: boolean
+  displayOrder: number
+  createdAt?: string | Date
+  updatedAt?: string | Date
+}
+
 export interface TenantMetrics {
   todayRevenue: number
   todayOrdersCount: number

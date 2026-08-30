@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { User } from '@/types'
 import { KeyRound, User as UserIcon, Shield } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface UserEditDialogProps {
   open: boolean
@@ -31,7 +32,7 @@ export default function UserEditDialog({
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState('CASHIER')
+  const [role, setRole] = useState<'SUPER_ADMIN' | 'FRANCHISEE_ADMIN' | 'CASHIER' | 'KITCHEN'>('CASHIER')
   const [saving, setSaving] = useState(false)
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN'
@@ -56,7 +57,7 @@ export default function UserEditDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password && confirmPassword && password !== confirmPassword) {
-      alert('As palavras-passe não coincidem!')
+      toast.error('As palavras-passe não coincidem!')
       return
     }
 
@@ -140,7 +141,7 @@ export default function UserEditDialog({
                   <Label className="text-xs font-bold text-purple-950 dark:text-white">Perfil de Acesso (Cargo):</Label>
                   <select
                     value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => setRole(e.target.value as any)}
                     className="w-full h-9 text-xs mt-1 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-purple-950 dark:text-white px-3 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 dark:focus:ring-pink-500 [&>option]:bg-white dark:[&>option]:bg-[#160228]"
                   >
                     <option value="CASHIER">CASHIER (Operador de Caixa / Salão)</option>
@@ -183,7 +184,7 @@ export default function UserEditDialog({
                 <Input
                   type="password"
                   required
-                  placeholder="Confirme a nova senha"
+                  placeholder="Confirme a nova palavra-passe"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="h-9 text-xs mt-1 bg-purple-50/50 dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white rounded-xl"
@@ -208,7 +209,7 @@ export default function UserEditDialog({
               disabled={saving}
               className="text-xs bg-purple-900 hover:bg-purple-950 dark:bg-pink-600 dark:hover:bg-pink-700 text-white font-bold rounded-xl shadow-xs cursor-pointer"
             >
-              {saving ? 'A guardar...' : isPasswordOnly ? 'Atualizar Senha' : 'Salvar Utilizador'}
+              {saving ? 'A guardar...' : isPasswordOnly ? 'Atualizar Palavra-passe' : 'Guardar Utilizador'}
             </Button>
           </DialogFooter>
         </form>

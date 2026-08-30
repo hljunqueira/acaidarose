@@ -4,62 +4,57 @@ import { v4 as uuidv4 } from 'uuid'
 
 export async function createOrder(payload: any): Promise<Order> {
   const orderId = payload.id || uuidv4()
-  const tenantId = payload.tenantId
+  const tenantId = payload.tenantId || '11111111-1111-1111-1111-111111111111'
   const subtotal = (payload.items || []).reduce((s: number, i: any) => s + (Number(i.lineTotal) || 0), 0)
   const total = +subtotal.toFixed(2)
+  const vatTotal = +(total * 0.13).toFixed(2) // IVA taxa padrão restauração Portugal (13%)
+  const tableNum = payload.tableNumber ? parseInt(String(payload.tableNumber), 10) || null : null
 
-  // Inserção na tabela principal orders (o trigger trigger_set_order_daily_seq gera daily_order_seq)
+  // Calcular próximo order_number diário no fuso de Portugal
+  const seqRes = await query(
+    `SELECT COALESCE(MAX(order_number), 0) + 1 AS next_seq 
+     FROM orders 
+     WHERE tenant_id::text = $1 
+       AND (created_at AT TIME ZONE 'Europe/Lisbon')::date = (now() AT TIME ZONE 'Europe/Lisbon')::date`,
+    [tenantId]
+  )
+  const orderNumber = Number(seqRes.rows[0]?.next_seq) || 1
+
+  const itemsJson = JSON.stringify(payload.items || payload.itemsJson || [])
+
+  // Inserção na tabela principal orders
   const res = await query(
     `INSERT INTO orders (
-      id, tenant_id, cashier_id, customer_name, customer_phone, table_number,
-      order_type, status, payment_status, payment_method, subtotal, total_amount, notes
+      id, tenant_id, cashier_id, cashier_name, customer_name, customer_phone, customer_nif,
+      order_number, subtotal, vat_total, total, status, payment_method,
+      payment_reference, is_table_order, table_number, items_json, created_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+      $1, $2, $3, $4, $5, $6, $7,
+      $8, $9, $10, $11, $12, $13,
+      $14, $15, $16, $17, timezone('utc'::text, now())
     ) RETURNING *`,
     [
       orderId,
       tenantId,
       payload.cashierId || null,
+      payload.cashierName || 'Autoatendimento QR Code',
       payload.customerName ? String(payload.customerName).trim() : null,
       payload.customerPhone ? String(payload.customerPhone).trim() : null,
-      payload.tableNumber ? String(payload.tableNumber) : null,
-      payload.isTableOrder !== false ? 'DINE_IN' : 'TAKEOUT',
-      payload.status || 'PAID',
-      payload.paymentStatus || 'PAID',
-      payload.paymentMethod || 'NUMERARIO',
+      payload.customerNif ? String(payload.customerNif).trim() : null,
+      orderNumber,
       total,
+      vatTotal,
       total,
-      payload.notes ? String(payload.notes).trim() : null,
+      payload.status || 'PREPARING',
+      payload.paymentMethod || 'MBWAY',
+      payload.paymentReference || null,
+      payload.isTableOrder !== false,
+      tableNum,
+      itemsJson,
     ]
   )
 
   const row = res.rows[0]
-
-  // Inserção dos itens na tabela order_items
-  for (const item of payload.items || []) {
-    const itemId = item.id || uuidv4()
-    await query(
-      `INSERT INTO order_items (
-        id, order_id, product_id, item_name, quantity, unit_price, total_price, custom_notes, selected_addons_json
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9
-      )`,
-      [
-        itemId,
-        orderId,
-        item.containerId || null,
-        item.containerName || 'Açaí Personalizado',
-        1,
-        Number(item.containerPrice || item.lineTotal) || 0,
-        Number(item.lineTotal) || 0,
-        item.notes || null,
-        JSON.stringify({
-          bases: item.bases || [],
-          toppings: item.toppings || [],
-        }),
-      ]
-    )
-  }
 
   return {
     id: row.id,
@@ -67,15 +62,15 @@ export async function createOrder(payload: any): Promise<Order> {
     cashierId: row.cashier_id,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
-    orderNumber: row.daily_order_seq || 1,
+    orderNumber: row.order_number || orderNumber,
     subtotal: Number(row.subtotal) || total,
-    total: Number(row.total_amount) || total,
+    total: Number(row.total) || total,
     status: row.status,
-    paymentStatus: row.payment_status,
+    paymentStatus: row.status === 'PAID' || row.status === 'PREPARING' || row.status === 'READY' ? 'PAID' : 'PENDING',
     paymentMethod: row.payment_method,
     tableNumber: row.table_number,
-    isTableOrder: row.order_type === 'DINE_IN',
-    notes: row.notes,
+    isTableOrder: row.is_table_order !== false,
+    notes: payload.notes || '',
     items: payload.items || [],
     createdAt: row.created_at,
   }
@@ -83,31 +78,32 @@ export async function createOrder(payload: any): Promise<Order> {
 
 export async function getOrderById(id: string): Promise<Order | null> {
   const res = await query(
-    `SELECT * FROM orders WHERE id::text = $1 AND deleted_at IS NULL LIMIT 1`,
+    `SELECT * FROM orders WHERE id::text = $1 LIMIT 1`,
     [id]
   )
   if (res.rows && res.rows.length > 0) {
     const o = res.rows[0]
-    const itemsRes = await query(
-      `SELECT * FROM order_items WHERE order_id = $1`,
-      [o.id]
-    )
+    let items = []
+    try {
+      items = typeof o.items_json === 'string' ? JSON.parse(o.items_json) : (o.items_json || [])
+    } catch {}
+
     return {
       id: o.id,
       tenantId: o.tenant_id,
       cashierId: o.cashier_id,
       customerName: o.customer_name,
       customerPhone: o.customer_phone,
-      orderNumber: o.daily_order_seq,
+      orderNumber: o.order_number,
       subtotal: Number(o.subtotal) || 0,
-      total: Number(o.total_amount) || 0,
+      total: Number(o.total) || 0,
       status: o.status,
-      paymentStatus: o.payment_status,
+      paymentStatus: o.status === 'PAID' || o.status === 'PREPARING' || o.status === 'READY' ? 'PAID' : 'PENDING',
       paymentMethod: o.payment_method,
       tableNumber: o.table_number,
-      isTableOrder: o.order_type === 'DINE_IN',
-      notes: o.notes,
-      items: itemsRes.rows || [],
+      isTableOrder: o.is_table_order !== false,
+      notes: o.cancel_reason || '',
+      items,
       createdAt: o.created_at,
     }
   }
@@ -115,25 +111,27 @@ export async function getOrderById(id: string): Promise<Order | null> {
 }
 
 export async function cancelOrder(id: string, reason: string, user: any): Promise<Order | null> {
+  const userName = user?.name || 'Operador KDS'
   const res = await query(
     `UPDATE orders 
      SET status = 'CANCELLED', 
-         notes = COALESCE(notes, '') || ' [Cancelado: ' || $2 || ']',
-         updated_at = timezone('utc'::text, now())
+         cancel_reason = $2,
+         cancelled_at = timezone('utc'::text, now()),
+         cancelled_by_name = $3
      WHERE id::text = $1
      RETURNING *`,
-    [id, reason]
+    [id, reason, userName]
   )
   if (res.rows && res.rows.length > 0) {
     const o = res.rows[0]
     return {
       id: o.id,
       tenantId: o.tenant_id,
-      orderNumber: o.daily_order_seq,
+      orderNumber: o.order_number,
       subtotal: Number(o.subtotal) || 0,
-      total: Number(o.total_amount) || 0,
+      total: Number(o.total) || 0,
       status: 'CANCELLED',
-      paymentStatus: o.payment_status,
+      paymentStatus: 'CANCELLED',
       paymentMethod: o.payment_method,
       items: [],
       createdAt: o.created_at,

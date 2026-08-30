@@ -33,7 +33,7 @@ import {
 
 export interface FranchiseCandidate {
   id: string
-  type: 'FRANCHISE_APPLICATION'
+  type: 'FRANCHISE_APPLICATION' | 'CONTACT_REQUEST'
   candidateName: string
   email: string
   phone: string
@@ -181,7 +181,7 @@ export default function FranchiseRequestsView({
         const storeList: FranchisePriceRequest[] = []
 
         data.requests.forEach((r: any) => {
-          if (r.type === 'FRANCHISE_APPLICATION') {
+          if (r.type === 'FRANCHISE_APPLICATION' || r.type === 'CONTACT_REQUEST') {
             candList.push(r)
           } else {
             storeList.push(r)
@@ -258,7 +258,7 @@ export default function FranchiseRequestsView({
   const openWhatsApp = (phone: string, name: string) => {
     const cleanPhone = phone.replace(/\D/g, '')
     const finalPhone = cleanPhone.startsWith('351') ? cleanPhone : cleanPhone.length === 9 ? `351${cleanPhone}` : cleanPhone
-    const msg = encodeURIComponent(`Olá ${name}, agradecemos o seu interesse na franquia Açaí da Rose! Podemos conversar sobre a sua candidatura?`)
+    const msg = encodeURIComponent(`Olá ${name}, meu nome é José Valdair, agradecemos o seu interesse na franquia Açaí da Rose! Podemos conversar sobre a sua candidatura?`)
     window.open(`https://wa.me/${finalPhone}?text=${msg}`, '_blank')
   }
 
@@ -416,7 +416,14 @@ export default function FranchiseRequestsView({
                     filteredCandidates.map((cand) => (
                       <tr key={cand.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-purple-950 dark:text-white text-xs">{cand.candidateName}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-purple-950 dark:text-white text-xs">{cand.candidateName}</span>
+                            {cand.type === 'CONTACT_REQUEST' && (
+                              <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[9px] scale-90 py-0 px-1 font-bold">
+                                Contacto
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-[11px] text-purple-700/80 dark:text-purple-300/70">{cand.email}</div>
                           <div className="text-[11px] font-mono text-purple-900/70 dark:text-purple-200/60">{cand.phone}</div>
                         </td>
