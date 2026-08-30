@@ -602,8 +602,15 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
       {/* 3. RODAPÉ AMPLIADO EM LARGURA TOTAL (100%): MARQUEE DE PEDIDOS E COMUNICADOS */}
       {(() => {
         const hasPromo = Boolean(marqueeConfig.promoText?.trim())
+        const hasIdle = Boolean(marqueeConfig.idleText?.trim())
         const showPreparing = marqueeConfig.showPreparingOrders !== false && preparingOrders.length > 0
-        const idleMessage = marqueeConfig.idleText?.trim() || 'Açaí da Rose · O verdadeiro açaí artesanal da Amazônia'
+
+        // Se não houver comunicado, não houver texto institucional e não houver pedidos no salão:
+        if (!hasPromo && !hasIdle && !showPreparing) {
+          return null
+        }
+
+        const idleMessage = marqueeConfig.idleText?.trim() || ''
 
         const fontClass =
           marqueeConfig.fontFamily === 'cursive'
@@ -668,7 +675,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                       <span className="opacity-40">★</span>
                       <span>{marqueeConfig.promoText.trim()}</span>
                     </span>
-                  ) : showPreparing ? (
+                  ) : showPreparing && hasIdle ? (
                     <span className="inline-flex items-center gap-6 mx-4">
                       {preparingOrders.map((o, idx) => (
                         <React.Fragment key={o.id || idx}>
@@ -686,7 +693,23 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                       <span>{idleMessage}</span>
                       <span className="opacity-40">•</span>
                     </span>
-                  ) : (
+                  ) : showPreparing ? (
+                    <span className="inline-flex items-center gap-6 mx-4">
+                      {preparingOrders.map((o, idx) => (
+                        <React.Fragment key={o.id || idx}>
+                          <span className="inline-flex items-center gap-3">
+                            <span className="font-mono text-amber-300">
+                              ⏳ #{String(o.orderNumber || 1).padStart(3, '0')}
+                            </span>
+                            <span className="text-white font-extrabold">
+                              {getDisplayName(o.customerName, o.tableNumber)}
+                            </span>
+                          </span>
+                          <span className="opacity-40">•</span>
+                        </React.Fragment>
+                      ))}
+                    </span>
+                  ) : hasIdle ? (
                     <span className="inline-flex items-center gap-6 mx-4">
                       <span>{idleMessage}</span>
                       <span className="opacity-40">•</span>
@@ -694,7 +717,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                       <span className="opacity-40">•</span>
                       <span>{idleMessage}</span>
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>

@@ -77,7 +77,11 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     : 'Loja 1 - Aveiro'
 
   useEffect(() => {
-    setMarqueeConfig(getStoredTVMarqueeConfig(tenantId))
+    const config = getStoredTVMarqueeConfig(tenantId)
+    if (config.idleText === undefined) {
+      config.idleText = 'Açaí da Rose · O verdadeiro açaí artesanal da Amazônia'
+    }
+    setMarqueeConfig(config)
     setStoreVideos(getStoreTVVideos(tenantId))
     setCurrentTVCall(getLastTVCall(tenantId))
     setSoundConfig(getStoredTVSoundConfig())
@@ -1194,7 +1198,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               <Input
                 value={marqueeConfig.promoText || ''}
                 onChange={(e) => setMarqueeConfig({ ...marqueeConfig, promoText: e.target.value })}
-                placeholder="Ex: Promoção do dia: Peça 1 Taça de 500ml e ganhe 1 Acompanhamento extra"
+                placeholder="Digite a mensagem promocional ou comunicado da loja..."
                 className="h-10 text-xs bg-white dark:bg-[#160228] border-purple-200 dark:border-white/20 text-purple-950 dark:text-white font-medium"
               />
               <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
@@ -1213,7 +1217,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               <Input
                 value={marqueeConfig.idleText || ''}
                 onChange={(e) => setMarqueeConfig({ ...marqueeConfig, idleText: e.target.value })}
-                placeholder="Ex: Açaí da Rose · O verdadeiro açaí artesanal da Amazônia"
+                placeholder="Digite a frase institucional da casa..."
                 className="h-10 text-xs bg-white dark:bg-[#160228] border-purple-200 dark:border-white/20 text-purple-950 dark:text-white font-medium"
               />
               <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
