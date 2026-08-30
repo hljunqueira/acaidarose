@@ -218,57 +218,48 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   return (
     <div
       ref={panelRef}
-      className="min-h-screen w-full bg-[#180424] text-white p-3 sm:p-5 lg:p-6 flex flex-col justify-between select-none overflow-hidden font-sans"
+      className="min-h-screen w-full bg-[#180424] text-white p-3 sm:p-5 flex flex-col justify-between select-none overflow-hidden font-sans"
     >
-      {/* 1. TOPO: Identificação Limpa & Fuso Horário de Lisboa */}
-      <header className="flex items-center justify-between gap-3 pb-3 border-b border-white/15">
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Açaí da Rose" className="h-9 sm:h-11 w-auto object-contain" />
-          <div className="flex items-center gap-2">
-            <span className="text-base sm:text-xl font-black uppercase tracking-tight text-white">
+      {/* 1. TOPO INTEGRADO: PEDIDOS PRONTOS (Esq), LOGO CENTRALIZADO (Centro) e EM PREPARAÇÃO (Dir) */}
+      <header className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pb-2.5 border-b border-white/15">
+        {/* Título Oficial Esquerda: PEDIDOS PRONTOS em Branco */}
+        <div className="lg:col-span-6 flex items-center">
+          <h2 className="text-3xl sm:text-5xl lg:text-5xl font-black text-white uppercase tracking-tight font-sans drop-shadow-sm leading-none">
+            PEDIDOS PRONTOS
+          </h2>
+        </div>
+
+        {/* Logo Centralizado da Marca */}
+        <div className="lg:col-span-3 flex items-center justify-center gap-2.5">
+          <img src="/logo.png" alt="Açaí da Rose" className="h-8 sm:h-10 w-auto object-contain" />
+          <div className="flex flex-col text-left">
+            <span className="text-sm sm:text-base font-black uppercase tracking-tight text-white leading-tight">
               Açaí da Rose
             </span>
-            <span className="text-pink-400 font-bold text-xs sm:text-sm">· {storeName}</span>
+            <span className="text-pink-400 font-bold text-[11px] sm:text-xs leading-none">
+              {storeName}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Relógio Travado em Portugal (Europe/Lisbon) */}
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-black/40 border border-white/20 text-xs sm:text-sm font-mono font-bold text-white">
-            <Clock className="h-3.5 w-3.5 text-pink-400" />
-            <span>{currentTime || '00:00:00'}</span>
-            <span className="text-[10px] text-purple-300 font-sans uppercase font-semibold">Lisboa</span>
-          </div>
-
-          {/* Fullscreen */}
-          <Button
-            type="button"
-            onClick={toggleFullscreen}
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0 rounded-lg border-white/20 bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-            title="Tela Cheia"
-          >
-            {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
-          </Button>
+        {/* Título Oficial Direita: EM PREPARAÇÃO em Amarelo/Dourado */}
+        <div className="lg:col-span-3 flex items-center justify-end">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-400 uppercase tracking-tight font-sans drop-shadow-sm leading-none text-right">
+            EM PREPARAÇÃO
+          </h2>
         </div>
       </header>
 
-      {/* 2. GRID PRINCIPAL ESTILO BURGER KING (Fiel à Foto de Referência) */}
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 my-3 flex-1">
+      {/* 2. GRID PRINCIPAL (Corpo da TV) */}
+      <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 my-2.5 flex-1">
         
         {/* ========================================================================= */}
-        {/* COLUNA ESQUERDA (8 COLUNAS): "PEDIDOS PRONTOS" (TÍTULO BRANCO + CAIXAS BRANCAS) */}
+        {/* COLUNA ESQUERDA (8 COLUNAS): "PEDIDOS PRONTOS" (CAIXA GIGANTE + 3 CAIXAS INFERIORES) */}
         {/* ========================================================================= */}
         <section className="lg:col-span-8 flex flex-col justify-between">
           
-          {/* Título Oficial Burger King: PEDIDOS PRONTOS em Branco */}
-          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tight font-sans mb-2 drop-shadow-sm">
-            PEDIDOS PRONTOS
-          </h2>
-
           {/* Caixa Branca Principal (70% de Destaque) */}
-          <div className="flex-1 min-h-[260px] sm:min-h-[320px] rounded-2xl bg-white border-2 border-white text-slate-900 p-6 flex flex-col items-center justify-center text-center shadow-2xl relative mb-3">
+          <div className="flex-1 min-h-[280px] sm:min-h-[340px] rounded-2xl bg-white border-2 border-white text-slate-900 p-6 flex flex-col items-center justify-center text-center shadow-2xl relative mb-3">
             {heroOrder ? (
               <div className="flex flex-col items-center justify-center space-y-2">
                 {/* Número da Senha Gigante */}
@@ -276,12 +267,12 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                   #{String(heroOrder.orderNumber || 1).padStart(3, '0')}
                 </div>
 
-                {/* Nome do Cliente com Coroa se for estritamente QR Code */}
+                {/* Nome do Cliente com Coroa se for QR Code */}
                 <div className="text-2xl sm:text-4xl font-black text-slate-900 flex items-center justify-center gap-2 pt-2">
                   {isCrownOrder(heroOrder) && (
                     <Crown className="h-7 w-7 sm:h-9 sm:w-9 text-amber-500 fill-amber-500 shrink-0" />
                   )}
-                  <span className="truncate max-w-md sm:max-w-lg">
+                  <span className="truncate max-w-md sm:max-w-xl">
                     {getDisplayName(heroOrder.customerName, heroOrder.tableNumber)}
                   </span>
                 </div>
@@ -330,19 +321,14 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
         </section>
 
         {/* ========================================================================= */}
-        {/* COLUNA DIREITA (4 COLUNAS): "EM PREPARAÇÃO" (TÍTULO AMARELO + CAIXA BRANCA) */}
+        {/* COLUNA DIREITA (4 COLUNAS): "FILA DE PREPARAÇÃO" + "VÍDEO DA TAÇA AMPLIADO" */}
         {/* ========================================================================= */}
         <section className="lg:col-span-4 flex flex-col justify-between">
           
-          {/* Título Oficial Burger King: EM PREPARAÇÃO em Amarelo/Dourado */}
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-400 uppercase tracking-tight font-sans mb-2 drop-shadow-sm">
-            EM PREPARAÇÃO
-          </h2>
-
           {/* Coluna Branca Vertical: Fila da Cozinha em Tempo Real */}
-          <div className="flex-1 min-h-[260px] sm:min-h-[300px] rounded-2xl bg-white border-2 border-white text-slate-900 p-3 sm:p-4 shadow-2xl flex flex-col justify-between mb-3 overflow-hidden">
+          <div className="flex-1 min-h-[220px] rounded-2xl bg-white border-2 border-white text-slate-900 p-3 sm:p-4 shadow-2xl flex flex-col justify-between mb-3 overflow-hidden">
             {preparingOrders.length > 0 ? (
-              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                 {preparingOrders.slice(0, 6).map((order) => {
                   const showCrown = isCrownOrder(order)
                   const ticketNum = `#${String(order.orderNumber || 1).padStart(3, '0')}`
@@ -367,7 +353,7 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 })}
               </div>
             ) : calledHistory.length > 0 ? (
-              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                 <div className="text-[10px] uppercase font-bold text-slate-400 pb-1 border-b border-stone-200">
                   Últimos Chamados:
                 </div>
@@ -388,8 +374,8 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
             )}
           </div>
 
-          {/* Espaço Multimídia: Vídeo Oficial Integrado sem Textos Poluídos */}
-          <div className="h-28 sm:h-32 rounded-xl overflow-hidden bg-black border border-white/20 shadow-lg relative">
+          {/* Espaço Multimídia AMPLIADO: Vídeo Oficial de Alta Qualidade */}
+          <div className="h-36 sm:h-48 lg:h-52 rounded-2xl overflow-hidden bg-black border-2 border-white/20 shadow-2xl relative">
             <video
               ref={videoRef}
               key={ACAI_VIDEOS[currentVideoIndex]}
@@ -400,50 +386,51 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
               onEnded={handleVideoEnded}
               className="w-full h-full object-cover"
             />
-            <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between text-[10px] text-white/90 font-bold drop-shadow-md">
-              <span>Açaí Puro Artesanal</span>
-              <span className="text-pink-300">acaidarose.pt</span>
+            <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-xs text-white font-black drop-shadow-lg">
+              <span className="bg-black/60 px-2 py-0.5 rounded-md">Açaí Puro Artesanal</span>
+              <span className="text-pink-300 bg-black/60 px-2 py-0.5 rounded-md">acaidarose.pt</span>
             </div>
           </div>
         </section>
 
       </main>
 
-      {/* 3. RODAPÉ COM MARQUEE ANIMADO DINÂMICO (EDITÁVEL PELO STAFF OU FINALIZADOS) */}
-      <footer className="pt-2 border-t border-white/15 overflow-hidden">
-        <div className="flex items-center gap-3 bg-black/40 rounded-xl px-3 py-1.5 border border-white/10 text-xs text-white font-bold">
+      {/* 3. RODAPÉ AMPLIADO: MARQUEE DINÂMICO + HORÁRIO DE LISBOA + BOTÃO TELA CHEIA */}
+      <footer className="pt-2 border-t border-white/15 flex flex-col sm:flex-row items-center gap-3">
+        {/* Barra do Marquee Ampliada */}
+        <div className="flex-1 w-full flex items-center gap-3 bg-black/50 rounded-2xl px-4 py-2.5 border border-white/15 text-sm text-white font-bold shadow-lg overflow-hidden">
           {/* Badge Fixa do Marquee */}
           <div
-            className={`flex items-center gap-1.5 shrink-0 px-2.5 py-0.5 rounded-lg text-[11px] font-black uppercase tracking-wider ${
+            className={`flex items-center gap-2 shrink-0 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider ${
               customMarquee
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
+                : 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
             }`}
           >
             <span
-              className={`h-2 w-2 rounded-full animate-pulse ${
+              className={`h-2.5 w-2.5 rounded-full animate-pulse ${
                 customMarquee ? 'bg-amber-400' : 'bg-emerald-400'
               }`}
             />
             <span>{customMarquee ? 'Comunicado da Loja' : 'Últimos Finalizados'}</span>
           </div>
 
-          {/* Área Rolante Contínua (Marquee Ticker) */}
+          {/* Área Rolante Contínua (Marquee Ticker Ampliado) */}
           <div className="relative flex-1 overflow-hidden whitespace-nowrap">
-            <div className="inline-block animate-[marquee_25s_linear_infinite] whitespace-nowrap">
+            <div className="inline-block animate-[marquee_25s_linear_infinite] whitespace-nowrap text-sm sm:text-base font-bold">
               {customMarquee ? (
-                <span className="inline-flex items-center gap-3 mx-4 text-amber-100 text-sm font-black">
+                <span className="inline-flex items-center gap-4 mx-4 text-amber-100 font-black">
                   <span>{customMarquee}</span>
-                  <span className="text-amber-400/40">★</span>
+                  <span className="text-amber-400/50">★</span>
                   <span>{customMarquee}</span>
                 </span>
               ) : completedOrders.length > 0 ? (
                 completedOrders.slice(0, 10).map((o, idx) => (
-                  <span key={o.id || idx} className="inline-flex items-center gap-2 mx-4 text-purple-200">
-                    <span className="font-mono font-black text-amber-300 text-sm">
+                  <span key={o.id || idx} className="inline-flex items-center gap-2.5 mx-5 text-purple-200">
+                    <span className="font-mono font-black text-amber-300 text-base">
                       #{String(o.orderNumber || 1).padStart(3, '0')}
                     </span>
-                    <span className="text-white font-bold">
+                    <span className="text-white font-extrabold">
                       {getDisplayName(o.customerName, o.tableNumber)}
                     </span>
                     <span className="text-white/30">•</span>
@@ -451,14 +438,14 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
                 ))
               ) : calledHistory.length > 0 ? (
                 calledHistory.map((item, idx) => (
-                  <span key={idx} className="inline-flex items-center gap-2 mx-4 text-purple-200">
-                    <span className="font-mono font-black text-amber-300 text-sm">{item.ticket}</span>
-                    <span className="text-white font-bold">{item.customerName || 'Balcão'}</span>
+                  <span key={idx} className="inline-flex items-center gap-2.5 mx-5 text-purple-200">
+                    <span className="font-mono font-black text-amber-300 text-base">{item.ticket}</span>
+                    <span className="text-white font-extrabold">{item.customerName || 'Balcão'}</span>
                     <span className="text-white/30">•</span>
                   </span>
                 ))
               ) : (
-                <span className="inline-flex items-center gap-2 mx-4 text-purple-200">
+                <span className="inline-flex items-center gap-3 mx-4 text-purple-200 font-medium">
                   <span>🍇 Açaí da Rose · O Verdadeiro Açaí Artesanal da Amazônia</span>
                   <span className="text-white/30">•</span>
                   <span>Peça pelo QR Code na mesa ou no balcão de atendimento</span>
@@ -468,6 +455,28 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
               )}
             </div>
           </div>
+        </div>
+
+        {/* Widgets no Canto Inferior Direito: Relógio Oficial de Lisboa & Botão Fullscreen */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Relógio Travado em Portugal (Europe/Lisbon) */}
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/60 border border-white/20 text-xs sm:text-sm font-mono font-black text-white shadow-lg">
+            <Clock className="h-4 w-4 text-pink-400 shrink-0" />
+            <span>{currentTime || '00:00:00'}</span>
+            <span className="text-[10px] text-purple-300 font-sans uppercase font-extrabold">Lisboa</span>
+          </div>
+
+          {/* Fullscreen */}
+          <Button
+            type="button"
+            onClick={toggleFullscreen}
+            variant="outline"
+            size="sm"
+            className="h-9 w-9 p-0 rounded-xl border-white/20 bg-white/10 hover:bg-white/20 text-white cursor-pointer shadow-lg"
+            title="Tela Cheia"
+          >
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </Button>
         </div>
 
         {/* Estilo CSS do Keyframes Marquee embutido para compatibilidade total em Smart TVs */}
