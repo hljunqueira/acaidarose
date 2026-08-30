@@ -359,11 +359,11 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
     return (
       <span className="inline-flex items-baseline justify-center">
         <span className="relative inline-flex items-center justify-center mr-0.5">
-          {/* Imagem Oficial da Coroa Dourada Inclinada */}
+          {/* Imagem Oficial da Coroa Dourada Inclinada e Pulsante no Ombro da 1ª Letra */}
           <img
             src="/coroa.png"
             alt="Coroa"
-            className="absolute -top-10 sm:-top-13 lg:-top-16 -left-4 sm:-left-5 lg:-left-7 h-12 w-12 sm:h-16 sm:w-16 lg:h-20 lg:w-20 object-contain -rotate-[16deg] shrink-0 z-20 pointer-events-none drop-shadow-[0_4px_12px_rgba(245,158,11,0.65)] animate-pulse"
+            className="absolute -top-6 sm:-top-8 lg:-top-10 -left-5 sm:-left-7 lg:-left-8 h-10 w-10 sm:h-14 sm:w-14 lg:h-17 lg:w-17 object-contain -rotate-[18deg] shrink-0 z-20 pointer-events-none drop-shadow-[0_4px_14px_rgba(245,158,11,0.85)] animate-pulse transition-all duration-300"
           />
           <span>{firstChar}</span>
         </span>
