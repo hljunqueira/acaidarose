@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/i18n/formatters'
-import { CANONICAL_DEFAULT_STORIES, HighlightItem } from '@/types/highlights'
+import { HighlightItem } from '@/types/highlights'
 import { ChevronLeft, ChevronRight, ArrowRight, ChevronDown } from 'lucide-react'
+import { isProductTimeAvailable } from '@/components/menu/CustomerMenuHome'
 
 interface CustomerPromoCarouselProps {
   tenantId?: string
@@ -14,7 +15,7 @@ export default function CustomerPromoCarousel({
   tenantId = '11111111-1111-1111-1111-111111111111',
   onSelectPromo,
 }: CustomerPromoCarouselProps) {
-  const [highlights, setHighlights] = useState<HighlightItem[]>(CANONICAL_DEFAULT_STORIES)
+  const [highlights, setHighlights] = useState<HighlightItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
 
   useEffect(() => {
@@ -22,12 +23,12 @@ export default function CustomerPromoCarousel({
     fetch(`/api/highlights?loja=${encodeURIComponent(tenantId)}`)
       .then((r) => r.json())
       .then((data) => {
-        if (alive && Array.isArray(data.highlights) && data.highlights.length > 0) {
+        if (alive && Array.isArray(data.highlights)) {
           setHighlights(data.highlights.filter((h: HighlightItem) => h.active !== false))
         }
       })
       .catch(() => {
-        // Mantém os destaques canônicos padrão em caso de oscilação
+        if (alive) setHighlights([])
       })
 
     return () => {
@@ -35,7 +36,7 @@ export default function CustomerPromoCarousel({
     }
   }, [tenantId])
 
-  const activeHighlights = highlights.filter((h) => h.active !== false)
+  const activeHighlights = highlights.filter((h) => h.active !== false && isProductTimeAvailable(h.availableHours))
 
   useEffect(() => {
     if (activeHighlights.length <= 1) return

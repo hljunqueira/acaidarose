@@ -4,33 +4,53 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Edit2, Trash2, Upload, Link2, Eye, Play, Sparkles, RefreshCw } from 'lucide-react'
-import { formatCurrency } from '@/lib/i18n/formatters'
+import {
+  GripVertical,
+  Plus,
+  Filter,
+  RefreshCw,
+  Edit2,
+  Clock,
+  Trash2,
+  HelpCircle,
+  Upload,
+  Link2,
+  Play,
+  Search,
+  Check,
+} from 'lucide-react'
 import SafeDeleteDialog from '@/components/admin/common/SafeDeleteDialog'
 import type { HighlightItem } from '@/types/highlights'
+import type { ProductContainer } from '@/types'
 
 interface MenuHighlightsAdminProps {
   tenantId: string
 }
 
-const TAG_COLOR_OPTIONS = [
-  { id: 'bg-pink-600', name: 'Rosa Vibrante', class: 'bg-pink-600 text-white' },
-  { id: 'bg-fuchsia-600', name: 'Fúcsia Imperial', class: 'bg-fuchsia-600 text-white' },
-  { id: 'bg-purple-600', name: 'Roxo Açaí', class: 'bg-purple-600 text-white' },
-  { id: 'bg-emerald-600', name: 'Verde Esmeralda', class: 'bg-emerald-600 text-white' },
-  { id: 'bg-amber-600', name: 'Dourado / Âmbar', class: 'bg-amber-600 text-white' },
+const DAYS_OF_WEEK = [
+  { day: 0, label: 'Dom' },
+  { day: 1, label: 'Seg' },
+  { day: 2, label: 'Ter' },
+  { day: 3, label: 'Qua' },
+  { day: 4, label: 'Qui' },
+  { day: 5, label: 'Sex' },
+  { day: 6, label: 'Sáb' },
 ]
 
 export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminProps) {
   const [highlights, setHighlights] = useState<HighlightItem[]>([])
+  const [products, setProducts] = useState<ProductContainer[]>([])
   const [loading, setLoading] = useState(true)
-  const [replicating, setReplicating] = useState(false)
+  const [replicatingId, setReplicatingId] = useState<string | null>(null)
 
-  const isHeadquarters = tenantId?.startsWith('11111111') || tenantId === 'aveiro'
+  // Filtros
+  const [showFilter, setShowFilter] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
 
+  // Carrega destaques reais do PostgreSQL
   const fetchHighlights = useCallback(async () => {
     setLoading(true)
     try {
@@ -46,73 +66,119 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
     }
   }, [tenantId])
 
+  // Carrega produtos do catálogo para vincular no dropdown "Item:"
+  const fetchProducts = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/products?loja=${encodeURIComponent(tenantId)}`)
+      const data = await res.json()
+      if (Array.isArray(data.containers)) {
+        setProducts(data.containers)
+      }
+    } catch {
+      // Ignora erro se falhar carregamento de produtos
+    }
+  }, [tenantId])
+
   useEffect(() => {
     fetchHighlights()
-  }, [fetchHighlights])
+    fetchProducts()
+  }, [fetchHighlights, fetchProducts])
 
-  // Dialog de Criação / Edição
+  // Modal: Editar / Criar Destaque (Conforme layout da imagem do usuário)
   const [editOpen, setEditOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<HighlightItem | null>(null)
-  const [mediaMode, setMediaMode] = useState<'UPLOAD' | 'URL'>('URL')
-  const [uploadFileName, setUploadFileName] = useState<string>('')
+  const [mediaMode, setMediaMode] = useState<'URL' | 'UPLOAD'>('URL')
+  const [uploadFileName, setUploadFileName] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     title: '',
     subtitle: '',
-    badgeLabel: 'MAIS PEDIDO',
+    linkedProductId: '',
+    badgeLabel: 'DESTAQUE',
     badgeColor: 'bg-pink-600',
-    price: 9.90,
+    price: 0,
     imageUrl: '',
     videoUrl: '',
-    mediaType: 'IMAGE' as 'VIDEO' | 'IMAGE',
     active: true,
+    isProActive: false,
     displayOrder: 1,
   })
 
-  // Dialog de Exclusão Segura
+  // Modal: Horários Ativos do Destaque (Conforme layout da imagem 5)
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [schedulingItem, setSchedulingItem] = useState<HighlightItem | null>(null)
+  const [hasCustomHours, setHasCustomHours] = useState(false)
+  const [scheduleDays, setScheduleDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6])
+  const [scheduleStartTime, setScheduleStartTime] = useState('00:00')
+  const [scheduleEndTime, setScheduleEndTime] = useState('23:59')
+  const [savingSchedule, setSavingSchedule] = useState(false)
+
+  // Modal: Exclusão Segura
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deletingItem, setDeletingItem] = useState<HighlightItem | null>(null)
   const [deletingLoading, setDeletingLoading] = useState(false)
 
+  // Abrir Modal de Novo Destaque
   const handleOpenNew = () => {
     setEditingItem(null)
     setUploadFileName('')
     setFormData({
       title: '',
       subtitle: '',
-      badgeLabel: 'MAIS PEDIDO',
+      linkedProductId: '',
+      badgeLabel: 'DESTAQUE',
       badgeColor: 'bg-pink-600',
-      price: 9.90,
+      price: 0,
       imageUrl: '/images/official/acai_copo_500g.jpg',
       videoUrl: '',
-      mediaType: 'IMAGE',
       active: true,
+      isProActive: false,
       displayOrder: highlights.length + 1,
     })
     setMediaMode('URL')
     setEditOpen(true)
   }
 
+  // Abrir Modal de Edição (layout "Editar Destaque" da imagem)
   const handleOpenEdit = (item: HighlightItem) => {
     setEditingItem(item)
     setUploadFileName('')
     setFormData({
       title: item.title,
       subtitle: item.subtitle || '',
+      linkedProductId: (item as any).linked_product_id || '',
       badgeLabel: item.badgeLabel || 'DESTAQUE',
       badgeColor: item.badgeColor || 'bg-pink-600',
       price: item.price || 0,
       imageUrl: item.imageUrl || '',
       videoUrl: item.videoUrl || '',
-      mediaType: item.videoUrl ? 'VIDEO' : 'IMAGE',
       active: item.active,
+      isProActive: false,
       displayOrder: item.displayOrder,
     })
     setMediaMode('URL')
     setEditOpen(true)
   }
 
+  // Ao selecionar um produto no dropdown "Item:"
+  const handleProductSelect = (productId: string) => {
+    const p = products.find((prod) => prod.id === productId)
+    if (p) {
+      setFormData((prev) => ({
+        ...prev,
+        linkedProductId: p.id,
+        title: prev.title.trim() ? prev.title : p.name,
+        subtitle: prev.subtitle.trim() ? prev.subtitle : (p.description || ''),
+        price: prev.price > 0 ? prev.price : (p.price || 0),
+        imageUrl: prev.imageUrl ? prev.imageUrl : (p.image || '/images/official/acai_copo_500g.jpg'),
+      }))
+    } else {
+      setFormData((prev) => ({ ...prev, linkedProductId: '' }))
+    }
+  }
+
+  // Upload de arquivo local
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -124,114 +190,137 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
     reader.onload = (event) => {
       const result = event.target?.result as string
       if (isVideo) {
-        setFormData((prev) => ({
-          ...prev,
-          videoUrl: result,
-          mediaType: 'VIDEO',
-        }))
+        setFormData((prev) => ({ ...prev, videoUrl: result }))
       } else {
-        setFormData((prev) => ({
-          ...prev,
-          imageUrl: result,
-          videoUrl: '',
-          mediaType: 'IMAGE',
-        }))
+        setFormData((prev) => ({ ...prev, imageUrl: result, videoUrl: '' }))
       }
-      toast.success(`Arquivo "${file.name}" pronto!`)
+      toast.success(`Mídia "${file.name}" carregada com sucesso!`)
     }
 
     reader.readAsDataURL(file)
   }
 
-  const handleSave = async (e: React.FormEvent) => {
+  // Salvar Destaque (Novo ou Editado)
+  const handleSaveHighlight = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.title.trim()) {
       toast.error('Informe o título do destaque')
       return
     }
 
-    const payload = {
-      tenantId,
-      id: editingItem?.id,
-      title: formData.title.trim(),
-      subtitle: formData.subtitle.trim(),
-      badgeLabel: formData.badgeLabel.trim() || 'DESTAQUE',
-      badgeColor: formData.badgeColor || 'bg-pink-600',
-      price: Number(formData.price) || 0,
-      imageUrl: formData.imageUrl.trim() || '/images/official/acai_copo_500g.jpg',
-      videoUrl: formData.videoUrl.trim() || undefined,
-      mediaType: formData.videoUrl?.trim() ? 'VIDEO' : 'IMAGE',
-      active: formData.active,
-      displayOrder: Number(formData.displayOrder) || 1,
-    }
-
     try {
+      const payload = {
+        tenantId,
+        title: formData.title.trim(),
+        subtitle: formData.subtitle.trim(),
+        linkedProductId: formData.linkedProductId || null,
+        badgeLabel: formData.badgeLabel || 'DESTAQUE',
+        badgeColor: formData.badgeColor || 'bg-pink-600',
+        price: Number(formData.price) || 0,
+        imageUrl: formData.imageUrl || '/images/official/acai_copo_500g.jpg',
+        videoUrl: formData.videoUrl || null,
+        active: formData.active,
+        displayOrder: formData.displayOrder,
+      }
+
       if (editingItem) {
         const res = await fetch('/api/highlights', {
-          method: 'PATCH',
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ id: editingItem.id, ...payload }),
         })
-        if (!res.ok) throw new Error('Falha ao atualizar')
-        toast.success(`Destaque "${formData.title}" atualizado!`)
+        if (!res.ok) throw new Error('Falha ao atualizar destaque')
+        toast.success('Destaque atualizado com sucesso!')
       } else {
         const res = await fetch('/api/highlights', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        if (!res.ok) throw new Error('Falha ao cadastrar')
-        toast.success(`Destaque "${formData.title}" criado com sucesso!`)
+        if (!res.ok) throw new Error('Falha ao criar destaque')
+        toast.success('Destaque cadastrado com sucesso!')
       }
+
       setEditOpen(false)
       fetchHighlights()
-    } catch {
-      toast.error('Erro ao salvar destaque')
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao gravar destaque')
     }
   }
 
-  const handleToggleActive = async (h: HighlightItem) => {
+  // Toggle rápido de Visibilidade (Visível / Oculto)
+  const handleToggleActive = async (item: HighlightItem) => {
+    const nextActive = !item.active
+    setHighlights((prev) => prev.map((h) => (h.id === item.id ? { ...h, active: nextActive } : h)))
+
     try {
-      const nextActive = !h.active
       const res = await fetch('/api/highlights', {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: h.id, active: nextActive }),
+        body: JSON.stringify({ id: item.id, active: nextActive }),
       })
-      if (!res.ok) throw new Error('Falha ao alterar status')
-      setHighlights((prev) => prev.map((item) => (item.id === h.id ? { ...item, active: nextActive } : item)))
-      toast.success(nextActive ? 'Destaque ativado no cardápio' : 'Destaque pausado no cardápio')
+      if (!res.ok) throw new Error('Erro ao alterar status')
+      toast.success(nextActive ? 'Destaque agora está Visível!' : 'Destaque ocultado.')
     } catch {
+      setHighlights((prev) => prev.map((h) => (h.id === item.id ? { ...h, active: item.active } : h)))
       toast.error('Erro ao atualizar status do destaque')
     }
   }
 
-  const handleOpenDelete = (h: HighlightItem) => {
-    setDeletingItem(h)
-    setDeleteOpen(true)
+  // Abrir Modal de Horários Ativos
+  const handleOpenSchedule = (item: HighlightItem) => {
+    setSchedulingItem(item)
+    const ah = item.availableHours
+    if (ah && typeof ah === 'object' && Array.isArray(ah.days)) {
+      setHasCustomHours(true)
+      setScheduleDays(ah.days)
+      setScheduleStartTime(ah.startTime || '00:00')
+      setScheduleEndTime(ah.endTime || '23:59')
+    } else {
+      setHasCustomHours(false)
+      setScheduleDays([0, 1, 2, 3, 4, 5, 6])
+      setScheduleStartTime('00:00')
+      setScheduleEndTime('23:59')
+    }
+    setScheduleModalOpen(true)
   }
 
-  const handleConfirmDelete = async () => {
-    if (!deletingItem) return
-    setDeletingLoading(true)
+  // Salvar Horários Ativos
+  const handleSaveSchedule = async () => {
+    if (!schedulingItem) return
+    setSavingSchedule(true)
     try {
-      const res = await fetch(`/api/highlights?id=${encodeURIComponent(deletingItem.id)}`, {
-        method: 'DELETE',
+      const availableHoursPayload = hasCustomHours
+        ? {
+            days: scheduleDays,
+            startTime: scheduleStartTime,
+            endTime: scheduleEndTime,
+          }
+        : null
+
+      const res = await fetch('/api/highlights', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: schedulingItem.id,
+          availableHours: availableHoursPayload,
+        }),
       })
-      if (!res.ok) throw new Error('Falha ao remover')
-      toast.success(`Destaque "${deletingItem.title}" removido com sucesso!`)
-      setDeleteOpen(false)
+
+      if (!res.ok) throw new Error('Falha ao atualizar horários')
+      toast.success('Horários ativos atualizados!')
+      setScheduleModalOpen(false)
       fetchHighlights()
-    } catch {
-      toast.error('Erro ao remover destaque')
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar horários')
     } finally {
-      setDeletingLoading(false)
-      setDeletingItem(null)
+      setSavingSchedule(false)
     }
   }
 
-  const handleReplicateHighlights = async () => {
-    setReplicating(true)
+  // Replicar Destaque para Filial (Ação ⟳)
+  const handleReplicateSingle = async (item: HighlightItem) => {
+    setReplicatingId(item.id)
     try {
       const res = await fetch('/api/highlights/sync-all', {
         method: 'POST',
@@ -242,440 +331,601 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       if (!res.ok) throw new Error(data.error || 'Erro na replicação')
       toast.success(`Destaques replicados com sucesso para ${data.totalStores - 1} filial(is)!`)
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao replicar destaques')
+      toast.error(err.message || 'Erro ao replicar filial')
     } finally {
-      setReplicating(false)
+      setReplicatingId(null)
     }
   }
 
+  // Excluir Destaque
+  const handleConfirmDelete = async () => {
+    if (!deletingItem) return
+    setDeletingLoading(true)
+    try {
+      const res = await fetch(`/api/highlights?id=${encodeURIComponent(deletingItem.id)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Falha ao excluir')
+      toast.success('Destaque excluído com sucesso!')
+      setDeleteOpen(false)
+      fetchHighlights()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao remover destaque')
+    } finally {
+      setDeletingLoading(false)
+    }
+  }
+
+  // Filtragem dos Destaques na Lista
+  const filteredHighlights = highlights
+    .filter((item) => {
+      if (statusFilter === 'ACTIVE') return item.active
+      if (statusFilter === 'INACTIVE') return !item.active
+      return true
+    })
+    .filter((item) => {
+      if (!searchTerm.trim()) return true
+      const term = searchTerm.toLowerCase()
+      return item.title.toLowerCase().includes(term) || (item.subtitle || '').toLowerCase().includes(term)
+    })
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+
   return (
-    <div className="space-y-6">
-      {/* Top Header Oficial */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#18022b]/95 p-5 rounded-3xl border border-purple-150 dark:border-white/10 shadow-xs">
-        <div>
-          <h1 className="text-xl font-black text-purple-950 dark:text-white tracking-tight">
-            Destaques & Stories
-          </h1>
-          <p className="text-xs text-purple-700/80 dark:text-purple-300/70 font-semibold mt-0.5">
-            Gerencie as taças, açaís e campanhas promovidas no carrossel de topo do cardápio visual e nos QR Codes.
-          </p>
-        </div>
+    <div className="space-y-4">
+      {/* 1. CABEÇALHO (Conforme Layout Imagem 3 da Referência) */}
+      <div className="flex items-center justify-between gap-4 py-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
+          Destaques
+        </h1>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {isHeadquarters && (
-            <Button
-              variant="outline"
-              disabled={replicating || highlights.length === 0}
-              onClick={handleReplicateHighlights}
-              className="h-10 px-4 rounded-2xl border border-purple-200 dark:border-white/15 text-purple-900 dark:text-purple-200 hover:bg-purple-50 dark:hover:bg-white/5 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-              title="Replicar destaques oficiais para todas as lojas filiais da rede"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${replicating ? 'animate-spin' : ''}`} />
-              <span>{replicating ? 'Replicando...' : 'Replicar p/ Lojas'}</span>
-            </Button>
-          )}
-
-          <Button
+        <div className="flex items-center gap-2.5">
+          {/* Botão Verde: + Adicionar Novo Destaque */}
+          <button
+            type="button"
             onClick={handleOpenNew}
-            className="h-10 px-5 rounded-2xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs shadow-md shadow-purple-700/20 cursor-pointer shrink-0"
+            className="h-9 px-4 rounded-md bg-[#059669] hover:bg-[#047857] text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
           >
-            + Novo Destaque
-          </Button>
+            <Plus className="h-4 w-4" />
+            <span>Adicionar Novo Destaque</span>
+          </button>
+
+          {/* Botão Filtro */}
+          <button
+            type="button"
+            onClick={() => setShowFilter((prev) => !prev)}
+            className={`h-9 px-3.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors ${
+              showFilter
+                ? 'bg-slate-100 dark:bg-white/15 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white'
+                : 'bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10'
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5 text-slate-500" />
+            <span>Filtro</span>
+          </button>
         </div>
       </div>
 
-      {/* Grid de Destaques Cadastrados */}
-      {highlights.length === 0 ? (
-        <div className="bg-white dark:bg-[#18022b]/95 border border-dashed border-purple-200 dark:border-white/15 rounded-3xl p-12 text-center">
-          <p className="text-sm font-bold text-purple-950 dark:text-white">Nenhum destaque cadastrado</p>
-          <p className="text-xs text-purple-700/80 dark:text-purple-300/70 mt-1">
-            Clique em "+ Novo Destaque" para adicionar uma promoção ou story ao topo do cardápio.
+      {/* Barra de Filtro Expansível */}
+      {showFilter && (
+        <div className="bg-slate-50 dark:bg-white/5 p-3.5 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por título ou descrição..."
+              className="h-9 pl-9 text-xs bg-white dark:bg-white/5 border-slate-300 dark:border-white/15"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setStatusFilter(mode)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  statusFilter === mode
+                    ? 'bg-[#059669] text-white'
+                    : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10'
+                }`}
+              >
+                {mode === 'ALL' ? 'Todos' : mode === 'ACTIVE' ? 'Visíveis' : 'Ocultos'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 2. LISTA DE DESTAQUES (Cards em Linha Horizontal Conforme Imagem 3) */}
+      {loading ? (
+        <div className="p-12 text-center text-xs text-slate-500">Carregando destaques do banco de dados...</div>
+      ) : filteredHighlights.length === 0 ? (
+        <div className="bg-white dark:bg-[#18022b]/95 border border-dashed border-slate-300 dark:border-white/15 rounded-2xl p-12 text-center space-y-2">
+          <p className="text-sm font-bold text-slate-700 dark:text-white">Nenhum destaque cadastrado</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Clique no botão verde <strong>Adicionar Novo Destaque</strong> acima para criar um item no cardápio.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {highlights
-            .sort((a, b) => a.displayOrder - b.displayOrder)
-            .map((item) => (
+        <div className="space-y-3">
+          {filteredHighlights.map((item) => {
+            const hasHours = Boolean(item.availableHours && item.availableHours.days)
+            return (
               <div
                 key={item.id}
-                className="bg-white dark:bg-[#18022b]/95 border border-purple-150 dark:border-white/10 rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+                className="bg-white dark:bg-[#18022b]/95 border border-slate-200/90 dark:border-white/10 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs hover:border-slate-300 dark:hover:border-white/20 transition-all group"
               >
-                {/* Mídia do Card (Vídeo em loop ou Imagem) */}
-                <div className="relative h-48 w-full bg-purple-950/40 overflow-hidden">
-                  {item.videoUrl ? (
-                    <video
-                      src={item.videoUrl}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <img
-                      src={item.imageUrl || '/images/official/acai_copo_500g.jpg'}
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  )}
-
-                  {/* Tag do Destaque */}
-                  <div className="absolute top-3 right-3">
-                    <span
-                      className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full shadow-md ${
-                        item.badgeColor || 'bg-pink-600'
-                      } text-white tracking-wider`}
-                    >
-                      {item.badgeLabel}
-                    </span>
+                {/* Esquerda: Drag Handle + Imagem + Título */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {/* Drag Handle */}
+                  <div className="text-slate-400 hover:text-slate-600 cursor-grab shrink-0">
+                    <GripVertical className="h-5 w-5" />
                   </div>
 
-                  {/* Preço em Destaque */}
-                  <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl border border-white/20 text-white font-mono font-black text-sm">
-                    {formatCurrency(item.price)}
+                  {/* Thumbnail do Banner */}
+                  <div className="relative w-28 sm:w-36 h-18 sm:h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 shrink-0 border border-slate-200 dark:border-white/10">
+                    {item.videoUrl ? (
+                      <video
+                        src={item.videoUrl}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={item.imageUrl || '/images/official/acai_copo_500g.jpg'}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    {item.videoUrl && (
+                      <div className="absolute bottom-1 right-1 bg-black/60 p-1 rounded-full text-white">
+                        <Play className="h-2.5 w-2.5 fill-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nome e Descrição */}
+                  <div className="min-w-0 space-y-0.5">
+                    <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white truncate">
+                      {item.title}
+                    </h3>
+                    {item.subtitle && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                        {item.subtitle}
+                      </p>
+                    )}
+                    {item.price ? (
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                        € {Number(item.price).toFixed(2).replace('.', ',')}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
-                {/* Conteúdo Textual */}
-                <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h2 className="font-extrabold text-sm text-purple-950 dark:text-white leading-tight">
-                      {item.title}
-                    </h2>
-                    <p className="text-xs text-purple-700/80 dark:text-purple-300/70 font-medium line-clamp-2 mt-1">
-                      {item.subtitle}
-                    </p>
-                  </div>
+                {/* Centro: Tag de Horários Ativos */}
+                <div className="text-center sm:text-left shrink-0">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    {hasHours
+                      ? `${item.availableHours.startTime || '00:00'} - ${item.availableHours.endTime || '23:59'}`
+                      : 'Sempre ativo'}
+                  </span>
+                </div>
 
-                  {/* Barra de Ações & Status */}
-                  <div className="pt-3 border-t border-purple-100 dark:border-white/10 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleActive(item)}
-                      className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition cursor-pointer ${
-                        item.active
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
-                          : 'bg-zinc-100 text-zinc-600 dark:bg-white/10 dark:text-zinc-400 border border-zinc-200 dark:border-white/10'
-                      }`}
-                    >
-                      {item.active ? '● Ativo no Menu' : '○ Pausado'}
-                    </button>
+                {/* Direita: Status Badge + Grupo de 4 Ações */}
+                <div className="flex items-center justify-end gap-3 shrink-0">
+                  {/* Status Badge Verde (Visível / Oculto) */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(item)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer ${
+                      item.active
+                        ? 'bg-[#059669] hover:bg-[#047857] text-white shadow-xs'
+                        : 'bg-slate-400 hover:bg-slate-500 text-white'
+                    }`}
+                    title={item.active ? 'Clique para ocultar' : 'Clique para tornar visível'}
+                  >
+                    {item.active ? 'Visível' : 'Oculto'}
+                  </button>
 
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
+                  {/* Grupo Segmentado de Botões de Ação (Conforme Imagens 3, 4 e 5) */}
+                  <div className="inline-flex rounded-md border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 shadow-xs overflow-hidden divide-x divide-slate-300 dark:divide-white/15">
+                    {/* Botão 1: Replicar Filial (⟳) */}
+                    <div className="relative group/tooltip">
+                      <button
+                        type="button"
+                        onClick={() => handleReplicateSingle(item)}
+                        disabled={replicatingId === item.id}
+                        className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition"
+                        aria-label="Replicar filial"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${replicatingId === item.id ? 'animate-spin' : ''}`} />
+                      </button>
+                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
+                        <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
+                          Replicar filial
+                        </span>
+                        <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                      </div>
+                    </div>
+
+                    {/* Botão 2: Editar (✎) */}
+                    <div className="relative group/tooltip">
+                      <button
+                        type="button"
                         onClick={() => handleOpenEdit(item)}
-                        className="h-8 w-8 p-0 rounded-xl hover:bg-purple-100 dark:hover:bg-white/10 text-purple-700 dark:text-pink-300 cursor-pointer"
-                        title="Editar Destaque"
+                        className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition"
+                        aria-label="Editar"
                       >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </Button>
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
+                        <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
+                          Editar
+                        </span>
+                        <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                      </div>
+                    </div>
 
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleOpenDelete(item)}
-                        className="h-8 w-8 p-0 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 cursor-pointer"
-                        title="Remover Destaque"
+                    {/* Botão 3: Horários Ativos do Destaque (🕒) */}
+                    <div className="relative group/tooltip">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenSchedule(item)}
+                        className={`p-2 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition ${
+                          hasHours ? 'text-[#059669]' : 'text-slate-600 dark:text-slate-300'
+                        }`}
+                        aria-label="Horários ativos do destaque"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                        <Clock className="h-4 w-4" />
+                      </button>
+                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
+                        <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
+                          Horários ativos do destaque
+                        </span>
+                        <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                      </div>
+                    </div>
+
+                    {/* Botão 4: Excluir (🗑) */}
+                    <div className="relative group/tooltip">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeletingItem(item)
+                          setDeleteOpen(true)
+                        }}
+                        className="p-2 text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer transition"
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
+                        <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
+                          Excluir
+                        </span>
+                        <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
+            )
+          })}
         </div>
       )}
 
-      {/* Modal de Criação / Edição */}
+      {/* 3. DIALOG: EDITAR / NOVO DESTAQUE (Espelhado com exatidão da imagem enviada) */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-[#18022b] text-slate-900 dark:text-white border-purple-150 dark:border-white/15 rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-black text-purple-950 dark:text-white">
-              {editingItem ? 'Editar Destaque & Story' : 'Novo Destaque & Story'}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-2xl bg-white dark:bg-[#18022b] text-slate-900 dark:text-white p-0 overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 shadow-2xl">
+          {/* Cabeçalho Limpo */}
+          <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+              {editingItem ? 'Editar Destaque' : 'Novo Destaque'}
+            </h2>
+          </div>
 
-          <form onSubmit={handleSave} className="space-y-4 pt-2">
-            {/* 1. Título & Subtítulo */}
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">
-                  Título do Destaque *
-                </Label>
+          <form onSubmit={handleSaveHighlight} className="p-6 space-y-5">
+            {/* Campo 1: Foto */}
+            <div className="flex items-start gap-4">
+              <div className="w-24 flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-300 pt-2 shrink-0">
+                <span>Foto:</span>
+                <span title="Imagem ou banner que será exibido no carrossel superior">
+                  <HelpCircle className="h-3.5 w-3.5 text-slate-400 cursor-help" />
+                </span>
+              </div>
+
+              <div className="flex-1">
+                <div className="flex items-center gap-4">
+                  {/* Thumbnail Preview */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative w-44 h-24 rounded-lg overflow-hidden border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/5 cursor-pointer hover:opacity-90 transition group shadow-xs shrink-0"
+                    title="Clique para trocar imagem ou vídeo"
+                  >
+                    {formData.videoUrl ? (
+                      <video src={formData.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                    ) : (
+                      <img src={formData.imageUrl || '/images/official/acai_copo_500g.jpg'} alt="Preview" className="w-full h-full object-cover" />
+                    )}
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[11px] font-semibold transition-opacity">
+                      Trocar foto
+                    </div>
+                  </div>
+
+                  {/* Alternar entre Upload e URL */}
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMediaMode('URL')}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer ${
+                          mediaMode === 'URL' ? 'bg-slate-200 dark:bg-white/15 text-slate-900 dark:text-white' : 'text-slate-500'
+                        }`}
+                      >
+                        URL Web
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMediaMode('UPLOAD')
+                          fileInputRef.current?.click()
+                        }}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer ${
+                          mediaMode === 'UPLOAD' ? 'bg-slate-200 dark:bg-white/15 text-slate-900 dark:text-white' : 'text-slate-500'
+                        }`}
+                      >
+                        Upload Local
+                      </button>
+                    </div>
+
+                    {mediaMode === 'URL' ? (
+                      <Input
+                        value={formData.imageUrl}
+                        onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                        placeholder="URL da imagem (ex: /images/official/...)"
+                        className="h-9 text-xs rounded-md border-slate-300 dark:border-white/15 font-mono"
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-500 truncate">
+                        {uploadFileName || 'Nenhum arquivo selecionado'}
+                      </p>
+                    )}
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Campo 2: Título (Label Verde conforme print) */}
+            <div className="flex items-center gap-4">
+              <div className="w-24 text-xs font-bold text-[#059669] shrink-0">
+                Título:
+              </div>
+              <div className="flex-1">
                 <Input
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Ex: Açaí 500g da Rose ou Taça Suprema"
-                  className="h-10 text-xs rounded-xl bg-purple-50/40 dark:bg-white/5 border-purple-200 dark:border-white/15 mt-1"
+                  placeholder="Título do Destaque"
+                  className="h-10 text-xs rounded-md border-slate-300 dark:border-white/15 focus:border-[#059669]"
                 />
               </div>
+            </div>
 
-              <div>
-                <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">
-                  Descrição / Subtítulo
-                </Label>
-                <Input
+            {/* Campo 3: Descrição */}
+            <div className="flex items-start gap-4">
+              <div className="w-24 text-xs font-bold text-slate-700 dark:text-slate-300 pt-2 shrink-0">
+                Descrição:
+              </div>
+              <div className="flex-1">
+                <textarea
+                  rows={3}
                   value={formData.subtitle}
                   onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                  placeholder="Ex: Frutas frescas à vontade, cremosidade artesanal e acompanhamentos livres"
-                  className="h-10 text-xs rounded-xl bg-purple-50/40 dark:bg-white/5 border-purple-200 dark:border-white/15 mt-1"
+                  placeholder="Descrição do Destaque"
+                  className="w-full p-2.5 text-xs rounded-md border border-slate-300 dark:border-white/15 bg-transparent focus:outline-none focus:border-slate-400 dark:focus:border-white/30 resize-y"
                 />
               </div>
             </div>
 
-            {/* 2. Gerenciamento de Tags (Texto + Cores) */}
-            <div className="p-3.5 bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-black text-purple-950 dark:text-white">
-                  Gerenciamento de Tags / Selos
-                </Label>
-                <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold">
-                  Exibido sobre o banner
-                </span>
+            {/* Campo 4: Item (Selecione um produto) */}
+            <div className="flex items-center gap-4">
+              <div className="w-24 text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                Item:
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-[11px] font-bold text-purple-900 dark:text-purple-200">
-                    Texto da Tag
-                  </Label>
-                  <Input
-                    value={formData.badgeLabel}
-                    onChange={(e) => setFormData({ ...formData, badgeLabel: e.target.value })}
-                    placeholder="Ex: MAIS PEDIDO, REFRESCANTE..."
-                    className="h-9 text-xs rounded-xl bg-white dark:bg-white/5 border-purple-200 dark:border-white/15 mt-1 font-bold uppercase"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-[11px] font-bold text-purple-900 dark:text-purple-200">
-                    Cor da Tag
-                  </Label>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    {TAG_COLOR_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, badgeColor: opt.id })}
-                        className={`h-7 w-7 rounded-xl ${opt.class} flex items-center justify-center text-xs font-black shadow-xs transition-transform cursor-pointer ${
-                          formData.badgeColor === opt.id ? 'ring-2 ring-purple-900 dark:ring-white scale-110' : 'opacity-70 hover:opacity-100'
-                        }`}
-                        title={opt.name}
-                      >
-                        ✓
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Seletor de Mídia: Upload ou URL */}
-            <div className="p-3.5 bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-black text-purple-950 dark:text-white">
-                  Mídia do Destaque (Vídeo ou Imagem)
-                </Label>
-
-                {/* Abas de Seleção: Upload vs URL */}
-                <div className="flex items-center gap-1 bg-purple-100 dark:bg-white/10 p-0.5 rounded-xl text-[10px] font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setMediaMode('UPLOAD')}
-                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
-                      mediaMode === 'UPLOAD'
-                        ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
-                        : 'text-purple-900 dark:text-purple-200'
-                    }`}
-                  >
-                    <Upload className="h-3 w-3" />
-                    <span>Upload Local</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMediaMode('URL')}
-                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
-                      mediaMode === 'URL'
-                        ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
-                        : 'text-purple-900 dark:text-purple-200'
-                    }`}
-                  >
-                    <Link2 className="h-3 w-3" />
-                    <span>Link / URL</span>
-                  </button>
-                </div>
-              </div>
-
-              {mediaMode === 'UPLOAD' ? (
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-purple-300 dark:border-white/20 rounded-2xl p-4 text-center cursor-pointer hover:bg-purple-100/50 dark:hover:bg-white/5 transition"
-                  >
-                    <Upload className="h-6 w-6 text-purple-600 dark:text-pink-400 mx-auto mb-1" />
-                    <p className="text-xs font-bold text-purple-950 dark:text-white">
-                      {uploadFileName || 'Clique para selecionar Vídeo (.mp4) ou Imagem (.jpg, .png)'}
-                    </p>
-                    <p className="text-[10px] text-purple-700 dark:text-purple-300/70 mt-0.5">
-                      Suporte a arquivos diretos do computador ou telemóvel
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div>
-                    <Label className="text-[11px] font-bold text-purple-900 dark:text-purple-200">
-                      URL da Imagem
-                    </Label>
-                    <Input
-                      value={formData.imageUrl}
-                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                      placeholder="Ex: /images/official/acai_copo_500g.jpg ou https://..."
-                      className="h-9 text-xs rounded-xl bg-white dark:bg-white/5 border-purple-200 dark:border-white/15 mt-1 font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-[11px] font-bold text-purple-900 dark:text-purple-200">
-                      URL do Vídeo (Opcional - Reproduz em Loop)
-                    </Label>
-                    <Input
-                      value={formData.videoUrl}
-                      onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                      placeholder="Ex: /videos/hero_cup_rotation.mp4 ou https://..."
-                      className="h-9 text-xs rounded-xl bg-white dark:bg-white/5 border-purple-200 dark:border-white/15 mt-1 font-mono"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 4. Preço & Ordem de Exibição */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">
-                  Preço Especial (€) *
-                </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                  className="h-10 text-xs rounded-xl bg-purple-50/40 dark:bg-white/5 border-purple-200 dark:border-white/15 mt-1 font-mono font-bold"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">
-                  Ordem de Exibição
-                </Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={formData.displayOrder}
-                  onChange={(e) => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
-                  className="h-10 text-xs rounded-xl bg-purple-50/40 dark:bg-white/5 border-purple-200 dark:border-white/15 mt-1 font-mono font-bold"
-                />
-              </div>
-
-              <div className="col-span-2 sm:col-span-1 flex flex-col justify-end">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, active: !formData.active })}
-                  className={`h-10 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                    formData.active
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300'
-                      : 'bg-zinc-100 text-zinc-600 border border-zinc-300 dark:bg-white/10 dark:text-zinc-300'
-                  }`}
+              <div className="flex-1">
+                <select
+                  value={formData.linkedProductId}
+                  onChange={(e) => handleProductSelect(e.target.value)}
+                  className="w-full h-10 px-3 text-xs rounded-md border border-slate-300 dark:border-white/15 bg-white dark:bg-[#18022b] text-slate-800 dark:text-white focus:outline-none"
                 >
-                  <span>{formData.active ? '● Ativo no Menu' : '○ Pausado'}</span>
-                </button>
+                  <option value="">Selecione um produto (opcional)</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — € {Number(p.price || 0).toFixed(2)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* 5. Pré-visualização em Tempo Real */}
-            <div className="p-3 bg-purple-950 rounded-2xl text-white space-y-2 border border-purple-800">
-              <div className="flex items-center justify-between text-[11px] font-bold text-purple-300">
-                <span className="flex items-center gap-1">
-                  <Eye className="h-3.5 w-3.5 text-pink-400" />
-                  <span>Pré-visualização do Banner</span>
+            {/* Checkboxes: Mostrar como destaque & Pró-ativo */}
+            <div className="pl-28 flex flex-wrap items-center gap-8 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={formData.active}
+                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                  className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                />
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  Mostrar como destaque
                 </span>
-                <span className="text-[10px] uppercase">{formData.badgeLabel}</span>
-              </div>
+              </label>
 
-              <div className="flex items-center justify-between gap-3 pt-1">
-                <div className="min-w-0">
-                  <div className="text-sm font-black text-white truncate">
-                    {formData.title || 'Título do Destaque'}
-                  </div>
-                  <div className="text-[11px] text-purple-200/80 line-clamp-1">
-                    {formData.subtitle || 'Descrição do açaí ou taça'}
-                  </div>
-                  <div className="text-base font-black text-pink-300 font-mono mt-1">
-                    {formatCurrency(Number(formData.price) || 0)}
-                  </div>
-                </div>
-
-                <div className="h-16 w-16 rounded-xl bg-purple-900 overflow-hidden shrink-0 border border-white/20">
-                  {formData.videoUrl ? (
-                    <video
-                      src={formData.videoUrl}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={formData.imageUrl || '/images/official/acai_copo_500g.jpg'}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={formData.isProActive}
+                  onChange={(e) => setFormData({ ...formData, isProActive: e.target.checked })}
+                  className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                />
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  Pró-ativo
+                </span>
+                <span title="Exibição em destaque automático no início da navegação do cliente">
+                  <HelpCircle className="h-3.5 w-3.5 text-slate-400 cursor-help" />
+                </span>
+              </label>
             </div>
 
-            <DialogFooter className="pt-2 flex items-center justify-end gap-2">
-              <Button
+            {/* Footer do Modal: FECHAR e SALVAR (Botão Azul conforme imagem) */}
+            <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
+              <button
                 type="button"
-                variant="outline"
                 onClick={() => setEditOpen(false)}
-                className="h-10 px-4 rounded-xl border-purple-200 dark:border-white/15 cursor-pointer text-xs font-bold"
+                className="px-5 py-2 rounded text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 cursor-pointer uppercase transition"
               >
-                Cancelar
-              </Button>
-              <Button
+                Fechar
+              </button>
+
+              <button
                 type="submit"
-                className="h-10 px-6 rounded-xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 text-white cursor-pointer text-xs font-black shadow-md"
+                className="px-6 py-2 rounded text-xs font-bold text-white bg-[#1d70b8] hover:bg-[#155a96] cursor-pointer uppercase shadow-xs transition"
               >
-                Salvar Destaque
-              </Button>
-            </DialogFooter>
+                Salvar
+              </button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Exclusão Segura */}
+      {/* 4. DIALOG: HORÁRIOS ATIVOS DO DESTAQUE (Modal do ícone 🕒) */}
+      <Dialog open={scheduleModalOpen} onOpenChange={setScheduleModalOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-[#18022b] text-slate-900 dark:text-white p-6 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xl space-y-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <Clock className="h-5 w-5 text-[#059669]" />
+              <span>Horários Ativos do Destaque</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Configure quando o destaque <strong>"{schedulingItem?.title}"</strong> estará visível no carrossel de topo do cardápio digital (horário oficial de Portugal).
+            </p>
+
+            {/* Toggle Horários Específicos */}
+            <label className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={hasCustomHours}
+                onChange={(e) => setHasCustomHours(e.target.checked)}
+                className="h-4 w-4 rounded text-[#059669] focus:ring-[#059669] border-slate-300 cursor-pointer"
+              />
+              <span className="text-xs font-semibold text-slate-800 dark:text-white">
+                Definir horários específicos de disponibilidade
+              </span>
+            </label>
+
+            {/* Dias da semana e horários */}
+            {hasCustomHours && (
+              <div className="space-y-3 p-3.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02]">
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                    Dias da Semana Ativos
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {DAYS_OF_WEEK.map(({ day, label }) => {
+                      const isSelected = scheduleDays.includes(day)
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            setScheduleDays((prev) =>
+                              isSelected ? prev.filter((d) => d !== day) : [...prev, day].sort()
+                            )
+                          }}
+                          className={`px-3 py-1.5 rounded text-xs font-bold cursor-pointer transition ${
+                            isSelected
+                              ? 'bg-[#059669] text-white'
+                              : 'bg-white dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                      Horário Inicial
+                    </Label>
+                    <Input
+                      type="time"
+                      value={scheduleStartTime}
+                      onChange={(e) => setScheduleStartTime(e.target.value)}
+                      className="h-9 text-xs rounded-md border-slate-300 dark:border-white/15 mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                      Horário Final
+                    </Label>
+                    <Input
+                      type="time"
+                      value={scheduleEndTime}
+                      onChange={(e) => setScheduleEndTime(e.target.value)}
+                      className="h-9 text-xs rounded-md border-slate-300 dark:border-white/15 mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setScheduleModalOpen(false)}
+              className="px-4 py-2 rounded text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 cursor-pointer uppercase transition"
+            >
+              Fechar
+            </button>
+            <button
+              type="button"
+              disabled={savingSchedule}
+              onClick={handleSaveSchedule}
+              className="px-5 py-2 rounded text-xs font-bold text-white bg-[#059669] hover:bg-[#047857] cursor-pointer uppercase shadow-xs transition disabled:opacity-50"
+            >
+              {savingSchedule ? 'Salvando...' : 'Salvar Horários'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 5. DIALOG: EXCLUSÃO SEGURA */}
       <SafeDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Remover Destaque & Story"
-        description="Tem a certeza de que deseja remover este destaque do cardápio? Esta ação é definitiva."
+        title="Remover Destaque"
+        description="Tem a certeza de que deseja remover este destaque do cardápio? Esta ação removerá o item do carrossel."
         itemName={deletingItem?.title}
         onConfirm={handleConfirmDelete}
         loading={deletingLoading}

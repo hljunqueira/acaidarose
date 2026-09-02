@@ -3,14 +3,13 @@ import { AVEIRO_HQ_ID } from '@/lib/repositories/tenantsRepository'
 import { recordAuditLog } from '@/lib/repositories/auditRepository'
 import { v4 as uuidv4 } from 'uuid'
 
-import { HighlightItem, CANONICAL_DEFAULT_STORIES } from '@/types/highlights'
+import { HighlightItem } from '@/types/highlights'
 export type { HighlightItem }
-export { CANONICAL_DEFAULT_STORIES }
 
 export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<HighlightItem[]> {
   try {
     const res = await query(
-      `SELECT id, tenant_id, title, subtitle, video_url, thumbnail_url, badge_text, badge_color, price, display_order, active
+      `SELECT id, tenant_id, title, subtitle, video_url, thumbnail_url, badge_text, badge_color, price, display_order, active, available_hours
        FROM store_stories
        WHERE tenant_id = $1 AND deleted_at IS NULL AND active = true
        ORDER BY display_order ASC, created_at ASC`,
@@ -18,8 +17,7 @@ export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Pr
     )
 
     if (!res.rows || res.rows.length === 0) {
-      // Fallback seguro de resiliência caso a loja não possua destaques cadastrados ainda
-      return CANONICAL_DEFAULT_STORIES
+      return []
     }
 
     return res.rows.map((r: any) => ({
@@ -35,17 +33,18 @@ export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Pr
       mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
       active: r.active !== false,
       displayOrder: Number(r.display_order) || 0,
+      availableHours: r.available_hours || null,
     }))
   } catch (err) {
     console.error('Erro ao consultar destaques da loja:', err)
-    return CANONICAL_DEFAULT_STORIES
+    return []
   }
 }
 
 export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Promise<HighlightItem[]> {
   try {
     const res = await query(
-      `SELECT id, tenant_id, title, subtitle, video_url, thumbnail_url, badge_text, badge_color, price, display_order, active
+      `SELECT id, tenant_id, title, subtitle, video_url, thumbnail_url, badge_text, badge_color, price, display_order, active, available_hours
        FROM store_stories
        WHERE tenant_id = $1 AND deleted_at IS NULL
        ORDER BY display_order ASC, created_at ASC`,
@@ -69,6 +68,7 @@ export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Pr
       mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
       active: r.active !== false,
       displayOrder: Number(r.display_order) || 0,
+      availableHours: r.available_hours || null,
     }))
   } catch (err) {
     console.error('Erro ao consultar destaques admin:', err)
@@ -87,12 +87,13 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
   const videoUrl = item.videoUrl || null
   const displayOrder = Number(item.displayOrder) || 1
   const active = item.active !== false
+  const availableHours = item.availableHours ? (typeof item.availableHours === 'string' ? item.availableHours : JSON.stringify(item.availableHours)) : null
 
   const res = await query(
-    `INSERT INTO store_stories (id, tenant_id, title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    `INSERT INTO store_stories (id, tenant_id, title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active, available_hours)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
-    [id, tenantId, title, subtitle, badgeLabel, badgeColor, price, imageUrl, videoUrl, displayOrder, active]
+    [id, tenantId, title, subtitle, badgeLabel, badgeColor, price, imageUrl, videoUrl, displayOrder, active, availableHours]
   )
 
   await recordAuditLog({
@@ -118,10 +119,15 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
     mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
     active: r.active,
     displayOrder: r.display_order,
+    availableHours: r.available_hours || null,
   }
 }
 
 export async function updateHighlightItem(id: string, item: Partial<HighlightItem>): Promise<HighlightItem> {
+  const availableHoursParam = item.availableHours !== undefined
+    ? (item.availableHours === null ? '__NULL__' : (typeof item.availableHours === 'string' ? item.availableHours : JSON.stringify(item.availableHours)))
+    : null
+
   const res = await query(
     `UPDATE store_stories
      SET title = COALESCE($2, title),
@@ -133,6 +139,7 @@ export async function updateHighlightItem(id: string, item: Partial<HighlightIte
          video_url = COALESCE($8, video_url),
          display_order = COALESCE($9, display_order),
          active = COALESCE($10, active),
+         available_hours = CASE WHEN $11::text = '__NULL__' THEN NULL WHEN $11 IS NOT NULL THEN $11::jsonb ELSE available_hours END,
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING *`,
@@ -147,6 +154,7 @@ export async function updateHighlightItem(id: string, item: Partial<HighlightIte
       item.videoUrl !== undefined ? item.videoUrl : null,
       item.displayOrder !== undefined ? Number(item.displayOrder) : null,
       item.active !== undefined ? Boolean(item.active) : null,
+      availableHoursParam,
     ]
   )
 
@@ -175,6 +183,7 @@ export async function updateHighlightItem(id: string, item: Partial<HighlightIte
     mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
     active: r.active,
     displayOrder: r.display_order,
+    availableHours: r.available_hours || null,
   }
 }
 
@@ -213,7 +222,7 @@ export async function syncAllStoresHighlights(payload?: {
   }
 
   const sourceRes = await query(
-    `SELECT title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active
+    `SELECT title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active, available_hours
      FROM store_stories
      WHERE tenant_id = $1 AND deleted_at IS NULL AND active = true
      ORDER BY display_order ASC`,
@@ -228,9 +237,9 @@ export async function syncAllStoresHighlights(payload?: {
 
     for (const h of highlights) {
       await query(
-        `INSERT INTO store_stories (id, tenant_id, title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [uuidv4(), targetId, h.title, h.subtitle, h.badge_text, h.badge_color, h.price, h.thumbnail_url, h.video_url, h.display_order, h.active]
+        `INSERT INTO store_stories (id, tenant_id, title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active, available_hours)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [uuidv4(), targetId, h.title, h.subtitle, h.badge_text, h.badge_color, h.price, h.thumbnail_url, h.video_url, h.display_order, h.active, h.available_hours]
       )
     }
   }
