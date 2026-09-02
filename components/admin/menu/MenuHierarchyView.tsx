@@ -473,14 +473,11 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
         <div>
           <h1 className="text-xl font-black text-purple-950 dark:text-white tracking-tight flex items-center gap-2">
-            <span>Cardápio & Catálogo</span>
+            <span>Itens do cardápio</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-pink-950/50 text-purple-900 dark:text-pink-300 font-bold border border-purple-200 dark:border-pink-500/20">
               {isSuperAdmin ? 'Franqueadora Master' : 'Filial Aveiro'}
             </span>
           </h1>
-          <p className="text-xs text-purple-700/80 dark:text-purple-200/70">
-            Gerencie taças, opcionais, disponibilidade e regras de personalização
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -549,200 +546,101 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       <hr className="border-t border-purple-100 dark:border-white/10 my-1" />
 
-      {/* 2.5 SELETOR DE VISÃO: TAÇAS & PRODUTOS vs OPCIONAIS */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-purple-100/60 dark:bg-white/5 border border-purple-200/60 dark:border-white/10 w-fit">
+      {/* 3. NÍVEL 2: PÍLULAS DE CATEGORIAS VINCULADAS */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 pt-1">
+        <button
+          type="button"
+          onClick={() => setSelectedCategory('all_cats')}
+          className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+            selectedCategory === 'all_cats'
+              ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+              : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+          }`}
+        >
+          Todas as categorias
+        </button>
+
+        {visibleCategories.map((cat) => {
+          const isSelected = selectedCategory === cat.id
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                isSelected
+                  ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+              }`}
+            >
+              {cat.name}
+            </button>
+          )
+        })}
+
+        {isSuperAdmin && (
           <button
             type="button"
-            onClick={() => setActiveViewMode('products')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-              activeViewMode === 'products'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
-                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-            }`}
+            onClick={() => setAddCatDialogOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white transition cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1 shadow-xs"
           >
-            <span>Taças & Produtos</span>
-            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
-              {menuContainers.length}
-            </span>
+            <span>Adicionar Categoria</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveViewMode('options')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-              activeViewMode === 'options'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
-                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-            }`}
-          >
-            <span>Opcionais do Cardápio</span>
-            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
-              {catalog.bases.length + catalog.toppings.length}
-            </span>
-          </button>
-        </div>
-
-        {/* Barra de Ações Rápidas */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full pb-1">
-          {!isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setFranchiseReqOpen(true)}
-              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-            >
-              <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-              <span>Solicitar à Franqueadora</span>
-            </button>
-          )}
-
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={handleOpenNew}
-              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
-            >
-              <span>{activeViewMode === 'products' ? 'Nova Taça' : 'Novo Opcional'}</span>
-            </button>
-          )}
-
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setOptionModelOpen(true)}
-              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-              <span>Modelos</span>
-            </button>
-          )}
-          
-          <button
-            type="button"
-            onClick={() => setFilterDialogOpen(true)}
-            className={`h-8 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs shrink-0 whitespace-nowrap ${
-              hasActiveFilters
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
-                : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
-            }`}
-          >
-            <Filter className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-            <span>Filtro</span>
-            {hasActiveFilters && (
-              <span className="h-4 w-4 rounded-full bg-white text-purple-700 text-[10px] font-black flex items-center justify-center">
-                !
-              </span>
-            )}
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* 3. NÍVEL 2: PÍLULAS DE SUBDIVISÃO */}
-      {activeViewMode === 'products' ? (
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 pt-1">
+      {/* 4. BARRA DE AÇÕES RÁPIDAS (ALINHADA À DIREITA) */}
+      <div className="flex items-center justify-end gap-2 pt-1 pb-1">
+        {!isSuperAdmin && (
           <button
             type="button"
-            onClick={() => setSelectedCategory('all_cats')}
-            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              selectedCategory === 'all_cats'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-            }`}
+            onClick={() => setFranchiseReqOpen(true)}
+            className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
           >
-            Todas as taças ({menuContainers.length})
+            <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+            <span>Solicitar à Franqueadora</span>
           </button>
+        )}
 
-          {visibleCategories.map((cat) => {
-            const isSelected = selectedCategory === cat.id
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-                }`}
-              >
-                {cat.name}
-              </button>
-            )
-          })}
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={handleOpenNew}
+            className="h-8 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
+          >
+            <span>Adicionar Novo Item</span>
+          </button>
+        )}
 
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setAddCatDialogOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-100 dark:bg-pink-950/40 border border-purple-200 dark:border-pink-500/30 text-purple-900 dark:text-pink-300 hover:bg-purple-200/70 dark:hover:bg-pink-900/40 transition cursor-pointer shrink-0 whitespace-nowrap"
-            >
-              <span>Nova Categoria</span>
-            </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setOptionModelOpen(true)}
+            className="h-8 px-3.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+            <span>Modelos de Opções</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setFilterDialogOpen(true)}
+          className={`h-8 px-3.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs shrink-0 whitespace-nowrap ${
+            hasActiveFilters
+              ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
+              : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
+          }`}
+        >
+          <Filter className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+          <span>Filtro</span>
+          {hasActiveFilters && (
+            <span className="h-4 w-4 rounded-full bg-white text-purple-700 text-[10px] font-black flex items-center justify-center">
+              !
+            </span>
           )}
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 pt-1">
-          <button
-            type="button"
-            onClick={() => setSelectedOptionCategory('all')}
-            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              selectedOptionCategory === 'all'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-            }`}
-          >
-            Todos os Opcionais ({catalog.bases.length + catalog.toppings.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedOptionCategory('bases')}
-            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              selectedOptionCategory === 'bases'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-            }`}
-          >
-            🍨 Bases & Cremes ({catalog.bases.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedOptionCategory('frutas')}
-            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              selectedOptionCategory === 'frutas'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-            }`}
-          >
-            🍓 Frutas Frescas ({frutasCount})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedOptionCategory('toppings')}
-            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              selectedOptionCategory === 'toppings'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-            }`}
-          >
-            🥜 Toppings Tradicionais ({toppingsTradCount})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedOptionCategory('caldas')}
-            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              selectedOptionCategory === 'caldas'
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-            }`}
-          >
-            🍯 Caldas Nobres ({caldasCount})
-          </button>
-        </div>
-      )}
+        </button>
+      </div>
 
       {/* 5. LISTAGEM DE PRODUTOS */}
       <div className="space-y-2.5 pt-2">

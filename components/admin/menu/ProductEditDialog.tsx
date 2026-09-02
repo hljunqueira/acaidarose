@@ -690,6 +690,15 @@ export default function ProductEditDialog({
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-purple-950 dark:text-white text-xs">Opções:</h3>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={handleOpenNewOptionModel}
+                      className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer flex-shrink-0"
+                    >
+                      Modelos de Opções
+                    </button>
+                  )}
                 </div>
 
               {isSuperAdmin && (
@@ -724,108 +733,63 @@ export default function ProductEditDialog({
                   return (
                     <div
                       key={groupId}
-                      className={`rounded-xl border transition-all overflow-hidden ${
+                      className={`rounded-xl border transition-all overflow-hidden p-3 flex items-center justify-between select-none ${
                         isGroupActive
                           ? 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 shadow-xs'
                           : 'border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.02] opacity-75'
                       }`}
                     >
-                      {/* CABEÇALHO DO MODELO */}
-                      <div className="p-3 flex items-center justify-between select-none">
-                        <div className="flex items-center gap-2 min-w-0 pr-2">
-                          <span className={`font-bold text-xs truncate ${isGroupActive ? 'text-purple-950 dark:text-white' : 'line-through text-zinc-400'}`}>
-                            {grp.name}
-                          </span>
-                          <span className="text-[10px] font-mono text-purple-600 dark:text-pink-300 font-bold flex-shrink-0">
-                            ({optionsList.length} itens)
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {/* Alternar visibilidade do grupo na loja */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleGroupActive(grp.id, grp.name)}
-                            className="p-1 rounded-md hover:bg-purple-100/70 dark:hover:bg-white/10 transition cursor-pointer"
-                            title={isGroupActive ? 'Grupo Ativo na Loja (Clique para ocultar)' : 'Grupo Oculto na Loja (Clique para exibir)'}
-                          >
-                            {isGroupActive ? (
-                              <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                            ) : (
-                              <EyeOff className="h-4 w-4 text-red-500" />
-                            )}
-                          </button>
-
-                          {isSuperAdmin && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleEditOptionModel(grp)}
-                                className="p-1 text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer transition"
-                                title="Editar e Gerenciar Opcionais deste Modelo"
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleUnlinkGroup(grp.id, grp.name)}
-                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md cursor-pointer transition"
-                                title="Desvincular Grupo deste Produto"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </>
-                          )}
-
-                          {!isSuperAdmin && (
-                            <span className="text-[10px] text-purple-700 dark:text-purple-300/70 font-bold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-white/5 border border-purple-200 dark:border-white/10">
-                              {isGroupActive ? 'Ativo' : 'Oculto'}
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        <GripVertical className="h-4 w-4 text-purple-400 dark:text-purple-300/40 shrink-0 cursor-grab" />
+                        <span className={`font-bold text-xs truncate ${isGroupActive ? 'text-purple-950 dark:text-white' : 'line-through text-zinc-400'}`}>
+                          {grp.name}
+                        </span>
+                        <span className="text-[10px] font-mono text-purple-600 dark:text-pink-300 font-bold flex-shrink-0">
+                          ({optionsList.length} itens)
+                        </span>
                       </div>
 
-                      {/* REGRAS DO MODELO DE OPÇÕES (OBRIGATÓRIO, MÍN E MÁX) */}
-                      <div className="px-3 py-2 bg-purple-50/70 dark:bg-white/5 border-t border-purple-100 dark:border-white/10 flex items-center justify-between gap-3 text-[11px] flex-wrap">
-                        <label className="flex items-center gap-1.5 cursor-pointer font-bold text-purple-950 dark:text-white select-none">
-                          <input
-                            type="checkbox"
-                            checked={grp.isRequired ?? false}
-                            onChange={(e) => handleUpdateGroupRules(groupId, { isRequired: e.target.checked })}
-                            className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-                          />
-                          <span>Obrigatório</span>
-                        </label>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {/* Alternar visibilidade do grupo na loja */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleGroupActive(grp.id, grp.name)}
+                          className="p-1 rounded-md hover:bg-purple-100/70 dark:hover:bg-white/10 transition cursor-pointer"
+                          title={isGroupActive ? 'Grupo Ativo na Loja' : 'Grupo Oculto na Loja'}
+                        >
+                          {isGroupActive ? (
+                            <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <EyeOff className="h-4 w-4 text-red-500" />
+                          )}
+                        </button>
 
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            <span className="text-purple-700 dark:text-purple-300 font-medium">Mín:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={grp.minQty === undefined || grp.minQty === null ? '' : grp.minQty}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
-                                handleUpdateGroupRules(groupId, { minQty: isNaN(val) ? 0 : Math.max(0, val) })
-                              }}
-                              className="w-12 h-6 px-1 text-center font-mono font-bold text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/20 rounded-md text-purple-950 dark:text-white"
-                            />
-                          </div>
+                        {isSuperAdmin && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleEditOptionModel(grp)}
+                              className="p-1 text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer transition"
+                              title="Editar Modelo de Opções"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUnlinkGroup(grp.id, grp.name)}
+                              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md cursor-pointer transition"
+                              title="Desvincular Modelo deste Produto"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
 
-                          <div className="flex items-center gap-1">
-                            <span className="text-purple-700 dark:text-purple-300 font-medium">Máx:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={grp.maxQty === undefined || grp.maxQty === null ? '' : grp.maxQty}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
-                                handleUpdateGroupRules(groupId, { maxQty: isNaN(val) ? 0 : Math.max(0, val) })
-                              }}
-                              className="w-12 h-6 px-1 text-center font-mono font-bold text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/20 rounded-md text-purple-950 dark:text-white"
-                            />
-                          </div>
-                        </div>
+                        {!isSuperAdmin && (
+                          <span className="text-[10px] text-purple-700 dark:text-purple-300/70 font-bold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-white/5 border border-purple-200 dark:border-white/10">
+                            {isGroupActive ? 'Ativo' : 'Oculto'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   )
