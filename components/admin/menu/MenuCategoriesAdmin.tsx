@@ -24,7 +24,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
   const { user } = useAuthStore()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
-  const { categories, addCategory, updateCategory, deleteCategory } = useMenuConfigStore()
+  const { categories, setCategories, addCategory, updateCategory, deleteCategory } = useMenuConfigStore()
 
   // Filtra para exibir EXCLUSIVAMENTE as categorias reais cadastradas (sem "Todas as categorias")
   const displayCategories = useMemo(() => {
@@ -33,6 +33,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
     )
   }, [categories])
 
+  const [loading, setLoading] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<CustomCategoryItem | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -47,6 +48,27 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
     displayOrder: 1,
     active: true,
   })
+
+  const fetchCategories = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/categories?tenantId=${encodeURIComponent(tenantId || user?.tenantId || '')}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.categories)) {
+          setCategories(data.categories)
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao buscar categorias:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    fetchCategories()
+  }, [tenantId, user?.tenantId])
 
   const handleOpenNew = () => {
     setEditingCategory(null)
@@ -79,61 +101,92 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
     setDeleteOpen(true)
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name.trim()) {
       toast.error('Informe o nome da categoria')
       return
     }
 
-    if (editingCategory) {
-      updateCategory(editingCategory.id, {
-        name: formData.name.trim(),
-        slug: formData.slug.trim() || formData.name.toLowerCase().replace(/\s+/g, '-'),
-        description: formData.description.trim(),
-        emoji: formData.emoji.trim() || '',
-        displayOrder: Number(formData.displayOrder),
-        active: formData.active,
-      })
-      toast.success(`Categoria "${formData.name}" atualizada com sucesso!`)
-    } else {
-      const newCat: CustomCategoryItem = {
-        id: `cat_${Date.now()}`,
-        name: formData.name.trim(),
-        slug: formData.slug.trim() || formData.name.toLowerCase().replace(/\s+/g, '-'),
-        description: formData.description.trim(),
-        emoji: formData.emoji.trim() || '',
-        displayOrder: Number(formData.displayOrder),
-        active: formData.active,
-        menuId: 'menu_acai',
-        itemsCount: 1,
+    try {
+      if (editingCategory) {
+        const res = await fetch(`/api/categories/${editingCategory.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            slug: formData.slug.trim() || formData.name.toLowerCase().replace(/\s+/g, '-'),
+            description: formData.description.trim(),
+            emoji: formData.emoji.trim() || '',
+            displayOrder: Number(formData.displayOrder),
+            active: formData.active,
+            tenantId: tenantId || user?.tenantId,
+          }),
+        })
+        if (!res.ok) throw new Error('Falha ao atualizar categoria')
+        toast.success(`Categoria "${formData.name}" atualizada com sucesso!`)
+      } else {
+        const res = await fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            slug: formData.slug.trim() || formData.name.toLowerCase().replace(/\s+/g, '-'),
+            description: formData.description.trim(),
+            emoji: formData.emoji.trim() || '',
+            displayOrder: Number(formData.displayOrder),
+            active: formData.active,
+            tenantId: tenantId || user?.tenantId,
+          }),
+        })
+        if (!res.ok) throw new Error('Falha ao cadastrar categoria')
+        toast.success(`Categoria "${formData.name}" criada com sucesso!`)
       }
-      addCategory(newCat)
-      toast.success(`Categoria "${formData.name}" criada com sucesso!`)
-    }
 
-    setEditOpen(false)
+      await fetchCategories()
+      setEditOpen(false)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar categoria')
+    }
   }
 
   const handleConfirmDelete = async () => {
     if (!deletingCategory) return
     setDeletingLoading(true)
     try {
+      const res = await fetch(`/api/categories/${deletingCategory.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Falha ao excluir categoria')
       deleteCategory(deletingCategory.id)
       toast.success(`Categoria "${deletingCategory.name}" removida com sucesso!`)
       setDeleteOpen(false)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao excluir categoria')
     } finally {
       setDeletingLoading(false)
     }
   }
 
-  const handleToggleActive = (cat: CustomCategoryItem) => {
-    updateCategory(cat.id, { active: !cat.active })
-    toast.success(
-      cat.active
-        ? `Categoria "${cat.name}" pausada no cardápio.`
-        : `Categoria "${cat.name}" ativada no cardápio.`
-    )
+  const handleToggleActive = async (cat: CustomCategoryItem) => {
+    const nextActive = !cat.active
+    updateCategory(cat.id, { active: nextActive })
+    try {
+      const res = await fetch(`/api/categories/${cat.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: nextActive, tenantId: tenantId || user?.tenantId }),
+      })
+      if (!res.ok) throw new Error('Falha ao atualizar no banco')
+      toast.success(
+        nextActive
+          ? `Categoria "${cat.name}" ativada no cardápio.`
+          : `Categoria "${cat.name}" pausada no cardápio.`
+      )
+    } catch (err: any) {
+      updateCategory(cat.id, { active: cat.active })
+      toast.error(err.message || 'Erro ao pausar categoria')
+    }
   }
 
   return (

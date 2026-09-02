@@ -140,6 +140,7 @@ export default function AuditLogsView() {
           {[
             { id: 'ALL', label: 'Todos' },
             { id: 'PRODUTOS_CATALOGO', label: 'Produtos & Cardápio' },
+            { id: 'ESTOQUE_SUPPLY', label: 'Estoque & B2B' },
             { id: 'MESAS_QR_SECURITY', label: 'Hashes das Mesas' },
             { id: 'QRCODE', label: 'Config QR Code' },
             { id: 'ORDER', label: 'Pedidos' },

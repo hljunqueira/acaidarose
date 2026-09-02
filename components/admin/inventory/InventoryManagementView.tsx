@@ -137,6 +137,29 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
     }
   }
 
+  const handleQuickPauseItem = async (item: InventoryItemRow) => {
+    try {
+      const res = await authFetch('/api/products/toggle-availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId,
+          productId: item.id,
+          available: false,
+          active: false,
+        }),
+      })
+      if (!res.ok) throw new Error('Falha ao pausar')
+      toast.success(`"${item.name}" pausado no Cardápio QR Code desta loja.`)
+    } catch {
+      toast.error(`Erro ao pausar "${item.name}" no cardápio`)
+    }
+  }
+
+  const handleKeepActive = (item: InventoryItemRow) => {
+    toast.success(`"${item.name}" permanece ativo no cardápio. Vendas continuam normalmente.`)
+  }
+
   const handleSubmitChecklist = async (counts: { itemId: string; theoretical: number; counted: number }[]) => {
     try {
       const res = await authFetch('/api/inventory/checklist', {
@@ -303,6 +326,18 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {item.status !== 'NORMAL' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleQuickPauseItem(item)}
+                            className="h-7 px-2 rounded-lg border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 font-bold text-[10px] cursor-pointer"
+                            title="Confirmar falta física e pausar no cardápio"
+                          >
+                            <span>Pausar Cardápio</span>
+                          </Button>
+                        )}
+
                         <Button
                           size="sm"
                           onClick={() => {

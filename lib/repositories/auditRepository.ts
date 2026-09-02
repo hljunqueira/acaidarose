@@ -125,8 +125,12 @@ export async function getAuditLogs(options?: {
         scope:
           row.entity?.startsWith('product') ||
           row.entity === 'store_product_overrides' ||
-          row.entity === 'store_price_overrides'
+          row.entity === 'store_price_overrides' ||
+          row.entity === 'categories' ||
+          row.entity === 'menus'
             ? 'PRODUTOS_CATALOGO'
+            : row.entity?.includes('inventory') || row.entity?.includes('supply')
+            ? 'ESTOQUE_SUPPLY'
             : row.entity || 'SISTEMA',
         action: row.action,
         message,

@@ -119,7 +119,13 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       return
     }
     setEditingItem(null)
-    setEditingType('containers')
+    if (selectedCategory === 'bases') {
+      setEditingType('bases')
+    } else if (selectedCategory.startsWith('toppings')) {
+      setEditingType('toppings')
+    } else {
+      setEditingType('containers')
+    }
     setEditOpen(true)
   }
 
@@ -223,11 +229,27 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const displayedItems = useMemo(() => {
     const list: Array<{ item: any; type: 'containers' | 'bases' | 'toppings' }> = []
     const containersList = catalog.containers || []
+    const basesList = catalog.bases || []
+    const toppingsList = catalog.toppings || []
 
     if (selectedCategory === 'all_cats') {
-      containersList.forEach((c) => {
-        list.push({ item: c, type: 'containers' })
-      })
+      containersList.forEach((c) => list.push({ item: c, type: 'containers' }))
+      basesList.forEach((b) => list.push({ item: b, type: 'bases' }))
+      toppingsList.forEach((t) => list.push({ item: t, type: 'toppings' }))
+    } else if (selectedCategory === 'bases') {
+      basesList.forEach((b) => list.push({ item: b, type: 'bases' }))
+    } else if (selectedCategory === 'toppings_frutas') {
+      toppingsList
+        .filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
+        .forEach((t) => list.push({ item: t, type: 'toppings' }))
+    } else if (selectedCategory === 'toppings_trad') {
+      toppingsList
+        .filter((t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
+        .forEach((t) => list.push({ item: t, type: 'toppings' }))
+    } else if (selectedCategory === 'toppings_caldas') {
+      toppingsList
+        .filter((t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0))
+        .forEach((t) => list.push({ item: t, type: 'toppings' }))
     } else if (selectedCategory === 'cat_acai_250') {
       const found = containersList.find((c) => c.weightGrams === 250 || c.name.toLowerCase().includes('250'))
       if (found) list.push({ item: found, type: 'containers' })
@@ -393,6 +415,30 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
                 </button>
               )
             })}
+
+          {/* Categorias Oficiais de Opcionais */}
+          {[
+            { id: 'bases', label: 'Bases & Cremes' },
+            { id: 'toppings_frutas', label: 'Frutas Frescas' },
+            { id: 'toppings_trad', label: 'Toppings Crocantes' },
+            { id: 'toppings_caldas', label: 'Caldas Nobres' },
+          ].map((opc) => {
+            const isSelected = selectedCategory === opc.id
+            return (
+              <button
+                key={opc.id}
+                type="button"
+                onClick={() => setSelectedCategory(opc.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+                }`}
+              >
+                {opc.label}
+              </button>
+            )
+          })}
 
           {/* Botão Adicionar Categoria */}
           {isSuperAdmin && (

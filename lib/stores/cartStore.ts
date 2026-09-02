@@ -4,17 +4,11 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CartDraftItem, CartItem, ProductBase, ProductContainer, ProductTopping, OrderItemTopping } from '@/types'
 
-export function getPremiumToppingPrice(toppingName: string, weightGrams: number, explicitPrice?: number): number {
-  if (explicitPrice && explicitPrice > 0) return explicitPrice
-  const name = toppingName.toLowerCase()
-  const isLarge = weightGrams > 500
-  if (name.includes('pistache')) {
-    return isLarge ? 4.0 : 2.0
+export function getPremiumToppingPrice(_toppingName: string, _weightGrams: number, explicitPrice?: number): number {
+  if (explicitPrice !== undefined && explicitPrice !== null && Number(explicitPrice) > 0) {
+    return Number(explicitPrice)
   }
-  if (name.includes('nutella') || name.includes('leite em p') || name.includes('ninho') || name.includes('ferrero') || name.includes('kinder')) {
-    return isLarge ? 2.0 : 1.0
-  }
-  return isLarge ? 2.0 : 1.0
+  return 0
 }
 
 export function computeItemLineTotal(item: CartDraftItem | CartItem | null | undefined): number {

@@ -8,7 +8,7 @@ export async function POST(
   { params }: { params: Promise<{ category: string }> }
 ) {
   const user = await getAuthUser(request)
-  if (!hasRole(user, ['SUPER_ADMIN', 'TENANT_ADMIN'])) {
+  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
     return errorResponse('Sem permissão', 403)
   }
 

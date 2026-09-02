@@ -8,7 +8,7 @@ export async function PUT(
   { params }: { params: Promise<{ category: string; id: string }> }
 ) {
   const user = await getAuthUser(request)
-  if (!hasRole(user, ['SUPER_ADMIN', 'TENANT_ADMIN'])) {
+  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
     return errorResponse('Sem permissão', 403)
   }
 
@@ -28,7 +28,7 @@ export async function DELETE(
   { params }: { params: Promise<{ category: string; id: string }> }
 ) {
   const user = await getAuthUser(request)
-  if (!hasRole(user, ['SUPER_ADMIN', 'TENANT_ADMIN'])) {
+  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])) {
     return errorResponse('Sem permissão', 403)
   }
 

@@ -27,6 +27,8 @@ const CUP_IMAGES: Record<number, string> = {
   1000: '/images/official/acai_balde_1kg.jpg',
 }
 
+import { isProductTimeAvailable } from './CustomerMenuHome'
+
 const CUP_VIDEOS: Record<number, string> = {
   250: '/videos/hero_revealing_cup.mp4',
   350: '/videos/hero_orbiting_cup.mp4',
@@ -35,19 +37,11 @@ const CUP_VIDEOS: Record<number, string> = {
   1000: '/videos/hero_cup_rotation.mp4',
 }
 
-function getToppingItemPrice(topping: ProductTopping, weightGrams: number): number {
-  if (topping.precoExtra && topping.precoExtra > 0) {
-    return topping.precoExtra
+function getToppingItemPrice(topping: ProductTopping, _weightGrams?: number): number {
+  if (topping.precoExtra && Number(topping.precoExtra) > 0) {
+    return Number(topping.precoExtra)
   }
-  const name = topping.name.toLowerCase()
-  const isLarge = weightGrams > 500
-  if (name.includes('pistache')) {
-    return isLarge ? 4.0 : 2.0
-  }
-  if (name.includes('nutella') || name.includes('leite em p') || name.includes('ninho')) {
-    return isLarge ? 2.0 : 1.0
-  }
-  return isLarge ? 2.0 : 1.0
+  return 0
 }
 
 export default function CustomerProductDetail({
@@ -61,8 +55,18 @@ export default function CustomerProductDetail({
   const { isDark: isCustomerDark } = useCustomerTheme()
   if (!container) return null
 
-  const bases = catalog.bases || []
-  const allToppings = catalog.toppings || []
+  // Filtra bases e opcionais ativos e disponíveis na loja física e no horário
+  const bases = useMemo(() => {
+    return (catalog.bases || []).filter(
+      (b) => b.active !== false && b.isAvailableInStore !== false && isProductTimeAvailable(b.availableHours)
+    )
+  }, [catalog.bases])
+
+  const allToppings = useMemo(() => {
+    return (catalog.toppings || []).filter(
+      (t) => t.active !== false && t.isAvailableInStore !== false && isProductTimeAvailable(t.availableHours)
+    )
+  }, [catalog.toppings])
 
   const [selectedBases, setSelectedBases] = useState<ProductBase[]>([bases?.[0]].filter(Boolean))
   const [selectedToppings, setSelectedToppings] = useState<ProductTopping[]>([])

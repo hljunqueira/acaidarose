@@ -39,14 +39,28 @@ export function isProductTimeAvailable(availableHours: any): boolean {
     const hours = typeof availableHours === 'string' ? JSON.parse(availableHours) : availableHours
     if (!hours || !Array.isArray(hours.days)) return true
 
-    const now = new Date()
-    const currentDay = now.getDay()
+    // Obtém dia e hora exatos no fuso horário oficial de Portugal (Europe/Lisbon)
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Lisbon',
+      hour: 'numeric',
+      minute: 'numeric',
+      weekday: 'short',
+      hour12: false,
+    })
+    const parts = formatter.formatToParts(new Date())
+    const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    const weekdayPart = parts.find((p) => p.type === 'weekday')?.value || ''
+    const currentDay = dayMap[weekdayPart] !== undefined ? dayMap[weekdayPart] : new Date().getDay()
+
     if (!hours.days.includes(currentDay)) return false
 
-    const [startH, startM] = hours.startTime.split(':').map(Number)
-    const [endH, endM] = hours.endTime.split(':').map(Number)
+    const hourPart = Number(parts.find((p) => p.type === 'hour')?.value) || 0
+    const minutePart = Number(parts.find((p) => p.type === 'minute')?.value) || 0
 
-    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const [startH, startM] = (hours.startTime || '00:00').split(':').map(Number)
+    const [endH, endM] = (hours.endTime || '23:59').split(':').map(Number)
+
+    const currentMinutes = hourPart * 60 + minutePart
     const startMinutes = startH * 60 + startM
     const endMinutes = endH * 60 + endM
 

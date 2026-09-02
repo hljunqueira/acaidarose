@@ -1,5 +1,6 @@
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
+import { recordAuditLog } from './auditRepository'
 
 export interface InventoryItemRow {
   id: string
@@ -246,6 +247,16 @@ export async function adjustStoreStock(params: {
         operatorId || null,
       ]
     )
+
+    await recordAuditLog({
+      tenantId,
+      action: 'STOCK_ADJUSTED',
+      entity: 'store_inventory',
+      entityId: itemId,
+      message: `Ajuste de estoque: novo saldo ${newQuantity} (${reason})`,
+      metadata: params,
+    })
+
     return true
   } catch (err) {
     console.error('Erro ao ajustar estoque:', err)
@@ -357,6 +368,16 @@ export async function createSupplyOrder(
       [id, tenantId, orderNum, totalAmount, totalSavings, JSON.stringify(items)]
     )
     const r = res.rows[0]
+
+    await recordAuditLog({
+      tenantId,
+      action: 'SUPPLY_ORDER_CREATED',
+      entity: 'supply_orders',
+      entityId: id,
+      message: `Novo pedido B2B #${orderNum} (€ ${totalAmount.toFixed(2)})`,
+      metadata: { orderId: id, totalAmount, totalSavings },
+    })
+
     return {
       id: r.id,
       tenantId: r.tenant_id,
@@ -388,6 +409,13 @@ export async function createSupplyOrder(
 export async function updateSupplyOrderStatus(id: string, status: 'PENDING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'): Promise<boolean> {
   try {
     await query(`UPDATE supply_orders SET status = $2 WHERE id = $1`, [id, status])
+    await recordAuditLog({
+      action: 'SUPPLY_ORDER_STATUS_CHANGED',
+      entity: 'supply_orders',
+      entityId: id,
+      message: `Status do pedido de abastecimento alterado para ${status}`,
+      metadata: { orderId: id, status },
+    })
     return true
   } catch (err) {
     console.error('Erro ao atualizar status de supply_order:', err)
@@ -428,6 +456,14 @@ export async function receiveSupplyOrder(orderId: string, tenantId: string, rece
 
     // 3. Marca como entregue
     await query(`UPDATE supply_orders SET status = 'DELIVERED' WHERE id = $1`, [orderId])
+    await recordAuditLog({
+      tenantId,
+      action: 'SUPPLY_ORDER_DELIVERED',
+      entity: 'supply_orders',
+      entityId: orderId,
+      message: `Recebimento de carga confirmado na loja: estoque abastecido`,
+      metadata: { orderId, receivedBy },
+    })
     return true
   } catch (err) {
     console.error('Erro ao confirmar recebimento de abastecimento:', err)

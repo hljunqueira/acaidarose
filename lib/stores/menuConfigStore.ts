@@ -61,41 +61,12 @@ interface MenuConfigState {
   resetToDefaults: () => void
 }
 
-const DEFAULT_MAIN_MENUS: CustomMenuItem[] = [
-  { id: 'menu_acai', name: 'MENU: AÇAÍ DA ROSE', code: 'ACAI_ROSE', description: 'Cardápio oficial do autêntico açaí artesanal brasileiro', displayOrder: 1, active: true, availableHours: 'Sempre disponível' },
-]
-
-// AS 5 CATEGORIAS OFICIAIS SÃO OS TAMANHOS DE AÇAÍ
-const DEFAULT_CATEGORIES: CustomCategoryItem[] = [
-  { id: 'cat_acai_250', name: 'AÇAÍ 250G', slug: '250g', emoji: '🍧', description: '250g com regras de personalização', defaultPrice: 6.50, weightGrams: 250, menuId: 'menu_acai', displayOrder: 1, active: true, itemsCount: 1 },
-  { id: 'cat_acai_350', name: 'AÇAÍ 350G', slug: '350g', emoji: '🍧', description: '350g com regras de personalização', defaultPrice: 9.00, weightGrams: 350, menuId: 'menu_acai', displayOrder: 2, active: true, itemsCount: 1 },
-  { id: 'cat_acai_500', name: 'AÇAÍ 500G', slug: '500g', emoji: '🍧', description: '500g com regras de personalização', defaultPrice: 12.90, weightGrams: 500, menuId: 'menu_acai', displayOrder: 3, active: true, itemsCount: 1 },
-  { id: 'cat_acai_750', name: 'AÇAÍ 750G', slug: '750g', emoji: '🍧', description: '750g com regras de personalização', defaultPrice: 18.90, weightGrams: 750, menuId: 'menu_acai', displayOrder: 4, active: true, itemsCount: 1 },
-  { id: 'cat_acai_1000', name: 'AÇAÍ 1 KG', slug: '1kg', emoji: '🍧', description: '1000g com regras de personalização', defaultPrice: 25.90, weightGrams: 1000, menuId: 'menu_acai', displayOrder: 5, active: true, itemsCount: 1 },
-]
-
-const INITIAL_REQUESTS: FranchiseChangeRequest[] = [
-  {
-    id: 'req-01',
-    tenantId: 'tenant-aveiro',
-    tenantName: 'Açaí da Rose — Filial Aveiro',
-    requestType: 'PRICE_CHANGE',
-    itemName: 'Açaí 500g',
-    targetCollection: 'containers',
-    currentPrice: 12.90,
-    proposedPrice: 13.50,
-    justification: 'Ajuste devido ao custo local de distribuição de frutas frescas em Aveiro.',
-    status: 'PENDING',
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-]
-
 export const useMenuConfigStore = create<MenuConfigState>()(
   persist(
     (set) => ({
-      mainMenus: DEFAULT_MAIN_MENUS,
-      categories: DEFAULT_CATEGORIES,
-      changeRequests: INITIAL_REQUESTS,
+      mainMenus: [],
+      categories: [],
+      changeRequests: [],
 
       setMainMenus: (menus) => set({ mainMenus: menus }),
       setCategories: (categories) => set({ categories }),
@@ -159,9 +130,9 @@ export const useMenuConfigStore = create<MenuConfigState>()(
 
       resetToDefaults: () =>
         set({
-          mainMenus: DEFAULT_MAIN_MENUS,
-          categories: DEFAULT_CATEGORIES,
-          changeRequests: INITIAL_REQUESTS,
+          mainMenus: [],
+          categories: [],
+          changeRequests: [],
         }),
     }),
     { name: 'acai-rose-menu-config-v4' }

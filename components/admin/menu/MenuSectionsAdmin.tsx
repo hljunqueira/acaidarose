@@ -25,7 +25,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
   const { user } = useAuthStore()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
-  const { mainMenus, addMenu, updateMenu, deleteMenu } = useMenuConfigStore()
+  const { mainMenus, setMainMenus, addMenu, updateMenu, deleteMenu } = useMenuConfigStore()
 
   // Filtra para exibir EXCLUSIVAMENTE os menus reais cadastrados (sem "Todos os Menus")
   const displayMenus = useMemo(() => {
@@ -34,6 +34,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
     )
   }, [mainMenus])
 
+  const [loading, setLoading] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingMenu, setEditingMenu] = useState<CustomMenuItem | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -48,6 +49,27 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
     displayOrder: 1,
     active: true,
   })
+
+  const fetchMenus = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/menus?tenantId=${encodeURIComponent(tenantId || user?.tenantId || '')}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.menus)) {
+          setMainMenus(data.menus)
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao buscar menus:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    fetchMenus()
+  }, [tenantId, user?.tenantId])
 
   const handleOpenNew = () => {
     setEditingMenu(null)
@@ -80,38 +102,36 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
     setDeleteOpen(true)
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name.trim()) {
       toast.error('Informe o nome do cardápio')
       return
     }
 
-    if (editingMenu) {
-      updateMenu(editingMenu.id, {
-        name: formData.name.trim(),
-        code: formData.code.trim().toUpperCase() || 'MENU',
-        description: formData.description.trim(),
-        availableHours: formData.availableHours.trim(),
-        displayOrder: Number(formData.displayOrder),
-        active: formData.active,
-      })
-      toast.success(`Cardápio "${formData.name}" atualizado com sucesso!`)
-    } else {
-      const newMenu: CustomMenuItem = {
-        id: `menu_${Date.now()}`,
-        name: formData.name.trim(),
-        code: formData.code.trim().toUpperCase() || `MENU_${Date.now()}`,
-        description: formData.description.trim(),
-        availableHours: formData.availableHours.trim(),
-        displayOrder: Number(formData.displayOrder),
-        active: formData.active,
+    try {
+      if (editingMenu) {
+        const res = await fetch(`/api/menus/${editingMenu.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            code: formData.code.trim().toUpperCase() || 'MENU',
+            description: formData.description.trim(),
+            displayOrder: Number(formData.displayOrder),
+            active: formData.active,
+            tenantId: tenantId || user?.tenantId,
+          }),
+        })
+        if (!res.ok) throw new Error('Falha ao atualizar cardápio')
+        toast.success(`Cardápio "${formData.name}" atualizado com sucesso!`)
       }
-      addMenu(newMenu)
-      toast.success(`Cardápio "${formData.name}" criado com sucesso!`)
-    }
 
-    setEditOpen(false)
+      await fetchMenus()
+      setEditOpen(false)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar cardápio')
+    }
   }
 
   const handleConfirmDelete = async () => {
@@ -126,13 +146,25 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
     }
   }
 
-  const handleToggleActive = (menu: CustomMenuItem) => {
-    updateMenu(menu.id, { active: !menu.active })
-    toast.success(
-      menu.active
-        ? `Cardápio "${menu.name}" desativado.`
-        : `Cardápio "${menu.name}" ativado com sucesso!`
-    )
+  const handleToggleActive = async (menu: CustomMenuItem) => {
+    const nextActive = !menu.active
+    updateMenu(menu.id, { active: nextActive })
+    try {
+      const res = await fetch(`/api/menus/${menu.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: nextActive, tenantId: tenantId || user?.tenantId }),
+      })
+      if (!res.ok) throw new Error('Falha ao atualizar no banco')
+      toast.success(
+        nextActive
+          ? `Cardápio "${menu.name}" ativado com sucesso!`
+          : `Cardápio "${menu.name}" desativado.`
+      )
+    } catch (err: any) {
+      updateMenu(menu.id, { active: menu.active })
+      toast.error(err.message || 'Erro ao alterar status')
+    }
   }
 
   return (

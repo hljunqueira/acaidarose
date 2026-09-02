@@ -183,15 +183,28 @@ export default function ProductEditDialog({
       setForm({
         name: item.name || '',
         description: item.description || '',
-        category: getInitialCategory(item),
-        price: item.precoBase || item.price || 12.9,
+        category: item.category || getInitialCategory(item),
+        price: item.precoExtra !== undefined ? Number(item.precoExtra) : (item.precoBase || item.price || 12.9),
+        isPremium: !!item.isPremium,
         code: item.code || '2885',
         image: item.image || item.imageUrl || '',
         videoUrl: item.videoUrl || '',
         availableHours: item.availableHours || { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
       })
+    } else {
+      setForm({
+        name: '',
+        description: '',
+        category: collection === 'toppings' ? 'Frutas' : collection === 'bases' ? 'Bases' : 'AÇAÍ 500G',
+        price: collection === 'toppings' ? 0.0 : collection === 'bases' ? 0.0 : 12.9,
+        isPremium: false,
+        code: '2885',
+        image: '',
+        videoUrl: '',
+        availableHours: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
+      })
     }
-  }, [item])
+  }, [item, collection])
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups((prev) => ({
@@ -204,18 +217,33 @@ export default function ProductEditDialog({
     e.preventDefault()
     setSaving(true)
     try {
-      await onSave(collection, {
+      const isTopping = collection === 'toppings'
+      const isBase = collection === 'bases'
+
+      const payload: any = {
         ...item,
         name: form.name,
         description: form.description,
         image: form.image,
-        code: form.code,
-        precoBase: Number(form.price),
-        category: form.category,
         videoUrl: form.videoUrl,
         availableHours: form.availableHours,
-        optionGroups: linkedOptionGroups,
-      })
+      }
+
+      if (isTopping) {
+        payload.category = form.category || 'Toppings'
+        payload.precoExtra = Number(form.price) || 0
+        payload.price = Number(form.price) || 0
+        payload.isPremium = !!form.isPremium
+      } else if (isBase) {
+        payload.precoExtra = 0
+      } else {
+        payload.precoBase = Number(form.price)
+        payload.price = Number(form.price)
+        payload.category = form.category
+        payload.optionGroups = linkedOptionGroups
+      }
+
+      await onSave(collection, payload)
       toast.success(`"${form.name}" salvo com sucesso!`)
       onOpenChange(false)
     } catch {
@@ -378,6 +406,22 @@ export default function ProductEditDialog({
                   />
                 </div>
               </div>
+              <div className="pt-1">
+                <input
+                  type="text"
+                  value={form.videoUrl || form.image || ''}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val.endsWith('.mp4') || val.endsWith('.webm') || val.includes('/videos/')) {
+                      setForm({ ...form, videoUrl: val, image: form.image || '' })
+                    } else {
+                      setForm({ ...form, image: val })
+                    }
+                  }}
+                  placeholder="Ou cole a URL direta de imagem ou vídeo..."
+                  className="w-full h-8 px-2.5 text-[11px] border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white"
+                />
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -537,24 +581,66 @@ export default function ProductEditDialog({
               </div>
             </div>
 
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-purple-950 dark:text-white text-xs">Grupos de Opcionais Vinculados:</h3>
-                  <p className="text-[10px] text-purple-600/80 dark:text-purple-300/70">
-                    Clique no grupo para expandir e gerenciar a visibilidade de cada item na loja
+            {collection === 'toppings' ? (
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria do Opcional:</Label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold bg-white dark:bg-[#160228] text-purple-950 dark:text-white"
+                  >
+                    <option value="Frutas">Frutas Frescas</option>
+                    <option value="Toppings">Toppings & Crocantes Tradicionais</option>
+                    <option value="Adicionais">Caldas & Adicionais Nobres (Premium)</option>
+                  </select>
+                </div>
+
+                <div className="p-3.5 border border-purple-150 dark:border-white/10 rounded-xl bg-purple-50/30 dark:bg-white/5 space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.isPremium}
+                      onChange={(e) => setForm({ ...form, isPremium: e.target.checked })}
+                      className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4"
+                    />
+                    <span className="text-xs font-bold text-purple-950 dark:text-white">
+                      Item Nobre / Especial (Cobrança Individual)
+                    </span>
+                  </label>
+                  <p className="text-[10px] text-purple-700/80 dark:text-purple-300/70">
+                    Se ativado, o item é cobrado à parte conforme o valor de tabela cadastrado acima, mesmo nas taças maiores.
                   </p>
                 </div>
-                {isSuperAdmin && (
-                  <button
-                    type="button"
-                    onClick={handleOpenNewOptionModel}
-                    className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer flex-shrink-0"
-                  >
-                    + Novo Modelo
-                  </button>
-                )}
               </div>
+            ) : collection === 'bases' ? (
+              <div className="space-y-3 pt-2">
+                <div className="p-3.5 border border-purple-150 dark:border-white/10 rounded-xl bg-purple-50/30 dark:bg-white/5 space-y-1">
+                  <h4 className="text-xs font-bold text-purple-950 dark:text-white">Regras de Base & Cremes</h4>
+                  <p className="text-[10px] text-purple-700/80 dark:text-purple-300/70">
+                    Bases e cremes gelados (Açaí, Cupuaçu, Pitaya) são montados conforme o limite de cremes da taça escolhida pelo cliente.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-purple-950 dark:text-white text-xs">Grupos de Opcionais Vinculados:</h3>
+                    <p className="text-[10px] text-purple-600/80 dark:text-purple-300/70">
+                      Clique no grupo para expandir e gerenciar a visibilidade de cada item na loja
+                    </p>
+                  </div>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={handleOpenNewOptionModel}
+                      className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer flex-shrink-0"
+                    >
+                      + Novo Modelo
+                    </button>
+                  )}
+                </div>
 
               {isSuperAdmin && (
                 <div className="space-y-1">
@@ -709,6 +795,7 @@ export default function ProductEditDialog({
                 })}
               </div>
             </div>
+          )}
           </div>
         </form>
 

@@ -25,9 +25,15 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
     { id: 'caldas', label: 'Caldas & Especiais', count: 3 },
   ]
 
-  const containers = catalog.containers || []
-  const bases = catalog.bases || []
-  const toppings = catalog.toppings || []
+  const containers = useMemo(() => {
+    return (catalog.containers || []).filter((c) => c.active !== false && c.isAvailableInStore !== false)
+  }, [catalog.containers])
+  const bases = useMemo(() => {
+    return (catalog.bases || []).filter((b) => b.active !== false && b.isAvailableInStore !== false)
+  }, [catalog.bases])
+  const toppings = useMemo(() => {
+    return (catalog.toppings || []).filter((t) => t.active !== false && t.isAvailableInStore !== false)
+  }, [catalog.toppings])
 
   // Filtragem inteligente por termo e categoria
   const filteredContainers = useMemo(() => {
