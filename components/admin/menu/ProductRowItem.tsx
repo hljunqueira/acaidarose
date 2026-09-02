@@ -59,11 +59,18 @@ export default function ProductRowItem({
     const next = !isVisible
     setIsVisible(next)
     onToggleStatus({ ...product, active: next })
-    toast.success(
-      next
-        ? `"${product.name}" agora está visível no Cardápio QR Code.`
-        : `"${product.name}" agora está invisível no Cardápio QR Code.`
-    )
+    if (next && product.isCategoryPaused) {
+      toast.warning(
+        `Atenção: "${product.name}" foi ativado, mas a categoria ${product.categoryName ? `"${product.categoryName}"` : 'deste produto'} está PAUSADA nesta loja. O produto não aparecerá aos clientes até que a categoria seja reativada.`,
+        { duration: 7000 }
+      )
+    } else {
+      toast.success(
+        next
+          ? `"${product.name}" agora está visível no Cardápio QR Code.`
+          : `"${product.name}" agora está invisível no Cardápio QR Code.`
+      )
+    }
   }
 
   const handleToggleAvailability = (e?: React.MouseEvent) => {
@@ -71,11 +78,18 @@ export default function ProductRowItem({
     const next = !isAvailable
     setIsAvailable(next)
     onToggleStatus({ ...product, isAvailableInStore: next })
-    toast.success(
-      next
-        ? `"${product.name}" marcado como disponível no estoque da loja.`
-        : `"${product.name}" marcado como indisponível / pausado na loja.`
-    )
+    if (next && product.isCategoryPaused) {
+      toast.warning(
+        `Atenção: "${product.name}" foi marcado como disponível, mas a categoria ${product.categoryName ? `"${product.categoryName}"` : 'deste produto'} está PAUSADA nesta loja. O produto não aparecerá aos clientes até que a categoria seja reativada.`,
+        { duration: 7000 }
+      )
+    } else {
+      toast.success(
+        next
+          ? `"${product.name}" marcado como disponível no estoque da loja.`
+          : `"${product.name}" marcado como indisponível / pausado na loja.`
+      )
+    }
   }
 
   const handleToggleRecommend = (e?: React.MouseEvent) => {
@@ -200,6 +214,15 @@ export default function ProductRowItem({
               {isAvailable ? 'Disponível' : 'Indisponível'}
             </span>
           </button>
+
+          {product.isCategoryPaused && (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-500/40 whitespace-nowrap flex items-center gap-1 shadow-xs"
+              title={`A categoria ${product.categoryName ? `"${product.categoryName}"` : 'deste item'} está pausada nesta loja. O produto continuará oculto aos clientes.`}
+            >
+              <span>⚠️ Categoria Pausada</span>
+            </span>
+          )}
 
           <button
             type="button"

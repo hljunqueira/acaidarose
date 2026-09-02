@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,88 +26,110 @@ interface ProductEditDialogProps {
   onOpenChange: (open: boolean) => void
   collection: 'containers' | 'bases' | 'toppings'
   item: any
+  catalog?: any
   onSave: (collection: string, item: any) => Promise<void>
 }
 
-// Modelos de Opções Globais Disponíveis para Vincular
-const AVAILABLE_OPTION_MODELS: (OptionModelData & { active?: boolean })[] = [
-  {
-    id: 'model-bases',
-    name: 'Escolha seu creme ou base (10 Sabores)',
-    priceType: 'Gratis',
-    minQty: 1,
-    maxQty: 2,
-    isRequired: true,
-    active: true,
-    options: [
-      { id: 'b-1', name: 'Açaí Tradicional Especial', code: '101', price: 0.0, description: 'Batido puro na hora', active: true },
-      { id: 'b-2', name: 'Creme de Morango Artesanal', code: '102', price: 0.0, description: 'Creme com morangos frescos', active: true },
-      { id: 'b-3', name: 'Creme de Leite Ninho', code: '103', price: 0.0, description: 'Creme aveludado de Ninho', active: true },
-      { id: 'b-4', name: 'Creme de Cupuaçu', code: '104', price: 0.0, description: 'Fruta amazônica suave', active: true },
-      { id: 'b-5', name: 'Creme de Pitaya Rosa', code: '105', price: 0.0, description: 'Sabor refrescante e cor vibrante', active: true },
-    ],
-  },
-  {
-    id: 'model-frutas',
-    name: 'Deseja adicionar frutas frescas selecionadas?',
-    priceType: 'Gratis',
-    minQty: 0,
-    maxQty: 3,
-    isRequired: false,
-    active: true,
-    options: [
-      { id: 'f-1', name: 'Morango Fresco', code: '201', price: 0.0, description: 'Fruta cortada fresca', active: true },
-      { id: 'f-2', name: 'Banana Fatiada', code: '202', price: 0.0, description: 'Banana fresca', active: true },
-      { id: 'f-3', name: 'Kiwi Especial', code: '203', price: 0.0, description: 'Kiwi em fatias', active: true },
-      { id: 'f-4', name: 'Manga Doce', code: '204', price: 0.0, description: 'Manga madura em cubos', active: true },
-      { id: 'f-5', name: 'Uva Fresca', code: '205', price: 0.0, description: 'Uva sem sementes', active: true },
-    ],
-  },
-  {
-    id: 'model-toppings',
-    name: 'Quais toppings e crocantes tradicionais?',
-    priceType: 'Gratis',
-    minQty: 0,
-    maxQty: 4,
-    isRequired: false,
-    active: true,
-    options: [
-      { id: 't-1', name: 'Granola Tradicional Crocante', code: '301', price: 0.0, description: 'Granola dourada crocante', active: true },
-      { id: 't-2', name: 'Leite em pó', code: '302', price: 0.0, description: 'Leite em pó puro', active: true },
-      { id: 't-3', name: 'Paçoca de Amendoim', code: '303', price: 0.0, description: 'Paçoca esfarelada', active: true },
-      { id: 't-4', name: 'Chocoball Crocante', code: '304', price: 0.0, description: 'Bolinhas crocantes de chocolate', active: true },
-      { id: 't-5', name: 'Amendoim Triturado', code: '305', price: 0.0, description: 'Amendoim torrado moído', active: true },
-      { id: 't-6', name: 'Coco Ralado Fino', code: '306', price: 0.0, description: 'Coco ralado natural', active: true },
-    ],
-  },
-  {
-    id: 'model-caldas',
-    name: 'Deseja adicionar caldas nobres?',
-    priceType: 'Individual',
-    minQty: 0,
-    maxQty: 3,
-    isRequired: false,
-    active: true,
-    options: [
-      { id: 'c-1', name: 'Nutella Original', code: '401', price: 1.0, description: 'Creme de avelã com cacau puro', active: true },
-      { id: 'c-2', name: 'Creme de Leite em pó', code: '402', price: 1.0, description: 'Creme aveludado de leite em pó', active: true },
-      { id: 'c-3', name: 'Creme de Pistache', code: '403', price: 2.0, description: 'Creme artesanal de pistache', active: true },
-      { id: 'c-4', name: 'Leite Condensado', code: '404', price: 0.8, description: 'Leite condensado cremoso', active: true },
-      { id: 'c-5', name: 'Mel Puro', code: '405', price: 0.8, description: 'Mel natural', active: true },
-    ],
-  },
-]
+// Monta os modelos de opções dinamicamente a partir dos itens reais do PostgreSQL (sem seeds/mocks)
+export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionModelData & { active?: boolean })[] {
+  const bases = catalog?.bases || []
+  const toppings = catalog?.toppings || []
+  const weight = item?.weightGrams || 500
+
+  return [
+    {
+      id: 'model-bases',
+      name: 'Escolha seu creme ou base gelada',
+      priceType: 'Gratis',
+      minQty: 1,
+      maxQty: weight === 250 ? 1 : weight === 350 ? 2 : weight === 1000 ? 4 : 3,
+      isRequired: true,
+      active: true,
+      options: bases.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        code: b.code || '',
+        price: 0,
+        description: b.description || '',
+        active: b.active !== false && b.isAvailableInStore !== false,
+      })),
+    },
+    {
+      id: 'model-frutas',
+      name: 'Frutas Frescas Selecionadas',
+      priceType: 'Gratis',
+      minQty: 0,
+      maxQty: weight === 250 ? 2 : weight === 350 ? 3 : 999,
+      isRequired: false,
+      active: true,
+      options: toppings
+        .filter((t: any) => t.category === 'Frutas')
+        .map((f: any) => ({
+          id: f.id,
+          name: f.name,
+          code: f.code || '',
+          price: f.precoExtra || 0,
+          description: f.description || '',
+          active: f.active !== false && f.isAvailableInStore !== false,
+        })),
+    },
+    {
+      id: 'model-toppings',
+      name: 'Toppings & Crocantes Tradicionais',
+      priceType: 'Gratis',
+      minQty: 0,
+      maxQty: weight === 250 ? 3 : weight === 350 ? 4 : 999,
+      isRequired: false,
+      active: true,
+      options: toppings
+        .filter((t: any) => t.category === 'Toppings' || t.category === 'Cereais')
+        .map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          code: t.code || '',
+          price: t.precoExtra || 0,
+          description: t.description || '',
+          active: t.active !== false && t.isAvailableInStore !== false,
+        })),
+    },
+    {
+      id: 'model-caldas',
+      name: 'Caldas Nobres & Premium',
+      priceType: 'Individual',
+      minQty: 0,
+      maxQty: 10,
+      isRequired: false,
+      active: true,
+      options: toppings
+        .filter((t: any) => t.isPremium || t.category === 'Adicionais' || t.category === 'Doces' || t.category === 'Premium')
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          code: c.code || '',
+          price: c.precoExtra || c.price || 1.5,
+          description: c.description || '',
+          active: c.active !== false && c.isAvailableInStore !== false,
+        })),
+    },
+  ]
+}
 
 export default function ProductEditDialog({
   open,
   onOpenChange,
   collection,
   item,
+  catalog,
   onSave,
 }: ProductEditDialogProps) {
   const { user } = useAuthStore()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN'
   const { categories } = useMenuConfigStore()
+
+  const dynamicAvailableModels = useMemo(
+    () => buildDynamicOptionGroups(catalog, item),
+    [catalog, item]
+  )
 
   const getInitialCategory = (prod: any) => {
     if (prod?.category) return prod.category
@@ -176,10 +198,15 @@ export default function ProductEditDialog({
     'model-caldas': false,
   })
 
-  const [linkedOptionGroups, setLinkedOptionGroups] = useState<(OptionModelData & { active?: boolean })[]>(AVAILABLE_OPTION_MODELS)
+  const [linkedOptionGroups, setLinkedOptionGroups] = useState<(OptionModelData & { active?: boolean })[]>([])
 
   useEffect(() => {
     if (item) {
+      if (item.optionGroups && item.optionGroups.length > 0) {
+        setLinkedOptionGroups(item.optionGroups)
+      } else {
+        setLinkedOptionGroups(buildDynamicOptionGroups(catalog, item))
+      }
       setForm({
         name: item.name || '',
         description: item.description || '',
@@ -192,6 +219,7 @@ export default function ProductEditDialog({
         availableHours: item.availableHours || { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
       })
     } else {
+      setLinkedOptionGroups(buildDynamicOptionGroups(catalog, null))
       setForm({
         name: '',
         description: '',
@@ -204,7 +232,13 @@ export default function ProductEditDialog({
         availableHours: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
       })
     }
-  }, [item, collection])
+  }, [item, collection, catalog])
+
+  const handleUpdateGroupRules = (groupId: string | undefined, patch: Partial<OptionModelData>) => {
+    setLinkedOptionGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, ...patch } : g))
+    )
+  }
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups((prev) => ({
@@ -317,7 +351,7 @@ export default function ProductEditDialog({
 
   const handleSelectAndLinkModel = (modelId: string) => {
     if (!isSuperAdmin) return
-    const found = AVAILABLE_OPTION_MODELS.find((m) => m.id === modelId)
+    const found = dynamicAvailableModels.find((m: OptionModelData) => m.id === modelId)
     if (!found) return
     handleSaveOptionModel(found)
     toast.success(`Modelo "${found.name}" vinculado com sucesso!`)
@@ -655,7 +689,7 @@ export default function ProductEditDialog({
                     <option value="" disabled>
                       [ Selecionar modelo para vincular ]
                     </option>
-                    {AVAILABLE_OPTION_MODELS.map((m) => (
+                    {dynamicAvailableModels.map((m: OptionModelData) => (
                       <option key={m.id} value={m.id}>
                         + {m.name}
                       </option>
@@ -739,6 +773,43 @@ export default function ProductEditDialog({
                               {isGroupActive ? 'Ativo' : 'Oculto'}
                             </span>
                           )}
+                        </div>
+                      </div>
+
+                      {/* REGRAS DO MODELO DE OPÇÕES NESTE TAMANHO (OBRIGATÓRIO, MÍN E MÁX) */}
+                      <div className="px-3 py-1.5 bg-purple-50/70 dark:bg-white/5 border-t border-purple-100 dark:border-white/10 flex items-center justify-between gap-3 text-[11px] flex-wrap">
+                        <label className="flex items-center gap-1.5 cursor-pointer font-bold text-purple-950 dark:text-white select-none">
+                          <input
+                            type="checkbox"
+                            checked={grp.isRequired ?? false}
+                            onChange={(e) => handleUpdateGroupRules(grp.id, { isRequired: e.target.checked })}
+                            className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                          />
+                          <span>Obrigatório</span>
+                        </label>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1">
+                            <span className="text-purple-700 dark:text-purple-300 font-medium">Mín:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={grp.minQty ?? 0}
+                              onChange={(e) => handleUpdateGroupRules(grp.id, { minQty: Math.max(0, parseInt(e.target.value) || 0) })}
+                              className="w-12 h-6 px-1 text-center font-mono font-bold text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/20 rounded-md text-purple-950 dark:text-white"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <span className="text-purple-700 dark:text-purple-300 font-medium">Máx:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={grp.maxQty ?? 1}
+                              onChange={(e) => handleUpdateGroupRules(grp.id, { maxQty: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="w-12 h-6 px-1 text-center font-mono font-bold text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/20 rounded-md text-purple-950 dark:text-white"
+                            />
+                          </div>
                         </div>
                       </div>
 

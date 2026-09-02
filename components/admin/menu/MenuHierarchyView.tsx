@@ -24,6 +24,7 @@ import ContainerAssemblyRulesDialog from './ContainerAssemblyRulesDialog'
 import OptionModelDialog from './OptionModelDialog'
 import MenuFilterDialog, { MenuFilterOptions } from './MenuFilterDialog'
 import ReplicateCatalogModal from './ReplicateCatalogModal'
+import { emitCatalogSync, subscribeCatalogSync } from '@/lib/utils/catalogSync'
 
 interface MenuHierarchyViewProps {
   tenantId: string
@@ -91,6 +92,10 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
   useEffect(() => {
     fetchCatalog()
+    const unsub = subscribeCatalogSync(() => {
+      fetchCatalog()
+    })
+    return () => unsub()
   }, [fetchCatalog])
 
   const handlePublishChanges = async () => {
@@ -105,6 +110,11 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         const data = await res.json()
         throw new Error(data.error || 'Falha ao publicar alterações')
       }
+      emitCatalogSync({
+        tenantId,
+        entity: 'catalog',
+        action: 'update',
+      })
       toast.success('Alterações publicadas e sincronizadas com sucesso!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao publicar')
@@ -139,6 +149,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const handleToggleStatus = async (item: any) => {
     try {
       const isAvailable = item.isAvailableInStore !== undefined ? item.isAvailableInStore : item.active
+      const nextAvailable = !isAvailable
       const categoryType = item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
       const res = await authFetch(`/api/products/toggle-availability`, {
         method: 'POST',
@@ -147,12 +158,34 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           tenantId,
           productId: item.id,
           category: categoryType,
-          available: isAvailable,
-          active: item.active,
+          available: nextAvailable,
+          active: nextAvailable,
         }),
       })
 
       if (!res.ok) throw new Error('Falha ao atualizar status')
+
+      emitCatalogSync({
+        tenantId,
+        entity: 'product',
+        action: 'toggle_active',
+        entityId: item.id,
+        active: nextAvailable,
+      })
+
+      if (nextAvailable && item.isCategoryPaused) {
+        toast.warning(
+          `Atenção: "${item.name}" foi ativado, mas a categoria ${item.categoryName ? `"${item.categoryName}"` : 'deste produto'} está PAUSADA nesta loja. O produto não aparecerá aos clientes até que a categoria seja reativada.`,
+          { duration: 8000 }
+        )
+      } else {
+        toast.success(
+          nextAvailable
+            ? `"${item.name}" ativado com sucesso!`
+            : `"${item.name}" pausado com sucesso!`
+        )
+      }
+
       fetchCatalog()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao alterar status')
@@ -416,30 +449,6 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
               )
             })}
 
-          {/* Categorias Oficiais de Opcionais */}
-          {[
-            { id: 'bases', label: 'Bases & Cremes' },
-            { id: 'toppings_frutas', label: 'Frutas Frescas' },
-            { id: 'toppings_trad', label: 'Toppings Crocantes' },
-            { id: 'toppings_caldas', label: 'Caldas Nobres' },
-          ].map((opc) => {
-            const isSelected = selectedCategory === opc.id
-            return (
-              <button
-                key={opc.id}
-                type="button"
-                onClick={() => setSelectedCategory(opc.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-                }`}
-              >
-                {opc.label}
-              </button>
-            )
-          })}
-
           {/* Botão Adicionar Categoria */}
           {isSuperAdmin && (
             <button
@@ -697,6 +706,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         onOpenChange={setEditOpen}
         collection={editingType}
         item={editingItem}
+        catalog={catalog}
         onSave={handleSaveProduct}
       />
 

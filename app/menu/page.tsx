@@ -21,6 +21,7 @@ import CallWaiterModal from '@/components/menu/CallWaiterModal'
 import SwitchTableModal from '@/components/menu/SwitchTableModal'
 import { Info } from 'lucide-react'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
+import { subscribeCatalogSync } from '@/lib/utils/catalogSync'
 
 function MenuContent() {
   const searchParams = useSearchParams()
@@ -104,10 +105,7 @@ function MenuContent() {
     if (paramNumero) setCurrentTableNum(paramNumero)
   }, [paramNumero])
 
-  // Carregar dados da loja e configurações de QR Code
-  useEffect(() => {
-    setLoading(true)
-    // 1. Catálogo de Produtos da Loja Específica
+  const loadCatalog = () => {
     fetch(`/api/products?loja=${encodeURIComponent(activeLoja)}`)
       .then((r) => r.json())
       .then((data) => {
@@ -130,6 +128,12 @@ function MenuContent() {
       .finally(() => {
         setLoading(false)
       })
+  }
+
+  // Carregar dados da loja e configurações de QR Code com escuta em tempo real
+  useEffect(() => {
+    setLoading(true)
+    loadCatalog()
 
     // 2. Configurações de QR Code da Unidade
     fetch(`/api/qrcode-config?loja=${encodeURIComponent(activeLoja)}`)
@@ -140,6 +144,11 @@ function MenuContent() {
         }
       })
       .catch(() => {})
+
+    const unsubscribe = subscribeCatalogSync(() => {
+      loadCatalog()
+    })
+    return () => unsubscribe()
   }, [activeLoja])
 
   const handleSelectContainer = (container: ProductContainer, showInfoOnly = false) => {

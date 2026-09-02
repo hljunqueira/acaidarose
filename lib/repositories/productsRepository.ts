@@ -10,12 +10,13 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
   const toppings: ProductTopping[] = []
 
   try {
-    const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes] = await Promise.all([
+    const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes] = await Promise.all([
       query(`SELECT id, name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND active = true AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT id, name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND active = true AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND active = true AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT product_id, custom_price FROM store_price_overrides WHERE tenant_id = $1`, [tenantId]),
-      query(`SELECT product_id, is_available FROM store_product_overrides WHERE tenant_id = $1`, [tenantId])
+      query(`SELECT product_id, is_available FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
+      query(`SELECT id, name, slug, active FROM categories WHERE deleted_at IS NULL`),
     ])
 
     const priceMap = new Map<string, number>()
@@ -32,12 +33,33 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       })
     }
 
+    const categoryMap = new Map<string, { id: string; name: string; active: boolean }>()
+    if (categoriesRes && categoriesRes.rows) {
+      categoriesRes.rows.forEach((cat: any) => {
+        const clean = (cat.name || '').toLowerCase().replace(/[\s\-_]/g, '')
+        categoryMap.set(clean, { id: cat.id, name: cat.name, active: cat.active !== false })
+      })
+    }
+
     if (containersRes && containersRes.rows) {
       containersRes.rows.forEach((row: any) => {
         const customPrice = priceMap.get(row.id)
         const customAvailability = availabilityMap.get(row.id)
         const weight = Number(row.weight_grams) || 500
         const limiteFrutas = weight === 250 ? 2 : weight === 350 ? 3 : 999
+
+        let isCategoryPaused = false
+        let categoryName = ''
+        const weightStr = `${weight}g`
+        for (const [cleanKey, cData] of categoryMap.entries()) {
+          if (cleanKey.includes(weightStr) || cleanKey.includes((row.name || '').toLowerCase().replace(/[\s\-_]/g, ''))) {
+            categoryName = cData.name
+            if (!cData.active) {
+              isCategoryPaused = true
+            }
+            break
+          }
+        }
 
         containers.push({
           id: row.id,
@@ -57,7 +79,9 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           availableHours: row.available_hours,
           displayOrder: row.display_order,
           active: !!row.active,
-          isAvailableInStore: customAvailability !== undefined ? customAvailability : !!row.active
+          isAvailableInStore: customAvailability !== undefined ? customAvailability : !!row.active,
+          isCategoryPaused,
+          categoryName,
         })
       })
     }

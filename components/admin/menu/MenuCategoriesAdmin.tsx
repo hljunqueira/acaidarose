@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   GripVertical,
 } from 'lucide-react'
+import { emitCatalogSync } from '@/lib/utils/catalogSync'
 
 interface MenuCategoriesAdminProps {
   tenantId?: string
@@ -260,6 +261,13 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
         body: JSON.stringify({ active: nextActive, tenantId: tenantId || user?.tenantId }),
       })
       if (!res.ok) throw new Error('Falha ao atualizar no banco')
+      emitCatalogSync({
+        tenantId: (tenantId || user?.tenantId) || undefined,
+        entity: 'category',
+        action: 'toggle_active',
+        entityId: cat.id,
+        active: nextActive,
+      })
       toast.success(
         nextActive
           ? `Categoria "${cat.name}" ativada no cardápio.`

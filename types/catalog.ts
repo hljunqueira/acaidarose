@@ -19,6 +19,8 @@ export interface ProductContainer {
   displayOrder?: number
   active: boolean
   isAvailableInStore?: boolean
+  isCategoryPaused?: boolean
+  categoryName?: string
 }
 
 export interface ProductBase {

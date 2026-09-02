@@ -77,10 +77,10 @@ export default function CustomerMenuHome({
   isTable = false,
   isCatalogOnly = false,
 }: CustomerMenuHomeProps) {
-  // Filtra itens visíveis e ordenados
+  // Filtra itens visíveis e ordenados (oculta se o produto ou a categoria estiver pausada)
   const containers = useMemo(() => {
     return (catalog.containers || [])
-      .filter((c) => c.active !== false && c.isAvailableInStore !== false)
+      .filter((c) => c.active !== false && c.isAvailableInStore !== false && !c.isCategoryPaused)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
   }, [catalog.containers])
 

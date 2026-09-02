@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Clock,
 } from 'lucide-react'
+import { emitCatalogSync } from '@/lib/utils/catalogSync'
 
 interface MenuSectionsAdminProps {
   tenantId?: string
@@ -156,6 +157,13 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
         body: JSON.stringify({ active: nextActive, tenantId: tenantId || user?.tenantId }),
       })
       if (!res.ok) throw new Error('Falha ao atualizar no banco')
+      emitCatalogSync({
+        tenantId: (tenantId || user?.tenantId) || undefined,
+        entity: 'menu',
+        action: 'toggle_active',
+        entityId: menu.id,
+        active: nextActive,
+      })
       toast.success(
         nextActive
           ? `Cardápio "${menu.name}" ativado com sucesso!`
