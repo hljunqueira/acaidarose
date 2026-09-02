@@ -27,5 +27,14 @@
     - Controle contínuo de velocidade de rolagem (slider de 10s a 60s);
     - Live Preview interativo em tempo real simulando exatamente a TV;
     - Transmissão instantânea para as Smart TVs da loja.
+- **Sincronização dos 4 Pilares do Cardápio & Estoque Híbrido (100% PostgreSQL)**:
+  - Rotas `/api/categories` e `/api/menus` criadas com queries diretas e auditoria no banco.
+  - Painéis `MenuCategoriesAdmin.tsx` e `MenuSectionsAdmin.tsx` conectados e persistindo no PostgreSQL.
+  - Resolução da Causa Raiz da Categoria Pausada: propagação para `store_product_overrides`, ocultando no QR Code da mesa e no menu daquela loja, preservando as demais lojas ativas.
+  - Purga total de seeds/fallbacks estáticos: removidos `defaultContainers`, `defaultBases` e `defaultToppings` em `productsRepository.ts` e stores Zustand.
+  - Gestão e formulário de Opcionais adaptativo em `ProductEditDialog.tsx` (Frutas, Toppings, Caldas Nobres) com preços reais e cálculo de horário no fuso de Lisboa (`Europe/Lisbon`).
+  - Modelo de Estoque Híbrido assistido por humano: sem bloqueios automáticos, botões rápidos `[ Pausar no Cardápio ]` e `[ Manter Ativo ]` em `InventoryManagementView.tsx`, e rastreabilidade total no log de auditoria (`AuditLogsView.tsx` - escopo `ESTOQUE_SUPPLY`).
 - **Compilação & Validação**:
   - `npx tsc --noEmit` validado com 0 erros.
+  - `npm run build` validado com sucesso em todas as 29 rotas da aplicação.
+  - Commit `1a0375d4` enviado para `origin/main`.

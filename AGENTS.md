@@ -60,3 +60,16 @@ ext.config.js\, \	sconfig.json\) e credenciais.
 - **Painel de Controle (Staff)**: Roteado no dashboard administrativo interno (`TVOrdersControlView`), contendo a listagem de pedidos, ações rápidas de re-chamada de voz na TV, conclusão de entrega de pedidos (`COMPLETED`) e o link para projetar em tela cheia na TV.
 - **Painel da TV (Público)**: Rota pública limpa `/chamada` (`TVOrdersPanelView`), exclusiva para Smart TVs no salão, exibindo o carrossel de vídeos em rotação e ativando a fala simplificada TTS (apenas ticket e nome do cliente, sem textos longos extras).
 
+### 4. Os 4 Pilares do Cardápio & Sincronização PostgreSQL
+- **Hierarquia**: Menus (`menus`) $\rightarrow$ Categorias (`categories`) $\rightarrow$ Produtos (`product_containers`) $\rightarrow$ Opcionais (`product_bases`, `product_toppings`).
+- **Isolamento por Loja**: Ocultar/pausar qualquer item (produto, categoria, menu ou opcional) reflete na tabela `store_product_overrides` por `tenant_id`. Oculta nos QR Codes de mesa daquela loja e no `/menu?loja=...`, mantendo as demais unidades inalteradas.
+- **Sem Seeds/Fallbacks**: O sistema opera 100% com registros reais do PostgreSQL. Não utilizar arrays estáticos mockados como fallback se o banco retornar vazio.
+
+### 5. Estoque Híbrido (Human-in-the-Loop)
+- **Zero Travas Automáticas**: O sistema projeta e alerta consumo estimado; **nunca bloqueia vendas automaticamente** para evitar falsa ruptura.
+- **Decisão Humana em 1 Clique**: O operador recebe alerta no PDV/Estoque e decide entre `[ Pausar no Cardápio ]` (se realmente acabou fisicamente) ou `[ Manter Ativo ]` (se ainda houver produto na câmara fria).
+
+### 6. Horários de Atendimento e Fuso Horário
+- Todo cálculo de horário (`available_hours`) em produtos e opcionais deve ser avaliado no fuso horário oficial de Portugal (`Europe/Lisbon`), utilizando `Intl.DateTimeFormat`.
+
+
