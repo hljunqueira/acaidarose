@@ -191,7 +191,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
 
     try {
       if (editingMenu) {
-        const res = await fetch(`/api/menus/${editingMenu.id}`, {
+        const res = await authFetch(`/api/menus/${editingMenu.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -205,6 +205,21 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
         })
         if (!res.ok) throw new Error('Falha ao atualizar cardápio')
         toast.success(`Cardápio "${formData.name}" atualizado com sucesso!`)
+      } else {
+        const res = await authFetch(`/api/menus`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            code: formData.code.trim().toUpperCase() || 'MENU',
+            description: formData.description.trim(),
+            displayOrder: Number(formData.displayOrder),
+            active: formData.active,
+            tenantId: tenantId || user?.tenantId,
+          }),
+        })
+        if (!res.ok) throw new Error('Falha ao criar cardápio')
+        toast.success(`Cardápio "${formData.name}" criado com sucesso!`)
       }
 
       await fetchMenus()
@@ -218,9 +233,17 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
     if (!deletingMenu) return
     setDeletingLoading(true)
     try {
+      const res = await authFetch(`/api/menus/${deletingMenu.id}?tenantId=${encodeURIComponent(tenantId || user?.tenantId || '')}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Falha ao excluir cardápio no servidor')
+
       deleteMenu(deletingMenu.id)
       toast.success(`Cardápio "${deletingMenu.name}" removido com sucesso!`)
+      await fetchMenus()
       setDeleteOpen(false)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao excluir cardápio')
     } finally {
       setDeletingLoading(false)
     }

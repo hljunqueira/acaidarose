@@ -60,43 +60,14 @@ export async function getMenusByTenant(tenantId: string = AVEIRO_HQ_ID): Promise
  */
 export async function getCategoriesByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<CategoryRow[]> {
   try {
-    // Busca categorias que correspondam ao tenant_id no slug ou vinculadas ao menu
     const res = await query(
       `SELECT id, name, slug, description, emoji, menu_id as "menuId",
               display_order as "displayOrder", active, 
               default_price as "defaultPrice", weight_grams as "weightGrams"
        FROM categories
-       WHERE slug LIKE $1 OR slug NOT LIKE '%-%-%-%-%'
-       ORDER BY display_order ASC`,
-      [`%${tenantId}%`]
+       ORDER BY display_order ASC`
     )
-
-    // Se a filial não tiver categorias específicas com seu tenantId no slug, carrega as da Matriz (Aveiro)
-    let rows = res.rows || []
-    if (rows.length === 0 && tenantId !== AVEIRO_HQ_ID) {
-      const fallbackRes = await query(
-        `SELECT id, name, slug, description, emoji, menu_id as "menuId",
-                display_order as "displayOrder", active, 
-                default_price as "defaultPrice", weight_grams as "weightGrams"
-         FROM categories
-         WHERE slug LIKE $1
-         ORDER BY display_order ASC`,
-        [`%${AVEIRO_HQ_ID}%`]
-      )
-      rows = fallbackRes.rows || []
-    }
-
-    // Se ainda vazio, busca todas
-    if (rows.length === 0) {
-      const allRes = await query(
-        `SELECT id, name, slug, description, emoji, menu_id as "menuId",
-                display_order as "displayOrder", active, 
-                default_price as "defaultPrice", weight_grams as "weightGrams"
-         FROM categories
-         ORDER BY display_order ASC`
-      )
-      rows = allRes.rows || []
-    }
+    const rows = res.rows || []
 
     return rows.map((r: any) => ({
       id: r.id,
@@ -417,6 +388,84 @@ export async function reorderMenus(
     return true
   } catch (err) {
     console.error('Erro ao reordenar menus:', err)
+    return false
+  }
+}
+
+/**
+ * Cria um novo menu mestre no PostgreSQL
+ */
+export async function createMenu(data: {
+  name: string
+  code?: string
+  description?: string
+  displayOrder?: number
+  active?: boolean
+  availableHours?: any
+  tenantId?: string
+}): Promise<MenuRow | null> {
+  try {
+    const id = uuidv4()
+    const code = (data.code?.trim() || `MENU_${id.slice(0, 8)}`).toUpperCase()
+    const displayOrder = Number(data.displayOrder) || 1
+    const active = data.active !== false
+    const availableHours = data.availableHours || '{"days":[1,2,3,4,5,6,7],"startTime":"00:00","endTime":"23:59"}'
+
+    await query(
+      `INSERT INTO menus (id, name, code, description, display_order, active, available_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        id,
+        data.name.trim(),
+        code,
+        data.description?.trim() || '',
+        displayOrder,
+        active,
+        typeof availableHours === 'string' ? availableHours : JSON.stringify(availableHours),
+      ]
+    )
+
+    await recordAuditLog({
+      tenantId: data.tenantId || null,
+      action: 'MENU_CREATED',
+      entity: 'menus',
+      entityId: id,
+      message: `Menu "${data.name}" criado no catálogo`,
+      metadata: { id, data },
+    })
+
+    return {
+      id,
+      name: data.name.trim(),
+      code,
+      description: data.description?.trim() || '',
+      displayOrder,
+      active,
+      availableHours,
+    }
+  } catch (err) {
+    console.error('Erro ao criar menu no PostgreSQL:', err)
+    return null
+  }
+}
+
+/**
+ * Exclui um menu do PostgreSQL
+ */
+export async function deleteMenu(id: string, tenantId?: string | null): Promise<boolean> {
+  try {
+    const res = await query(`DELETE FROM menus WHERE id = $1`, [id])
+    await recordAuditLog({
+      tenantId: tenantId || null,
+      action: 'MENU_DELETED',
+      entity: 'menus',
+      entityId: id,
+      message: `Menu ${id} removido do PostgreSQL`,
+      metadata: { id },
+    })
+    return (res.rowCount || 0) > 0
+  } catch (err) {
+    console.error('Erro ao excluir menu do PostgreSQL:', err)
     return false
   }
 }

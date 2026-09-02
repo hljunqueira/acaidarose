@@ -5,6 +5,19 @@ import { v4 as uuidv4 } from 'uuid'
 export const AVEIRO_HQ_ID = '11111111-1111-1111-1111-111111111111'
 export const TORRES_NOVAS_ID = '22222222-2222-2222-2222-222222222222'
 
+export function normalizeTenantId(tenantId?: string | null): string {
+  if (!tenantId) return AVEIRO_HQ_ID
+  const clean = String(tenantId).trim().toLowerCase()
+  if (clean === '2' || clean === 'torres-novas' || clean === 'filial-2' || clean.includes('torres-novas')) {
+    return TORRES_NOVAS_ID
+  }
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)
+  if (!isUuid) {
+    return AVEIRO_HQ_ID
+  }
+  return clean
+}
+
 export async function getTenants(): Promise<Tenant[]> {
   const res = await query(
     `SELECT id, name, slug, nif, address, city, postal_code, phone, mbway_phone, 

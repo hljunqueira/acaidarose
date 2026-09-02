@@ -314,34 +314,74 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   }
 
   // Criação Rápida de Categoria
-  const handleCreateCategory = (e: React.FormEvent) => {
+  const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newCatName.trim()) {
       toast.error('Informe o nome da categoria')
       return
     }
-    const newCat: CustomCategoryItem = {
-      id: `cat_${Date.now()}`,
-      name: newCatName.trim().toUpperCase(),
-      slug: newCatName.trim().toLowerCase().replace(/\s+/g, '-'),
-      emoji: newCatEmoji || '',
-      defaultPrice: Number(newCatPrice) || 10.00,
-      menuId: selectedMainMenu !== 'all_menus' ? selectedMainMenu : 'menu_acai',
-      displayOrder: categories.length + 1,
-      active: true,
-      itemsCount: 0,
+    try {
+      const targetMenuId = selectedMainMenu !== 'all_menus' ? selectedMainMenu : (mainMenus[0]?.id || undefined)
+      const res = await authFetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCatName.trim().toUpperCase(),
+          emoji: newCatEmoji || '🍧',
+          defaultPrice: Number(newCatPrice) || 10.00,
+          menuId: targetMenuId,
+          displayOrder: categories.length + 1,
+          active: true,
+          tenantId,
+        }),
+      })
+      if (!res.ok) throw new Error('Falha ao criar categoria no banco')
+      const data = await res.json()
+      toast.success(`Categoria "${newCatName.trim().toUpperCase()}" criada com sucesso!`)
+      if (data.category) {
+        addCategory(data.category)
+        setSelectedCategory(data.category.id)
+      }
+      setNewCatName('')
+      setAddCatDialogOpen(false)
+      await fetchCatalog()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar categoria')
     }
-    addCategory(newCat)
-    toast.success(`Categoria "${newCat.name}" criada com sucesso!`)
-    setSelectedCategory(newCat.id)
-    setNewCatName('')
-    setAddCatDialogOpen(false)
   }
+
+  // Categorias estritamente visíveis conforme o menu selecionado
+  const visibleCategories = useMemo(() => {
+    if (selectedMainMenu === 'all_menus') {
+      return categories.filter((c) => c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias'))
+    }
+    return categories.filter(
+      (c) => c.menuId === selectedMainMenu && c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias')
+    )
+  }, [categories, selectedMainMenu])
+
+  // Taças que pertencem ao menu selecionado (ou todas se "all_menus")
+  const menuContainers = useMemo(() => {
+    const allContainers = catalog.containers || []
+    if (selectedMainMenu === 'all_menus') return allContainers
+    if (visibleCategories.length === 0) return []
+
+    const weights = visibleCategories.map((c) => c.weightGrams).filter(Boolean)
+    const names = visibleCategories.map((c) =>
+      (c.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '')
+    )
+
+    return allContainers.filter((c) => {
+      if (c.weightGrams && weights.includes(c.weightGrams)) return true
+      const cleanProd = (c.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '')
+      return names.some((n) => cleanProd === n || cleanProd.includes(n) || n.includes(cleanProd))
+    })
+  }, [catalog.containers, selectedMainMenu, visibleCategories])
 
   // Filtragem dos Produtos por Categoria (Tamanho de Açaí) & Opcionais
   const displayedItems = useMemo(() => {
     const list: Array<{ item: any; type: 'containers' | 'bases' | 'toppings' }> = []
-    const containersList = catalog.containers || []
+    const containersList = menuContainers
     const basesList = catalog.bases || []
     const toppingsList = catalog.toppings || []
 
@@ -369,7 +409,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       if (selectedCategory === 'all_cats') {
         containersList.forEach((c) => list.push({ item: c, type: 'containers' }))
       } else {
-        const catObj = categories.find((c) => c.id === selectedCategory)
+        const catObj = visibleCategories.find((c) => c.id === selectedCategory) || categories.find((c) => c.id === selectedCategory)
         if (catObj) {
           const catWeight = catObj.weightGrams ||
             (catObj.name.includes('250') ? 250 :
@@ -411,7 +451,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       return true
     })
-  }, [catalog, activeViewMode, selectedCategory, selectedOptionCategory, filterOptions, categories])
+  }, [catalog, activeViewMode, selectedCategory, selectedOptionCategory, filterOptions, categories, visibleCategories, menuContainers])
 
   const hasActiveFilters =
     filterOptions.status !== 'all' ||
@@ -534,7 +574,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           >
             <span>🥣 Taças & Produtos</span>
             <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
-              {catalog.containers.length}
+              {menuContainers.length}
             </span>
           </button>
 
@@ -620,28 +660,26 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
                 : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
             }`}
           >
-            Todas as taças ({catalog.containers.length})
+            Todas as taças ({menuContainers.length})
           </button>
 
-          {categories
-            .filter((c) => c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias'))
-            .map((cat) => {
-              const isSelected = selectedCategory === cat.id
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-                    isSelected
-                      ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                      : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              )
-            })}
+          {visibleCategories.map((cat) => {
+            const isSelected = selectedCategory === cat.id
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+                }`}
+              >
+                {cat.name}
+              </button>
+            )
+          })}
 
           {isSuperAdmin && (
             <button
@@ -724,9 +762,27 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             Carregando itens do cardápio...
           </div>
         ) : displayedItems.length === 0 ? (
-          <div className="p-12 text-center text-xs text-purple-700/80 dark:text-purple-200/60 font-bold bg-white dark:bg-white/5 rounded-2xl border border-dashed border-purple-200 dark:border-white/15">
-            Nenhum item encontrado nesta categoria ou filtro.
-          </div>
+          selectedMainMenu !== 'all_menus' && visibleCategories.length === 0 && activeViewMode === 'products' ? (
+            <div className="py-12 px-6 text-center space-y-2.5 bg-white dark:bg-white/5 rounded-2xl border border-dashed border-purple-200 dark:border-white/15">
+              <h3 className="font-bold text-sm text-purple-950 dark:text-white">Nenhuma categoria cadastrada neste cardápio</h3>
+              <p className="text-xs text-purple-700/80 dark:text-purple-200/70 max-w-md mx-auto">
+                Adicione a primeira categoria para organizar as taças e produtos deste menu.
+              </p>
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setAddCatDialogOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs shadow-md cursor-pointer inline-flex items-center"
+                >
+                  <span>+ Adicionar Categoria</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="p-12 text-center text-xs text-purple-700/80 dark:text-purple-200/60 font-bold bg-white dark:bg-white/5 rounded-2xl border border-dashed border-purple-200 dark:border-white/15">
+              Nenhum item encontrado nesta categoria ou filtro.
+            </div>
+          )
         ) : (
           displayedItems.map(({ item, type }) => {
             const isDragging = draggedItemId === item.id
