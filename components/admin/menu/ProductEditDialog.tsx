@@ -689,21 +689,7 @@ export default function ProductEditDialog({
             ) : (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-purple-950 dark:text-white text-xs">Grupos de Opcionais Vinculados:</h3>
-                    <p className="text-[10px] text-purple-600/80 dark:text-purple-300/70">
-                      Clique no grupo para expandir e gerenciar a visibilidade de cada item na loja
-                    </p>
-                  </div>
-                  {isSuperAdmin && (
-                    <button
-                      type="button"
-                      onClick={handleOpenNewOptionModel}
-                      className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer flex-shrink-0"
-                    >
-                      + Novo Modelo
-                    </button>
-                  )}
+                  <h3 className="font-bold text-purple-950 dark:text-white text-xs">Opções:</h3>
                 </div>
 
               {isSuperAdmin && (
@@ -714,14 +700,14 @@ export default function ProductEditDialog({
                       handleSelectAndLinkModel(e.target.value)
                       e.target.value = ''
                     }}
-                    className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 focus:outline-none cursor-pointer"
+                    className="w-full h-9 px-3 text-xs border border-purple-200 dark:border-white/15 rounded-xl bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 focus:outline-none cursor-pointer font-medium"
                   >
                     <option value="" disabled>
-                      [ Selecionar modelo para vincular ]
+                      Clique para vincular um modelo de opção
                     </option>
                     {dynamicAvailableModels.map((m: OptionModelData) => (
                       <option key={m.id} value={m.id}>
-                        + {m.name}
+                        {m.name}
                       </option>
                     ))}
                   </select>

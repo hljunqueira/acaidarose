@@ -170,37 +170,25 @@ export default function ProductRowItem({
             const basesLimit = product.limiteBases || (weight >= 1000 ? 3 : weight >= 500 ? 2 : 1)
             const frutasLimit = product.limiteFrutas !== undefined
               ? product.limiteFrutas
-              : (weight === 250 ? 2 : weight === 350 ? 3 : 999)
+              : (weight === 250 ? 2 : weight === 350 ? 3 : 99)
             const toppingsLimit = product.limiteToppings !== undefined
               ? product.limiteToppings
-              : (weight === 250 ? 3 : weight === 350 ? 4 : 999)
+              : (weight === 250 ? 3 : weight === 350 ? 4 : 99)
 
-            const rulesParts: string[] = []
-            rulesParts.push(`${basesLimit} ${basesLimit === 1 ? 'Base' : 'Bases'}`)
+            const isFrutasLivre = weight >= 500 || frutasLimit >= 50
+            const isToppingsLivre = weight >= 500 || toppingsLimit >= 50
 
-            if (frutasLimit >= 999 && toppingsLimit >= 999) {
-              rulesParts.push('Frutas e Toppings livres')
-            } else {
-              if (frutasLimit < 999) {
-                rulesParts.push(`Até ${frutasLimit} ${frutasLimit === 1 ? 'Fruta' : 'Frutas'}`)
-              } else {
-                rulesParts.push('Frutas livres')
-              }
-
-              if (toppingsLimit < 999) {
-                rulesParts.push(`Até ${toppingsLimit} Toppings`)
-              } else {
-                rulesParts.push('Toppings livres')
-              }
-            }
+            const basesText = `${basesLimit} ${basesLimit === 1 ? 'Base' : 'Bases'}`
+            const frutasText = isFrutasLivre ? 'Frutas livres' : `Até ${frutasLimit} ${frutasLimit === 1 ? 'Fruta' : 'Frutas'}`
+            const toppingsText = isToppingsLivre ? 'Toppings livres' : `Até ${toppingsLimit} Toppings`
 
             return (
               <>
                 <div className="text-purple-950 dark:text-white font-bold truncate">
-                  {rulesParts[0]} • {rulesParts[1]}
+                  {basesText} • {frutasText}
                 </div>
                 <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
-                  {rulesParts[2] ? rulesParts[2] : 'Montagem personalizada na taça'}
+                  {toppingsText}
                 </div>
               </>
             )

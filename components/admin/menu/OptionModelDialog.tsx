@@ -262,7 +262,7 @@ export default function OptionModelDialog({
                 onClick={handleAddOption}
                 className="text-purple-700 dark:text-pink-400 hover:underline font-black text-xs cursor-pointer"
               >
-                + Adicionar Item
+                Adicionar Item
               </button>
             </div>
 

@@ -18,10 +18,11 @@ import {
   FolderPlus,
 } from 'lucide-react'
 import ProductRowItem from './ProductRowItem'
-import ProductEditDialog from './ProductEditDialog'
+import ProductEditDialog, { buildDynamicOptionGroups } from './ProductEditDialog'
 import FranchiseRequestDialog from './FranchiseRequestDialog'
 import ContainerAssemblyRulesDialog from './ContainerAssemblyRulesDialog'
-import OptionModelDialog from './OptionModelDialog'
+import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
+import OptionModelsManagerDialog from './OptionModelsManagerDialog'
 import MenuFilterDialog, { MenuFilterOptions } from './MenuFilterDialog'
 import ReplicateCatalogModal from './ReplicateCatalogModal'
 import { emitCatalogSync, subscribeCatalogSync } from '@/lib/utils/catalogSync'
@@ -38,6 +39,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const isSuperAdmin = canManageMasterCatalog(user, tenantId)
 
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
+  const [optionModels, setOptionModels] = useState<OptionModelData[]>([])
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false)
   const [replicateModalOpen, setReplicateModalOpen] = useState(false)
@@ -559,7 +561,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
                 : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
             }`}
           >
-            <span>🥣 Taças & Produtos</span>
+            <span>Taças & Produtos</span>
             <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
               {menuContainers.length}
             </span>
@@ -574,7 +576,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
                 : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
             }`}
           >
-            <span>🍨 Opcionais do Cardápio</span>
+            <span>Opcionais do Cardápio</span>
             <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
               {catalog.bases.length + catalog.toppings.length}
             </span>
@@ -600,7 +602,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
               onClick={handleOpenNew}
               className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <span>+ {activeViewMode === 'products' ? 'Nova Taça' : 'Novo Opcional'}</span>
+              <span>{activeViewMode === 'products' ? 'Nova Taça' : 'Novo Opcional'}</span>
             </button>
           )}
 
@@ -674,7 +676,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
               onClick={() => setAddCatDialogOpen(true)}
               className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-100 dark:bg-pink-950/40 border border-purple-200 dark:border-pink-500/30 text-purple-900 dark:text-pink-300 hover:bg-purple-200/70 dark:hover:bg-pink-900/40 transition cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <span>+ Categoria</span>
+              <span>Nova Categoria</span>
             </button>
           )}
         </div>
@@ -977,9 +979,12 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         tenantId={tenantId}
       />
 
-      <OptionModelDialog
+      <OptionModelsManagerDialog
         open={optionModelOpen}
         onOpenChange={setOptionModelOpen}
+        models={optionModels}
+        onSaveModels={setOptionModels}
+        isSuperAdmin={isSuperAdmin}
       />
 
       <MenuFilterDialog
