@@ -99,7 +99,10 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       if (prodRes.ok) {
         const data = await prodRes.json()
-        if (data) setCatalog(data)
+        if (data) {
+          setCatalog(data)
+          setOptionModels((prev) => (prev.length > 0 ? prev : buildDynamicOptionGroups(data)))
+        }
       }
       if (catRes.ok) {
         const catData = await catRes.json()
@@ -119,6 +122,12 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       setLoading(false)
     }
   }, [tenantId, authFetch, setCategories, setMainMenus])
+
+  useEffect(() => {
+    if (catalog && (catalog.bases?.length || catalog.toppings?.length)) {
+      setOptionModels((prev) => (prev.length > 0 ? prev : buildDynamicOptionGroups(catalog)))
+    }
+  }, [catalog])
 
   useEffect(() => {
     fetchCatalog()
@@ -880,7 +889,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       <OptionModelsManagerDialog
         open={optionModelOpen}
         onOpenChange={setOptionModelOpen}
-        models={optionModels}
+        models={optionModels.length > 0 ? optionModels : buildDynamicOptionGroups(catalog)}
         onSaveModels={setOptionModels}
         isSuperAdmin={isSuperAdmin}
       />

@@ -19,6 +19,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
+import OptionModelsManagerDialog from './OptionModelsManagerDialog'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
 
 interface ProductEditDialogProps {
@@ -163,8 +164,10 @@ export default function ProductEditDialog({
   })
   const [saving, setSaving] = useState(false)
   const [optionModelOpen, setOptionModelOpen] = useState(false)
+  const [optionModelsManagerOpen, setOptionModelsManagerOpen] = useState(false)
   const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
   const [showImageInput, setShowImageInput] = useState(false)
+  const [hasCustomHours, setHasCustomHours] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -211,11 +214,20 @@ export default function ProductEditDialog({
     setExpandedGroups({})
 
     if (item) {
+      // Usa exclusivamente os grupos já vinculados a este produto no banco (sem auto-injeção de modelos genéricos)
       if (item.optionGroups && item.optionGroups.length > 0) {
         setLinkedOptionGroups(item.optionGroups)
       } else {
-        setLinkedOptionGroups(buildDynamicOptionGroups(catalog, item))
+        setLinkedOptionGroups([])
       }
+
+      const hasSpecificHours = !!item.availableHours && (
+        (item.availableHours.days && item.availableHours.days.length < 7) ||
+        (item.availableHours.startTime && item.availableHours.startTime !== '00:00') ||
+        (item.availableHours.endTime && item.availableHours.endTime !== '23:59')
+      )
+      setHasCustomHours(hasSpecificHours)
+
       setForm({
         name: item.name || '',
         description: item.description || '',
@@ -225,10 +237,12 @@ export default function ProductEditDialog({
         code: item.code || '2885',
         image: item.image || item.imageUrl || '',
         videoUrl: item.videoUrl || '',
-        availableHours: item.availableHours || { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
+        availableHours: item.availableHours || null,
       })
     } else {
-      setLinkedOptionGroups(buildDynamicOptionGroups(catalog, null))
+      // Novo item inicia limpo para que o usuário vincule apenas o que desejar
+      setLinkedOptionGroups([])
+      setHasCustomHours(false)
       setForm({
         name: '',
         description: '',
@@ -238,7 +252,7 @@ export default function ProductEditDialog({
         code: '2885',
         image: '',
         videoUrl: '',
-        availableHours: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
+        availableHours: null,
       })
     }
   }, [item, collection, catalog, open])
@@ -319,8 +333,7 @@ export default function ProductEditDialog({
 
   const handleOpenNewOptionModel = () => {
     if (!isSuperAdmin) return
-    setEditingModel(null)
-    setOptionModelOpen(true)
+    setOptionModelsManagerOpen(true)
   }
 
   const handleEditOptionModel = (group: OptionModelData) => {
@@ -547,71 +560,98 @@ export default function ProductEditDialog({
 
 
 
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-purple-950 dark:text-white">Horário de Disponibilidade:</Label>
-              <div className="flex flex-wrap gap-1">
-                {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((dayName, idx) => {
-                  const active = form.availableHours?.days?.includes(idx)
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        const currentDays = form.availableHours?.days || []
-                        const nextDays = currentDays.includes(idx)
-                          ? currentDays.filter((d: number) => d !== idx)
-                          : [...currentDays, idx]
-                        setForm({
+            {/* Horário de Disponibilidade (Opcional) */}
+            <div className="pt-2 border-t border-purple-100 dark:border-white/10 space-y-2.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={hasCustomHours}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setHasCustomHours(checked)
+                    if (!checked) {
+                      setForm((prev: any) => ({ ...prev, availableHours: null }))
+                    } else {
+                      setForm((prev: any) => ({
+                        ...prev,
+                        availableHours: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' }
+                      }))
+                    }
+                  }}
+                  className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-purple-900 dark:text-purple-200">
+                  Definir horários específicos de disponibilidade
+                </span>
+              </label>
+
+              {hasCustomHours && (
+                <div className="p-3 bg-purple-50/50 dark:bg-white/5 rounded-xl border border-purple-150 dark:border-white/10 space-y-2.5">
+                  <div className="flex flex-wrap gap-1">
+                    {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((dayName, idx) => {
+                      const active = form.availableHours?.days?.includes(idx)
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            const currentDays = form.availableHours?.days || []
+                            const nextDays = currentDays.includes(idx)
+                              ? currentDays.filter((d: number) => d !== idx)
+                              : [...currentDays, idx]
+                            setForm({
+                              ...form,
+                              availableHours: {
+                                ...form.availableHours,
+                                days: nextDays
+                              }
+                            })
+                          }}
+                          className={`h-7 w-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            active
+                              ? 'bg-purple-600 text-white font-black'
+                              : 'bg-white dark:bg-white/10 text-purple-900 dark:text-purple-300 border border-purple-200 dark:border-white/10'
+                          }`}
+                        >
+                          {dayName}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 space-y-0.5">
+                      <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">Início</span>
+                      <input
+                        type="time"
+                        value={form.availableHours?.startTime || '00:00'}
+                        onChange={(e) => setForm({
                           ...form,
                           availableHours: {
                             ...form.availableHours,
-                            days: nextDays
+                            startTime: e.target.value
                           }
-                        })
-                      }}
-                      className={`h-7 w-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        active
-                          ? 'bg-purple-600 text-white font-black'
-                          : 'bg-purple-50 dark:bg-white/5 text-purple-900 dark:text-purple-300 border border-purple-200 dark:border-white/10'
-                      }`}
-                    >
-                      {dayName}
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 space-y-0.5">
-                  <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">Início</span>
-                  <input
-                    type="time"
-                    value={form.availableHours?.startTime || '00:00'}
-                    onChange={(e) => setForm({
-                      ...form,
-                      availableHours: {
-                        ...form.availableHours,
-                        startTime: e.target.value
-                      }
-                    })}
-                    className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none"
-                  />
+                        })}
+                        className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-0.5">
+                      <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">Fim</span>
+                      <input
+                        type="time"
+                        value={form.availableHours?.endTime || '23:59'}
+                        onChange={(e) => setForm({
+                          ...form,
+                          availableHours: {
+                            ...form.availableHours,
+                            endTime: e.target.value
+                          }
+                        })}
+                        className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 space-y-0.5">
-                  <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">Fim</span>
-                  <input
-                    type="time"
-                    value={form.availableHours?.endTime || '23:59'}
-                    onChange={(e) => setForm({
-                      ...form,
-                      availableHours: {
-                        ...form.availableHours,
-                        endTime: e.target.value
-                      }
-                    })}
-                    className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none"
-                  />
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -725,7 +765,17 @@ export default function ProductEditDialog({
 
               {/* LISTA DE MODELOS DE OPCIONAIS VINCULADOS (CLEAN & COMPACTO) */}
               <div className="space-y-2.5">
-                {linkedOptionGroups.map((grp) => {
+                {linkedOptionGroups.length === 0 ? (
+                  <div className="text-center py-6 px-4 border border-dashed border-purple-200 dark:border-white/10 rounded-2xl bg-purple-50/20 dark:bg-white/[0.02]">
+                    <p className="text-xs text-purple-600 dark:text-purple-300 font-medium">
+                      Nenhum modelo de opções vinculado a este produto.
+                    </p>
+                    <p className="text-[10px] text-purple-400 dark:text-purple-300/60 mt-1">
+                      Selecione um modelo no campo acima para vincular.
+                    </p>
+                  </div>
+                ) : (
+                  linkedOptionGroups.map((grp) => {
                   const isGroupActive = grp.active !== false
                   const groupId = grp.id || grp.name
                   const optionsList = grp.options || []
@@ -793,7 +843,8 @@ export default function ProductEditDialog({
                       </div>
                     </div>
                   )
-                })}
+                })
+              )}
               </div>
             </div>
           )}
@@ -822,12 +873,29 @@ export default function ProductEditDialog({
       </DialogContent>
 
       {isSuperAdmin && (
-        <OptionModelDialog
-          open={optionModelOpen}
-          onOpenChange={setOptionModelOpen}
-          initialModel={editingModel}
-          onSave={handleSaveOptionModel}
-        />
+        <>
+          <OptionModelDialog
+            open={optionModelOpen}
+            onOpenChange={setOptionModelOpen}
+            initialModel={editingModel}
+            onSave={handleSaveOptionModel}
+          />
+          <OptionModelsManagerDialog
+            open={optionModelsManagerOpen}
+            onOpenChange={setOptionModelsManagerOpen}
+            models={dynamicAvailableModels}
+            onSaveModels={(updatedModels) => {
+              // Se algum modelo atualmente vinculado foi editado, atualiza na lista vinculada
+              setLinkedOptionGroups((prev) =>
+                prev.map((grp) => {
+                  const matched = updatedModels.find((m) => m.id === grp.id || m.name === grp.name)
+                  return matched ? { ...matched, active: grp.active } : grp
+                })
+              )
+            }}
+            isSuperAdmin={isSuperAdmin}
+          />
+        </>
       )}
     </Dialog>
   )
