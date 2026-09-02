@@ -122,7 +122,12 @@ export async function getAuditLogs(options?: {
         id: row.id,
         timestamp: new Date(row.created_at).toISOString().replace('T', ' ').substring(0, 19),
         level,
-        scope: row.entity || 'SISTEMA',
+        scope:
+          row.entity?.startsWith('product') ||
+          row.entity === 'store_product_overrides' ||
+          row.entity === 'store_price_overrides'
+            ? 'PRODUTOS_CATALOGO'
+            : row.entity || 'SISTEMA',
         action: row.action,
         message,
         author,

@@ -139,6 +139,7 @@ export default function AuditLogsView() {
         <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           {[
             { id: 'ALL', label: 'Todos' },
+            { id: 'PRODUTOS_CATALOGO', label: 'Produtos & Cardápio' },
             { id: 'MESAS_QR_SECURITY', label: 'Hashes das Mesas' },
             { id: 'QRCODE', label: 'Config QR Code' },
             { id: 'ORDER', label: 'Pedidos' },

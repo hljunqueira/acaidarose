@@ -35,8 +35,11 @@ const CUP_VIDEOS: Record<number, string> = {
   1000: '/videos/hero_cup_rotation.mp4',
 }
 
-function getPremiumPrice(toppingName: string, weightGrams: number): number {
-  const name = toppingName.toLowerCase()
+function getToppingItemPrice(topping: ProductTopping, weightGrams: number): number {
+  if (topping.precoExtra && topping.precoExtra > 0) {
+    return topping.precoExtra
+  }
+  const name = topping.name.toLowerCase()
   const isLarge = weightGrams > 500
   if (name.includes('pistache')) {
     return isLarge ? 4.0 : 2.0
@@ -107,7 +110,7 @@ export default function CustomerProductDetail({
   const extraToppingsPrice = extraToppingsCount * 0.50
 
   const premiumsPrice = selectedPremiums.reduce((acc, top) => {
-    return acc + getPremiumPrice(top.name, container.weightGrams)
+    return acc + getToppingItemPrice(top, container.weightGrams)
   }, 0)
   const extraPremiumsPrice = premiumsPrice
 
@@ -417,7 +420,7 @@ export default function CustomerProductDetail({
                 {caldasPremium.map((add) => {
                   const isSelected = selectedToppings.some((t) => t.id === add.id)
                   const isAvailable = add.active !== false
-                  const dynamicPrice = getPremiumPrice(add.name, container.weightGrams)
+                  const dynamicPrice = getToppingItemPrice(add, container.weightGrams)
                   return (
                     <button
                       key={add.id}

@@ -1,17 +1,41 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useHighlightsStore } from '@/lib/stores/highlightsStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
-
+import { CANONICAL_DEFAULT_STORIES, HighlightItem } from '@/types/highlights'
 import { ChevronLeft, ChevronRight, ArrowRight, ChevronDown } from 'lucide-react'
 
-export default function CustomerPromoCarousel({ onSelectPromo }: { onSelectPromo?: (id: string) => void }) {
-  const { highlights } = useHighlightsStore()
+interface CustomerPromoCarouselProps {
+  tenantId?: string
+  onSelectPromo?: (id: string) => void
+}
+
+export default function CustomerPromoCarousel({
+  tenantId = '11111111-1111-1111-1111-111111111111',
+  onSelectPromo,
+}: CustomerPromoCarouselProps) {
+  const [highlights, setHighlights] = useState<HighlightItem[]>(CANONICAL_DEFAULT_STORIES)
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  // Filtrar ESTRITAMENTE apenas destaques com active === true (sem fallback fictício)
-  const activeHighlights = highlights.filter((h) => h.active)
+  useEffect(() => {
+    let alive = true
+    fetch(`/api/highlights?loja=${encodeURIComponent(tenantId)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (alive && Array.isArray(data.highlights) && data.highlights.length > 0) {
+          setHighlights(data.highlights.filter((h: HighlightItem) => h.active !== false))
+        }
+      })
+      .catch(() => {
+        // Mantém os destaques canônicos padrão em caso de oscilação
+      })
+
+    return () => {
+      alive = false
+    }
+  }, [tenantId])
+
+  const activeHighlights = highlights.filter((h) => h.active !== false)
 
   useEffect(() => {
     if (activeHighlights.length <= 1) return

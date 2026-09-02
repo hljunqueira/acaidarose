@@ -32,6 +32,7 @@ import MenuHierarchyView from '@/components/admin/menu/MenuHierarchyView'
 import MenuCategoriesAdmin from '@/components/admin/menu/MenuCategoriesAdmin'
 import MenuSectionsAdmin from '@/components/admin/menu/MenuSectionsAdmin'
 import MenuHighlightsAdmin from '@/components/admin/menu/MenuHighlightsAdmin'
+import MenuSchedulesAdmin from '@/components/admin/menu/MenuSchedulesAdmin'
 import ReportsModuleView from '@/components/admin/reports/ReportsModuleView'
 import QRCodeConfigView from '@/components/admin/qrcode/QRCodeConfigView'
 import QRCodeOrdersAdmin from '@/components/admin/orders/QRCodeOrdersAdmin'
@@ -301,6 +302,7 @@ export default function HomePage() {
           {view === 'menu_categories' && isAdmin && <MenuCategoriesAdmin tenantId={activeTenantId} />}
           {view === 'menu_menus' && isAdmin && <MenuSectionsAdmin tenantId={activeTenantId} />}
           {view === 'menu_highlights' && isAdmin && <MenuHighlightsAdmin tenantId={activeTenantId} />}
+          {view === 'menu_schedules' && isAdmin && <MenuSchedulesAdmin tenantId={activeTenantId} />}
 
           {/* 6. CONFIGURAÇÕES DA UNIDADE */}
           {view === 'company' && isAdmin && <StoreCompanySettingsView tenantId={activeTenantId} />}

@@ -106,7 +106,7 @@ export default function ProductEditDialog({
   onSave,
 }: ProductEditDialogProps) {
   const { user } = useAuthStore()
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN'
   const { categories } = useMenuConfigStore()
 
   const getInitialCategory = (prod: any) => {
@@ -144,22 +144,28 @@ export default function ProductEditDialog({
     const file = e.target.files?.[0]
     if (!file) return
 
-    const fileUrl = URL.createObjectURL(file)
-    if (file.type.startsWith('video/')) {
-      setForm((prev: any) => ({
-        ...prev,
-        videoUrl: fileUrl,
-        image: '', // Prioridade para o vídeo recém-carregado
-      }))
-      toast.success('Vídeo de apresentação carregado localmente!')
-    } else if (file.type.startsWith('image/')) {
-      setForm((prev: any) => ({
-        ...prev,
-        image: fileUrl,
-        videoUrl: '', // Prioridade para a imagem recém-carregada
-      }))
-      toast.success('Imagem de apresentação carregada localmente!')
+    const isVideo = file.type.startsWith('video/')
+    const reader = new FileReader()
+
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string
+      if (isVideo) {
+        setForm((prev: any) => ({
+          ...prev,
+          videoUrl: dataUrl,
+          image: prev.image || '',
+        }))
+        toast.success('Vídeo de apresentação vinculado com sucesso!')
+      } else {
+        setForm((prev: any) => ({
+          ...prev,
+          image: dataUrl,
+        }))
+        toast.success('Imagem de apresentação vinculada com sucesso!')
+      }
     }
+
+    reader.readAsDataURL(file)
   }
 
   // Estado para controlar quais grupos de opções estão expandidos (colapsáveis)

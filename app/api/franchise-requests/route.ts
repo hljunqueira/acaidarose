@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
 import { setStoreProductPrice } from '@/lib/repositories/productsRepository'
+import { recordAuditLog } from '@/lib/repositories/auditRepository'
 import { v4 as uuidv4 } from 'uuid'
 
 export const dynamic = 'force-dynamic'
@@ -146,9 +147,40 @@ export async function PATCH(req: NextRequest) {
       const r = res.rows[0]
       const rawData = r.requested_changes_json
       const data = typeof rawData === 'string' ? JSON.parse(rawData || '{}') : (rawData || {})
+      
+      // 1. Atualizar preço local na filial se solicitado
       if (r.tenant_id && data.productId && data.suggestedPrice) {
         await setStoreProductPrice(r.tenant_id, data.productId, data.suggestedPrice)
       }
+
+      // 2. Atualizar nome do produto na filial se solicitado
+      if (r.tenant_id && data.productId && (data.suggestedName || data.newName)) {
+        const newName = data.suggestedName || data.newName
+        await query(`UPDATE product_containers SET name = $1 WHERE id::text = $2 AND tenant_id = $3`, [newName, data.productId, r.tenant_id])
+        await query(`UPDATE product_bases SET name = $1 WHERE id::text = $2 AND tenant_id = $3`, [newName, data.productId, r.tenant_id])
+        await query(`UPDATE product_toppings SET name = $1 WHERE id::text = $2 AND tenant_id = $3`, [newName, data.productId, r.tenant_id])
+      }
+
+      // 3. Atualizar horários de disponibilidade na filial se solicitado
+      if (r.tenant_id && data.productId && (data.availableHours || data.suggestedHours)) {
+        const hoursJson = JSON.stringify(data.availableHours || data.suggestedHours)
+        await query(`UPDATE product_containers SET available_hours = $1 WHERE id::text = $2 AND tenant_id = $3`, [hoursJson, data.productId, r.tenant_id])
+        await query(`UPDATE product_bases SET available_hours = $1 WHERE id::text = $2 AND tenant_id = $3`, [hoursJson, data.productId, r.tenant_id])
+        await query(`UPDATE product_toppings SET available_hours = $1 WHERE id::text = $2 AND tenant_id = $3`, [hoursJson, data.productId, r.tenant_id])
+      }
+    }
+
+    if (res.rows?.[0]) {
+      const r = res.rows[0]
+      await recordAuditLog({
+        tenantId: r.tenant_id,
+        action: 'FRANCHISE_REQUEST_DECIDED',
+        entity: 'franchise_requests',
+        entityId: id,
+        message: `Solicitação da filial deliberada como ${newStatus}: ${r.title || 'Ajuste'}`,
+        userRole: 'FRANCHISOR_ADMIN',
+        metadata: { requestId: id, action, newStatus, responseNotes },
+      })
     }
 
     return NextResponse.json({ success: true, request: res.rows?.[0] })

@@ -3,6 +3,7 @@ import { formatCurrency } from '@/lib/i18n/formatters'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { ReplicateStoreDialog, DuplicateItemDialog, DeleteItemDialog } from './ActionDialogs'
 import { toast } from 'sonner'
+import FranchiseRequestDialog from './FranchiseRequestDialog'
 import {
   RefreshCw,
   Edit2,
@@ -11,6 +12,7 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  Send,
 } from 'lucide-react'
 
 interface ProductRowItemProps {
@@ -31,11 +33,12 @@ export default function ProductRowItem({
   onDelete,
 }: ProductRowItemProps) {
   const { user } = useAuthStore()
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const isFranchisor = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN' || tenantId?.startsWith('11111111')
 
   const [replicateOpen, setReplicateOpen] = useState(false)
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [requestOpen, setRequestOpen] = useState(false)
   const [hoursOpen, setHoursOpen] = useState(false)
   const [promoOpen, setPromoOpen] = useState(false)
   const [pairingOpen, setPairingOpen] = useState(false)
@@ -216,9 +219,22 @@ export default function ProductRowItem({
           </button>
         </div>
 
+        {/* Ação Franqueado: Botão Solicitar Ajuste */}
+        {!isFranchisor && (
+          <button
+            type="button"
+            onClick={() => setRequestOpen(true)}
+            title="Solicitar Ajuste de Preço, Nome ou Horário à Franqueadora"
+            className="px-2.5 py-1 rounded-xl bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/40 dark:hover:bg-pink-900/60 border border-pink-200 dark:border-pink-500/30 text-pink-700 dark:text-pink-300 font-bold text-[11px] flex items-center gap-1 transition cursor-pointer shrink-0"
+          >
+            <Send className="h-3 w-3" />
+            <span>Solicitar Ajuste</span>
+          </button>
+        )}
+
         {/* Caixa de Ícones de Ações */}
         <div className="flex items-center border border-purple-200 dark:border-white/15 rounded-xl overflow-hidden divide-x divide-purple-200 dark:divide-white/15 bg-white dark:bg-white/5 shadow-xs shrink-0">
-          {isSuperAdmin && (
+          {isFranchisor && (
             <button
               type="button"
               onClick={() => setReplicateOpen(true)}
@@ -231,20 +247,22 @@ export default function ProductRowItem({
           <button
             type="button"
             onClick={() => onEdit(product)}
-            title="Editar Produto & Complementos"
+            title={isFranchisor ? "Editar Produto & Toppings" : "Visualizar Detalhes"}
             className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <Edit2 className="h-3.5 w-3.5" />
           </button>
-          <button
-            type="button"
-            onClick={() => setDuplicateOpen(true)}
-            title="Duplicar Item"
-            className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </button>
-          {isSuperAdmin && (
+          {isFranchisor && (
+            <button
+              type="button"
+              onClick={() => setDuplicateOpen(true)}
+              title="Duplicar Item"
+              className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {isFranchisor && (
             <button
               type="button"
               onClick={() => setDeleteOpen(true)}
@@ -258,12 +276,23 @@ export default function ProductRowItem({
       </div>
 
       {/* Modais de Ação */}
-      {isSuperAdmin && (
+      {isFranchisor && (
         <ReplicateStoreDialog open={replicateOpen} onOpenChange={setReplicateOpen} product={product} tenantId={tenantId} />
       )}
-      <DuplicateItemDialog open={duplicateOpen} onOpenChange={setDuplicateOpen} product={product} tenantId={tenantId} />
-      {isSuperAdmin && (
+      {isFranchisor && (
+        <DuplicateItemDialog open={duplicateOpen} onOpenChange={setDuplicateOpen} product={product} tenantId={tenantId} />
+      )}
+      {isFranchisor && (
         <DeleteItemDialog open={deleteOpen} onOpenChange={setDeleteOpen} product={product} tenantId={tenantId} onSuccess={() => onDelete(product)} />
+      )}
+      {!isFranchisor && (
+        <FranchiseRequestDialog
+          open={requestOpen}
+          onOpenChange={setRequestOpen}
+          tenantId={tenantId}
+          initialItem={product}
+          initialType="PRICE_CHANGE"
+        />
       )}
     </div>
   )

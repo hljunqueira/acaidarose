@@ -41,6 +41,7 @@ export type AppViewId =
   | 'menu_categories'
   | 'menu_menus'
   | 'menu_highlights'
+  | 'menu_schedules'
   | 'company'
   | 'qrcode_config'
   | 'users'
@@ -123,7 +124,7 @@ export default function AppSidebar({
     if (['dev_hub', 'prevention_center', 'audit_logs'].includes(v)) return 'devHub'
     if (['franchise', 'franchise_candidates', 'store_requests', 'franchise_requests', 'supply_hub'].includes(v)) return 'franchise'
     if (['pdv', 'qrcode', 'tables'].includes(v)) return 'salon'
-    if (['menu', 'menu_categories', 'menu_menus', 'menu_highlights'].includes(v)) return 'menu'
+    if (['menu', 'menu_categories', 'menu_menus', 'menu_highlights', 'menu_schedules'].includes(v)) return 'menu'
     if (['inventory', 'supply_orders'].includes(v)) return 'inventory'
     if (['company', 'qrcode_config', 'tv_panel', 'users', 'reports'].includes(v)) return 'storeConfig'
     return 'salon'
@@ -222,9 +223,11 @@ export default function AppSidebar({
         icon: Utensils,
         accentClass: 'text-pink-600 dark:text-pink-400',
         items: [
-          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Copos, Frutas & Toppings', show: true },
+          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Taças, Frutas & Toppings', show: true },
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
-          { id: 'menu_menus', label: 'Menus & Horários', subtitle: 'Regras de Disponibilidade', show: true },
+          { id: 'menu_menus', label: 'Menus do Cardápio', subtitle: 'Organização de Seções', show: true },
+          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Carrossel & Promoções', show: true },
+          { id: 'menu_schedules', label: 'Horários de Atendimento', subtitle: 'Turnos & Disponibilidade', show: true },
         ],
       },
       {
@@ -305,9 +308,11 @@ export default function AppSidebar({
         icon: Utensils,
         accentClass: 'text-pink-600 dark:text-pink-400',
         items: [
-          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Copos, Frutas & Toppings', show: true },
+          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Taças, Frutas & Toppings', show: true },
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
-          { id: 'menu_menus', label: 'Menus & Horários', subtitle: 'Regras de Disponibilidade', show: true },
+          { id: 'menu_menus', label: 'Menus do Cardápio', subtitle: 'Organização de Seções', show: true },
+          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Carrossel & Promoções', show: true },
+          { id: 'menu_schedules', label: 'Horários de Atendimento', subtitle: 'Turnos & Disponibilidade', show: true },
         ],
       },
       {
@@ -354,8 +359,11 @@ export default function AppSidebar({
         icon: Utensils,
         accentClass: 'text-pink-600 dark:text-pink-400',
         items: [
-          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Consulta & Gramaturas', show: true },
+          { id: 'menu', label: 'Produtos do Cardápio', subtitle: 'Disponibilidade & Visibilidade', show: true },
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
+          { id: 'menu_menus', label: 'Menus do Cardápio', subtitle: 'Visualização da Estrutura', show: true },
+          { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Ativação Local na Loja', show: true },
+          { id: 'menu_schedules', label: 'Horários de Atendimento', subtitle: 'Turnos & Solicitação', show: true },
           {
             id: 'store_requests',
             label: 'Solicitações à Franqueadora',

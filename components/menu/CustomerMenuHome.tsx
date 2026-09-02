@@ -38,7 +38,7 @@ export function isProductTimeAvailable(availableHours: any): boolean {
   try {
     const hours = typeof availableHours === 'string' ? JSON.parse(availableHours) : availableHours
     if (!hours || !Array.isArray(hours.days)) return true
-    
+
     const now = new Date()
     const currentDay = now.getDay()
     if (!hours.days.includes(currentDay)) return false
@@ -88,7 +88,7 @@ export default function CustomerMenuHome({
   return (
     <div className="w-full space-y-6 sm:space-y-8 pb-4">
       {/* 1. CARROSSEL DE STORIES & PROMOÇÕES DA UNIDADE */}
-      <CustomerPromoCarousel onSelectPromo={handleSelectPromo} />
+      <CustomerPromoCarousel tenantId={tenantId} onSelectPromo={handleSelectPromo} />
 
       {/* 2. CATÁLOGO DOS AÇAÍS */}
       <section id="cardapio-acai" className="max-w-6xl mx-auto px-4 md:px-8 space-y-5 pt-2">
@@ -103,7 +103,7 @@ export default function CustomerMenuHome({
             <p className="text-xs sm:text-sm text-slate-600 dark:text-purple-200/70 mt-1 max-w-xl">
               {isCatalogOnly
                 ? 'Consulte os tamanhos e bases disponíveis na nossa unidade.'
-                : 'Selecione o tamanho para personalizar as suas bases, frutas frescas e acompanhamentos.'}
+                : 'Selecione o tamanho para personalizar as suas bases, frutas frescas e toppings.'}
             </p>
           </div>
 
@@ -135,9 +135,8 @@ export default function CustomerMenuHome({
                   }
                   onSelectContainer(c)
                 }}
-                className={`p-4 rounded-3xl bg-white border border-purple-100 shadow-md hover:border-pink-500/50 hover:shadow-xl dark:bg-gradient-to-b dark:from-[#24043b]/90 dark:to-[#160226]/90 dark:border-white/15 dark:hover:border-pink-500/60 dark:shadow-xl transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] ${
-                  !isTimeAvailable ? 'opacity-40 cursor-not-allowed border-red-500/30' : ''
-                }`}
+                className={`p-4 rounded-3xl bg-white border border-purple-100 shadow-md hover:border-pink-500/50 hover:shadow-xl dark:bg-gradient-to-b dark:from-[#24043b]/90 dark:to-[#160226]/90 dark:border-white/15 dark:hover:border-pink-500/60 dark:shadow-xl transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] ${!isTimeAvailable ? 'opacity-40 cursor-not-allowed border-red-500/30' : ''
+                  }`}
               >
                 <div>
                   <div className="relative h-48 sm:h-44 md:h-48 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/50 mb-3 border border-purple-100 dark:border-white/10">
@@ -190,8 +189,8 @@ export default function CustomerMenuHome({
 
                   <p className="text-xs text-slate-600 dark:text-purple-200/70 mt-1 line-clamp-2 leading-relaxed">
                     {isFree
-                      ? 'Açaí cremoso batido na hora com frutas frescas e acompanhamentos.'
-                      : `Inclui 1 base gelada, até ${c.limiteFrutas || 2} frutas e até 3 acompanhamentos.`}
+                      ? 'Açaí cremoso batido na hora com frutas frescas e toppings.'
+                      : `Inclui 1 base gelada, até ${c.limiteFrutas || 2} frutas e até 3 toppings.`}
                   </p>
                 </div>
 
@@ -209,11 +208,10 @@ export default function CustomerMenuHome({
                       <span>Detalhes</span>
                     </span>
                   ) : (
-                    <span className={`h-10 px-4 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
-                      isTimeAvailable 
-                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 shadow-md shadow-pink-600/20 hover:scale-102 active:scale-95' 
+                    <span className={`h-10 px-4 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${isTimeAvailable
+                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 shadow-md shadow-pink-600/20 hover:scale-102 active:scale-95'
                         : 'bg-slate-200 text-slate-400 dark:bg-white/10 dark:text-white/50 cursor-not-allowed'
-                    }`}>
+                      }`}>
                       <Plus className="h-4 w-4" />
                       <span>{isTable ? 'Pedir na Mesa' : 'Personalizar'}</span>
                     </span>

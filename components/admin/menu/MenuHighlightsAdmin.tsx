@@ -1,16 +1,16 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Edit2, Trash2, Upload, Link2, Eye, Play, Sparkles } from 'lucide-react'
+import { Edit2, Trash2, Upload, Link2, Eye, Play, Sparkles, RefreshCw } from 'lucide-react'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import SafeDeleteDialog from '@/components/admin/common/SafeDeleteDialog'
-import { useHighlightsStore, HighlightItem } from '@/lib/stores/highlightsStore'
+import type { HighlightItem } from '@/types/highlights'
 
 interface MenuHighlightsAdminProps {
   tenantId: string
@@ -25,7 +25,30 @@ const TAG_COLOR_OPTIONS = [
 ]
 
 export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminProps) {
-  const { highlights, addHighlight, updateHighlight, deleteHighlight, toggleActive } = useHighlightsStore()
+  const [highlights, setHighlights] = useState<HighlightItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [replicating, setReplicating] = useState(false)
+
+  const isHeadquarters = tenantId?.startsWith('11111111') || tenantId === 'aveiro'
+
+  const fetchHighlights = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/highlights?tenantId=${encodeURIComponent(tenantId)}&admin=true`)
+      const data = await res.json()
+      if (Array.isArray(data.highlights)) {
+        setHighlights(data.highlights)
+      }
+    } catch {
+      toast.error('Erro ao carregar destaques')
+    } finally {
+      setLoading(false)
+    }
+  }, [tenantId])
+
+  useEffect(() => {
+    fetchHighlights()
+  }, [fetchHighlights])
 
   // Dialog de Criação / Edição
   const [editOpen, setEditOpen] = useState(false)
@@ -76,17 +99,17 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
     setUploadFileName('')
     setFormData({
       title: item.title,
-      subtitle: item.subtitle,
-      badgeLabel: item.badgeLabel,
+      subtitle: item.subtitle || '',
+      badgeLabel: item.badgeLabel || 'DESTAQUE',
       badgeColor: item.badgeColor || 'bg-pink-600',
-      price: item.price,
+      price: item.price || 0,
       imageUrl: item.imageUrl || '',
       videoUrl: item.videoUrl || '',
       mediaType: item.videoUrl ? 'VIDEO' : 'IMAGE',
       active: item.active,
       displayOrder: item.displayOrder,
     })
-    setMediaMode(item.imageUrl?.startsWith('data:') || item.videoUrl?.startsWith('data:') ? 'UPLOAD' : 'URL')
+    setMediaMode('URL')
     setEditOpen(true)
   }
 
@@ -114,20 +137,22 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
           mediaType: 'IMAGE',
         }))
       }
-      toast.success(`Arquivo "${file.name}" carregado com sucesso!`)
+      toast.success(`Arquivo "${file.name}" pronto!`)
     }
 
     reader.readAsDataURL(file)
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.title.trim()) {
       toast.error('Informe o título do destaque')
       return
     }
 
-    const payload: Partial<HighlightItem> = {
+    const payload = {
+      tenantId,
+      id: editingItem?.id,
       title: formData.title.trim(),
       subtitle: formData.subtitle.trim(),
       badgeLabel: formData.badgeLabel.trim() || 'DESTAQUE',
@@ -140,32 +165,45 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       displayOrder: Number(formData.displayOrder) || 1,
     }
 
-    if (editingItem) {
-      updateHighlight(editingItem.id, payload)
-      toast.success(`Destaque "${formData.title}" atualizado e publicado no Cardápio Visual!`)
-    } else {
-      const newH: HighlightItem = {
-        id: `hl-${Date.now()}`,
-        title: payload.title!,
-        subtitle: payload.subtitle!,
-        badgeLabel: payload.badgeLabel!,
-        badgeColor: payload.badgeColor!,
-        price: payload.price!,
-        imageUrl: payload.imageUrl!,
-        videoUrl: payload.videoUrl,
-        mediaType: payload.mediaType,
-        active: payload.active!,
-        displayOrder: payload.displayOrder!,
+    try {
+      if (editingItem) {
+        const res = await fetch('/api/highlights', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error('Falha ao atualizar')
+        toast.success(`Destaque "${formData.title}" atualizado!`)
+      } else {
+        const res = await fetch('/api/highlights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error('Falha ao cadastrar')
+        toast.success(`Destaque "${formData.title}" criado com sucesso!`)
       }
-      addHighlight(newH)
-      toast.success(`Destaque "${formData.title}" criado e publicado no Cardápio Visual!`)
+      setEditOpen(false)
+      fetchHighlights()
+    } catch {
+      toast.error('Erro ao salvar destaque')
     }
-    setEditOpen(false)
   }
 
-  const handleToggleActive = (h: HighlightItem) => {
-    toggleActive(h.id)
-    toast.success(h.active ? 'Destaque pausado no cardápio' : 'Destaque ativado no cardápio!')
+  const handleToggleActive = async (h: HighlightItem) => {
+    try {
+      const nextActive = !h.active
+      const res = await fetch('/api/highlights', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: h.id, active: nextActive }),
+      })
+      if (!res.ok) throw new Error('Falha ao alterar status')
+      setHighlights((prev) => prev.map((item) => (item.id === h.id ? { ...item, active: nextActive } : item)))
+      toast.success(nextActive ? 'Destaque ativado no cardápio' : 'Destaque pausado no cardápio')
+    } catch {
+      toast.error('Erro ao atualizar status do destaque')
+    }
   }
 
   const handleOpenDelete = (h: HighlightItem) => {
@@ -177,12 +215,36 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
     if (!deletingItem) return
     setDeletingLoading(true)
     try {
-      deleteHighlight(deletingItem.id)
+      const res = await fetch(`/api/highlights?id=${encodeURIComponent(deletingItem.id)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Falha ao remover')
       toast.success(`Destaque "${deletingItem.title}" removido com sucesso!`)
       setDeleteOpen(false)
+      fetchHighlights()
+    } catch {
+      toast.error('Erro ao remover destaque')
     } finally {
       setDeletingLoading(false)
       setDeletingItem(null)
+    }
+  }
+
+  const handleReplicateHighlights = async () => {
+    setReplicating(true)
+    try {
+      const res = await fetch('/api/highlights/sync-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceTenantId: tenantId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro na replicação')
+      toast.success(`Destaques replicados com sucesso para ${data.totalStores - 1} filial(is)!`)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao replicar destaques')
+    } finally {
+      setReplicating(false)
     }
   }
 
@@ -199,12 +261,27 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
           </p>
         </div>
 
-        <Button
-          onClick={handleOpenNew}
-          className="h-10 px-5 rounded-2xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs shadow-md shadow-purple-700/20 cursor-pointer shrink-0"
-        >
-          + Novo Destaque
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isHeadquarters && (
+            <Button
+              variant="outline"
+              disabled={replicating || highlights.length === 0}
+              onClick={handleReplicateHighlights}
+              className="h-10 px-4 rounded-2xl border border-purple-200 dark:border-white/15 text-purple-900 dark:text-purple-200 hover:bg-purple-50 dark:hover:bg-white/5 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+              title="Replicar destaques oficiais para todas as lojas filiais da rede"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${replicating ? 'animate-spin' : ''}`} />
+              <span>{replicating ? 'Replicando...' : 'Replicar p/ Lojas'}</span>
+            </Button>
+          )}
+
+          <Button
+            onClick={handleOpenNew}
+            className="h-10 px-5 rounded-2xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs shadow-md shadow-purple-700/20 cursor-pointer shrink-0"
+          >
+            + Novo Destaque
+          </Button>
+        </div>
       </div>
 
       {/* Grid de Destaques Cadastrados */}

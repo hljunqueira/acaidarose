@@ -1,6 +1,7 @@
 import { CatalogData, ProductContainer, ProductBase, ProductTopping } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { AVEIRO_HQ_ID } from '@/lib/repositories/tenantsRepository'
+import { recordAuditLog } from '@/lib/repositories/auditRepository'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<CatalogData> {
@@ -200,6 +201,17 @@ export async function toggleStoreItemAvailability(
        DO UPDATE SET is_available = EXCLUDED.is_available, updated_at = timezone('utc'::text, now())`,
       [tenantId, productId, available]
     )
+
+    await recordAuditLog({
+      tenantId,
+      action: 'PRODUCT_AVAILABILITY_TOGGLED',
+      entity: 'store_product_overrides',
+      entityId: productId,
+      message: available
+        ? `Item reativado e disponível na loja (${productId})`
+        : `Item pausado/esgotado na loja (${productId})`,
+      metadata: { productId, available },
+    })
   } catch (err) {
     console.error('Erro ao atualizar disponibilidade override do produto:', err)
   }
@@ -212,6 +224,7 @@ export async function syncAllStoresCatalog(payload?: {
   targetTenantIds?: string[]
   prices?: Record<string, number>
   userEmail?: string
+  tenantId?: string
 }): Promise<{
   success: boolean
   totalStores: number
@@ -219,13 +232,136 @@ export async function syncAllStoresCatalog(payload?: {
   scope: 'ALL_NETWORK' | 'SELECTED_STORES'
   targetStoresCount: number
 }> {
+  const sourceTenantId = payload?.tenantId || AVEIRO_HQ_ID
   const syncedAt = new Date().toISOString()
-  return {
-    success: true,
-    totalStores: 2,
-    syncedAt,
-    scope: payload?.applyToAll ? 'ALL_NETWORK' : 'SELECTED_STORES',
-    targetStoresCount: payload?.targetTenantIds?.length || 2,
+
+  try {
+    // 1. Obter todas as lojas de destino
+    let targetIds: string[] = []
+    if (payload?.applyToAll || !payload?.targetTenantIds || payload.targetTenantIds.length === 0) {
+      const tenantsRes = await query(`SELECT id FROM tenants WHERE deleted_at IS NULL AND id != $1`, [sourceTenantId])
+      targetIds = (tenantsRes.rows || []).map((r: any) => r.id)
+    } else {
+      targetIds = payload.targetTenantIds.filter((id) => id !== sourceTenantId)
+    }
+
+    if (targetIds.length === 0) {
+      return {
+        success: true,
+        totalStores: 1,
+        syncedAt,
+        scope: 'SELECTED_STORES',
+        targetStoresCount: 1,
+      }
+    }
+
+    // 2. Carregar catálogo canônico da Matriz (Loja 1)
+    const [sourceContainersRes, sourceBasesRes, sourceToppingsRes] = await Promise.all([
+      query(`SELECT name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+      query(`SELECT name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+      query(`SELECT name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+    ])
+
+    const containers = sourceContainersRes.rows || []
+    const bases = sourceBasesRes.rows || []
+    const toppings = sourceToppingsRes.rows || []
+
+    // 3. Replicar para cada loja de destino
+    for (const targetId of targetIds) {
+      // Containers (Taças)
+      for (const c of containers) {
+        const customPrice = payload?.prices?.[c.weight_grams] ?? payload?.prices?.[`weight-${c.weight_grams}`] ?? c.preco_base
+        const check = await query(`SELECT id FROM product_containers WHERE tenant_id = $1 AND weight_grams = $2 AND deleted_at IS NULL`, [targetId, c.weight_grams])
+        if (check.rows && check.rows.length > 0) {
+          await query(
+            `UPDATE product_containers
+             SET name = $1, preco_base = $2, limite_bases = $3, limite_complementos_gratis = $4,
+                 image_url = $5, video_url = $6, video_poster = $7, available_hours = $8,
+                 display_order = $9, active = $10, updated_at = timezone('utc'::text, now())
+             WHERE tenant_id = $11 AND weight_grams = $12 AND deleted_at IS NULL`,
+            [c.name, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active, targetId, c.weight_grams]
+          )
+        } else {
+          await query(
+            `INSERT INTO product_containers (id, tenant_id, name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+            [uuidv4(), targetId, c.name, c.weight_grams, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active]
+          )
+        }
+      }
+
+      // Bases (Cremes)
+      for (const b of bases) {
+        const check = await query(`SELECT id FROM product_bases WHERE tenant_id = $1 AND name = $2 AND deleted_at IS NULL`, [targetId, b.name])
+        if (check.rows && check.rows.length > 0) {
+          await query(
+            `UPDATE product_bases
+             SET description = $1, image_url = $2, video_url = $3, video_poster = $4,
+                 available_hours = $5, display_order = $6, active = $7, updated_at = timezone('utc'::text, now())
+             WHERE tenant_id = $8 AND name = $9 AND deleted_at IS NULL`,
+            [b.description, b.image_url, b.video_url, b.video_poster, b.available_hours ? JSON.stringify(b.available_hours) : null, b.display_order, b.active, targetId, b.name]
+          )
+        } else {
+          await query(
+            `INSERT INTO product_bases (id, tenant_id, name, description, image_url, video_url, video_poster, available_hours, display_order, active)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [uuidv4(), targetId, b.name, b.description, b.image_url, b.video_url, b.video_poster, b.available_hours ? JSON.stringify(b.available_hours) : null, b.display_order, b.active]
+          )
+        }
+      }
+
+      // Toppings (Acompanhamentos)
+      for (const t of toppings) {
+        const check = await query(`SELECT id FROM product_toppings WHERE tenant_id = $1 AND name = $2 AND deleted_at IS NULL`, [targetId, t.name])
+        if (check.rows && check.rows.length > 0) {
+          await query(
+            `UPDATE product_toppings
+             SET category = $1, is_premium = $2, preco_extra = $3, image_url = $4,
+                 video_url = $5, video_poster = $6, available_hours = $7, display_order = $8,
+                 active = $9, updated_at = timezone('utc'::text, now())
+             WHERE tenant_id = $10 AND name = $11 AND deleted_at IS NULL`,
+            [t.category, t.is_premium, t.preco_extra, t.image_url, t.video_url, t.video_poster, t.available_hours ? JSON.stringify(t.available_hours) : null, t.display_order, t.active, targetId, t.name]
+          )
+        } else {
+          await query(
+            `INSERT INTO product_toppings (id, tenant_id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+            [uuidv4(), targetId, t.name, t.category, t.is_premium, t.preco_extra, t.image_url, t.video_url, t.video_poster, t.available_hours ? JSON.stringify(t.available_hours) : null, t.display_order, t.active]
+          )
+        }
+      }
+
+      // Limpa overrides de preços antigos da filial para que assumam os valores canônicos replicados
+      await query(`DELETE FROM store_price_overrides WHERE tenant_id = $1`, [targetId])
+    }
+
+    // 4. Registro no log de auditoria para o TI
+    await recordAuditLog({
+      tenantId: sourceTenantId,
+      action: 'CATALOG_REPLICATED',
+      entity: 'product_containers',
+      message: `Cardápio oficial e preços replicados para ${targetIds.length} filial(is)`,
+      userRole: 'FRANCHISOR_ADMIN',
+      metadata: {
+        scope: payload?.applyToAll ? 'ALL_NETWORK' : 'SELECTED_STORES',
+        targetStoresCount: targetIds.length,
+        userEmail: payload?.userEmail,
+        syncedContainersCount: containers.length,
+        syncedBasesCount: bases.length,
+        syncedToppingsCount: toppings.length,
+      },
+    })
+
+    return {
+      success: true,
+      totalStores: targetIds.length + 1,
+      syncedAt,
+      scope: payload?.applyToAll ? 'ALL_NETWORK' : 'SELECTED_STORES',
+      targetStoresCount: targetIds.length,
+    }
+  } catch (err) {
+    console.error('Erro na replicação de catálogo para as lojas:', err)
+    throw err
   }
 }
 
@@ -303,7 +439,16 @@ export async function createProductItem(category: string, item: any): Promise<an
           true
         ]
       )
-      return res.rows[0]
+      const created = res.rows[0]
+      await recordAuditLog({
+        tenantId,
+        action: 'PRODUCT_CREATED',
+        entity: tableName,
+        entityId: id,
+        message: `Novo item cadastrado: "${item.name}" na categoria ${category}`,
+        metadata: { category, item: created },
+      })
+      return created
     }
   } catch (err) {
     console.error(`Erro ao criar item na tabela ${tableName}:`, err)
@@ -314,6 +459,7 @@ export async function createProductItem(category: string, item: any): Promise<an
 export async function updateProductItem(category: string, id: string, item: any): Promise<any> {
   const tableName = getTableName(category)
   try {
+    let updated: any = null
     if (category === 'containers') {
       const res = await query(
         `UPDATE product_containers
@@ -344,7 +490,7 @@ export async function updateProductItem(category: string, id: string, item: any)
           item.displayOrder !== undefined ? Number(item.displayOrder) : null
         ]
       )
-      return res.rows[0] || item
+      updated = res.rows[0] || item
     } else if (category === 'bases') {
       const res = await query(
         `UPDATE product_bases
@@ -369,7 +515,7 @@ export async function updateProductItem(category: string, id: string, item: any)
           item.displayOrder !== undefined ? Number(item.displayOrder) : null
         ]
       )
-      return res.rows[0] || item
+      updated = res.rows[0] || item
     } else {
       const res = await query(
         `UPDATE product_toppings
@@ -398,8 +544,19 @@ export async function updateProductItem(category: string, id: string, item: any)
           item.displayOrder !== undefined ? Number(item.displayOrder) : null
         ]
       )
-      return res.rows[0] || item
+      updated = res.rows[0] || item
     }
+
+    await recordAuditLog({
+      tenantId: item.tenantId || null,
+      action: 'PRODUCT_UPDATED',
+      entity: tableName,
+      entityId: id,
+      message: `Item atualizado: "${item.name || id}" na categoria ${category}`,
+      metadata: { category, id, updatedData: item },
+    })
+
+    return updated
   } catch (err) {
     console.error(`Erro ao atualizar item na tabela ${tableName}:`, err)
     return item
@@ -415,6 +572,15 @@ export async function deleteProductItem(category: string, id: string): Promise<b
        WHERE id::text = $1`,
       [id]
     )
+
+    await recordAuditLog({
+      action: 'PRODUCT_DELETED',
+      entity: tableName,
+      entityId: id,
+      message: `Item removido do catálogo (soft-delete): ID ${id} (${category})`,
+      metadata: { category, id },
+    })
+
     return (res.rowCount || 0) > 0
   } catch {
     return false

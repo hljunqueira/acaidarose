@@ -32,8 +32,10 @@ export default function CustomerMenuHeader({
       .trim()
     if (raw.toLowerCase().includes('torres novas') || raw.includes('2')) {
       storeName = 'Loja 2 - Torres Novas'
-    } else {
+    } else if (raw.toLowerCase().includes('aveiro') || raw.includes('1')) {
       storeName = 'Loja 1 - Aveiro'
+    } else if (raw) {
+      storeName = raw
     }
   }
 

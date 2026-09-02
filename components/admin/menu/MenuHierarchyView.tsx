@@ -31,6 +31,9 @@ interface MenuHierarchyViewProps {
 }
 
 export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) {
+  const { user, authFetch } = useAuthStore()
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN' || tenantId?.startsWith('11111111') || tenantId === 'aveiro'
+
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false)
@@ -72,8 +75,6 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   // Dialog de Modelos de Opções
   const [optionModelOpen, setOptionModelOpen] = useState(false)
 
-  const { user, authFetch } = useAuthStore()
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
   const fetchCatalog = useCallback(async () => {
     setLoading(true)
@@ -124,38 +125,29 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
   const handleEdit = (item: any) => {
     setEditingItem(item)
-    setEditingType('containers')
+    const categoryType = item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
+    setEditingType(categoryType)
     setEditOpen(true)
   }
 
   const handleToggleStatus = async (item: any) => {
     try {
       const isAvailable = item.isAvailableInStore !== undefined ? item.isAvailableInStore : item.active
+      const categoryType = item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
       const res = await authFetch(`/api/products/toggle-availability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenantId,
           productId: item.id,
-          category: 'containers',
+          category: categoryType,
           available: isAvailable,
           active: item.active,
         }),
       })
 
       if (!res.ok) throw new Error('Falha ao atualizar status')
-      setCatalog((prev) => ({
-        ...prev,
-        containers: prev.containers.map((c) =>
-          c.id === item.id
-            ? {
-                ...c,
-                active: item.active !== undefined ? item.active : c.active,
-                isAvailableInStore: item.isAvailableInStore !== undefined ? item.isAvailableInStore : c.isAvailableInStore,
-              }
-            : c
-        ),
-      }))
+      fetchCatalog()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao alterar status')
     }
@@ -167,7 +159,8 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       return
     }
     try {
-      const res = await authFetch(`/api/products/containers/${item.id}?tenantId=${encodeURIComponent(tenantId)}`, {
+      const categoryType = item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
+      const res = await authFetch(`/api/products/${categoryType}/${item.id}?tenantId=${encodeURIComponent(tenantId)}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Falha ao excluir item')
