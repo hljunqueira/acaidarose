@@ -15,6 +15,7 @@ import {
   Trash2,
   AlertTriangle,
   Clock,
+  GripVertical,
 } from 'lucide-react'
 import { emitCatalogSync } from '@/lib/utils/catalogSync'
 
@@ -70,6 +71,64 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
     displayOrder: 1,
     active: true,
   })
+
+  const [draggedMenuId, setDraggedMenuId] = useState<string | null>(null)
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedMenuId(id)
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    if (!draggedMenuId || draggedMenuId === targetId) return
+
+    const currentIndex = displayMenus.findIndex((m) => m.id === draggedMenuId)
+    const targetIndex = displayMenus.findIndex((m) => m.id === targetId)
+    if (currentIndex === -1 || targetIndex === -1) return
+
+    const reordered = [...displayMenus]
+    const [moved] = reordered.splice(currentIndex, 1)
+    reordered.splice(targetIndex, 0, moved)
+
+    const updatedWithOrders = reordered.map((m, idx) => ({
+      ...m,
+      displayOrder: idx + 1,
+    }))
+
+    setMainMenus(updatedWithOrders)
+    setDraggedMenuId(null)
+
+    try {
+      const itemsPayload = updatedWithOrders.map((m) => ({
+        id: m.id,
+        displayOrder: m.displayOrder,
+      }))
+      const res = await authFetch('/api/menus/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: itemsPayload,
+          tenantId: tenantId || user?.tenantId,
+        }),
+      })
+      if (!res.ok) throw new Error('Falha ao salvar ordem no servidor')
+      toast.success('Ordem dos menus atualizada com sucesso!')
+      emitCatalogSync({
+        tenantId: (tenantId || user?.tenantId) || undefined,
+        entity: 'menu',
+        action: 'reorder',
+      })
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao sincronizar ordenação')
+    }
+  }
 
   const fetchMenus = async () => {
     setLoading(true)
@@ -221,83 +280,100 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
 
       {/* Grid de Menus (Apenas os reais) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-        {displayMenus.map((menu) => (
-          <div
-            key={menu.id}
-            className={`p-4 rounded-2xl bg-white dark:bg-[#160228]/95 border transition-all shadow-xs dark:shadow-md flex flex-col justify-between text-slate-900 dark:text-white ${
-              menu.active
-                ? 'border-purple-150 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50 hover:shadow-md'
-                : 'border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 opacity-60'
-            }`}
-          >
-            <div className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-center text-purple-700 dark:text-pink-400">
-                    <LayoutGrid className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-sm text-purple-950 dark:text-white leading-snug">
-                      {menu.name}
-                    </h3>
-                    <div className="text-[10px] text-purple-600/80 dark:text-purple-200/60 font-mono">
-                      Cód: {menu.code} • Ordem: #{menu.displayOrder}
+        {displayMenus.map((menu) => {
+          const isDragging = draggedMenuId === menu.id
+          return (
+            <div
+              key={menu.id}
+              draggable={isSuperAdmin}
+              onDragStart={(e) => handleDragStart(e, menu.id)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, menu.id)}
+              className={`p-4 rounded-2xl bg-white dark:bg-[#160228]/95 border transition-all shadow-xs dark:shadow-md flex flex-col justify-between text-slate-900 dark:text-white ${
+                isDragging ? 'opacity-40 scale-95 border-purple-500 border-dashed' : ''
+              } ${
+                menu.active
+                  ? 'border-purple-150 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50 hover:shadow-md'
+                  : 'border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 opacity-60'
+              }`}
+            >
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {isSuperAdmin && (
+                      <div
+                        className="cursor-grab active:cursor-grabbing p-1 text-purple-400 hover:text-purple-700 dark:hover:text-white transition shrink-0"
+                        title="Arrastar para reordenar"
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+                    )}
+                    <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-center text-purple-700 dark:text-pink-400 shrink-0">
+                      <LayoutGrid className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-sm text-purple-950 dark:text-white leading-snug">
+                        {menu.name}
+                      </h3>
+                      <div className="text-[10px] text-purple-600/80 dark:text-purple-200/60 font-mono">
+                        Cód: {menu.code} • Ordem: #{menu.displayOrder}
+                      </div>
                     </div>
                   </div>
+
+                  <Badge
+                    variant="outline"
+                    onClick={() => handleToggleActive(menu)}
+                    className={`text-[10px] font-bold cursor-pointer select-none transition ${
+                      menu.active
+                        ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
+                        : 'border-purple-200 dark:border-white/15 bg-zinc-200 dark:bg-zinc-700/50 text-zinc-800 dark:text-zinc-300'
+                    }`}
+                  >
+                    {menu.active ? 'Ativo' : 'Pausado'}
+                  </Badge>
                 </div>
 
-                <Badge
-                  variant="outline"
-                  onClick={() => handleToggleActive(menu)}
-                  className={`text-[10px] font-bold cursor-pointer select-none transition ${
-                    menu.active
-                      ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
-                      : 'border-purple-200 dark:border-white/15 bg-zinc-200 dark:bg-zinc-700/50 text-zinc-800 dark:text-zinc-300'
-                  }`}
-                >
-                  {menu.active ? 'Ativo' : 'Pausado'}
-                </Badge>
+                <p className="text-xs text-purple-700/80 dark:text-purple-200/70 line-clamp-2">
+                  {menu.description || 'Cardápio de produtos e serviços'}
+                </p>
+
+                {menu.availableHours && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-purple-800 dark:text-purple-200/90 font-medium">
+                    <Clock className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+                    <span>{formatAvailableHours(menu.availableHours)}</span>
+                  </div>
+                )}
               </div>
 
-              <p className="text-xs text-purple-700/80 dark:text-purple-200/70 line-clamp-2">
-                {menu.description || 'Cardápio de produtos e serviços'}
-              </p>
-
-              {menu.availableHours && (
-                <div className="flex items-center gap-1.5 text-[11px] text-purple-800 dark:text-purple-200/90 font-medium">
-                  <Clock className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-                  <span>{formatAvailableHours(menu.availableHours)}</span>
+              {isSuperAdmin && (
+                <div className="flex items-center justify-end gap-1 pt-3 mt-3 border-t border-purple-100 dark:border-white/10">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenEdit(menu)}
+                    className="h-8 w-8 p-0 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-lg cursor-pointer"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenDelete(menu)}
+                    className="h-8 w-8 p-0 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               )}
             </div>
-
-            {isSuperAdmin && (
-              <div className="flex items-center justify-end gap-1 pt-3 mt-3 border-t border-purple-100 dark:border-white/10">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenEdit(menu)}
-                  className="h-8 w-8 p-0 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-lg cursor-pointer"
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenDelete(menu)}
-                  className="h-8 w-8 p-0 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Modal Criar/Editar */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] border-purple-200 dark:border-white/15 text-slate-900 dark:text-white rounded-3xl shadow-xl">
+        <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] border border-purple-200 dark:border-white/15 text-slate-900 dark:text-white rounded-3xl shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
               {editingMenu ? 'Editar Menu Principal' : 'Novo Menu Principal'}
@@ -306,55 +382,55 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
 
           <form onSubmit={handleSave} className="space-y-4 my-2">
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-purple-900 dark:text-purple-200">Nome do Menu</Label>
+              <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Nome do Menu</Label>
               <Input
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Ex: MENU: AÇAÍ DA ROSE"
-                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
+                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-purple-200">Código do Menu</Label>
+                <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Código do Menu</Label>
                 <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   placeholder="ACAI_ROSE"
-                  className="h-10 text-xs rounded-xl font-mono uppercase bg-white/10 border-white/15 text-white"
+                  className="h-10 text-xs rounded-xl font-mono uppercase bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40"
                 />
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-purple-200">Ordem de Exibição</Label>
+                <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Ordem de Exibição</Label>
                 <Input
                   type="number"
                   value={formData.displayOrder}
                   onChange={(e) => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
-                  className="h-10 text-xs rounded-xl font-mono bg-white/10 border-white/15 text-white"
+                  className="h-10 text-xs rounded-xl font-mono bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-purple-200">Horários de Disponibilidade</Label>
+              <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Horários de Disponibilidade</Label>
               <Input
                 value={formData.availableHours}
                 onChange={(e) => setFormData({ ...formData, availableHours: e.target.value })}
                 placeholder="Ex: Seg a Dom • 12:00 às 23:00"
-                className="h-10 text-xs rounded-xl bg-white/10 border-white/15 text-white"
+                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-purple-200">Descrição</Label>
+              <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Descrição</Label>
               <Input
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Descrição curta do menu..."
-                className="h-10 text-xs rounded-xl bg-white/10 border-white/15 text-white"
+                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40"
               />
             </div>
 
@@ -363,7 +439,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
                 type="button"
                 variant="outline"
                 onClick={() => setEditOpen(false)}
-                className="border-white/15 bg-white/5 hover:bg-white/10 text-white rounded-xl h-10 text-xs cursor-pointer"
+                className="border border-purple-200 dark:border-white/15 bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-950 dark:text-white rounded-xl h-10 text-xs cursor-pointer font-bold"
               >
                 Cancelar
               </Button>
@@ -380,33 +456,34 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
 
       {/* Modal Confirmar Exclusão */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-sm max-h-[90vh] overflow-y-auto p-4 sm:p-5 rounded-2xl bg-[#160228] border-white/15 text-white">
-          <div className="flex items-center gap-3 text-red-400 mb-2">
-            <div className="p-2 rounded-xl bg-red-500/20">
+        <DialogContent className="w-[95vw] sm:w-full max-w-sm max-h-[90vh] overflow-y-auto p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-200 dark:border-white/15 text-slate-900 dark:text-white shadow-2xl">
+          <div className="flex items-center gap-3 text-red-500 dark:text-red-400 mb-2">
+            <div className="p-2 rounded-xl bg-red-100 dark:bg-red-500/20">
               <AlertTriangle className="h-5 w-5" />
             </div>
-            <DialogTitle className="text-base font-black text-white">Excluir Menu</DialogTitle>
+            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">Excluir Menu</DialogTitle>
           </div>
 
-          <p className="text-xs text-purple-200/80 leading-relaxed">
-            Tem certeza que deseja excluir o menu <strong className="text-pink-300 font-bold">{deletingMenu?.name}</strong>?
+          <p className="text-xs text-purple-800 dark:text-purple-200/80 leading-relaxed">
+            Tem certeza que deseja excluir o menu <strong className="text-pink-600 dark:text-pink-300 font-bold">{deletingMenu?.name}</strong>?
           </p>
 
           <DialogFooter className="pt-3 flex items-center justify-end gap-2">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setDeleteOpen(false)}
-              disabled={deletingLoading}
-              className="border-white/15 bg-white/5 hover:bg-white/10 text-white rounded-xl h-10 text-xs cursor-pointer"
+              className="border border-purple-200 dark:border-white/15 bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-950 dark:text-white rounded-xl h-9 text-xs cursor-pointer font-bold"
             >
               Cancelar
             </Button>
             <Button
+              type="button"
               onClick={handleConfirmDelete}
               disabled={deletingLoading}
-              className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl h-9 text-xs shadow-md shadow-red-600/30 cursor-pointer"
             >
-              {deletingLoading ? 'Excluindo...' : 'Excluir'}
+              {deletingLoading ? 'Excluindo...' : 'Sim, Excluir'}
             </Button>
           </DialogFooter>
         </DialogContent>

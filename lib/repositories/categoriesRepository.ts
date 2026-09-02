@@ -389,3 +389,35 @@ export async function reorderCategories(
   }
 }
 
+/**
+ * Reordena os menus mestres no PostgreSQL via drag-and-drop
+ */
+export async function reorderMenus(
+  items: { id: string; displayOrder: number }[],
+  tenantId?: string
+): Promise<boolean> {
+  try {
+    for (const item of items) {
+      await query(
+        `UPDATE menus
+         SET display_order = $2
+         WHERE id = $1`,
+        [item.id, item.displayOrder]
+      )
+    }
+
+    await recordAuditLog({
+      tenantId: tenantId || null,
+      action: 'MENUS_REORDERED',
+      entity: 'menus',
+      message: `Ordem dos menus reorganizada via drag-and-drop (${items.length} itens)`,
+      metadata: { items },
+    })
+
+    return true
+  } catch (err) {
+    console.error('Erro ao reordenar menus:', err)
+    return false
+  }
+}
+

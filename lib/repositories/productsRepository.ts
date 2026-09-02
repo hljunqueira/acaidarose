@@ -554,3 +554,37 @@ export async function deleteProductItem(category: string, id: string): Promise<b
     return false
   }
 }
+
+/**
+ * Reordena produtos (containers, bases ou toppings) no PostgreSQL via drag-and-drop
+ */
+export async function reorderProducts(
+  items: { id: string; displayOrder: number }[],
+  collection: 'containers' | 'bases' | 'toppings' = 'containers',
+  tenantId?: string
+): Promise<boolean> {
+  const tableName = getTableName(collection)
+  try {
+    for (const item of items) {
+      await query(
+        `UPDATE ${tableName}
+         SET display_order = $2
+         WHERE id::text = $1`,
+        [item.id, item.displayOrder]
+      )
+    }
+
+    await recordAuditLog({
+      tenantId: tenantId || null,
+      action: 'PRODUCTS_REORDERED',
+      entity: tableName,
+      message: `Ordem dos itens de ${collection} reorganizada via drag-and-drop (${items.length} itens)`,
+      metadata: { collection, items },
+    })
+
+    return true
+  } catch (err) {
+    console.error(`Erro ao reordenar itens em ${tableName}:`, err)
+    return false
+  }
+}

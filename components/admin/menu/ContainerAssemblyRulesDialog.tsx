@@ -78,10 +78,10 @@ export default function ContainerAssemblyRulesDialog({
               <SlidersHorizontal className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-base font-black text-zinc-900">
+              <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
                 Regras de Montagem do Açaí (Por Tamanho)
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
+              <DialogDescription className="text-xs text-purple-700/80 dark:text-purple-200/70">
                 Configure os limites de acompanhamentos inclusos na montagem para cada copo.
               </DialogDescription>
             </div>
@@ -96,17 +96,17 @@ export default function ContainerAssemblyRulesDialog({
             return (
               <div
                 key={rule.id}
-                className="p-4 rounded-2xl bg-purple-50/40 border border-purple-100 space-y-3"
+                className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-zinc-900">{rule.name}</span>
-                    <span className="text-xs font-mono font-bold text-purple-800 bg-purple-100/70 px-2 py-0.5 rounded-md">
+                    <span className="font-black text-sm text-purple-950 dark:text-white">{rule.name}</span>
+                    <span className="text-xs font-mono font-bold text-purple-800 dark:text-pink-300 bg-purple-100 dark:bg-white/10 px-2 py-0.5 rounded-md">
                       {rule.weightGrams}g
                     </span>
                   </div>
 
-                  <span className="text-xs font-mono font-black text-zinc-700">
+                  <span className="text-xs font-mono font-black text-purple-950 dark:text-purple-200">
                     Preço Master: € {rule.precoBase.toFixed(2)}
                   </span>
                 </div>
@@ -114,31 +114,31 @@ export default function ContainerAssemblyRulesDialog({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                   {/* Bases Inclusas */}
                   <div className="space-y-1">
-                    <Label className="text-[11px] font-bold text-zinc-700">Bases Inclusas</Label>
+                    <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Bases Inclusas</Label>
                     <Input
                       type="number"
                       min="1"
                       max="5"
                       value={rule.limiteBases}
                       onChange={(e) => handleUpdateField(rule.id, 'limiteBases', Number(e.target.value))}
-                      className="h-9 rounded-xl text-xs bg-white"
+                      className="h-9 rounded-xl text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
                     />
                   </div>
 
                   {/* Frutas Inclusas */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <Label className="text-[11px] font-bold text-zinc-700">Limite de Frutas</Label>
+                      <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Limite de Frutas</Label>
                       <button
                         type="button"
                         onClick={() => handleUpdateField(rule.id, 'limiteFrutas', isFrutasLivres ? 3 : 999)}
-                        className="text-[10px] font-bold text-purple-700 hover:underline cursor-pointer"
+                        className="text-[10px] font-bold text-purple-700 dark:text-pink-400 hover:underline cursor-pointer"
                       >
                         {isFrutasLivres ? 'Definir limite' : 'Tornar Livres'}
                       </button>
                     </div>
                     {isFrutasLivres ? (
-                      <div className="h-9 rounded-xl bg-emerald-100/70 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center">
+                      <div className="h-9 rounded-xl bg-emerald-100/70 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center justify-center">
                         Frutas Livres
                       </div>
                     ) : (
@@ -148,7 +148,7 @@ export default function ContainerAssemblyRulesDialog({
                         max="10"
                         value={rule.limiteFrutas}
                         onChange={(e) => handleUpdateField(rule.id, 'limiteFrutas', Number(e.target.value))}
-                        className="h-9 rounded-xl text-xs bg-white"
+                        className="h-9 rounded-xl text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
                       />
                     )}
                   </div>
@@ -156,17 +156,17 @@ export default function ContainerAssemblyRulesDialog({
                   {/* Toppings Inclusos */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <Label className="text-[11px] font-bold text-zinc-700">Limite de Toppings</Label>
+                      <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Limite de Toppings</Label>
                       <button
                         type="button"
                         onClick={() => handleUpdateField(rule.id, 'limiteToppings', isToppingsLivres ? 4 : 999)}
-                        className="text-[10px] font-bold text-purple-700 hover:underline cursor-pointer"
+                        className="text-[10px] font-bold text-purple-700 dark:text-pink-400 hover:underline cursor-pointer"
                       >
                         {isToppingsLivres ? 'Definir limite' : 'Tornar Livres'}
                       </button>
                     </div>
                     {isToppingsLivres ? (
-                      <div className="h-9 rounded-xl bg-emerald-100/70 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center">
+                      <div className="h-9 rounded-xl bg-emerald-100/70 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center justify-center">
                         Toppings Livres
                       </div>
                     ) : (
@@ -176,7 +176,7 @@ export default function ContainerAssemblyRulesDialog({
                         max="20"
                         value={rule.limiteToppings}
                         onChange={(e) => handleUpdateField(rule.id, 'limiteToppings', Number(e.target.value))}
-                        className="h-9 rounded-xl text-xs bg-white"
+                        className="h-9 rounded-xl text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
                       />
                     )}
                   </div>
@@ -186,13 +186,13 @@ export default function ContainerAssemblyRulesDialog({
           })}
         </div>
 
-        <DialogFooter className="gap-2 pt-2 border-t border-purple-100">
+        <DialogFooter className="gap-2 pt-2 border-t border-purple-100 dark:border-white/10">
           <Button
             type="button"
             variant="outline"
             disabled={saving}
             onClick={() => onOpenChange(false)}
-            className="h-10 rounded-xl text-xs font-bold"
+            className="h-10 rounded-xl text-xs font-bold border border-purple-200 dark:border-white/15 bg-purple-50 dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer"
           >
             Cancelar
           </Button>
@@ -200,7 +200,7 @@ export default function ContainerAssemblyRulesDialog({
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="h-10 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-black text-xs px-5 shadow-md flex items-center gap-1.5"
+            className="h-10 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold text-xs px-5 shadow-lg shadow-pink-600/30 flex items-center gap-1.5 cursor-pointer"
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
             <span>Salvar Regras de Montagem</span>

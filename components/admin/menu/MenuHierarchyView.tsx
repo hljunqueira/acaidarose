@@ -41,13 +41,18 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const [replicateModalOpen, setReplicateModalOpen] = useState(false)
 
   // Menus e Categorias Oficiais do Store
-  const { mainMenus, categories, addCategory } = useMenuConfigStore()
+  const { mainMenus, setMainMenus, categories, setCategories, addCategory } = useMenuConfigStore()
 
   // Nível 1: Menu Selecionado ('all_menus' lista todos os menus)
   const [selectedMainMenu, setSelectedMainMenu] = useState<string>('all_menus')
 
+  // Seletor de Visão Principal: Taças/Produtos vs Opcionais
+  const [activeViewMode, setActiveViewMode] = useState<'products' | 'options'>('products')
+  const [selectedOptionCategory, setSelectedOptionCategory] = useState<'all' | 'bases' | 'frutas' | 'toppings' | 'caldas'>('all')
+
   // Nível 2: Categoria Selecionada ('all_cats' lista todas as categorias)
   const [selectedCategory, setSelectedCategory] = useState<string>('all_cats')
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
 
   // Modal para Adicionar Categoria Rápida
   const [addCatDialogOpen, setAddCatDialogOpen] = useState(false)
@@ -76,19 +81,37 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   // Dialog de Modelos de Opções
   const [optionModelOpen, setOptionModelOpen] = useState(false)
 
-
   const fetchCatalog = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await authFetch(`/api/products?tenantId=${encodeURIComponent(tenantId)}`)
-      const data = await res.json()
-      if (data) setCatalog(data)
+      const [prodRes, catRes, menuRes] = await Promise.all([
+        authFetch(`/api/products?tenantId=${encodeURIComponent(tenantId)}`),
+        authFetch(`/api/categories?tenantId=${encodeURIComponent(tenantId)}`),
+        authFetch(`/api/menus?tenantId=${encodeURIComponent(tenantId)}`),
+      ])
+
+      if (prodRes.ok) {
+        const data = await prodRes.json()
+        if (data) setCatalog(data)
+      }
+      if (catRes.ok) {
+        const catData = await catRes.json()
+        if (Array.isArray(catData.categories)) {
+          setCategories(catData.categories)
+        }
+      }
+      if (menuRes.ok) {
+        const menuData = await menuRes.json()
+        if (Array.isArray(menuData.menus)) {
+          setMainMenus(menuData.menus)
+        }
+      }
     } catch {
       toast.error('Erro ao carregar cardápio')
     } finally {
       setLoading(false)
     }
-  }, [tenantId, authFetch])
+  }, [tenantId, authFetch, setCategories, setMainMenus])
 
   useEffect(() => {
     fetchCatalog()
@@ -129,14 +152,71 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       return
     }
     setEditingItem(null)
-    if (selectedCategory === 'bases') {
-      setEditingType('bases')
-    } else if (selectedCategory.startsWith('toppings')) {
-      setEditingType('toppings')
+    if (activeViewMode === 'options') {
+      if (selectedOptionCategory === 'bases') {
+        setEditingType('bases')
+      } else {
+        setEditingType('toppings')
+      }
     } else {
       setEditingType('containers')
     }
     setEditOpen(true)
+  }
+
+  const handleDragStartItem = (e: React.DragEvent, id: string) => {
+    setDraggedItemId(id)
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDropItem = async (e: React.DragEvent, targetId: string, targetType: 'containers' | 'bases' | 'toppings') => {
+    e.preventDefault()
+    if (!draggedItemId || draggedItemId === targetId) return
+
+    const currentList: any[] = targetType === 'containers' ? [...catalog.containers] : targetType === 'bases' ? [...catalog.bases] : [...catalog.toppings]
+    const currentIndex = currentList.findIndex((item) => item.id === draggedItemId)
+    const targetIndex = currentList.findIndex((item) => item.id === targetId)
+    if (currentIndex === -1 || targetIndex === -1) return
+
+    const [moved] = currentList.splice(currentIndex, 1)
+    currentList.splice(targetIndex, 0, moved)
+
+    const updatedWithOrders = currentList.map((item, idx) => ({
+      ...item,
+      displayOrder: idx + 1,
+    }))
+
+    setCatalog((prev) => ({
+      ...prev,
+      [targetType]: updatedWithOrders,
+    }))
+    setDraggedItemId(null)
+
+    try {
+      const itemsPayload = updatedWithOrders.map((item) => ({
+        id: item.id,
+        displayOrder: item.displayOrder,
+      }))
+      const res = await authFetch('/api/products/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: itemsPayload,
+          collection: targetType,
+          tenantId,
+        }),
+      })
+      if (!res.ok) throw new Error('Falha ao salvar ordenação no servidor')
+      toast.success('Ordem dos itens atualizada com sucesso!')
+      emitCatalogSync({
+        tenantId,
+        entity: 'product',
+        action: 'reorder',
+      })
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao sincronizar ordenação')
+    }
   }
 
   const handleEdit = (item: any) => {
@@ -258,53 +338,56 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
     setAddCatDialogOpen(false)
   }
 
-  // Filtragem dos Produtos por Categoria (Tamanho de Açaí) & Filtros Avançados
+  // Filtragem dos Produtos por Categoria (Tamanho de Açaí) & Opcionais
   const displayedItems = useMemo(() => {
     const list: Array<{ item: any; type: 'containers' | 'bases' | 'toppings' }> = []
     const containersList = catalog.containers || []
     const basesList = catalog.bases || []
     const toppingsList = catalog.toppings || []
 
-    if (selectedCategory === 'all_cats') {
-      containersList.forEach((c) => list.push({ item: c, type: 'containers' }))
-      basesList.forEach((b) => list.push({ item: b, type: 'bases' }))
-      toppingsList.forEach((t) => list.push({ item: t, type: 'toppings' }))
-    } else if (selectedCategory === 'bases') {
-      basesList.forEach((b) => list.push({ item: b, type: 'bases' }))
-    } else if (selectedCategory === 'toppings_frutas') {
-      toppingsList
-        .filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
-        .forEach((t) => list.push({ item: t, type: 'toppings' }))
-    } else if (selectedCategory === 'toppings_trad') {
-      toppingsList
-        .filter((t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
-        .forEach((t) => list.push({ item: t, type: 'toppings' }))
-    } else if (selectedCategory === 'toppings_caldas') {
-      toppingsList
-        .filter((t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0))
-        .forEach((t) => list.push({ item: t, type: 'toppings' }))
-    } else if (selectedCategory === 'cat_acai_250') {
-      const found = containersList.find((c) => c.weightGrams === 250 || c.name.toLowerCase().includes('250'))
-      if (found) list.push({ item: found, type: 'containers' })
-    } else if (selectedCategory === 'cat_acai_350') {
-      const found = containersList.find((c) => c.weightGrams === 350 || c.name.toLowerCase().includes('350'))
-      if (found) list.push({ item: found, type: 'containers' })
-    } else if (selectedCategory === 'cat_acai_500') {
-      const found = containersList.find((c) => c.weightGrams === 500 || c.name.toLowerCase().includes('500'))
-      if (found) list.push({ item: found, type: 'containers' })
-    } else if (selectedCategory === 'cat_acai_750') {
-      const found = containersList.find((c) => c.weightGrams === 750 || c.name.toLowerCase().includes('750'))
-      if (found) list.push({ item: found, type: 'containers' })
-    } else if (selectedCategory === 'cat_acai_1000') {
-      const found = containersList.find((c) => c.weightGrams === 1000 || c.name.toLowerCase().includes('1') || c.name.toLowerCase().includes('barca'))
-      if (found) list.push({ item: found, type: 'containers' })
+    if (activeViewMode === 'options') {
+      if (selectedOptionCategory === 'all') {
+        basesList.forEach((b) => list.push({ item: b, type: 'bases' }))
+        toppingsList.forEach((t) => list.push({ item: t, type: 'toppings' }))
+      } else if (selectedOptionCategory === 'bases') {
+        basesList.forEach((b) => list.push({ item: b, type: 'bases' }))
+      } else if (selectedOptionCategory === 'frutas') {
+        toppingsList
+          .filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
+          .forEach((t) => list.push({ item: t, type: 'toppings' }))
+      } else if (selectedOptionCategory === 'toppings') {
+        toppingsList
+          .filter((t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
+          .forEach((t) => list.push({ item: t, type: 'toppings' }))
+      } else if (selectedOptionCategory === 'caldas') {
+        toppingsList
+          .filter((t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0))
+          .forEach((t) => list.push({ item: t, type: 'toppings' }))
+      }
     } else {
-      // Outra categoria personalizada
-      const catObj = categories.find((c) => c.id === selectedCategory)
-      if (catObj) {
-        containersList
-          .filter((c) => ((c as any).category?.toUpperCase() === catObj.name.toUpperCase()) || c.name.toUpperCase().includes(catObj.name.toUpperCase()))
-          .forEach((c) => list.push({ item: c, type: 'containers' }))
+      // MODO PRODUTOS (TAÇAS)
+      if (selectedCategory === 'all_cats') {
+        containersList.forEach((c) => list.push({ item: c, type: 'containers' }))
+      } else {
+        const catObj = categories.find((c) => c.id === selectedCategory)
+        if (catObj) {
+          const catWeight = catObj.weightGrams ||
+            (catObj.name.includes('250') ? 250 :
+             catObj.name.includes('350') ? 350 :
+             catObj.name.includes('500') ? 500 :
+             catObj.name.includes('750') ? 750 :
+             (catObj.name.includes('1') || catObj.name.toLowerCase().includes('barca')) ? 1000 : undefined)
+
+          const cleanCat = (catObj.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '')
+
+          containersList
+            .filter((c) => {
+              if (catWeight && c.weightGrams === catWeight) return true
+              const cleanProd = (c.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '')
+              return cleanProd === cleanCat || cleanProd.includes(cleanCat) || cleanCat.includes(cleanProd)
+            })
+            .forEach((c) => list.push({ item: c, type: 'containers' }))
+        }
       }
     }
 
@@ -328,7 +411,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       return true
     })
-  }, [catalog, selectedCategory, filterOptions, categories])
+  }, [catalog, activeViewMode, selectedCategory, selectedOptionCategory, filterOptions, categories])
 
   const hasActiveFilters =
     filterOptions.status !== 'all' ||
@@ -336,42 +419,66 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
     filterOptions.minPrice !== undefined ||
     filterOptions.maxPrice !== undefined
 
+  // Contadores para as abas
+  const frutasCount = useMemo(() => {
+    return (catalog.toppings || []).filter(
+      (t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f))
+    ).length
+  }, [catalog.toppings])
+
+  const toppingsTradCount = useMemo(() => {
+    return (catalog.toppings || []).filter(
+      (t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f))
+    ).length
+  }, [catalog.toppings])
+
+  const caldasCount = useMemo(() => {
+    return (catalog.toppings || []).filter(
+      (t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0)
+    ).length
+  }, [catalog.toppings])
+
   return (
     <div className="space-y-4">
-      {/* 1. Header do Módulo & Botão Publicar Alterações */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-purple-100 dark:border-white/10">
+      {/* 1. HEADER DO PAINEL */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
         <div>
-          <h2 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">Itens do cardápio</h2>
-          <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
-            Açaí da Rose · Produtos, Tamanhos e Regras de Complementos
+          <h1 className="text-xl font-black text-purple-950 dark:text-white tracking-tight flex items-center gap-2">
+            <span>Cardápio & Catálogo</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-pink-950/50 text-purple-900 dark:text-pink-300 font-bold border border-purple-200 dark:border-pink-500/20">
+              {isSuperAdmin ? 'Franqueadora Master' : 'Filial Aveiro'}
+            </span>
+          </h1>
+          <p className="text-xs text-purple-700/80 dark:text-purple-200/70">
+            Gerencie taças, opcionais, disponibilidade e regras de personalização
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (isSuperAdmin) {
-              setReplicateModalOpen(true)
-            } else {
-              handlePublishChanges()
-            }
-          }}
-          disabled={publishing}
-          className="w-full sm:w-auto h-10 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${publishing ? 'animate-spin' : ''}`} />
-          <span>
-            {publishing
-              ? 'Publicando...'
-              : isSuperAdmin
-              ? 'Publicar & Replicar para Toda a Rede'
-              : 'Salvar Alterações da Loja'}
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReplicateModalOpen(true)}
+              className="border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 h-9 text-xs rounded-xl font-bold cursor-pointer"
+            >
+              <span>Replicar Catálogo</span>
+            </Button>
+          )}
+
+          <Button
+            onClick={handlePublishChanges}
+            disabled={publishing}
+            className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-9 px-4 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${publishing ? 'animate-spin' : ''}`} />
+            <span>{publishing ? 'Sincronizando...' : 'Publicar Alterações'}</span>
+          </Button>
+        </div>
       </div>
 
-      {/* 2. NÍVEL 1: LISTA DE MENUS (FILTRO 'Todos os Menus' + Menus Reais com Scroll Horizontal) */}
-      <div className="flex items-center gap-2 pt-1 overflow-x-auto no-scrollbar max-w-full pb-1">
+      {/* 2. NÍVEL 1: MENUS PRINCIPAIS */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1">
         <button
           type="button"
           onClick={() => {
@@ -413,10 +520,97 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       <hr className="border-t border-purple-100 dark:border-white/10 my-1" />
 
-      {/* 3. NÍVEL 2: CATEGORIAS & BARRA DE AÇÕES */}
-      <div className="flex flex-col gap-2.5 pt-1">
-        {/* Pílulas de Categorias com Scroll Horizontal */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1">
+      {/* 2.5 SELETOR DE VISÃO: TAÇAS & PRODUTOS vs OPCIONAIS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-purple-100/60 dark:bg-white/5 border border-purple-200/60 dark:border-white/10 w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveViewMode('products')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              activeViewMode === 'products'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+            }`}
+          >
+            <span>🥣 Taças & Produtos</span>
+            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
+              {catalog.containers.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveViewMode('options')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              activeViewMode === 'options'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-md shadow-purple-700/20 dark:shadow-pink-600/30'
+                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+            }`}
+          >
+            <span>🍨 Opcionais do Cardápio</span>
+            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
+              {catalog.bases.length + catalog.toppings.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Barra de Ações Rápidas */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full pb-1">
+          {!isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setFranchiseReqOpen(true)}
+              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
+            >
+              <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+              <span>Solicitar à Franqueadora</span>
+            </button>
+          )}
+
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={handleOpenNew}
+              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
+            >
+              <span>+ {activeViewMode === 'products' ? 'Nova Taça' : 'Novo Opcional'}</span>
+            </button>
+          )}
+
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setOptionModelOpen(true)}
+              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+              <span>Modelos</span>
+            </button>
+          )}
+          
+          <button
+            type="button"
+            onClick={() => setFilterDialogOpen(true)}
+            className={`h-8 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs shrink-0 whitespace-nowrap ${
+              hasActiveFilters
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
+                : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+            <span>Filtro</span>
+            {hasActiveFilters && (
+              <span className="h-4 w-4 rounded-full bg-white text-purple-700 text-[10px] font-black flex items-center justify-center">
+                !
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* 3. NÍVEL 2: PÍLULAS DE SUBDIVISÃO */}
+      {activeViewMode === 'products' ? (
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 pt-1">
           <button
             type="button"
             onClick={() => setSelectedCategory('all_cats')}
@@ -426,7 +620,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
                 : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
             }`}
           >
-            Todas as categorias
+            Todas as taças ({catalog.containers.length})
           </button>
 
           {categories
@@ -449,98 +643,115 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
               )
             })}
 
-          {/* Botão Adicionar Categoria */}
           {isSuperAdmin && (
             <button
               type="button"
               onClick={() => setAddCatDialogOpen(true)}
               className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-100 dark:bg-pink-950/40 border border-purple-200 dark:border-pink-500/30 text-purple-900 dark:text-pink-300 hover:bg-purple-200/70 dark:hover:bg-pink-900/40 transition cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <span>Adicionar Categoria</span>
+              <span>+ Categoria</span>
             </button>
           )}
         </div>
-
-        {/* Barra de Ações Integrada */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full pb-1">
-          {/* Solicitar à Franqueadora (Para Franqueados) */}
-          {!isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setFranchiseReqOpen(true)}
-              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-            >
-              <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-              <span>Solicitar à Franqueadora</span>
-            </button>
-          )}
-
-          {/* Adicionar Novo Item (Verde - Apenas Franqueadora Master) */}
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={handleOpenNew}
-              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
-            >
-              <span>Novo Item</span>
-            </button>
-          )}
-
-          {/* Modelos de Opções (Apenas Franqueadora) */}
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setOptionModelOpen(true)}
-              className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-              <span>Modelos</span>
-            </button>
-          )}
-
-          {/* Filtro com Contador Ativo */}
+      ) : (
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 pt-1">
           <button
             type="button"
-            onClick={() => setFilterDialogOpen(true)}
-            className={`h-8 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs shrink-0 whitespace-nowrap ${
-              hasActiveFilters
-                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
-                : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
+            onClick={() => setSelectedOptionCategory('all')}
+            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+              selectedOptionCategory === 'all'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
             }`}
           >
-            <Filter className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-            <span>Filtro</span>
-            {hasActiveFilters && (
-              <span className="h-4 w-4 rounded-full bg-white text-purple-700 text-[10px] font-black flex items-center justify-center">
-                !
-              </span>
-            )}
+            Todos os Opcionais ({catalog.bases.length + catalog.toppings.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedOptionCategory('bases')}
+            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+              selectedOptionCategory === 'bases'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+            }`}
+          >
+            🍨 Bases & Cremes ({catalog.bases.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedOptionCategory('frutas')}
+            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+              selectedOptionCategory === 'frutas'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+            }`}
+          >
+            🍓 Frutas Frescas ({frutasCount})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedOptionCategory('toppings')}
+            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+              selectedOptionCategory === 'toppings'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+            }`}
+          >
+            🥜 Toppings Tradicionais ({toppingsTradCount})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedOptionCategory('caldas')}
+            className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+              selectedOptionCategory === 'caldas'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
+                : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white shadow-xs'
+            }`}
+          >
+            🍯 Caldas Nobres ({caldasCount})
           </button>
         </div>
-      </div>
+      )}
 
       {/* 5. LISTAGEM DE PRODUTOS */}
       <div className="space-y-2.5 pt-2">
         {loading ? (
           <div className="p-12 text-center text-xs text-purple-700 dark:text-purple-200/70 font-bold animate-pulse">
-            Carregando produtos do cardápio...
+            Carregando itens do cardápio...
           </div>
         ) : displayedItems.length === 0 ? (
           <div className="p-12 text-center text-xs text-purple-700/80 dark:text-purple-200/60 font-bold bg-white dark:bg-white/5 rounded-2xl border border-dashed border-purple-200 dark:border-white/15">
-            Nenhum produto encontrado nesta categoria ou filtro.
+            Nenhum item encontrado nesta categoria ou filtro.
           </div>
         ) : (
-          displayedItems.map(({ item, type }) => (
-            <ProductRowItem
-              key={item.id}
-              product={item}
-              categoryType={type}
-              tenantId={tenantId}
-              onEdit={handleEdit}
-              onToggleStatus={handleToggleStatus}
-              onDelete={handleDelete}
-            />
-          ))
+          displayedItems.map(({ item, type }) => {
+            const isDragging = draggedItemId === item.id
+            return (
+              <div
+                key={item.id}
+                draggable={isSuperAdmin}
+                onDragStart={(e) => handleDragStartItem(e, item.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => handleDropItem(e, item.id, type)}
+                className={`transition-all ${
+                  isDragging ? 'opacity-30 scale-95 border-2 border-dashed border-purple-500 rounded-2xl' : ''
+                }`}
+              >
+                <ProductRowItem
+                  product={item}
+                  categoryType={type}
+                  tenantId={tenantId}
+                  onEdit={handleEdit}
+                  onToggleStatus={handleToggleStatus}
+                  onDelete={handleDelete}
+                />
+              </div>
+            )
+          })
         )}
       </div>
 
