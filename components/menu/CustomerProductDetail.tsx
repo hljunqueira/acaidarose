@@ -37,7 +37,19 @@ const CUP_VIDEOS: Record<number, string> = {
   1000: '/videos/hero_cup_rotation.mp4',
 }
 
-function getToppingItemPrice(topping: ProductTopping, _weightGrams?: number): number {
+function getToppingItemPrice(topping: ProductTopping, weightGrams?: number): number {
+  const nameLower = (topping.name || '').toLowerCase()
+  const isLarge = (weightGrams || 500) > 500 // 750g and 1000g
+
+  // Creme de Pistache: +2€ até 500g / +4€ acima de 500g
+  if (nameLower.includes('pistache')) {
+    return isLarge ? 4.0 : 2.0
+  }
+  // Creme de Ninho / Nutella: +1€ até 500g / +2€ acima de 500g
+  if (nameLower.includes('ninho') || nameLower.includes('nutella')) {
+    return isLarge ? 2.0 : 1.0
+  }
+
   if (topping.precoExtra && Number(topping.precoExtra) > 0) {
     return Number(topping.precoExtra)
   }
@@ -75,7 +87,7 @@ export default function CustomerProductDetail({
 
   const isUnlimited = container.weightGrams >= 500
   const maxFrutas = container.limiteFrutas || (isUnlimited ? 999 : container.weightGrams === 250 ? 2 : 3)
-  const maxToppingsGratis = container.limiteToppings || (isUnlimited ? 999 : 3)
+  const maxToppingsGratis = container.limiteToppings || (isUnlimited ? 999 : container.weightGrams === 350 ? 4 : 3)
 
   const frutas = useMemo(() => {
     return allToppings.filter((t) => 
