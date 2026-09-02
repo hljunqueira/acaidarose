@@ -1,5 +1,4 @@
-import { AVEIRO_HQ_ID } from '@/lib/repositories/tenantsRepository'
-
+export const AVEIRO_HQ_ID = '11111111-1111-1111-1111-111111111111'
 /**
  * Verifica se o usuário tem permissão para editar dados mestres do cardápio:
  * - Franqueadora Master (SUPER_ADMIN ou FRANCHISOR_ADMIN)
