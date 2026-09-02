@@ -83,6 +83,9 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   // Dialog de Modelos de Opções
   const [optionModelOpen, setOptionModelOpen] = useState(false)
 
+  // Controle de Alterações Pendentes de Publicação
+  const [hasPendingPublish, setHasPendingPublish] = useState(false)
+
   const fetchCatalog = useCallback(async () => {
     setLoading(true)
     try {
@@ -126,21 +129,13 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const handlePublishChanges = async () => {
     setPublishing(true)
     try {
-      const res = await authFetch('/api/products/sync-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Falha ao publicar alterações')
-      }
       emitCatalogSync({
         tenantId,
         entity: 'catalog',
         action: 'update',
       })
-      toast.success('Alterações publicadas e sincronizadas com sucesso!')
+      setHasPendingPublish(false)
+      toast.success('Cardápio da loja publicado com sucesso!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao publicar')
     } finally {
@@ -228,46 +223,36 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
     setEditOpen(true)
   }
 
-  const handleToggleStatus = async (item: any) => {
+  const handleToggleStatus = async (item: any, field?: 'visibility' | 'availability', targetValue?: boolean) => {
     try {
-      const isAvailable = item.isAvailableInStore !== undefined ? item.isAvailableInStore : item.active
-      const nextAvailable = !isAvailable
       const categoryType = item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
+      
+      const payload: any = {
+        tenantId,
+        productId: item.id,
+        category: categoryType,
+      }
+
+      if (field === 'visibility') {
+        const nextVisible = targetValue !== undefined ? targetValue : !(item.active !== false)
+        payload.visible = nextVisible
+      } else if (field === 'availability') {
+        const nextAvailable = targetValue !== undefined ? targetValue : !(item.isAvailableInStore !== false)
+        payload.available = nextAvailable
+      } else {
+        const next = targetValue !== undefined ? targetValue : !(item.isAvailableInStore !== false)
+        payload.available = next
+      }
+
       const res = await authFetch(`/api/products/toggle-availability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenantId,
-          productId: item.id,
-          category: categoryType,
-          available: nextAvailable,
-          active: nextAvailable,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) throw new Error('Falha ao atualizar status')
 
-      emitCatalogSync({
-        tenantId,
-        entity: 'product',
-        action: 'toggle_active',
-        entityId: item.id,
-        active: nextAvailable,
-      })
-
-      if (nextAvailable && item.isCategoryPaused) {
-        toast.warning(
-          `Atenção: "${item.name}" foi ativado, mas a categoria ${item.categoryName ? `"${item.categoryName}"` : 'deste produto'} está PAUSADA nesta loja. O produto não aparecerá aos clientes até que a categoria seja reativada.`,
-          { duration: 8000 }
-        )
-      } else {
-        toast.success(
-          nextAvailable
-            ? `"${item.name}" ativado com sucesso!`
-            : `"${item.name}" pausado com sucesso!`
-        )
-      }
-
+      setHasPendingPublish(true)
       fetchCatalog()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao alterar status')
@@ -1011,6 +996,21 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         catalog={catalog}
         onSuccess={fetchCatalog}
       />
+
+      {/* Barra Clean de Alterações Pendentes na Loja */}
+      {hasPendingPublish && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 dark:bg-[#1f0533]/95 text-white px-5 py-2.5 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-4 text-xs font-semibold backdrop-blur-md">
+          <span>Alterações pendentes no cardápio desta loja.</span>
+          <button
+            type="button"
+            onClick={handlePublishChanges}
+            disabled={publishing}
+            className="bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl transition cursor-pointer disabled:opacity-50"
+          >
+            {publishing ? 'A publicar...' : 'Publicar Alterações'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

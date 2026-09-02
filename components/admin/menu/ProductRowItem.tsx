@@ -20,7 +20,7 @@ interface ProductRowItemProps {
   categoryType: 'containers' | 'bases' | 'toppings'
   tenantId: string
   onEdit: (product: any) => void
-  onToggleStatus: (product: any) => void
+  onToggleStatus: (product: any, field?: 'visibility' | 'availability', targetValue?: boolean) => void
   onDelete: (product: any) => void
 }
 
@@ -60,7 +60,7 @@ export default function ProductRowItem({
     if (e) e.stopPropagation()
     const next = !isVisible
     setIsVisible(next)
-    onToggleStatus({ ...product, active: next })
+    onToggleStatus({ ...product, active: next }, 'visibility', next)
     if (next && product.isCategoryPaused) {
       toast.warning(
         `Atenção: "${product.name}" foi ativado, mas a categoria ${product.categoryName ? `"${product.categoryName}"` : 'deste produto'} está PAUSADA nesta loja. O produto não aparecerá aos clientes até que a categoria seja reativada.`,
@@ -79,7 +79,7 @@ export default function ProductRowItem({
     if (e) e.stopPropagation()
     const next = !isAvailable
     setIsAvailable(next)
-    onToggleStatus({ ...product, isAvailableInStore: next })
+    onToggleStatus({ ...product, isAvailableInStore: next }, 'availability', next)
     if (next && product.isCategoryPaused) {
       toast.warning(
         `Atenção: "${product.name}" foi marcado como disponível, mas a categoria ${product.categoryName ? `"${product.categoryName}"` : 'deste produto'} está PAUSADA nesta loja. O produto não aparecerá aos clientes até que a categoria seja reativada.`,
@@ -130,7 +130,8 @@ export default function ProductRowItem({
                 muted
                 loop
                 playsInline
-                className="h-full w-full object-cover"
+                poster={product.videoPoster || product.image || undefined}
+                className="w-full h-full object-cover"
               />
             ) : (product.image || product.videoPoster) ? (
               <img src={product.image || product.videoPoster} alt={product.name} className="h-full w-full object-cover" />
@@ -179,7 +180,7 @@ export default function ProductRowItem({
             rulesParts.push(`${basesLimit} ${basesLimit === 1 ? 'Base' : 'Bases'}`)
 
             if (frutasLimit >= 999 && toppingsLimit >= 999) {
-              rulesParts.push('Frutas e Acompanhamentos livres')
+              rulesParts.push('Frutas e Toppings livres')
             } else {
               if (frutasLimit < 999) {
                 rulesParts.push(`Até ${frutasLimit} ${frutasLimit === 1 ? 'Fruta' : 'Frutas'}`)
@@ -188,9 +189,9 @@ export default function ProductRowItem({
               }
 
               if (toppingsLimit < 999) {
-                rulesParts.push(`Até ${toppingsLimit} Acompanhamentos`)
+                rulesParts.push(`Até ${toppingsLimit} Toppings`)
               } else {
-                rulesParts.push('Acompanhamentos livres')
+                rulesParts.push('Toppings livres')
               }
             }
 
@@ -217,7 +218,7 @@ export default function ProductRowItem({
         ) : (
           <>
             <div className="text-purple-950 dark:text-white font-bold truncate">
-              {product.category || 'Acompanhamento'} {product.isPremium ? '• Adicional Premium' : ''}
+              {product.category || 'Topping'} {product.isPremium ? '• Adicional Premium' : ''}
             </div>
             <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
               {product.isPremium && product.precoExtra ? `+ € ${Number(product.precoExtra).toFixed(2)} por porção` : 'Incluso nas opções de personalização'}

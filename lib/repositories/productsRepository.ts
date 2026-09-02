@@ -15,7 +15,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       query(`SELECT id, name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT product_id, custom_price FROM store_price_overrides WHERE tenant_id = $1`, [tenantId]),
-      query(`SELECT product_id, is_available FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
+      query(`SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT id, name, slug, active FROM categories ORDER BY display_order ASC`),
     ])
 
@@ -26,10 +26,13 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       })
     }
 
-    const availabilityMap = new Map<string, boolean>()
+    const availabilityMap = new Map<string, { isAvailable: boolean; isVisible: boolean }>()
     if (availabilityOverridesRes && availabilityOverridesRes.rows) {
       availabilityOverridesRes.rows.forEach((r: any) => {
-        availabilityMap.set(r.product_id, !!r.is_available)
+        availabilityMap.set(r.product_id, {
+          isAvailable: r.is_available !== false,
+          isVisible: r.is_visible !== false,
+        })
       })
     }
 
@@ -44,7 +47,9 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
     if (containersRes && containersRes.rows) {
       containersRes.rows.forEach((row: any) => {
         const customPrice = priceMap.get(row.id)
-        const customAvailability = availabilityMap.get(row.id)
+        const override = availabilityMap.get(row.id)
+        const isVisible = override ? override.isVisible : !!row.active
+        const isAvailable = override ? override.isAvailable : !!row.active
         const weight = Number(row.weight_grams) || 500
         const limiteFrutas = weight === 250 ? 2 : weight === 350 ? 3 : 999
 
@@ -78,8 +83,8 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           videoPoster: row.video_poster,
           availableHours: row.available_hours,
           displayOrder: row.display_order,
-          active: !!row.active,
-          isAvailableInStore: customAvailability !== undefined ? customAvailability : !!row.active,
+          active: isVisible,
+          isAvailableInStore: isAvailable,
           isCategoryPaused,
           categoryName,
         })
@@ -88,17 +93,19 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
 
     if (basesRes && basesRes.rows) {
       basesRes.rows.forEach((row: any) => {
-        const customAvailability = availabilityMap.get(row.id)
+        const override = availabilityMap.get(row.id)
+        const isVisible = override ? override.isVisible : !!row.active
+        const isAvailable = override ? override.isAvailable : !!row.active
         bases.push({
           id: row.id,
           name: row.name,
           description: row.description || '',
           displayOrder: row.display_order,
-          active: !!row.active,
+          active: isVisible,
           videoUrl: row.video_url,
           videoPoster: row.video_poster,
           availableHours: row.available_hours,
-          isAvailableInStore: customAvailability !== undefined ? customAvailability : !!row.active
+          isAvailableInStore: isAvailable
         })
       })
     }
@@ -106,7 +113,9 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
     if (toppingsRes && toppingsRes.rows) {
       toppingsRes.rows.forEach((row: any) => {
         const customPrice = priceMap.get(row.id)
-        const customAvailability = availabilityMap.get(row.id)
+        const override = availabilityMap.get(row.id)
+        const isVisible = override ? override.isVisible : !!row.active
+        const isAvailable = override ? override.isAvailable : !!row.active
         toppings.push({
           id: row.id,
           name: row.name,
@@ -115,17 +124,22 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           precoExtra: customPrice !== undefined ? customPrice : Number(row.preco_extra),
           price: customPrice !== undefined ? customPrice : Number(row.preco_extra),
           displayOrder: row.display_order,
-          active: !!row.active,
+          active: isVisible,
           videoUrl: row.video_url,
           videoPoster: row.video_poster,
           availableHours: row.available_hours,
-          isAvailableInStore: customAvailability !== undefined ? customAvailability : !!row.active,
+          isAvailableInStore: isAvailable,
           emoji: ''
         })
       })
     }
-  } catch (err) {
-    console.error('Erro ao consultar catálogo no PostgreSQL:', err)
+  } catch (err: any) {
+    console.error('Erro em getCatalogByTenant:', err)
+    return {
+      containers: [],
+      bases: [],
+      toppings: [],
+    }
   }
 
   return {
@@ -135,12 +149,12 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
   }
 }
 
-export async function setStoreProductPrice(
+export async function setStorePriceOverride(
   tenantId: string,
   productId: string,
-  newPrice: number
+  customPrice: number
 ): Promise<{ success: boolean; tenantId: string; productId: string; newPrice: number }> {
-  const val = Number(newPrice)
+  const val = Number(customPrice) || 0
   try {
     await query(
       `INSERT INTO store_price_overrides (tenant_id, product_id, custom_price, updated_at)
@@ -149,11 +163,62 @@ export async function setStoreProductPrice(
        DO UPDATE SET custom_price = EXCLUDED.custom_price, updated_at = timezone('utc'::text, now())`,
       [tenantId, productId, val]
     )
+
+    await recordAuditLog({
+      tenantId,
+      action: 'STORE_PRICE_OVERRIDE_SET',
+      entity: 'store_price_overrides',
+      entityId: productId,
+      message: `Preço customizado da loja (${productId}): € ${val.toFixed(2)}`,
+      metadata: { productId, customPrice: val },
+    })
   } catch (err) {
-    console.error('Erro ao atualizar preco override do produto:', err)
+    console.error('Erro ao atualizar override de preço:', err)
   }
 
   return { success: true, tenantId, productId, newPrice: val }
+}
+
+export const setStoreProductPrice = setStorePriceOverride
+
+export async function toggleStoreItemStatus(
+  tenantId: string,
+  productId: string,
+  updates: { isAvailable?: boolean; isVisible?: boolean }
+): Promise<{ success: boolean; tenantId: string; productId: string; isAvailable?: boolean; isVisible?: boolean }> {
+  try {
+    const existingRes = await query(
+      `SELECT is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1 AND product_id = $2`,
+      [tenantId, productId]
+    )
+    const currentAvailable = existingRes.rows?.[0]?.is_available !== undefined ? existingRes.rows[0].is_available : true
+    const currentVisible = existingRes.rows?.[0]?.is_visible !== undefined ? existingRes.rows[0].is_visible : true
+
+    const newAvailable = updates.isAvailable !== undefined ? updates.isAvailable : currentAvailable
+    const newVisible = updates.isVisible !== undefined ? updates.isVisible : currentVisible
+
+    await query(
+      `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+       VALUES ($1, $2, $3, $4, timezone('utc'::text, now()))
+       ON CONFLICT (tenant_id, product_id) 
+       DO UPDATE SET is_available = EXCLUDED.is_available, is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+      [tenantId, productId, newAvailable, newVisible]
+    )
+
+    await recordAuditLog({
+      tenantId,
+      action: 'PRODUCT_STATUS_OVERRIDE_UPDATED',
+      entity: 'store_product_overrides',
+      entityId: productId,
+      message: `Status atualizado na loja (${productId}): visível=${newVisible}, disponível=${newAvailable}`,
+      metadata: { productId, isAvailable: newAvailable, isVisible: newVisible },
+    })
+
+    return { success: true, tenantId, productId, isAvailable: newAvailable, isVisible: newVisible }
+  } catch (err) {
+    console.error('Erro ao atualizar status override do produto:', err)
+    return { success: false, tenantId, productId, ...updates }
+  }
 }
 
 export async function toggleStoreItemAvailability(
@@ -161,30 +226,8 @@ export async function toggleStoreItemAvailability(
   productId: string,
   available: boolean
 ): Promise<{ success: boolean; tenantId: string; productId: string; available: boolean }> {
-  try {
-    await query(
-      `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, updated_at)
-       VALUES ($1, $2, $3, timezone('utc'::text, now()))
-       ON CONFLICT (tenant_id, product_id) 
-       DO UPDATE SET is_available = EXCLUDED.is_available, updated_at = timezone('utc'::text, now())`,
-      [tenantId, productId, available]
-    )
-
-    await recordAuditLog({
-      tenantId,
-      action: 'PRODUCT_AVAILABILITY_TOGGLED',
-      entity: 'store_product_overrides',
-      entityId: productId,
-      message: available
-        ? `Item reativado e disponível na loja (${productId})`
-        : `Item pausado/esgotado na loja (${productId})`,
-      metadata: { productId, available },
-    })
-  } catch (err) {
-    console.error('Erro ao atualizar disponibilidade override do produto:', err)
-  }
-
-  return { success: true, tenantId, productId, available }
+  const res = await toggleStoreItemStatus(tenantId, productId, { isAvailable: available })
+  return { success: res.success, tenantId, productId, available: !!res.isAvailable }
 }
 
 export async function syncAllStoresCatalog(payload?: {

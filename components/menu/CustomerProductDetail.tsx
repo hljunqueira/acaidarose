@@ -55,16 +55,16 @@ export default function CustomerProductDetail({
   const { isDark: isCustomerDark } = useCustomerTheme()
   if (!container) return null
 
-  // Filtra bases e opcionais ativos e disponíveis na loja física e no horário
+  // Filtra bases e opcionais ativos (itens invisíveis são ocultados)
   const bases = useMemo(() => {
     return (catalog.bases || []).filter(
-      (b) => b.active !== false && b.isAvailableInStore !== false && isProductTimeAvailable(b.availableHours)
+      (b) => b.active !== false && isProductTimeAvailable(b.availableHours)
     )
   }, [catalog.bases])
 
   const allToppings = useMemo(() => {
     return (catalog.toppings || []).filter(
-      (t) => t.active !== false && t.isAvailableInStore !== false && isProductTimeAvailable(t.availableHours)
+      (t) => t.active !== false && isProductTimeAvailable(t.availableHours)
     )
   }, [catalog.toppings])
 
@@ -291,7 +291,7 @@ export default function CustomerProductDetail({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {bases.map((base) => {
                   const isSelected = selectedBases.some((b) => b.id === base.id)
-                  const isAvailable = base.active !== false
+                  const isAvailable = base.isAvailableInStore !== false
                   return (
                     <button
                       key={base.id}
@@ -335,7 +335,7 @@ export default function CustomerProductDetail({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {frutas.map((fruta) => {
                   const isSelected = selectedToppings.some((t) => t.id === fruta.id)
-                  const isAvailable = fruta.active !== false
+                  const isAvailable = fruta.isAvailableInStore !== false
                   return (
                     <button
                       key={fruta.id}
@@ -379,7 +379,7 @@ export default function CustomerProductDetail({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {toppingsTradicionais.map((top) => {
                   const isSelected = selectedToppings.some((t) => t.id === top.id)
-                  const isAvailable = top.active !== false
+                  const isAvailable = top.isAvailableInStore !== false
                   return (
                     <button
                       key={top.id}
@@ -423,7 +423,7 @@ export default function CustomerProductDetail({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {caldasPremium.map((add) => {
                   const isSelected = selectedToppings.some((t) => t.id === add.id)
-                  const isAvailable = add.active !== false
+                  const isAvailable = add.isAvailableInStore !== false
                   const dynamicPrice = getToppingItemPrice(add, container.weightGrams)
                   return (
                     <button

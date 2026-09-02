@@ -77,10 +77,10 @@ export default function CustomerMenuHome({
   isTable = false,
   isCatalogOnly = false,
 }: CustomerMenuHomeProps) {
-  // Filtra itens visíveis e ordenados (oculta se o produto ou a categoria estiver pausada)
+  // Filtra itens visíveis e ordenados (itens invisíveis ou com categoria pausada são ocultados)
   const containers = useMemo(() => {
     return (catalog.containers || [])
-      .filter((c) => c.active !== false && c.isAvailableInStore !== false && !c.isCategoryPaused)
+      .filter((c) => c.active !== false && !c.isCategoryPaused)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
   }, [catalog.containers])
 
@@ -134,6 +134,7 @@ export default function CustomerMenuHome({
             const isFree = c.weightGrams >= 500
             const img = CUP_IMAGES[c.weightGrams] || c.image || '/images/official/acai_copo_500g.jpg'
             const video = c.videoUrl || CUP_VIDEOS[c.weightGrams]
+            const isAvailableInStore = c.isAvailableInStore !== false
             const isTimeAvailable = isProductTimeAvailable(c.availableHours)
 
             return (
@@ -143,14 +144,19 @@ export default function CustomerMenuHome({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: index * 0.04 }}
                 onClick={() => {
+                  if (!isAvailableInStore) {
+                    toast.error('Este produto está indisponível hoje na nossa loja.')
+                    return
+                  }
                   if (!isTimeAvailable) {
                     toast.error('Este produto não está disponível neste horário!')
                     return
                   }
                   onSelectContainer(c)
                 }}
-                className={`p-4 rounded-3xl bg-white border border-purple-100 shadow-md hover:border-pink-500/50 hover:shadow-xl dark:bg-gradient-to-b dark:from-[#24043b]/90 dark:to-[#160226]/90 dark:border-white/15 dark:hover:border-pink-500/60 dark:shadow-xl transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] ${!isTimeAvailable ? 'opacity-40 cursor-not-allowed border-red-500/30' : ''
-                  }`}
+                className={`p-4 rounded-3xl bg-white border border-purple-100 shadow-md hover:border-pink-500/50 hover:shadow-xl dark:bg-gradient-to-b dark:from-[#24043b]/90 dark:to-[#160226]/90 dark:border-white/15 dark:hover:border-pink-500/60 dark:shadow-xl transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] ${
+                  !isAvailableInStore || !isTimeAvailable ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
               >
                 <div>
                   <div className="relative h-48 sm:h-44 md:h-48 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/50 mb-3 border border-purple-100 dark:border-white/10">
@@ -172,15 +178,21 @@ export default function CustomerMenuHome({
                       />
                     )}
 
-                    {!isTimeAvailable && (
+                    {!isAvailableInStore ? (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 text-center">
+                        <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider bg-black/75 px-3 py-1 rounded-full border border-amber-400/30 shadow-sm">
+                          Indisponível hoje
+                        </span>
+                      </div>
+                    ) : !isTimeAvailable ? (
                       <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 text-center">
                         <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">
                           Fora de Horário
                         </span>
                       </div>
-                    )}
+                    ) : null}
 
-                    {isTimeAvailable && (
+                    {isAvailableInStore && isTimeAvailable && (
                       isFree ? (
                         <Badge className="absolute top-2.5 right-2.5 bg-emerald-600 text-white font-bold text-[9px] py-0.5 px-2.5 rounded-full border-0 shadow-md">
                           Frutas & Toppings Livres
@@ -208,26 +220,30 @@ export default function CustomerMenuHome({
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-purple-100 dark:border-white/10">
-                  <div>
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-purple-100 dark:border-white/10 gap-2">
+                  <div className="min-w-0 shrink-0">
                     <div className="text-[10px] text-slate-500 dark:text-purple-300 font-bold">Preço</div>
-                    <div className="text-lg font-bold text-fuchsia-600 dark:text-pink-300 font-mono">
+                    <div className="text-base sm:text-lg font-bold text-fuchsia-600 dark:text-pink-300 font-mono whitespace-nowrap">
                       {formatCurrency(c.precoBase)}
                     </div>
                   </div>
 
                   {isCatalogOnly ? (
-                    <span className="h-10 px-3.5 rounded-xl bg-purple-100 text-purple-900 dark:bg-white/10 dark:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all">
-                      <Info className="h-3.5 w-3.5" />
+                    <span className="h-9 sm:h-10 px-3.5 rounded-xl bg-purple-100 text-purple-900 dark:bg-white/10 dark:text-white font-bold text-xs flex items-center justify-center shrink-0 transition-all">
                       <span>Detalhes</span>
                     </span>
+                  ) : !isAvailableInStore ? (
+                    <span className="h-9 sm:h-10 px-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 font-bold text-xs flex items-center justify-center shrink-0 cursor-not-allowed select-none">
+                      <span>Indisponível</span>
+                    </span>
                   ) : (
-                    <span className={`h-10 px-4 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${isTimeAvailable
+                    <span className={`h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1 shrink-0 whitespace-nowrap transition-all ${
+                      isTimeAvailable
                         ? 'bg-gradient-to-r from-pink-600 to-purple-600 shadow-md shadow-pink-600/20 hover:scale-102 active:scale-95'
                         : 'bg-slate-200 text-slate-400 dark:bg-white/10 dark:text-white/50 cursor-not-allowed'
-                      }`}>
-                      <Plus className="h-4 w-4" />
-                      <span>{isTable ? 'Pedir na Mesa' : 'Personalizar'}</span>
+                    }`}>
+                      <Plus className="h-3.5 w-3.5 shrink-0" />
+                      <span>{isTable ? 'Pedir' : 'Personalizar'}</span>
                     </span>
                   )}
                 </div>

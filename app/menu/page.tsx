@@ -106,7 +106,7 @@ function MenuContent() {
   }, [paramNumero])
 
   const loadCatalog = () => {
-    fetch(`/api/products?loja=${encodeURIComponent(activeLoja)}`)
+    fetch(`/api/products?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         setCatalog(data)
@@ -136,7 +136,7 @@ function MenuContent() {
     loadCatalog()
 
     // 2. Configurações de QR Code da Unidade
-    fetch(`/api/qrcode-config?loja=${encodeURIComponent(activeLoja)}`)
+    fetch(`/api/qrcode-config?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (data.config) {
@@ -148,7 +148,18 @@ function MenuContent() {
     const unsubscribe = subscribeCatalogSync(() => {
       loadCatalog()
     })
-    return () => unsubscribe()
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadCatalog()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [activeLoja])
 
   const handleSelectContainer = (container: ProductContainer, showInfoOnly = false) => {

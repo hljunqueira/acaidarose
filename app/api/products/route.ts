@@ -16,11 +16,20 @@ export async function GET(request: NextRequest) {
     const effectiveTenantId = tenant ? tenant.id : AVEIRO_HQ_ID
 
     const catalog = await getCatalogByTenant(effectiveTenantId)
-    return NextResponse.json({
-      ...catalog,
-      tenantId: effectiveTenantId,
-      tenantName: tenant?.name || 'Açaí da Rose',
-    })
+    return NextResponse.json(
+      {
+        ...catalog,
+        tenantId: effectiveTenantId,
+        tenantName: tenant?.name || 'Açaí da Rose',
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    )
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Erro ao carregar cardápio' },
