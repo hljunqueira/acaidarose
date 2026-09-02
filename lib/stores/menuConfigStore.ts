@@ -10,7 +10,7 @@ export interface CustomMenuItem {
   description?: string
   displayOrder: number
   active: boolean
-  availableHours?: string
+  availableHours?: any
 }
 
 export interface CustomCategoryItem {

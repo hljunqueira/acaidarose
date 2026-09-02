@@ -22,6 +22,26 @@ interface MenuSectionsAdminProps {
   tenantId?: string
 }
 
+function formatAvailableHours(val: any): string {
+  if (!val) return 'Sempre disponível'
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      if (typeof parsed === 'object' && parsed !== null) return formatAvailableHours(parsed)
+      return val
+    } catch {
+      return val
+    }
+  }
+  if (typeof val === 'object' && val !== null) {
+    const daysCount = Array.isArray(val.days) ? val.days.length : 7
+    const daysLabel = daysCount === 7 ? 'Todos os dias' : `${daysCount} dias/sem`
+    const timeLabel = val.startTime && val.endTime ? `${val.startTime} às ${val.endTime}` : '24h'
+    return `${daysLabel} (${timeLabel})`
+  }
+  return String(val)
+}
+
 export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps = {}) {
   const { user, authFetch } = useAuthStore()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
@@ -91,7 +111,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
       name: menu.name,
       code: menu.code,
       description: menu.description || '',
-      availableHours: menu.availableHours || 'Sempre disponível',
+      availableHours: formatAvailableHours(menu.availableHours),
       displayOrder: menu.displayOrder,
       active: menu.active,
     })
@@ -246,7 +266,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
               {menu.availableHours && (
                 <div className="flex items-center gap-1.5 text-[11px] text-purple-800 dark:text-purple-200/90 font-medium">
                   <Clock className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-                  <span>{menu.availableHours}</span>
+                  <span>{formatAvailableHours(menu.availableHours)}</span>
                 </div>
               )}
             </div>
