@@ -43,9 +43,11 @@ function formatAvailableHours(val: any): string {
   return String(val)
 }
 
+import { canManageMasterCatalog } from '@/lib/utils/permissions'
+
 export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps = {}) {
   const { user, authFetch } = useAuthStore()
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const isSuperAdmin = canManageMasterCatalog(user, tenantId)
 
   const { mainMenus, setMainMenus, addMenu, updateMenu, deleteMenu } = useMenuConfigStore()
 

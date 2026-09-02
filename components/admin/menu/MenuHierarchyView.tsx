@@ -26,6 +26,8 @@ import MenuFilterDialog, { MenuFilterOptions } from './MenuFilterDialog'
 import ReplicateCatalogModal from './ReplicateCatalogModal'
 import { emitCatalogSync, subscribeCatalogSync } from '@/lib/utils/catalogSync'
 
+import { canManageMasterCatalog } from '@/lib/utils/permissions'
+
 interface MenuHierarchyViewProps {
   tenantId: string
   initialSection?: string
@@ -33,7 +35,7 @@ interface MenuHierarchyViewProps {
 
 export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) {
   const { user, authFetch } = useAuthStore()
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN' || tenantId?.startsWith('11111111') || tenantId === 'aveiro'
+  const isSuperAdmin = canManageMasterCatalog(user, tenantId)
 
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
   const [loading, setLoading] = useState(true)

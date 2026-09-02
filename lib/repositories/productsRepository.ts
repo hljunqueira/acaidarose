@@ -11,12 +11,12 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
 
   try {
     const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes] = await Promise.all([
-      query(`SELECT id, name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND active = true AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
-      query(`SELECT id, name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND active = true AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
-      query(`SELECT id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND active = true AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT product_id, custom_price FROM store_price_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT product_id, is_available FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
-      query(`SELECT id, name, slug, active FROM categories WHERE deleted_at IS NULL`),
+      query(`SELECT id, name, slug, active FROM categories ORDER BY display_order ASC`),
     ])
 
     const priceMap = new Map<string, number>()
@@ -408,6 +408,25 @@ export async function createProductItem(category: string, item: any): Promise<an
         ]
       )
       const created = res.rows[0]
+      if (!item.tenantId || item.tenantId === AVEIRO_HQ_ID || item.tenantId === '11111111-1111-1111-1111-111111111111') {
+        try {
+          const otherTenants = await query(
+            `SELECT id FROM tenants WHERE id != $1 AND deleted_at IS NULL`,
+            [AVEIRO_HQ_ID]
+          )
+          for (const t of (otherTenants.rows || [])) {
+            const replicaId = uuidv4()
+            await query(
+              `INSERT INTO product_toppings (id, tenant_id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+               ON CONFLICT DO NOTHING`,
+              [replicaId, t.id, item.name, item.category || 'Toppings', !!item.isPremium, Number(item.precoExtra || item.price) || 0, item.image || item.imageUrl || null, item.videoUrl || null, item.videoPoster || null, item.availableHours ? JSON.stringify(item.availableHours) : null, Number(item.displayOrder) || 0]
+            )
+          }
+        } catch (repErr) {
+          console.error('Erro ao replicar produto criado para demais lojas:', repErr)
+        }
+      }
       await recordAuditLog({
         tenantId,
         action: 'PRODUCT_CREATED',
@@ -515,13 +534,96 @@ export async function updateProductItem(category: string, id: string, item: any)
       updated = res.rows[0] || item
     }
 
+    // Se o item atualizado for da Franqueadora/Matriz Aveiro, propaga alterações mestres para as demais lojas
+    if (updated && (updated.tenant_id === AVEIRO_HQ_ID || !item.tenantId || item.tenantId === AVEIRO_HQ_ID)) {
+      try {
+        if (category === 'containers' && updated.weight_grams) {
+          await query(
+            `UPDATE product_containers
+             SET name = COALESCE($1, name),
+                 limite_bases = COALESCE($2, limite_bases),
+                 limite_complementos_gratis = COALESCE($3, limite_complementos_gratis),
+                 image_url = COALESCE($4, image_url),
+                 video_url = COALESCE($5, video_url),
+                 video_poster = COALESCE($6, video_poster),
+                 available_hours = COALESCE($7, available_hours),
+                 display_order = COALESCE($8, display_order),
+                 updated_at = timezone('utc'::text, now())
+             WHERE weight_grams = $9 AND tenant_id != $10`,
+            [
+              item.name || null,
+              item.limiteBases !== undefined ? Number(item.limiteBases) : null,
+              item.limiteToppings !== undefined ? Number(item.limiteToppings) : null,
+              item.image || item.imageUrl || null,
+              item.videoUrl || null,
+              item.videoPoster || null,
+              item.availableHours ? JSON.stringify(item.availableHours) : null,
+              item.displayOrder !== undefined ? Number(item.displayOrder) : null,
+              Number(updated.weight_grams),
+              AVEIRO_HQ_ID,
+            ]
+          )
+        } else if (category === 'bases' && updated.name) {
+          await query(
+            `UPDATE product_bases
+             SET description = COALESCE($1, description),
+                 image_url = COALESCE($2, image_url),
+                 video_url = COALESCE($3, video_url),
+                 video_poster = COALESCE($4, video_poster),
+                 available_hours = COALESCE($5, available_hours),
+                 display_order = COALESCE($6, display_order),
+                 updated_at = timezone('utc'::text, now())
+             WHERE name = $7 AND tenant_id != $8`,
+            [
+              item.description || null,
+              item.image || item.imageUrl || null,
+              item.videoUrl || null,
+              item.videoPoster || null,
+              item.availableHours ? JSON.stringify(item.availableHours) : null,
+              item.displayOrder !== undefined ? Number(item.displayOrder) : null,
+              updated.name,
+              AVEIRO_HQ_ID,
+            ]
+          )
+        } else if (category === 'toppings' && updated.name) {
+          await query(
+            `UPDATE product_toppings
+             SET category = COALESCE($1, category),
+                 is_premium = COALESCE($2, is_premium),
+                 preco_extra = COALESCE($3, preco_extra),
+                 image_url = COALESCE($4, image_url),
+                 video_url = COALESCE($5, video_url),
+                 video_poster = COALESCE($6, video_poster),
+                 available_hours = COALESCE($7, available_hours),
+                 display_order = COALESCE($8, display_order),
+                 updated_at = timezone('utc'::text, now())
+             WHERE name = $9 AND tenant_id != $10`,
+            [
+              item.category || null,
+              item.isPremium !== undefined ? !!item.isPremium : null,
+              item.precoExtra !== undefined ? Number(item.precoExtra) : null,
+              item.image || item.imageUrl || null,
+              item.videoUrl || null,
+              item.videoPoster || null,
+              item.availableHours ? JSON.stringify(item.availableHours) : null,
+              item.displayOrder !== undefined ? Number(item.displayOrder) : null,
+              updated.name,
+              AVEIRO_HQ_ID,
+            ]
+          )
+        }
+      } catch (repErr) {
+        console.error('Erro ao propagar atualizações para filiais:', repErr)
+      }
+    }
+
     await recordAuditLog({
       tenantId: item.tenantId || null,
       action: 'PRODUCT_UPDATED',
       entity: tableName,
       entityId: id,
-      message: `Item atualizado: "${item.name || id}" na categoria ${category}`,
-      metadata: { category, id, updatedData: item },
+      message: `Item atualizado: "${updated?.name || id}" na categoria ${category}`,
+      metadata: { category, item: updated },
     })
 
     return updated
@@ -534,22 +636,36 @@ export async function updateProductItem(category: string, id: string, item: any)
 export async function deleteProductItem(category: string, id: string): Promise<boolean> {
   const tableName = getTableName(category)
   try {
-    const res = await query(
+    const itemRes = await query(`SELECT name, tenant_id FROM ${tableName} WHERE id::text = $1`, [id])
+    const item = itemRes.rows?.[0]
+
+    await query(
       `UPDATE ${tableName} 
        SET deleted_at = timezone('utc'::text, now()), active = false 
        WHERE id::text = $1`,
       [id]
     )
 
+    // Se deletado na Matriz/Franqueadora, propaga soft-delete em toda a rede
+    if (item && (item.tenant_id === AVEIRO_HQ_ID || !item.tenant_id)) {
+      await query(
+        `UPDATE ${tableName} 
+         SET deleted_at = timezone('utc'::text, now()), active = false 
+         WHERE name = $1 AND tenant_id != $2`,
+        [item.name, AVEIRO_HQ_ID]
+      )
+    }
+
     await recordAuditLog({
+      tenantId: item?.tenant_id || null,
       action: 'PRODUCT_DELETED',
       entity: tableName,
       entityId: id,
-      message: `Item removido do catálogo (soft-delete): ID ${id} (${category})`,
-      metadata: { category, id },
+      message: `Item removido (soft delete): "${item?.name || id}" em ${category}`,
+      metadata: { category, id, item },
     })
 
-    return (res.rowCount || 0) > 0
+    return true
   } catch {
     return false
   }

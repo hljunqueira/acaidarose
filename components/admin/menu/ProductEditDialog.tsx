@@ -114,6 +114,8 @@ export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionMode
   ]
 }
 
+import { canManageMasterCatalog } from '@/lib/utils/permissions'
+
 export default function ProductEditDialog({
   open,
   onOpenChange,
@@ -123,7 +125,7 @@ export default function ProductEditDialog({
   onSave,
 }: ProductEditDialogProps) {
   const { user } = useAuthStore()
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN'
+  const isSuperAdmin = canManageMasterCatalog(user, item?.tenantId)
   const { categories } = useMenuConfigStore()
 
   const dynamicAvailableModels = useMemo(
@@ -876,16 +878,18 @@ export default function ProductEditDialog({
             onClick={() => onOpenChange(false)}
             className="px-4 py-2 text-xs font-bold text-purple-900 dark:text-purple-200 bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 rounded-xl hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer transition"
           >
-            Cancelar
+            {isSuperAdmin ? 'Cancelar' : 'Fechar'}
           </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSubmit}
-            className="px-6 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 rounded-xl cursor-pointer shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition"
-          >
-            {saving ? 'Guardando...' : 'Guardar Alterações'}
-          </button>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleSubmit}
+              className="px-6 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 rounded-xl cursor-pointer shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition"
+            >
+              {saving ? 'Guardando...' : 'Guardar Alterações'}
+            </button>
+          )}
         </div>
       </DialogContent>
 

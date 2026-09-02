@@ -44,9 +44,11 @@ function cleanCategorySlug(slug: string): string {
   return slug.replace(/-[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, '')
 }
 
+import { canManageMasterCatalog } from '@/lib/utils/permissions'
+
 export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminProps = {}) {
   const { user, authFetch } = useAuthStore()
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const isSuperAdmin = canManageMasterCatalog(user, tenantId)
 
   const { categories, setCategories, addCategory, updateCategory, deleteCategory } = useMenuConfigStore()
 

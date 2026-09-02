@@ -24,6 +24,8 @@ interface ProductRowItemProps {
   onDelete: (product: any) => void
 }
 
+import { canManageMasterCatalog } from '@/lib/utils/permissions'
+
 export default function ProductRowItem({
   product,
   categoryType,
@@ -33,7 +35,7 @@ export default function ProductRowItem({
   onDelete,
 }: ProductRowItemProps) {
   const { user } = useAuthStore()
-  const isFranchisor = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN' || tenantId?.startsWith('11111111')
+  const isFranchisor = canManageMasterCatalog(user, tenantId)
 
   const [replicateOpen, setReplicateOpen] = useState(false)
   const [duplicateOpen, setDuplicateOpen] = useState(false)

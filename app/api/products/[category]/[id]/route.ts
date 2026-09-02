@@ -3,13 +3,15 @@ import { jsonResponse, errorResponse } from '@/lib/api/response'
 import { getAuthUser, hasRole } from '@/lib/api/authGuard'
 import { updateProductItem, deleteProductItem } from '@/lib/repositories/productsRepository'
 
+import { canManageMasterCatalog } from '@/lib/utils/permissions'
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ category: string; id: string }> }
 ) {
   const user = await getAuthUser(request)
-  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
-    return errorResponse('Sem permissão', 403)
+  if (!canManageMasterCatalog(user, user?.tenantId)) {
+    return errorResponse('Apenas a Franqueadora e a Loja Matriz Aveiro podem alterar dados do cardápio mestre. Para alterações, utilize a Solicitação à Franqueadora.', 403)
   }
 
   const { category, id } = await params
@@ -28,8 +30,8 @@ export async function DELETE(
   { params }: { params: Promise<{ category: string; id: string }> }
 ) {
   const user = await getAuthUser(request)
-  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])) {
-    return errorResponse('Sem permissão', 403)
+  if (!canManageMasterCatalog(user, user?.tenantId)) {
+    return errorResponse('Apenas a Franqueadora e a Loja Matriz Aveiro podem excluir itens do cardápio mestre.', 403)
   }
 
   const { category, id } = await params
