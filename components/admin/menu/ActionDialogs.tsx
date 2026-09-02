@@ -178,7 +178,7 @@ export function DuplicateItemDialog({ open, onOpenChange, product }: ActionDialo
               <div className="text-xs">
                 <span className="font-bold text-zinc-500 mr-2">Descrição</span>
                 <span className="text-zinc-600 line-clamp-2">
-                  {product.description || (product.weightGrams ? `${product.weightGrams}g com regras de personalização` : 'Item do cardápio')}
+                  {product.description && product.description.trim() ? product.description.trim() : '—'}
                 </span>
               </div>
             </div>
@@ -255,7 +255,7 @@ export function DeleteItemDialog({ open, onOpenChange, product, onSuccess }: Act
               <div className="text-xs">
                 <span className="font-bold text-zinc-500 mr-2">Descrição</span>
                 <span className="text-zinc-600 line-clamp-2">
-                  {product.description || (product.weightGrams ? `${product.weightGrams}g com regras de personalização` : 'Item do cardápio')}
+                  {product.description && product.description.trim() ? product.description.trim() : '—'}
                 </span>
               </div>
             </div>

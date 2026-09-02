@@ -11,9 +11,9 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
 
   try {
     const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes] = await Promise.all([
-      query(`SELECT id, name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT id, name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
-      query(`SELECT id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT product_id, custom_price FROM store_price_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT id, name, slug, active FROM categories ORDER BY display_order ASC`),
@@ -69,7 +69,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         containers.push({
           id: row.id,
           name: row.name,
-          description: '',
+          description: row.description || '',
           weightGrams: weight,
           precoBase: customPrice !== undefined ? customPrice : Number(row.preco_base),
           price: customPrice !== undefined ? customPrice : Number(row.preco_base),
@@ -119,6 +119,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         toppings.push({
           id: row.id,
           name: row.name,
+          description: row.description || '',
           category: row.category,
           isPremium: !!row.is_premium,
           precoExtra: customPrice !== undefined ? customPrice : Number(row.preco_extra),
@@ -268,9 +269,9 @@ export async function syncAllStoresCatalog(payload?: {
 
     // 2. Carregar catálogo canônico da Matriz (Loja 1)
     const [sourceContainersRes, sourceBasesRes, sourceToppingsRes] = await Promise.all([
-      query(`SELECT name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+      query(`SELECT name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
       query(`SELECT name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
-      query(`SELECT name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+      query(`SELECT name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
     ])
 
     const containers = sourceContainersRes.rows || []
@@ -286,17 +287,17 @@ export async function syncAllStoresCatalog(payload?: {
         if (check.rows && check.rows.length > 0) {
           await query(
             `UPDATE product_containers
-             SET name = $1, preco_base = $2, limite_bases = $3, limite_complementos_gratis = $4,
-                 image_url = $5, video_url = $6, video_poster = $7, available_hours = $8,
-                 display_order = $9, active = $10, updated_at = timezone('utc'::text, now())
-             WHERE tenant_id = $11 AND weight_grams = $12 AND deleted_at IS NULL`,
-            [c.name, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active, targetId, c.weight_grams]
+             SET name = $1, description = $2, preco_base = $3, limite_bases = $4, limite_complementos_gratis = $5,
+                 image_url = $6, video_url = $7, video_poster = $8, available_hours = $9,
+                 display_order = $10, active = $11, updated_at = timezone('utc'::text, now())
+             WHERE tenant_id = $12 AND weight_grams = $13 AND deleted_at IS NULL`,
+            [c.name, c.description || null, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active, targetId, c.weight_grams]
           )
         } else {
           await query(
-            `INSERT INTO product_containers (id, tenant_id, name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-            [uuidv4(), targetId, c.name, c.weight_grams, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active]
+            `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            [uuidv4(), targetId, c.name, c.description || null, c.weight_grams, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active]
           )
         }
       }
@@ -321,23 +322,23 @@ export async function syncAllStoresCatalog(payload?: {
         }
       }
 
-      // Toppings (Acompanhamentos)
+      // Toppings
       for (const t of toppings) {
         const check = await query(`SELECT id FROM product_toppings WHERE tenant_id = $1 AND name = $2 AND deleted_at IS NULL`, [targetId, t.name])
         if (check.rows && check.rows.length > 0) {
           await query(
             `UPDATE product_toppings
-             SET category = $1, is_premium = $2, preco_extra = $3, image_url = $4,
-                 video_url = $5, video_poster = $6, available_hours = $7, display_order = $8,
-                 active = $9, updated_at = timezone('utc'::text, now())
-             WHERE tenant_id = $10 AND name = $11 AND deleted_at IS NULL`,
-            [t.category, t.is_premium, t.preco_extra, t.image_url, t.video_url, t.video_poster, t.available_hours ? JSON.stringify(t.available_hours) : null, t.display_order, t.active, targetId, t.name]
+             SET description = $1, category = $2, is_premium = $3, preco_extra = $4, image_url = $5,
+                 video_url = $6, video_poster = $7, available_hours = $8, display_order = $9,
+                 active = $10, updated_at = timezone('utc'::text, now())
+             WHERE tenant_id = $11 AND name = $12 AND deleted_at IS NULL`,
+            [t.description || null, t.category, t.is_premium, t.preco_extra, t.image_url, t.video_url, t.video_poster, t.available_hours ? JSON.stringify(t.available_hours) : null, t.display_order, t.active, targetId, t.name]
           )
         } else {
           await query(
-            `INSERT INTO product_toppings (id, tenant_id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-            [uuidv4(), targetId, t.name, t.category, t.is_premium, t.preco_extra, t.image_url, t.video_url, t.video_poster, t.available_hours ? JSON.stringify(t.available_hours) : null, t.display_order, t.active]
+            `INSERT INTO product_toppings (id, tenant_id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+            [uuidv4(), targetId, t.name, t.description || null, t.category, t.is_premium, t.preco_extra, t.image_url, t.video_url, t.video_poster, t.available_hours ? JSON.stringify(t.available_hours) : null, t.display_order, t.active]
           )
         }
       }
@@ -391,13 +392,14 @@ export async function createProductItem(category: string, item: any): Promise<an
   try {
     if (category === 'containers') {
       const res = await query(
-        `INSERT INTO product_containers (id, tenant_id, name, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           id,
           tenantId,
           item.name,
+          item.description || null,
           Number(item.weightGrams) || 500,
           Number(item.precoBase || item.price) || 0,
           Number(item.limiteBases || item.limiteCremes) || 1,
@@ -432,13 +434,14 @@ export async function createProductItem(category: string, item: any): Promise<an
       return res.rows[0]
     } else {
       const res = await query(
-        `INSERT INTO product_toppings (id, tenant_id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `INSERT INTO product_toppings (id, tenant_id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING *`,
         [
           id,
           tenantId,
           item.name,
+          item.description || null,
           item.category || 'Toppings',
           !!item.isPremium,
           Number(item.precoExtra || item.price) || 0,
@@ -494,21 +497,24 @@ export async function updateProductItem(category: string, id: string, item: any)
       const res = await query(
         `UPDATE product_containers
          SET name = COALESCE($2, name),
-             weight_grams = COALESCE($3, weight_grams),
-             preco_base = COALESCE($4, preco_base),
-             limite_bases = COALESCE($5, limite_bases),
-             limite_complementos_gratis = COALESCE($6, limite_complementos_gratis),
-             image_url = COALESCE($7, image_url),
-             video_url = COALESCE($8, video_url),
-             video_poster = COALESCE($9, video_poster),
-             available_hours = COALESCE($10, available_hours),
-             display_order = COALESCE($11, display_order),
+             description = CASE WHEN $3 = true THEN $4 ELSE description END,
+             weight_grams = COALESCE($5, weight_grams),
+             preco_base = COALESCE($6, preco_base),
+             limite_bases = COALESCE($7, limite_bases),
+             limite_complementos_gratis = COALESCE($8, limite_complementos_gratis),
+             image_url = COALESCE($9, image_url),
+             video_url = COALESCE($10, video_url),
+             video_poster = COALESCE($11, video_poster),
+             available_hours = COALESCE($12, available_hours),
+             display_order = COALESCE($13, display_order),
              updated_at = timezone('utc'::text, now())
          WHERE id::text = $1
          RETURNING *`,
         [
           id,
           item.name || null,
+          item.description !== undefined,
+          item.description || null,
           item.weightGrams !== undefined ? Number(item.weightGrams) : null,
           item.precoBase !== undefined ? Number(item.precoBase) : null,
           item.limiteBases !== undefined ? Number(item.limiteBases) : null,
@@ -525,18 +531,19 @@ export async function updateProductItem(category: string, id: string, item: any)
       const res = await query(
         `UPDATE product_bases
          SET name = COALESCE($2, name),
-             description = COALESCE($3, description),
-             image_url = COALESCE($4, image_url),
-             video_url = COALESCE($5, video_url),
-             video_poster = COALESCE($6, video_poster),
-             available_hours = COALESCE($7, available_hours),
-             display_order = COALESCE($8, display_order),
+             description = CASE WHEN $3 = true THEN $4 ELSE description END,
+             image_url = COALESCE($5, image_url),
+             video_url = COALESCE($6, video_url),
+             video_poster = COALESCE($7, video_poster),
+             available_hours = COALESCE($8, available_hours),
+             display_order = COALESCE($9, display_order),
              updated_at = timezone('utc'::text, now())
          WHERE id::text = $1
          RETURNING *`,
         [
           id,
           item.name || null,
+          item.description !== undefined,
           item.description || null,
           item.image || item.imageUrl || null,
           item.videoUrl || null,
@@ -550,20 +557,23 @@ export async function updateProductItem(category: string, id: string, item: any)
       const res = await query(
         `UPDATE product_toppings
          SET name = COALESCE($2, name),
-             category = COALESCE($3, category),
-             is_premium = COALESCE($4, is_premium),
-             preco_extra = COALESCE($5, preco_extra),
-             image_url = COALESCE($6, image_url),
-             video_url = COALESCE($7, video_url),
-             video_poster = COALESCE($8, video_poster),
-             available_hours = COALESCE($9, available_hours),
-             display_order = COALESCE($10, display_order),
+             description = CASE WHEN $3 = true THEN $4 ELSE description END,
+             category = COALESCE($5, category),
+             is_premium = COALESCE($6, is_premium),
+             preco_extra = COALESCE($7, preco_extra),
+             image_url = COALESCE($8, image_url),
+             video_url = COALESCE($9, video_url),
+             video_poster = COALESCE($10, video_poster),
+             available_hours = COALESCE($11, available_hours),
+             display_order = COALESCE($12, display_order),
              updated_at = timezone('utc'::text, now())
          WHERE id::text = $1
          RETURNING *`,
         [
           id,
           item.name || null,
+          item.description !== undefined,
+          item.description || null,
           item.category || null,
           item.isPremium !== undefined ? !!item.isPremium : null,
           item.precoExtra !== undefined ? Number(item.precoExtra) : null,
@@ -584,17 +594,20 @@ export async function updateProductItem(category: string, id: string, item: any)
           await query(
             `UPDATE product_containers
              SET name = COALESCE($1, name),
-                 limite_bases = COALESCE($2, limite_bases),
-                 limite_complementos_gratis = COALESCE($3, limite_complementos_gratis),
-                 image_url = COALESCE($4, image_url),
-                 video_url = COALESCE($5, video_url),
-                 video_poster = COALESCE($6, video_poster),
-                 available_hours = COALESCE($7, available_hours),
-                 display_order = COALESCE($8, display_order),
+                 description = CASE WHEN $2 = true THEN $3 ELSE description END,
+                 limite_bases = COALESCE($4, limite_bases),
+                 limite_complementos_gratis = COALESCE($5, limite_complementos_gratis),
+                 image_url = COALESCE($6, image_url),
+                 video_url = COALESCE($7, video_url),
+                 video_poster = COALESCE($8, video_poster),
+                 available_hours = COALESCE($9, available_hours),
+                 display_order = COALESCE($10, display_order),
                  updated_at = timezone('utc'::text, now())
-             WHERE weight_grams = $9 AND tenant_id != $10`,
+             WHERE weight_grams = $11 AND tenant_id != $12`,
             [
               item.name || null,
+              item.description !== undefined,
+              item.description || null,
               item.limiteBases !== undefined ? Number(item.limiteBases) : null,
               item.limiteToppings !== undefined ? Number(item.limiteToppings) : null,
               item.image || item.imageUrl || null,
@@ -609,15 +622,16 @@ export async function updateProductItem(category: string, id: string, item: any)
         } else if (category === 'bases' && updated.name) {
           await query(
             `UPDATE product_bases
-             SET description = COALESCE($1, description),
-                 image_url = COALESCE($2, image_url),
-                 video_url = COALESCE($3, video_url),
-                 video_poster = COALESCE($4, video_poster),
-                 available_hours = COALESCE($5, available_hours),
-                 display_order = COALESCE($6, display_order),
+             SET description = CASE WHEN $1 = true THEN $2 ELSE description END,
+                 image_url = COALESCE($3, image_url),
+                 video_url = COALESCE($4, video_url),
+                 video_poster = COALESCE($5, video_poster),
+                 available_hours = COALESCE($6, available_hours),
+                 display_order = COALESCE($7, display_order),
                  updated_at = timezone('utc'::text, now())
-             WHERE name = $7 AND tenant_id != $8`,
+             WHERE name = $8 AND tenant_id != $9`,
             [
+              item.description !== undefined,
               item.description || null,
               item.image || item.imageUrl || null,
               item.videoUrl || null,
@@ -631,17 +645,20 @@ export async function updateProductItem(category: string, id: string, item: any)
         } else if (category === 'toppings' && updated.name) {
           await query(
             `UPDATE product_toppings
-             SET category = COALESCE($1, category),
-                 is_premium = COALESCE($2, is_premium),
-                 preco_extra = COALESCE($3, preco_extra),
-                 image_url = COALESCE($4, image_url),
-                 video_url = COALESCE($5, video_url),
-                 video_poster = COALESCE($6, video_poster),
-                 available_hours = COALESCE($7, available_hours),
-                 display_order = COALESCE($8, display_order),
+             SET description = CASE WHEN $1 = true THEN $2 ELSE description END,
+                 category = COALESCE($3, category),
+                 is_premium = COALESCE($4, is_premium),
+                 preco_extra = COALESCE($5, preco_extra),
+                 image_url = COALESCE($6, image_url),
+                 video_url = COALESCE($7, video_url),
+                 video_poster = COALESCE($8, video_poster),
+                 available_hours = COALESCE($9, available_hours),
+                 display_order = COALESCE($10, display_order),
                  updated_at = timezone('utc'::text, now())
-             WHERE name = $9 AND tenant_id != $10`,
+             WHERE name = $11 AND tenant_id != $12`,
             [
+              item.description !== undefined,
+              item.description || null,
               item.category || null,
               item.isPremium !== undefined ? !!item.isPremium : null,
               item.precoExtra !== undefined ? Number(item.precoExtra) : null,

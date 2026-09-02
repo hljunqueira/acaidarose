@@ -146,12 +146,11 @@ export default function ProductRowItem({
             <h4 className="font-extrabold text-sm text-purple-950 dark:text-white leading-tight truncate">
               {product.name}
             </h4>
-            <p className="text-[11px] text-purple-700 dark:text-purple-200/70 font-medium line-clamp-1 mt-0.5">
-              {product.description ||
-                (product.weightGrams
-                  ? `${product.weightGrams}g com regras de personalização.`
-                  : 'Produto oficial Açaí da Rose')}
-            </p>
+            {product.description && product.description.trim() ? (
+              <p className="text-[11px] text-purple-700 dark:text-purple-200/70 font-medium line-clamp-1 mt-0.5">
+                {product.description.trim()}
+              </p>
+            ) : null}
           </div>
         </div>
 

@@ -213,11 +213,11 @@ export default function CustomerMenuHome({
                     {c.name}
                   </div>
 
-                  <p className="text-xs text-slate-600 dark:text-purple-200/70 mt-1 line-clamp-2 leading-relaxed">
-                    {isFree
-                      ? 'Açaí cremoso batido na hora com frutas frescas e toppings.'
-                      : `Inclui 1 base gelada, até ${c.limiteFrutas || 2} frutas e até 3 toppings.`}
-                  </p>
+                  {c.description && c.description.trim() ? (
+                    <p className="text-xs text-slate-600 dark:text-purple-200/70 mt-1 line-clamp-2 leading-relaxed">
+                      {c.description.trim()}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-purple-100 dark:border-white/10 gap-2">

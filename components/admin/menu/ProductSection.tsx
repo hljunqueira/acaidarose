@@ -95,7 +95,7 @@ export default function ProductSection({
                       )}
 
                       {collection === 'bases' && (
-                        <span>{item.description || '1 creme opcional incluso'}</span>
+                        <span>{item.description || ''}</span>
                       )}
 
                       {collection === 'toppings' && (
