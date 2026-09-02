@@ -162,14 +162,68 @@ export default function ProductRowItem({
         </div>
       </div>
 
-      {/* 2. CENTRO (Apenas telas grandes): RESUMO DAS REGRAS */}
-      <div className="hidden lg:block flex-1 px-2 text-[11px] text-purple-900/80 dark:text-purple-200/80 font-medium space-y-0.5 max-w-xs">
-        <div className="text-purple-950 dark:text-white font-bold truncate">
-          Regras e adicionais configurados
-        </div>
-        <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
-          Bases, frutas frescas e toppings do produto
-        </div>
+      {/* 2. CENTRO (Apenas telas grandes): RESUMO DAS REGRAS REAIS */}
+      <div className="hidden lg:block flex-1 px-3 text-[11px] text-purple-900/80 dark:text-purple-200/80 font-medium space-y-0.5 max-w-sm">
+        {categoryType === 'containers' ? (
+          (() => {
+            const weight = product.weightGrams || 500
+            const basesLimit = product.limiteBases || (weight >= 1000 ? 3 : weight >= 500 ? 2 : 1)
+            const frutasLimit = product.limiteFrutas !== undefined
+              ? product.limiteFrutas
+              : (weight === 250 ? 2 : weight === 350 ? 3 : 999)
+            const toppingsLimit = product.limiteToppings !== undefined
+              ? product.limiteToppings
+              : (weight === 250 ? 3 : weight === 350 ? 4 : 999)
+
+            const rulesParts: string[] = []
+            rulesParts.push(`${basesLimit} ${basesLimit === 1 ? 'Base' : 'Bases'}`)
+
+            if (frutasLimit >= 999 && toppingsLimit >= 999) {
+              rulesParts.push('Frutas e Acompanhamentos livres')
+            } else {
+              if (frutasLimit < 999) {
+                rulesParts.push(`Até ${frutasLimit} ${frutasLimit === 1 ? 'Fruta' : 'Frutas'}`)
+              } else {
+                rulesParts.push('Frutas livres')
+              }
+
+              if (toppingsLimit < 999) {
+                rulesParts.push(`Até ${toppingsLimit} Acompanhamentos`)
+              } else {
+                rulesParts.push('Acompanhamentos livres')
+              }
+            }
+
+            return (
+              <>
+                <div className="text-purple-950 dark:text-white font-bold truncate">
+                  {rulesParts[0]} • {rulesParts[1]}
+                </div>
+                <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
+                  {rulesParts[2] ? rulesParts[2] : 'Montagem personalizada na taça'}
+                </div>
+              </>
+            )
+          })()
+        ) : categoryType === 'bases' ? (
+          <>
+            <div className="text-purple-950 dark:text-white font-bold truncate">
+              Base / Creme Artesanal
+            </div>
+            <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
+              Opção de base para taças de açaí
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-purple-950 dark:text-white font-bold truncate">
+              {product.category || 'Acompanhamento'} {product.isPremium ? '• Adicional Premium' : ''}
+            </div>
+            <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
+              {product.isPremium && product.precoExtra ? `+ € ${Number(product.precoExtra).toFixed(2)} por porção` : 'Incluso nas opções de personalização'}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 3. BASE (Mobile) / DIREITA (Desktop): PREÇO DESKTOP + STATUS + AÇÕES */}
