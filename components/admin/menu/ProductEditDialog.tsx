@@ -36,14 +36,22 @@ export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionMode
   const toppings = catalog?.toppings || []
   const weight = item?.weightGrams || 500
 
+  const defaultBasesMax = weight === 250 ? 1 : weight === 350 ? 2 : weight === 1000 ? 4 : 3
+  const defaultFrutasMax = weight === 250 ? 2 : weight === 350 ? 3 : 999
+  const defaultToppingsMax = weight === 250 ? 3 : weight === 350 ? 4 : 999
+
+  const basesMax = item?.limiteBases !== undefined && item?.limiteBases !== null ? Number(item.limiteBases) : defaultBasesMax
+  const frutasMax = item?.limiteFrutas !== undefined && item?.limiteFrutas !== null ? Number(item.limiteFrutas) : defaultFrutasMax
+  const toppingsMax = item?.limiteToppings !== undefined && item?.limiteToppings !== null ? Number(item.limiteToppings) : defaultToppingsMax
+
   return [
     {
       id: 'model-bases',
       name: 'Escolha seu creme ou base gelada',
       priceType: 'Gratis',
-      minQty: 1,
-      maxQty: weight === 250 ? 1 : weight === 350 ? 2 : weight === 1000 ? 4 : 3,
-      isRequired: true,
+      minQty: item?.minBases ?? 1,
+      maxQty: basesMax,
+      isRequired: (item?.minBases ?? 1) > 0,
       active: true,
       options: bases.map((b: any) => ({
         id: b.id,
@@ -58,9 +66,9 @@ export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionMode
       id: 'model-frutas',
       name: 'Frutas Frescas Selecionadas',
       priceType: 'Gratis',
-      minQty: 0,
-      maxQty: weight === 250 ? 2 : weight === 350 ? 3 : 999,
-      isRequired: false,
+      minQty: item?.minFrutas ?? 0,
+      maxQty: frutasMax,
+      isRequired: (item?.minFrutas ?? 0) > 0,
       active: true,
       options: toppings
         .filter((t: any) => t.category === 'Frutas')
@@ -77,9 +85,9 @@ export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionMode
       id: 'model-toppings',
       name: 'Toppings & Crocantes Tradicionais',
       priceType: 'Gratis',
-      minQty: 0,
-      maxQty: weight === 250 ? 3 : weight === 350 ? 4 : 999,
-      isRequired: false,
+      minQty: item?.minToppings ?? 0,
+      maxQty: toppingsMax,
+      isRequired: (item?.minToppings ?? 0) > 0,
       active: true,
       options: toppings
         .filter((t: any) => t.category === 'Toppings' || t.category === 'Cereais')
@@ -96,8 +104,8 @@ export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionMode
       id: 'model-caldas',
       name: 'Caldas Nobres & Premium',
       priceType: 'Individual',
-      minQty: 0,
-      maxQty: 10,
+      minQty: item?.minCaldas ?? 0,
+      maxQty: item?.maxCaldas ?? 10,
       isRequired: false,
       active: true,
       options: toppings
@@ -193,16 +201,15 @@ export default function ProductEditDialog({
   }
 
   // Estado para controlar quais grupos de opções estão expandidos (colapsáveis)
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    'model-bases': true,
-    'model-frutas': false,
-    'model-toppings': false,
-    'model-caldas': false,
-  })
+  // Por padrão, todos iniciam fechados (colapsados)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const [linkedOptionGroups, setLinkedOptionGroups] = useState<(OptionModelData & { active?: boolean })[]>([])
 
   useEffect(() => {
+    // Ao abrir ou trocar de item, garante que todos os grupos iniciem fechados
+    setExpandedGroups({})
+
     if (item) {
       if (item.optionGroups && item.optionGroups.length > 0) {
         setLinkedOptionGroups(item.optionGroups)
@@ -234,11 +241,11 @@ export default function ProductEditDialog({
         availableHours: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
       })
     }
-  }, [item, collection, catalog])
+  }, [item, collection, catalog, open])
 
   const handleUpdateGroupRules = (groupId: string | undefined, patch: Partial<OptionModelData>) => {
     setLinkedOptionGroups((prev) =>
-      prev.map((g) => (g.id === groupId ? { ...g, ...patch } : g))
+      prev.map((g) => (g.id === groupId || g.name === groupId ? { ...g, ...patch } : g))
     )
   }
 
@@ -277,6 +284,27 @@ export default function ProductEditDialog({
         payload.price = Number(form.price)
         payload.category = form.category
         payload.optionGroups = linkedOptionGroups
+
+        // Extrai os limites configurados nos grupos para salvar no container
+        const basesGroup = linkedOptionGroups.find(
+          (g) => g.id === 'model-bases' || g.name.toLowerCase().includes('base') || g.name.toLowerCase().includes('creme')
+        )
+        const toppingsGroup = linkedOptionGroups.find(
+          (g) => g.id === 'model-toppings' || g.name.toLowerCase().includes('topping')
+        )
+        const frutasGroup = linkedOptionGroups.find(
+          (g) => g.id === 'model-frutas' || g.name.toLowerCase().includes('fruta')
+        )
+
+        if (basesGroup && basesGroup.maxQty !== undefined) {
+          payload.limiteBases = Number(basesGroup.maxQty)
+        }
+        if (toppingsGroup && toppingsGroup.maxQty !== undefined) {
+          payload.limiteToppings = Number(toppingsGroup.maxQty)
+        }
+        if (frutasGroup && frutasGroup.maxQty !== undefined) {
+          payload.limiteFrutas = Number(frutasGroup.maxQty)
+        }
       }
 
       await onSave(collection, payload)
@@ -784,7 +812,7 @@ export default function ProductEditDialog({
                           <input
                             type="checkbox"
                             checked={grp.isRequired ?? false}
-                            onChange={(e) => handleUpdateGroupRules(grp.id, { isRequired: e.target.checked })}
+                            onChange={(e) => handleUpdateGroupRules(groupId, { isRequired: e.target.checked })}
                             className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
                           />
                           <span>Obrigatório</span>
@@ -796,8 +824,11 @@ export default function ProductEditDialog({
                             <input
                               type="number"
                               min="0"
-                              value={grp.minQty ?? 0}
-                              onChange={(e) => handleUpdateGroupRules(grp.id, { minQty: Math.max(0, parseInt(e.target.value) || 0) })}
+                              value={grp.minQty === undefined || grp.minQty === null ? '' : grp.minQty}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                                handleUpdateGroupRules(groupId, { minQty: isNaN(val) ? 0 : Math.max(0, val) })
+                              }}
                               className="w-12 h-6 px-1 text-center font-mono font-bold text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/20 rounded-md text-purple-950 dark:text-white"
                             />
                           </div>
@@ -806,9 +837,12 @@ export default function ProductEditDialog({
                             <span className="text-purple-700 dark:text-purple-300 font-medium">Máx:</span>
                             <input
                               type="number"
-                              min="1"
-                              value={grp.maxQty ?? 1}
-                              onChange={(e) => handleUpdateGroupRules(grp.id, { maxQty: Math.max(1, parseInt(e.target.value) || 1) })}
+                              min="0"
+                              value={grp.maxQty === undefined || grp.maxQty === null ? '' : grp.maxQty}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                                handleUpdateGroupRules(groupId, { maxQty: isNaN(val) ? 0 : Math.max(0, val) })
+                              }}
                               className="w-12 h-6 px-1 text-center font-mono font-bold text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/20 rounded-md text-purple-950 dark:text-white"
                             />
                           </div>
