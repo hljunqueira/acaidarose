@@ -22,7 +22,7 @@ interface MenuSectionsAdminProps {
 }
 
 export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps = {}) {
-  const { user } = useAuthStore()
+  const { user, authFetch } = useAuthStore()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
   const { mainMenus, setMainMenus, addMenu, updateMenu, deleteMenu } = useMenuConfigStore()
@@ -53,7 +53,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
   const fetchMenus = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/menus?tenantId=${encodeURIComponent(tenantId || user?.tenantId || '')}`)
+      const res = await authFetch(`/api/menus?tenantId=${encodeURIComponent(tenantId || user?.tenantId || '')}`)
       if (res.ok) {
         const data = await res.json()
         if (Array.isArray(data.menus)) {
@@ -150,7 +150,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
     const nextActive = !menu.active
     updateMenu(menu.id, { active: nextActive })
     try {
-      const res = await fetch(`/api/menus/${menu.id}`, {
+      const res = await authFetch(`/api/menus/${menu.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: nextActive, tenantId: tenantId || user?.tenantId }),

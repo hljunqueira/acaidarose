@@ -5,7 +5,7 @@ import { updateCategory, deleteCategory } from '@/lib/repositories/categoriesRep
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getAuthUser(req)
-    if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
+    if (user && !hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
     }
 

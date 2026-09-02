@@ -356,3 +356,36 @@ export async function updateMenu(
     return null
   }
 }
+
+/**
+ * Reordena as categorias no PostgreSQL via drag-and-drop
+ */
+export async function reorderCategories(
+  items: { id: string; displayOrder: number }[],
+  tenantId?: string
+): Promise<boolean> {
+  try {
+    for (const item of items) {
+      await query(
+        `UPDATE categories
+         SET display_order = $2
+         WHERE id = $1`,
+        [item.id, item.displayOrder]
+      )
+    }
+
+    await recordAuditLog({
+      tenantId: tenantId || null,
+      action: 'CATEGORIES_REORDERED',
+      entity: 'categories',
+      message: `Ordem das categorias reorganizada via drag-and-drop (${items.length} itens)`,
+      metadata: { items },
+    })
+
+    return true
+  } catch (err) {
+    console.error('Erro ao reordenar categorias:', err)
+    return false
+  }
+}
+
