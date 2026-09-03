@@ -2,18 +2,26 @@ import { Tenant, FranchiseNetworkOverview, StoreOverview } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
 
-export const AVEIRO_HQ_ID = '11111111-1111-1111-1111-111111111111'
+export const FIGUEIRA_HQ_ID = '11111111-1111-1111-1111-111111111111'
 export const TORRES_NOVAS_ID = '22222222-2222-2222-2222-222222222222'
+export const AVEIRO_FRANCHISE_ID = '33333333-3333-3333-3333-333333333333'
+export const AVEIRO_HQ_ID = FIGUEIRA_HQ_ID // retrocompatibilidade temporária
 
 export function normalizeTenantId(tenantId?: string | null): string {
-  if (!tenantId) return AVEIRO_HQ_ID
+  if (!tenantId) return FIGUEIRA_HQ_ID
   const clean = String(tenantId).trim().toLowerCase()
-  if (clean === '2' || clean === 'torres-novas' || clean === 'filial-2' || clean.includes('torres-novas')) {
+  if (clean === '2' || clean === 'torres-novas' || clean === 'filial-1' || clean.includes('torres-novas')) {
     return TORRES_NOVAS_ID
+  }
+  if (clean === '3' || clean === 'aveiro' || clean === 'franquia' || clean.includes('aveiro')) {
+    return AVEIRO_FRANCHISE_ID
+  }
+  if (clean === '1' || clean === 'figueira' || clean === 'figueira-da-foz' || clean === 'matriz' || clean.includes('figueira')) {
+    return FIGUEIRA_HQ_ID
   }
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)
   if (!isUuid) {
-    return AVEIRO_HQ_ID
+    return FIGUEIRA_HQ_ID
   }
   return clean
 }
@@ -58,12 +66,14 @@ export async function getTenantByIdOrSlug(identifier: string): Promise<Tenant | 
 
   const clean = String(identifier).trim().toLowerCase()
 
-  // 1. Resolução inteligente de aliases: Loja 1 (Aveiro) e Loja 2 (Torres Novas)
+  // 1. Resolução inteligente de aliases: Loja 1 (Figueira), Loja 2 (Torres Novas) e Loja 3 (Aveiro)
   let targetIdOrSlug = clean
-  if (clean === '1' || clean === 'aveiro-1' || clean === 'matriz' || clean === 'matriz-aveiro' || clean === 'aveiro') {
-    targetIdOrSlug = AVEIRO_HQ_ID
-  } else if (clean === '2' || clean === 'torres-novas-2' || clean === 'torres-novas' || clean === 'filial-2' || clean === 'filial-torres-novas') {
+  if (clean === '1' || clean === 'figueira' || clean === 'figueira-da-foz' || clean === 'matriz' || clean.includes('figueira')) {
+    targetIdOrSlug = FIGUEIRA_HQ_ID
+  } else if (clean === '2' || clean === 'torres-novas-2' || clean === 'torres-novas' || clean === 'filial-1' || clean === 'filial-torres-novas') {
     targetIdOrSlug = TORRES_NOVAS_ID
+  } else if (clean === '3' || clean === 'aveiro' || clean === 'franquia-aveiro' || clean === 'franquia') {
+    targetIdOrSlug = AVEIRO_FRANCHISE_ID
   }
 
   const res = await query(
@@ -241,6 +251,8 @@ export async function updateTenant(id: string, payload: Partial<Tenant>): Promis
          phone = COALESCE($7, phone),
          mbway_phone = COALESCE($8, mbway_phone),
          active = COALESCE($9, active),
+         royalty_percentage = COALESCE($10, royalty_percentage),
+         marketing_fund_percentage = COALESCE($11, marketing_fund_percentage),
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING *`,
@@ -254,6 +266,8 @@ export async function updateTenant(id: string, payload: Partial<Tenant>): Promis
       payload.phone || null,
       payload.mbwayPhone || null,
       payload.active,
+      payload.royaltyPercentage !== undefined ? payload.royaltyPercentage : null,
+      payload.marketingFundPercentage !== undefined ? payload.marketingFundPercentage : null,
     ]
   )
 
@@ -271,6 +285,8 @@ export async function updateTenant(id: string, payload: Partial<Tenant>): Promis
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
     currency: t.currency,
+    royaltyPercentage: Number(t.royalty_percentage) || 0,
+    marketingFundPercentage: Number(t.marketing_fund_percentage) || 0,
     isHeadquarters: !!t.is_headquarters,
     active: t.active,
     createdAt: t.created_at,

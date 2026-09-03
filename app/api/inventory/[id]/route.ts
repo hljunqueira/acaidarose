@@ -9,7 +9,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
     const body = await req.json()
-    const { tenantId, minAlertQuantity, name, unit, category, marketPrice, supplyPrice, isCriticalChecklist } = body
+    const {
+      tenantId,
+      minAlertQuantity,
+      name,
+      unit,
+      category,
+      supplyCode,
+      marketPrice,
+      supplyPrice,
+      lastCostPrice,
+      centralStock,
+      taxRate,
+      netWeightKg,
+      pricePerKg,
+      isCriticalChecklist,
+    } = body
 
     if (tenantId && minAlertQuantity !== undefined) {
       await updateStoreMinAlert(tenantId, id, Number(minAlertQuantity))
@@ -19,8 +34,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       name,
       unit,
       category,
+      supplyCode,
       marketPrice: marketPrice !== undefined ? Number(marketPrice) : undefined,
       supplyPrice: supplyPrice !== undefined ? Number(supplyPrice) : undefined,
+      lastCostPrice: lastCostPrice !== undefined ? Number(lastCostPrice) : undefined,
+      centralStock: centralStock !== undefined ? Number(centralStock) : undefined,
+      taxRate: taxRate !== undefined ? Number(taxRate) : undefined,
+      netWeightKg: netWeightKg !== undefined ? Number(netWeightKg) : undefined,
+      pricePerKg: pricePerKg !== undefined ? Number(pricePerKg) : undefined,
       isCriticalChecklist,
     })
 

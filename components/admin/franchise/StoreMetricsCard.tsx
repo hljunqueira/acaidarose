@@ -58,10 +58,16 @@ export default function StoreMetricsCard({
             </div>
           </div>
           {tenant.isHeadquarters ? (
-            <Badge className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white text-[10px] font-bold border-0">Matriz HQ</Badge>
+            <Badge className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white text-[10px] font-bold border-0">
+              Matriz HQ
+            </Badge>
+          ) : tenant.slug?.includes('torres') ? (
+            <Badge variant="outline" className="text-[10px] text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30 bg-indigo-100 dark:bg-indigo-500/20 font-bold">
+              Filial 1 (Própria)
+            </Badge>
           ) : (
-            <Badge variant="outline" className="text-[10px] text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 bg-emerald-100 dark:bg-emerald-500/20 font-bold">
-              Ativa
+            <Badge variant="outline" className="text-[10px] text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 bg-amber-100 dark:bg-amber-500/20 font-bold">
+              Franquia
             </Badge>
           )}
         </div>

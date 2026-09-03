@@ -23,8 +23,9 @@ interface MenuCategoriesAdminProps {
 }
 
 const TENANT_NAME_MAP: Record<string, string> = {
-  '11111111-1111-1111-1111-111111111111': 'Loja 1 - Aveiro',
-  '22222222-2222-2222-2222-222222222222': 'Loja 2 - Torres Novas',
+  '11111111-1111-1111-1111-111111111111': 'Loja 1 - Figueira da Foz (Matriz)',
+  '22222222-2222-2222-2222-222222222222': 'Loja 2 - Torres Novas (Filial 1)',
+  '33333333-3333-3333-3333-333333333333': 'Loja 3 - Aveiro (Franquia)',
 }
 
 function getStoreName(slug?: string, fallbackTenantId?: string | null): string {
@@ -36,7 +37,7 @@ function getStoreName(slug?: string, fallbackTenantId?: string | null): string {
   if (fallbackTenantId && TENANT_NAME_MAP[fallbackTenantId]) {
     return TENANT_NAME_MAP[fallbackTenantId]
   }
-  return 'Loja 1 - Aveiro'
+  return 'Loja 1 - Figueira da Foz (Matriz)'
 }
 
 function cleanCategorySlug(slug: string): string {

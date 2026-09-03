@@ -65,9 +65,8 @@ export default function NotFound() {
           </Link>
         </div>
 
-        {/* Rodapé Discreto */}
         <div className="pt-8 border-t border-[#2A1E3D]/50 text-[11px] text-gray-400">
-          Açaí da Rose · Aveiro & Torres Novas, Portugal
+          Açaí da Rose · Portugal
         </div>
       </div>
     </div>

@@ -85,6 +85,7 @@ export default function AppSidebar({
   const isSuperAdmin = user.role === 'SUPER_ADMIN'
   const isFranchisorAdmin = user.role === 'FRANCHISOR_ADMIN'
   const isTenantAdmin = user.role === 'TENANT_ADMIN'
+  const isMatrizTenant = Boolean(currentTenant?.isHeadquarters) || currentTenant?.id === '11111111-1111-1111-1111-111111111111' || currentTenant?.slug === 'figueira-da-foz' || currentTenant?.slug === 'figueira'
 
   // Contagem de solicitações e candidaturas pendentes
   const [candidatesCount, setCandidatesCount] = useState<number>(0)
@@ -198,12 +199,6 @@ export default function AppSidebar({
             badge: storeRequestsCount > 0 ? String(storeRequestsCount) : undefined,
             show: true,
           },
-          {
-            id: 'supply_hub',
-            label: 'Central de Abastecimento',
-            subtitle: 'Catálogo B2B & Expedição por Loja',
-            show: true,
-          },
         ],
       },
       {
@@ -227,7 +222,6 @@ export default function AppSidebar({
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
           { id: 'menu_menus', label: 'Menus do Cardápio', subtitle: 'Organização de Seções', show: true },
           { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Carrossel & Promoções', show: true },
-          { id: 'menu_schedules', label: 'Horários de Atendimento', subtitle: 'Turnos & Disponibilidade', show: true },
         ],
       },
       {
@@ -237,7 +231,12 @@ export default function AppSidebar({
         accentClass: 'text-emerald-600 dark:text-emerald-400',
         items: [
           { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: 'Controle Físico & Auditoria', show: true },
-          { id: 'supply_orders', label: 'Reposição com a Matriz', subtitle: 'Pedidos B2B & Entrada de Carga', show: true },
+          {
+            id: 'supply_orders',
+            label: isMatrizTenant ? 'Central de Suprimentos (Matriz)' : 'Reposição com a Matriz',
+            subtitle: isMatrizTenant ? 'Pedidos B2B & Distribuição' : 'Pedidos B2B & Entrada de Carga',
+            show: true,
+          },
         ],
       },
       {
@@ -283,12 +282,6 @@ export default function AppSidebar({
             badge: storeRequestsCount > 0 ? String(storeRequestsCount) : undefined,
             show: true,
           },
-          {
-            id: 'supply_hub',
-            label: 'Central de Abastecimento',
-            subtitle: 'Catálogo B2B & Expedição por Loja',
-            show: true,
-          },
         ],
       },
       {
@@ -312,7 +305,6 @@ export default function AppSidebar({
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
           { id: 'menu_menus', label: 'Menus do Cardápio', subtitle: 'Organização de Seções', show: true },
           { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Carrossel & Promoções', show: true },
-          { id: 'menu_schedules', label: 'Horários de Atendimento', subtitle: 'Turnos & Disponibilidade', show: true },
         ],
       },
       {
@@ -322,7 +314,12 @@ export default function AppSidebar({
         accentClass: 'text-emerald-600 dark:text-emerald-400',
         items: [
           { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: 'Controle Físico & Auditoria', show: true },
-          { id: 'supply_orders', label: 'Reposição com a Matriz', subtitle: 'Pedidos B2B & Entrada de Carga', show: true },
+          {
+            id: 'supply_orders',
+            label: isMatrizTenant ? 'Central de Suprimentos (Matriz)' : 'Reposição com a Matriz',
+            subtitle: isMatrizTenant ? 'Pedidos B2B & Distribuição' : 'Pedidos B2B & Entrada de Carga',
+            show: true,
+          },
         ],
       },
       {
@@ -363,7 +360,6 @@ export default function AppSidebar({
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
           { id: 'menu_menus', label: 'Menus do Cardápio', subtitle: 'Visualização da Estrutura', show: true },
           { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Ativação Local na Loja', show: true },
-          { id: 'menu_schedules', label: 'Horários de Atendimento', subtitle: 'Turnos & Solicitação', show: true },
           {
             id: 'store_requests',
             label: 'Solicitações à Franqueadora',
@@ -379,7 +375,7 @@ export default function AppSidebar({
         accentClass: 'text-emerald-600 dark:text-emerald-400',
         items: [
           { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: 'Controle Físico & Auditoria', show: true },
-          { id: 'supply_orders', label: 'Encomendar à Franqueadora', subtitle: 'Reposição B2B Homologada', show: true },
+          { id: 'supply_orders', label: 'Reposição com a Matriz', subtitle: 'Pedidos B2B & Entrada de Carga', show: true },
         ],
       },
       {

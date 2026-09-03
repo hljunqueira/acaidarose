@@ -45,7 +45,7 @@ export async function GET() {
       return {
         id: r.id,
         tenantId: r.tenant_id,
-        storeName: data.storeName || (r.tenant_id === '11111111-1111-1111-1111-111111111111' ? 'Matriz Aveiro' : 'Filial Torres Novas'),
+        storeName: data.storeName || (r.tenant_id === '11111111-1111-1111-1111-111111111111' ? 'Loja 1 - Figueira da Foz (Matriz)' : r.tenant_id === '22222222-2222-2222-2222-222222222222' ? 'Loja 2 - Torres Novas' : r.tenant_id === '33333333-3333-3333-3333-333333333333' ? 'Loja 3 - Aveiro' : 'Franquia Rede'),
         managerName: data.managerName || 'Gerente',
         type: r.request_type || 'PRICE_CHANGE',
         productId: data.productId || 'cnt-500',
@@ -105,6 +105,15 @@ export async function POST(req: NextRequest) {
         JSON.stringify(body),
       ]
     )
+
+    await recordAuditLog({
+      tenantId,
+      action: isApplication ? 'FRANCHISE_APPLICATION_SUBMITTED' : 'FRANCHISE_REQUEST_SUBMITTED',
+      entity: 'franchise_requests',
+      entityId: id,
+      message: `Solicitação à Franqueadora enviada: "${title}" (${requestType})`,
+      metadata: body,
+    })
 
     const response = NextResponse.json({ success: true, request: res.rows[0] }, { status: 201 })
     response.headers.set('Access-Control-Allow-Origin', '*')

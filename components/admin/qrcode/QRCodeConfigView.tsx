@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
+import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 
 interface QRCodeConfigViewProps {
   tenantId: string
@@ -25,7 +26,9 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
   const [customerPhoneRule, setCustomerPhoneRule] = useState<'REQUIRED' | 'OPTIONAL' | 'NONE'>('REQUIRED')
   const [customerNifRule, setCustomerNifRule] = useState<'OPTIONAL' | 'REQUIRED' | 'NONE'>('OPTIONAL')
 
-  const storeSlug = tenantId?.startsWith('11111111') ? 'aveiro' : 'torres-novas'
+  const { getTenant, currentTenant } = useFranchiseStore()
+  const storeInfo = getTenant(tenantId) || currentTenant
+  const storeSlug = storeInfo?.slug || 'figueira-da-foz'
   const publicUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/menu?loja=${storeSlug}`
     : `https://acaidarose.vercel.app/menu?loja=${storeSlug}`

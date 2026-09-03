@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuthStore } from '@/lib/stores/authStore'
+import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import {
   broadcastTVCall,
   broadcastTVClearCall,
@@ -31,13 +32,14 @@ import { Megaphone, Save, RotateCcw, Film, Upload, Trash2, Check, Plus, AlertCir
 import { toast } from 'sonner'
 
 interface TVOrdersControlViewProps {
-  tenantId?: string
+  tenantId: string
 }
 
 type TVControlTab = 'CALL' | 'VIDEOS' | 'MARQUEE' | 'AUDIO' | 'NONE'
 
 export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewProps) {
   const { authFetch } = useAuthStore()
+  const { getTenant, currentTenant } = useFranchiseStore()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -68,13 +70,9 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const [manualTicket, setManualTicket] = useState('')
   const [manualClient, setManualClient] = useState('')
 
-  const storeSlug = tenantId === '22222222-2222-2222-2222-222222222222' 
-    ? 'torres-novas' 
-    : 'aveiro'
-
-  const storeTitle = tenantId === '22222222-2222-2222-2222-222222222222' 
-    ? 'Loja 2 - Torres Novas' 
-    : 'Loja 1 - Aveiro'
+  const storeInfo = getTenant(tenantId) || currentTenant
+  const storeSlug = storeInfo?.slug || 'figueira-da-foz'
+  const storeTitle = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
 
   useEffect(() => {
     const config = getStoredTVMarqueeConfig(tenantId)

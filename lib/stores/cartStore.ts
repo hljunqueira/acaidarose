@@ -17,10 +17,18 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
   const basePrice = Number(item.container.precoBase) || 0
   const isUnlimited = weight >= 500
 
-  // 1. Cremes / Bases Extras (+€ 2,00 por creme além do limite)
+  const basesModel = (item.container.optionGroups || []).find((g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme'))
+  const toppingsModel = (item.container.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
+  const frutasModel = (item.container.optionGroups || []).find((g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta'))
+
+  const additionalBasePrice = basesModel?.additionalPrice !== undefined ? Number(basesModel.additionalPrice) : 2.00
+  const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.50
+  const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
+
+  // 1. Cremes / Bases Extras (padrão € 2,00 ou configurado no modelo)
   const maxBases = item.container.limiteCremes || item.container.limiteBases || 1
   const extraBasesCount = Math.max(0, (item.bases?.length || 0) - maxBases)
-  const extraBasesPrice = extraBasesCount * 2.00
+  const extraBasesPrice = extraBasesCount * additionalBasePrice
 
   // 2. Frutas & Toppings Tradicionais vs Premium
   const maxFrutas = item.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
@@ -44,10 +52,10 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
   }
 
   const extraFrutasCount = isUnlimited ? 0 : Math.max(0, frutasCount - maxFrutas)
-  const extraFrutasPrice = extraFrutasCount * 0.50
+  const extraFrutasPrice = extraFrutasCount * additionalFrutaPrice
 
   const extraToppingsCount = isUnlimited ? 0 : Math.max(0, toppingsTradicionaisCount - maxToppings)
-  const extraToppingsPrice = extraToppingsCount * 0.50
+  const extraToppingsPrice = extraToppingsCount * additionalToppingPrice
 
   return +(basePrice + extraBasesPrice + extraFrutasPrice + extraToppingsPrice + premiumsPrice).toFixed(2)
 }
@@ -55,6 +63,11 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
 export function computeToppingBreakdown(item: CartDraftItem | CartItem): OrderItemTopping[] {
   const weight = Number(item?.container?.weightGrams) || 500
   const isUnlimited = weight >= 500
+
+  const toppingsModel = (item.container?.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
+  const frutasModel = (item.container?.optionGroups || []).find((g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta'))
+  const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.50
+  const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
 
   const maxFrutas = item.container?.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
   const maxToppings = item.container?.limiteToppings || (isUnlimited ? 999 : 3)
@@ -67,19 +80,33 @@ export function computeToppingBreakdown(item: CartDraftItem | CartItem): OrderIt
     const isFruta = t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f))
 
     if (isSpecial) {
-      const price = getPremiumToppingPrice(t.name, weight, t.precoExtra)
-      return { ...t, isPaid: true, precoCobrado: price }
+      return {
+        ...t,
+        precoCobrado: getPremiumToppingPrice(t.name, weight, t.precoExtra),
+        isPaid: true,
+        active: t.active !== false,
+      }
     }
 
     if (isFruta) {
       frutasVistas++
       const isExtra = !isUnlimited && frutasVistas > maxFrutas
-      return { ...t, isPaid: isExtra, precoCobrado: isExtra ? 0.50 : 0 }
+      return {
+        ...t,
+        precoCobrado: isExtra ? additionalFrutaPrice : 0,
+        isPaid: isExtra,
+        active: t.active !== false,
+      }
     }
 
     toppingsVistos++
     const isExtra = !isUnlimited && toppingsVistos > maxToppings
-    return { ...t, isPaid: isExtra, precoCobrado: isExtra ? 0.50 : 0 }
+    return {
+      ...t,
+      precoCobrado: isExtra ? additionalToppingPrice : 0,
+      isPaid: isExtra,
+      active: t.active !== false,
+    }
   })
 }
 

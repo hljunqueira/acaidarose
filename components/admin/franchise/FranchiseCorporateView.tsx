@@ -88,12 +88,13 @@ export default function FranchiseCorporateView() {
           const dynamicContracts: FranchiseContractData[] = netOverview.stores.map((s: StoreOverview) => {
             const isHq = !!s.tenant.isHeadquarters
             const rev = s.metrics?.todayRevenue || 0
-            const royaltyPct = s.tenant.royaltyPercentage !== undefined ? s.tenant.royaltyPercentage : (isHq ? 0 : 5)
-            const mktPct = s.tenant.marketingFundPercentage !== undefined ? s.tenant.marketingFundPercentage : 1
+            const royaltyPct = Number(s.tenant.royaltyPercentage || 0)
+            const mktPct = Number(s.tenant.marketingFundPercentage || 0)
             const sysFee = s.tenant.systemFeeMonthly !== undefined ? Number(s.tenant.systemFeeMonthly) : 0
 
             return {
               id: `cont-${s.tenant.id.slice(0, 8)}`,
+              tenantId: s.tenant.id,
               storeName: s.tenant.name,
               franchiseeName: s.tenant.companyName || (isHq ? 'Rose & Vavá Portugal Lda — Sede Franqueadora' : `${s.tenant.name} Lda`),
               nif: s.tenant.nif || '500000000',
@@ -159,8 +160,22 @@ export default function FranchiseCorporateView() {
     }
   }
 
-  const handleSaveContract = (updated: FranchiseContractData) => {
+  const handleSaveContract = async (updated: FranchiseContractData) => {
     setContracts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+    if (updated.tenantId) {
+      try {
+        await authFetch(`/api/tenants/${updated.tenantId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            royaltyPercentage: updated.royaltyPercent,
+            marketingFundPercentage: updated.marketingPercent,
+          }),
+        })
+      } catch {
+        toast.error('Erro ao salvar taxas no banco de dados')
+      }
+    }
     toast.success(`Contrato da unidade atualizado com sucesso!`)
   }
 

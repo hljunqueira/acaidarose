@@ -21,6 +21,7 @@ export interface ProductContainer {
   isAvailableInStore?: boolean
   isCategoryPaused?: boolean
   categoryName?: string
+  optionGroups?: any[]
 }
 
 export interface ProductBase {
@@ -54,6 +55,8 @@ export interface ProductTopping {
   priceTierLow?: number // até 500g (ex: +1€ ou +2€)
   priceTierHigh?: number // acima de 500g (ex: +2€ ou +4€)
   emoji?: string
+  image?: string | null
+  imageUrl?: string | null
   videoUrl?: string | null
   videoPoster?: string | null
   availableHours?: any

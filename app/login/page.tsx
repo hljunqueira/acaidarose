@@ -115,7 +115,7 @@ export default function LoginPage() {
 
           {/* Rodapé Esquerdo */}
           <div className="relative z-10 text-[11px] text-gray-400">
-            Açaí da Rose · Aveiro & Torres Novas, Portugal
+            Açaí da Rose · Rede de Franquias Portugal
           </div>
         </div>
 
@@ -124,67 +124,50 @@ export default function LoginPage() {
           <div className="w-full max-w-sm space-y-6 text-left">
             
             {/* Header do Formulário */}
-            <div className="space-y-1">
-              <h2 className="text-2xl font-bold text-white tracking-tight">
+            <div className="space-y-2">
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Iniciar Sessão
               </h2>
               <p className="text-xs text-gray-400">
-                Introduza as suas credenciais corporativas para aceder.
+                Introduza as credenciais da sua loja para aceder ao sistema
               </p>
             </div>
 
             {/* Formulário de Login */}
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-300 flex items-center gap-1.5">
-                  <Mail className="h-3.5 w-3.5 text-purple-400" />
-                  <span>E-mail Corporativo</span>
-                </Label>
-                <Input
-                  type="email"
-                  placeholder="utilizador@acaidarose.pt"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-[#160F24] border-[#2A1E3D] text-white placeholder:text-gray-400 rounded-lg h-11 text-xs focus:border-purple-500 transition"
-                  required
-                  autoComplete="email"
-                />
+                <Label className="text-xs text-gray-300 font-bold">E-mail Corporativo</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <Input
+                    type="email"
+                    placeholder="utilizador@acairose.pt"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="pl-10 h-11 bg-[#140D21] border-[#2A1E3D] text-white placeholder:text-gray-500 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-gray-300 flex items-center gap-1.5">
-                    <Lock className="h-3.5 w-3.5 text-purple-400" />
-                    <span>Palavra-passe</span>
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toast.info(
-                        'Para redefinição de palavra-passe, contacte o suporte de TI ou a administração da sua loja.'
-                      )
-                    }
-                    className="text-[11px] text-purple-400 hover:text-purple-300 cursor-pointer transition font-medium"
-                  >
-                    Esqueceu-se?
-                  </button>
-                </div>
-
+                <Label className="text-xs text-gray-300 font-bold">Palavra-passe</Label>
                 <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-[#160F24] border-[#2A1E3D] text-white placeholder:text-gray-400 rounded-lg h-11 text-xs pr-11 focus:border-purple-500 transition font-mono"
                     required
-                    autoComplete="current-password"
+                    disabled={loading}
+                    className="pl-10 pr-10 h-11 bg-[#140D21] border-[#2A1E3D] text-white placeholder:text-gray-500 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer transition"
-                    aria-label={showPassword ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -194,15 +177,15 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs shadow-lg shadow-purple-950/50 cursor-pointer transition mt-2"
+                className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl shadow-lg shadow-purple-900/30 transition-all cursor-pointer"
               >
-                {loading ? 'A autenticar...' : 'Entrar no Sistema →'}
+                {loading ? 'A validar...' : 'Entrar no Painel'}
               </Button>
             </form>
 
             <div className="pt-6 border-t border-[#2A1E3D] text-center">
               <p className="text-[11px] text-gray-400">
-                Sistema Multi-Tenant Açaí da Rose · Sede Aveiro
+                Sistema Multi-Tenant Açaí da Rose · Sede Figueira da Foz (Matriz)
               </p>
             </div>
           </div>

@@ -4,6 +4,97 @@ import { AVEIRO_HQ_ID } from '@/lib/repositories/tenantsRepository'
 import { recordAuditLog } from '@/lib/repositories/auditRepository'
 import { v4 as uuidv4 } from 'uuid'
 
+export function buildDefaultOptionGroupsForContainer(
+  weight: number,
+  basesList: ProductBase[],
+  toppingsList: ProductTopping[]
+) {
+  const defaultBasesMax = weight === 250 ? 1 : weight === 350 ? 2 : weight === 1000 ? 4 : 3
+  const defaultFrutasMax = weight === 250 ? 2 : weight === 350 ? 3 : 999
+  const defaultToppingsMax = weight === 250 ? 3 : weight === 350 ? 4 : 999
+
+  return [
+    {
+      id: 'model-bases',
+      name: 'Escolha seu creme ou base gelada',
+      priceType: 'Gratis' as const,
+      additionalPrice: 2.00,
+      minQty: 1,
+      maxQty: defaultBasesMax,
+      isRequired: true,
+      active: true,
+      options: basesList.map((b) => ({
+        id: b.id,
+        name: b.name,
+        code: (b as any).code || '',
+        price: 0,
+        description: b.description || '',
+        active: b.active !== false && b.isAvailableInStore !== false,
+      })),
+    },
+    {
+      id: 'model-frutas',
+      name: 'Frutas Frescas Selecionadas',
+      priceType: 'Gratis' as const,
+      additionalPrice: 0.50,
+      minQty: 0,
+      maxQty: defaultFrutasMax,
+      isRequired: false,
+      active: true,
+      options: toppingsList
+        .filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f)))
+        .map((f) => ({
+          id: f.id,
+          name: f.name,
+          code: (f as any).code || '',
+          price: f.precoExtra || 0,
+          description: f.description || '',
+          active: f.active !== false && f.isAvailableInStore !== false,
+        })),
+    },
+    {
+      id: 'model-toppings',
+      name: 'Acompanhamentos Tradicionais',
+      priceType: 'Gratis' as const,
+      additionalPrice: 0.50,
+      minQty: 0,
+      maxQty: defaultToppingsMax,
+      isRequired: false,
+      active: true,
+      options: toppingsList
+        .filter((t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f)))
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          code: (t as any).code || '',
+          price: t.precoExtra || 0,
+          description: t.description || '',
+          active: t.active !== false && t.isAvailableInStore !== false,
+        })),
+    },
+    {
+      id: 'model-caldas',
+      name: 'Caldas Nobres & Especiais',
+      priceType: 'Individual' as const,
+      additionalPrice: 1.50,
+      minQty: 0,
+      maxQty: 10,
+      isRequired: false,
+      active: true,
+      options: toppingsList
+        .filter((t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0))
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          code: (c as any).code || '',
+          price: c.precoExtra || c.price || 1.5,
+          description: c.description || '',
+          active: c.active !== false && c.isAvailableInStore !== false,
+        })),
+    },
+  ]
+}
+
 export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<CatalogData> {
   const containers: ProductContainer[] = []
   const bases: ProductBase[] = []
@@ -11,7 +102,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
 
   try {
     const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes] = await Promise.all([
-      query(`SELECT id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT id, name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT product_id, custom_price FROM store_price_overrides WHERE tenant_id = $1`, [tenantId]),
@@ -44,53 +135,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       })
     }
 
-    if (containersRes && containersRes.rows) {
-      containersRes.rows.forEach((row: any) => {
-        const customPrice = priceMap.get(row.id)
-        const override = availabilityMap.get(row.id)
-        const isVisible = override ? override.isVisible : !!row.active
-        const isAvailable = override ? override.isAvailable : !!row.active
-        const weight = Number(row.weight_grams) || 500
-        const limiteFrutas = weight === 250 ? 2 : weight === 350 ? 3 : 999
-
-        let isCategoryPaused = false
-        let categoryName = ''
-        const weightStr = `${weight}g`
-        for (const [cleanKey, cData] of categoryMap.entries()) {
-          if (cleanKey.includes(weightStr) || cleanKey.includes((row.name || '').toLowerCase().replace(/[\s\-_]/g, ''))) {
-            categoryName = cData.name
-            if (!cData.active) {
-              isCategoryPaused = true
-            }
-            break
-          }
-        }
-
-        containers.push({
-          id: row.id,
-          name: row.name,
-          description: row.description || '',
-          weightGrams: weight,
-          precoBase: customPrice !== undefined ? customPrice : Number(row.preco_base),
-          price: customPrice !== undefined ? customPrice : Number(row.preco_base),
-          limiteBases: row.limite_bases,
-          limiteToppings: row.limite_complementos_gratis,
-          limiteCremes: row.limite_bases,
-          limiteFrutas: limiteFrutas,
-          emoji: '',
-          image: row.image_url || row.video_poster,
-          videoUrl: row.video_url,
-          videoPoster: row.video_poster,
-          availableHours: row.available_hours,
-          displayOrder: row.display_order,
-          active: isVisible,
-          isAvailableInStore: isAvailable,
-          isCategoryPaused,
-          categoryName,
-        })
-      })
-    }
-
+    // Carrega bases e toppings primeiro para permitir pré-vincular aos recipientes caso não tenham
     if (basesRes && basesRes.rows) {
       basesRes.rows.forEach((row: any) => {
         const override = availabilityMap.get(row.id)
@@ -120,17 +165,72 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           id: row.id,
           name: row.name,
           description: row.description || '',
-          category: row.category,
+          category: row.category || 'Toppings',
           isPremium: !!row.is_premium,
-          precoExtra: customPrice !== undefined ? customPrice : Number(row.preco_extra),
-          price: customPrice !== undefined ? customPrice : Number(row.preco_extra),
-          displayOrder: row.display_order,
-          active: isVisible,
+          precoExtra: customPrice !== undefined ? customPrice : Number(row.preco_extra || 0),
+          price: customPrice !== undefined ? customPrice : Number(row.preco_extra || 0),
+          image: row.image_url || row.video_poster,
           videoUrl: row.video_url,
           videoPoster: row.video_poster,
           availableHours: row.available_hours,
+          displayOrder: row.display_order,
+          active: isVisible,
+          isAvailableInStore: isAvailable
+        })
+      })
+    }
+
+    if (containersRes && containersRes.rows) {
+      containersRes.rows.forEach((row: any) => {
+        const customPrice = priceMap.get(row.id)
+        const override = availabilityMap.get(row.id)
+        const isVisible = override ? override.isVisible : !!row.active
+        const isAvailable = override ? override.isAvailable : !!row.active
+        const weight = Number(row.weight_grams) || 500
+        const limiteFrutas = weight === 250 ? 2 : weight === 350 ? 3 : 999
+
+        let isCategoryPaused = false
+        let categoryName = ''
+        const weightStr = `${weight}g`
+        for (const [cleanKey, cData] of categoryMap.entries()) {
+          if (cleanKey.includes(weightStr) || cleanKey.includes((row.name || '').toLowerCase().replace(/[\s\-_]/g, ''))) {
+            categoryName = cData.name
+            if (!cData.active) {
+              isCategoryPaused = true
+            }
+            break
+          }
+        }
+
+        // Se o produto já possui modelos configurados no banco, usa-os; caso contrário, monta os 4 canônicos
+        const rawGroups = row.option_groups
+        const hasCustomGroups = rawGroups && Array.isArray(rawGroups) && rawGroups.length > 0
+        const optionGroups = hasCustomGroups
+          ? rawGroups
+          : buildDefaultOptionGroupsForContainer(weight, bases, toppings)
+
+        containers.push({
+          id: row.id,
+          name: row.name,
+          description: row.description || '',
+          weightGrams: weight,
+          precoBase: customPrice !== undefined ? customPrice : Number(row.preco_base),
+          price: customPrice !== undefined ? customPrice : Number(row.preco_base),
+          limiteBases: row.limite_bases,
+          limiteToppings: row.limite_complementos_gratis,
+          limiteCremes: row.limite_bases,
+          limiteFrutas: limiteFrutas,
+          emoji: '',
+          image: row.image_url || row.video_poster,
+          videoUrl: row.video_url,
+          videoPoster: row.video_poster,
+          availableHours: row.available_hours,
+          displayOrder: row.display_order,
+          active: isVisible,
           isAvailableInStore: isAvailable,
-          emoji: ''
+          isCategoryPaused,
+          categoryName,
+          optionGroups,
         })
       })
     }
@@ -392,8 +492,8 @@ export async function createProductItem(category: string, item: any): Promise<an
   try {
     if (category === 'containers') {
       const res = await query(
-        `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb)
          RETURNING *`,
         [
           id,
@@ -409,10 +509,26 @@ export async function createProductItem(category: string, item: any): Promise<an
           item.videoPoster || null,
           item.availableHours ? JSON.stringify(item.availableHours) : null,
           Number(item.displayOrder) || 0,
-          true
+          true,
+          item.optionGroups ? JSON.stringify(item.optionGroups) : '[]'
         ]
       )
-      return res.rows[0]
+      const created = res.rows[0]
+      await recordAuditLog({
+        tenantId,
+        action: 'PRODUCT_CONTAINER_CREATED',
+        entity: 'product_containers',
+        entityId: id,
+        message: `Novo produto criado: "${item.name}" (${created.weight_grams}g, ${created.preco_base}€, ${(item.optionGroups || []).length} modelos de opções vinculados)`,
+        metadata: {
+          productId: id,
+          name: item.name,
+          weightGrams: created.weight_grams,
+          precoBase: created.preco_base,
+          optionGroupsCount: (item.optionGroups || []).length,
+        },
+      })
+      return created
     } else if (category === 'bases') {
       const res = await query(
         `INSERT INTO product_bases (id, tenant_id, name, description, image_url, video_url, video_poster, available_hours, display_order, active)
@@ -494,6 +610,7 @@ export async function updateProductItem(category: string, id: string, item: any)
   try {
     let updated: any = null
     if (category === 'containers') {
+      const hasOptionGroups = item.optionGroups !== undefined
       const res = await query(
         `UPDATE product_containers
          SET name = COALESCE($2, name),
@@ -507,6 +624,7 @@ export async function updateProductItem(category: string, id: string, item: any)
              video_poster = COALESCE($11, video_poster),
              available_hours = COALESCE($12, available_hours),
              display_order = COALESCE($13, display_order),
+             option_groups = CASE WHEN $14 = true THEN $15::jsonb ELSE option_groups END,
              updated_at = timezone('utc'::text, now())
          WHERE id::text = $1
          RETURNING *`,
@@ -523,10 +641,27 @@ export async function updateProductItem(category: string, id: string, item: any)
           item.videoUrl || null,
           item.videoPoster || null,
           item.availableHours ? JSON.stringify(item.availableHours) : null,
-          item.displayOrder !== undefined ? Number(item.displayOrder) : null
+          item.displayOrder !== undefined ? Number(item.displayOrder) : null,
+          hasOptionGroups,
+          hasOptionGroups ? JSON.stringify(item.optionGroups || []) : '[]'
         ]
       )
       updated = res.rows[0] || item
+
+      await recordAuditLog({
+        tenantId: updated.tenant_id,
+        action: 'PRODUCT_CONTAINER_UPDATED',
+        entity: 'product_containers',
+        entityId: id,
+        message: `Produto "${updated.name}" atualizado com sucesso (preço: ${updated.preco_base}€, ${(item.optionGroups || []).length} modelos vinculados)`,
+        metadata: {
+          productId: id,
+          name: updated.name,
+          precoBase: updated.preco_base,
+          optionGroupsCount: (item.optionGroups || []).length,
+          optionGroupsNames: (item.optionGroups || []).map((g: any) => g.name),
+        },
+      })
     } else if (category === 'bases') {
       const res = await query(
         `UPDATE product_bases

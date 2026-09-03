@@ -3,9 +3,10 @@
 import React, { useState, useMemo } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { Search, Edit2, Copy, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Search, Edit2, Copy, Trash2, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 
 interface OptionModelsManagerDialogProps {
@@ -48,8 +49,32 @@ export default function OptionModelsManagerDialog({
     setModelFormOpen(true)
   }
 
-  const handleSaveModel = (savedModel: OptionModelData) => {
+  const handleSaveModel = async (savedModel: OptionModelData) => {
+    const isNew = !savedModel.id || savedModel.id.startsWith('model-')
     const existingIndex = models.findIndex((m) => m.id === savedModel.id)
+
+    try {
+      if (isNew) {
+        const res = await fetch('/api/option-models', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(savedModel),
+        })
+        if (res.ok) {
+          const created = await res.json()
+          savedModel = { ...savedModel, id: created.id }
+        }
+      } else {
+        await fetch(`/api/option-models/${savedModel.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(savedModel),
+        })
+      }
+    } catch (e) {
+      console.error('Erro ao sincronizar modelo no servidor:', e)
+    }
+
     let updated: OptionModelData[]
     if (existingIndex >= 0) {
       updated = [...models]
@@ -68,7 +93,7 @@ export default function OptionModelsManagerDialog({
     setDuplicateConfirmOpen(true)
   }
 
-  const handleConfirmDuplicate = () => {
+  const handleConfirmDuplicate = async () => {
     if (!modelToDuplicate) return
 
     const newId = `model-${Date.now()}`
@@ -82,6 +107,20 @@ export default function OptionModelsManagerDialog({
       })),
     }
 
+    try {
+      const res = await fetch('/api/option-models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(duplicated),
+      })
+      if (res.ok) {
+        const created = await res.json()
+        duplicated.id = created.id
+      }
+    } catch (e) {
+      console.error('Erro ao persistir duplicação:', e)
+    }
+
     const updated = [...models, duplicated]
     onSaveModels(updated)
     toast.success(`Modelo duplicado como "${duplicated.name}"!`)
@@ -89,8 +128,15 @@ export default function OptionModelsManagerDialog({
     setModelToDuplicate(null)
   }
 
-  const handleDeleteModel = (modelId?: string) => {
+  const handleDeleteModel = async (modelId?: string) => {
     if (!modelId) return
+    try {
+      if (modelId.length === 36) {
+        await fetch(`/api/option-models/${modelId}`, { method: 'DELETE' })
+      }
+    } catch (e) {
+      console.error('Erro ao excluir modelo:', e)
+    }
     const updated = models.filter((m) => m.id !== modelId)
     onSaveModels(updated)
     toast.success('Modelo de opções excluído com sucesso!')

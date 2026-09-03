@@ -7,23 +7,16 @@ import { Button } from '@/components/ui/button'
 import { QRCodeSVG } from 'qrcode.react'
 import { Printer, Scissors } from 'lucide-react'
 
+import { useFranchiseStore } from '@/lib/stores/franchiseStore'
+
 interface BatchTablesQRPrintDialogProps {
   tables: RestaurantTable[]
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-const STORE_SLUGS: Record<string, string> = {
-  '11111111-1111-1111-1111-111111111111': 'aveiro',
-  '22222222-2222-2222-2222-222222222222': 'torres-novas',
-}
-
-const STORE_LABELS: Record<string, string> = {
-  '11111111-1111-1111-1111-111111111111': 'Loja 1 - Aveiro',
-  '22222222-2222-2222-2222-222222222222': 'Loja 2 - Torres Novas',
-}
-
 export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }: BatchTablesQRPrintDialogProps) {
+  const { getTenant, currentTenant } = useFranchiseStore()
   const containerRef = useRef<HTMLDivElement>(null)
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.vercel.app'
 
@@ -175,10 +168,11 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-4"
         >
           {tables.map((table) => {
-            const lojaSlug = STORE_SLUGS[table.tenantId] || 'aveiro'
+            const storeInfo = getTenant(table.tenantId) || currentTenant
+            const lojaSlug = storeInfo?.slug || 'figueira-da-foz'
+            const branchLabel = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
             const formattedNum = table.number.toString().padStart(2, '0')
             const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${formattedNum}&loja=${lojaSlug}`
-            const branchLabel = STORE_LABELS[table.tenantId] || 'Açaí da Rose'
 
             // Evita duplicar "Mesa 5" abaixo de "MESA 05"
             const isRedundantNickname =

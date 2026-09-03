@@ -15,8 +15,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     }
 
     const tenant = await getTenantByIdOrSlug(table.tenantId)
-    const storeSlug = tenant?.slug || (table.tenantId?.startsWith('22222222') ? 'torres-novas' : 'aveiro')
-    const storeName = tenant?.name || (storeSlug === 'torres-novas' ? 'Loja 2 - Torres Novas' : 'Loja 1 - Aveiro')
+    const storeSlug = tenant?.slug || (table.tenantId?.startsWith('22222222') ? 'torres-novas' : table.tenantId?.startsWith('33333333') ? 'aveiro' : 'figueira-da-foz')
+    const storeName = tenant?.name || (storeSlug === 'torres-novas' ? 'Loja 2 - Torres Novas' : storeSlug === 'aveiro' ? 'Loja 3 - Aveiro' : 'Loja 1 - Figueira da Foz (Matriz)')
 
     return NextResponse.json({
       table: {

@@ -20,24 +20,12 @@ interface SingleTableQRDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-const STORE_SLUGS: Record<string, string> = {
-  '11111111-1111-1111-1111-111111111111': 'aveiro',
-  '22222222-2222-2222-2222-222222222222': 'torres-novas',
-}
-
-const STORE_LABELS: Record<string, string> = {
-  '11111111-1111-1111-1111-111111111111': 'Loja 1 - Aveiro',
-  '22222222-2222-2222-2222-222222222222': 'Loja 2 - Torres Novas',
-}
-
-const getStoreCityLabel = (tId?: string) => {
-  if (!tId) return 'Açaí da Rose'
-  return STORE_LABELS[tId] || 'Açaí da Rose'
-}
+import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 
 export default function SingleTableQRDialog({ table, tenantId, open, onOpenChange }: SingleTableQRDialogProps) {
   if (!table) return null
 
+  const { getTenant, currentTenant } = useFranchiseStore()
   const [detectedOrigin, setDetectedOrigin] = useState<string>('https://acaidarose.vercel.app')
   const [copied, setCopied] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -49,9 +37,10 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
     }
   }, [])
 
-  const effectiveTenantId = table.tenantId || tenantId || '11111111-1111-1111-1111-111111111111'
-  const lojaSlug = STORE_SLUGS[effectiveTenantId] || 'aveiro'
-  const storeTitle = getStoreCityLabel(effectiveTenantId)
+  const effectiveTenantId = table.tenantId || tenantId || currentTenant?.id || '11111111-1111-1111-1111-111111111111'
+  const storeInfo = getTenant(effectiveTenantId) || currentTenant
+  const lojaSlug = storeInfo?.slug || 'figueira-da-foz'
+  const storeTitle = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
   const formattedTableNumber = table.number.toString().padStart(2, '0')
   const tableUrl = `${detectedOrigin}/menu?tipo=mesa&numero=${formattedTableNumber}&loja=${lojaSlug}&token=${encodeURIComponent(table.code || '')}`
 

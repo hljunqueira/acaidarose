@@ -13,7 +13,9 @@ import {
   EyeOff,
   GripVertical,
   Send,
+  Clock,
 } from 'lucide-react'
+import ProductActiveHoursModal from './ProductActiveHoursModal'
 
 interface ProductRowItemProps {
   product: any
@@ -48,12 +50,10 @@ export default function ProductRowItem({
   // Estados locais reativos com atualização instantânea
   const [isVisible, setIsVisible] = useState(product.active !== false)
   const [isAvailable, setIsAvailable] = useState(product.isAvailableInStore !== false)
-  const [isRecommended, setIsRecommended] = useState(product.isRecommended === true)
 
   useEffect(() => {
     setIsVisible(product.active !== false)
     setIsAvailable(product.isAvailableInStore !== false)
-    setIsRecommended(product.isRecommended === true)
   }, [product])
 
   const handleToggleVisibility = (e?: React.MouseEvent) => {
@@ -92,17 +92,6 @@ export default function ProductRowItem({
           : `"${product.name}" marcado como indisponível / pausado na loja.`
       )
     }
-  }
-
-  const handleToggleRecommend = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation()
-    const next = !isRecommended
-    setIsRecommended(next)
-    toast.success(
-      next
-        ? `"${product.name}" marcado como item recomendado no cardápio.`
-        : `Recomendação de "${product.name}" desativada.`
-    )
   }
 
   const price = product.precoBase ?? product.precoCobrado ?? product.price ?? 0
@@ -267,23 +256,6 @@ export default function ProductRowItem({
               <span>⚠️ Categoria Pausada</span>
             </span>
           )}
-
-          <button
-            type="button"
-            onClick={handleToggleRecommend}
-            className="cursor-pointer"
-            title="Clique para alternar recomendação no cardápio"
-          >
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition whitespace-nowrap ${
-                isRecommended
-                  ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white shadow-xs'
-                  : 'bg-purple-50 dark:bg-white/5 text-purple-900/70 dark:text-purple-200/70 border border-purple-200 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
-              }`}
-            >
-              {isRecommended ? 'Recomendado' : 'Recomendar'}
-            </span>
-          </button>
         </div>
 
         {/* Ação Franqueado: Botão Solicitar Ajuste */}
@@ -318,6 +290,14 @@ export default function ProductRowItem({
             className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <Edit2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setHoursOpen(true)}
+            title="Horários ativos do produto"
+            className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
+          >
+            <Clock className="h-3.5 w-3.5" />
           </button>
           {isFranchisor && (
             <button
@@ -361,6 +341,16 @@ export default function ProductRowItem({
           initialType="PRICE_CHANGE"
         />
       )}
+      <ProductActiveHoursModal
+        open={hoursOpen}
+        onOpenChange={setHoursOpen}
+        product={product}
+        categoryType={categoryType}
+        tenantId={tenantId}
+        onSuccess={(updated) => {
+          onToggleStatus(updated, 'availability', updated.isAvailableInStore !== false)
+        }}
+      />
     </div>
   )
 }

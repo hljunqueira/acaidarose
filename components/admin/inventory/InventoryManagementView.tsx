@@ -15,21 +15,51 @@ import {
   SlidersHorizontal,
   Trash2,
   Edit2,
+  FolderTree,
+  ShoppingCart,
+  Truck,
+  ArrowDownToLine,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { InventoryItemRow } from '@/lib/repositories/inventoryRepository'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import InventoryItemDialog, { InventoryItemFormData } from './InventoryItemDialog'
+import InventoryCategoriesDialog from './InventoryCategoriesDialog'
 import StockAdjustDialog from './StockAdjustDialog'
 import ShiftChecklistDialog from './ShiftChecklistDialog'
 import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 
-export default function InventoryManagementView({ tenantId = '11111111-1111-1111-1111-111111111111' }: { tenantId?: string }) {
-  const { authFetch } = useAuthStore()
+export default function InventoryManagementView({
+  tenantId = '11111111-1111-1111-1111-111111111111',
+  onNavigateToSupplyOrders,
+}: {
+  tenantId?: string
+  onNavigateToSupplyOrders?: () => void
+}) {
+  const { authFetch, user } = useAuthStore()
   const [items, setItems] = useState<InventoryItemRow[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
+
+  const isMatriz =
+    tenantId === '11111111-1111-1111-1111-111111111111' ||
+    user?.tenantId === '11111111-1111-1111-1111-111111111111' ||
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'FRANCHISOR_ADMIN'
+
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0)
+  const [transferModalOpen, setTransferModalOpen] = useState(false)
+  const [transferItemId, setTransferItemId] = useState('')
+  const [transferQty, setTransferQty] = useState<number>(5)
+  const [transferring, setTransferring] = useState(false)
 
   const [confirmState, setConfirmState] = useState<{
     open: boolean
@@ -48,25 +78,81 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false)
   const [adjustingItem, setAdjustingItem] = useState<InventoryItemRow | null>(null)
   const [checklistOpen, setChecklistOpen] = useState(false)
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false)
+  const [categoriesList, setCategoriesList] = useState<{ id: string; name: string; code: string }[]>([])
 
   const loadInventory = useCallback(async (isManual = false) => {
     setLoading(true)
     try {
-      const res = await authFetch(`/api/inventory?tenantId=${tenantId}`)
+      const [res, catRes] = await Promise.all([
+        authFetch(`/api/inventory?tenantId=${tenantId}`),
+        authFetch('/api/inventory/categories'),
+      ])
+
       if (!res.ok) throw new Error('Falha ao carregar estoque')
       const data = await res.json()
       setItems(data.items || [])
+
+      if (catRes.ok) {
+        const catData = await catRes.json()
+        if (Array.isArray(catData.categories)) {
+          setCategoriesList(catData.categories)
+        }
+      }
+
+      if (isMatriz) {
+        authFetch('/api/supply-orders')
+          .then((r) => r.json())
+          .then((data) => {
+            if (Array.isArray(data.orders)) {
+              const pending = data.orders.filter(
+                (o: any) => o.status === 'PENDING' || o.status === 'ACCEPTED' || o.status === 'PREPARING'
+              ).length
+              setPendingOrdersCount(pending)
+            }
+          })
+          .catch(() => {})
+      }
+
       if (isManual) toast.success('Estoque sincronizado!')
     } catch {
       if (isManual) toast.error('Erro ao atualizar estoque')
     } finally {
       setLoading(false)
     }
-  }, [authFetch, tenantId])
+  }, [authFetch, tenantId, isMatriz])
 
   useEffect(() => {
     loadInventory(false)
   }, [loadInventory])
+
+  const handleInternalTransfer = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!transferItemId || transferQty <= 0) {
+      toast.error('Informe o insumo e a quantidade')
+      return
+    }
+    setTransferring(true)
+    try {
+      const res = await authFetch('/api/inventory/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: transferItemId,
+          quantity: transferQty,
+          tenantId,
+        }),
+      })
+      if (!res.ok) throw new Error('Falha ao transferir insumo')
+      toast.success('Insumos transferidos do armazém central para o balcão com sucesso!')
+      setTransferModalOpen(false)
+      loadInventory()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro na transferência interna')
+    } finally {
+      setTransferring(false)
+    }
+  }
 
   const handleSaveItem = async (formData: InventoryItemFormData) => {
     try {
@@ -178,42 +264,50 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
     }
   }
 
-  const filteredItems = items.filter(
-    (i) =>
+  const filteredItems = items.filter((i) => {
+    const matchSearch =
       i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      i.category.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+      i.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (i.supplyCode && i.supplyCode.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchCat =
+      categoryFilter === 'ALL' || i.category.toUpperCase() === categoryFilter.toUpperCase()
+    return matchSearch && matchCat
+  })
 
   const alertItems = items.filter((i) => i.status === 'ALERT' || i.status === 'CRITICAL')
   const criticalItems = items.filter((i) => i.isCriticalChecklist)
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-purple-150 dark:border-white/15">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-purple-50 dark:bg-white/5 text-purple-700 dark:text-pink-400 border border-purple-150 dark:border-white/10 shadow-xs">
-            <Boxes className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white tracking-tight">
-              Gestão de Estoque Local
-            </h1>
-            <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 font-medium">
-              Acompanhamento assistido por alertas inteligentes e checklist rápido de turno
-            </p>
-          </div>
+      {/* Header Minimalista: Título na linha acima */}
+      <div className="space-y-3 pb-3 border-b border-purple-150 dark:border-white/15">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white tracking-tight">
+            Gestão de Estoque Local
+          </h1>
+          <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium mt-0.5">
+            Controle de insumos, limites de reposição e checklist de turno
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Linha Única de Botões Otimizada com Altura Ampliada */}
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap overflow-x-auto no-scrollbar pt-1">
           <Button
-            size="sm"
             variant="outline"
             onClick={() => loadInventory(true)}
-            className="h-9 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+            className="h-10 text-xs font-bold gap-1.5 px-3.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-xs shrink-0"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => setCategoriesDialogOpen(true)}
+            className="h-10 text-xs font-bold gap-1.5 px-3.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-xs shrink-0"
+          >
+            <FolderTree className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+            <span>Categorias</span>
           </Button>
 
           <Button
@@ -221,19 +315,33 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
               setEditingItem(null)
               setItemDialogOpen(true)
             }}
-            size="sm"
             variant="outline"
-            className="h-9 text-xs font-bold px-3 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs"
+            className="h-10 text-xs font-bold px-4 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-xs shrink-0"
           >
             <span>Novo Insumo</span>
           </Button>
 
+          {isMatriz && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (items.length > 0) setTransferItemId(items[0].id)
+                setTransferQty(5)
+                setTransferModalOpen(true)
+              }}
+              className="h-10 text-xs font-bold gap-1.5 px-3.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-xs shrink-0"
+              title="Transferir mercadoria do armazém central para o balcão da loja"
+            >
+              <ArrowDownToLine className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+              <span>Abastecer Balcão</span>
+            </Button>
+          )}
+
           <Button
             onClick={() => setChecklistOpen(true)}
-            size="sm"
-            className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-xl text-xs font-black gap-1.5 cursor-pointer shadow-xs"
+            className="h-10 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-xl text-xs font-black gap-2 px-4 cursor-pointer shadow-xs shrink-0"
           >
-            <ClipboardCheck className="h-3.5 w-3.5" />
+            <ClipboardCheck className="h-4 w-4" />
             <span>Checklist Rápido de Turno</span>
           </Button>
         </div>
@@ -251,17 +359,58 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
               </span>
             </div>
           </div>
-          <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold shrink-0">
-            {alertItems.length} {alertItems.length === 1 ? 'Alerta Ativo' : 'Alertas Ativos'}
-          </Badge>
+          <div className="flex items-center gap-2 shrink-0">
+            {onNavigateToSupplyOrders && (
+              <Button
+                size="sm"
+                onClick={onNavigateToSupplyOrders}
+                className="h-7 px-2.5 text-[11px] font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white cursor-pointer shadow-xs flex items-center gap-1"
+              >
+                <ShoppingCart className="h-3 w-3" />
+                <span>Pedir Reposição</span>
+              </Button>
+            )}
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
+              {alertItems.length} {alertItems.length === 1 ? 'Alerta Ativo' : 'Alertas Ativos'}
+            </Badge>
+          </div>
         </div>
       )}
+
+      {/* Filtro por Categorias de Estoque */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setCategoryFilter('ALL')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            categoryFilter === 'ALL'
+              ? 'bg-purple-800 text-white shadow-xs'
+              : 'bg-purple-50/70 dark:bg-white/5 text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-150 dark:border-white/10'
+          }`}
+        >
+          Todas as Categorias
+        </button>
+        {categoriesList.map((cat) => (
+          <button
+            key={cat.code}
+            type="button"
+            onClick={() => setCategoryFilter(cat.code)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              categoryFilter.toUpperCase() === cat.code.toUpperCase()
+                ? 'bg-purple-800 text-white shadow-xs'
+                : 'bg-purple-50/70 dark:bg-white/5 text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-150 dark:border-white/10'
+            }`}
+          >
+            {cat.name}
+          </button>
+        ))}
+      </div>
 
       {/* Barra de Busca */}
       <div className="relative">
         <Search className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
         <Input
-          placeholder="Pesquisar insumo (ex: Nutella, Copos, Açaí, Morango)..."
+          placeholder="Pesquisar insumo ou SKU (ex: SUP-CAL-NUT, Nutella, Copos, Açaí, Morango)..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 h-10 rounded-2xl border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] text-xs text-purple-950 dark:text-white"
@@ -276,6 +425,7 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
               <thead className="bg-purple-50/70 dark:bg-white/5 border-b border-purple-150 dark:border-white/10 text-[11px] font-black uppercase text-purple-900/80 dark:text-purple-300/70">
                 <tr>
                   <th className="py-3 px-4">Insumo / Artigo</th>
+                  <th className="py-3 px-4">Cód. Suprimento</th>
                   <th className="py-3 px-4">Categoria</th>
                   <th className="py-3 px-4">Saldo Atual</th>
                   <th className="py-3 px-4">Limite Mínimo</th>
@@ -295,6 +445,9 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
                           </Badge>
                         )}
                       </div>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-[11px] font-bold text-purple-900/70 dark:text-purple-300/70">
+                      {item.supplyCode || '—'}
                     </td>
                     <td className="py-3.5 px-4">
                       <Badge variant="outline" className="border-purple-200 dark:border-white/10 text-[10px] font-semibold text-purple-900 dark:text-purple-200">
@@ -399,6 +552,12 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
         onSave={handleSaveItem}
       />
 
+      <InventoryCategoriesDialog
+        open={categoriesDialogOpen}
+        onOpenChange={setCategoriesDialogOpen}
+        onCategoriesUpdated={() => loadInventory(false)}
+      />
+
       <StockAdjustDialog
         open={adjustDialogOpen}
         onOpenChange={setAdjustDialogOpen}
@@ -422,6 +581,77 @@ export default function InventoryManagementView({ tenantId = '11111111-1111-1111
         variant="destructive"
         onConfirm={confirmState.onConfirm}
       />
+
+      {/* MODAL DE TRANSFERÊNCIA INTERNA (MATRIZ: ARMAZÉM -> BALCÃO) */}
+      <Dialog open={transferModalOpen} onOpenChange={setTransferModalOpen}>
+        <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 text-purple-950 dark:text-white rounded-3xl shadow-2xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-sm font-black text-purple-950 dark:text-white flex items-center gap-2">
+              <ArrowDownToLine className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+              <span>Abastecer Balcão (Transferência Interna)</span>
+            </DialogTitle>
+            <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
+              Transfira insumos do Armazém Central da Matriz (Figueira da Foz) para o estoque do balcão de vendas a custo zero.
+            </p>
+          </DialogHeader>
+
+          <form onSubmit={handleInternalTransfer} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-purple-950 dark:text-white">Insumo / Matéria-Prima</label>
+              <select
+                value={transferItemId}
+                onChange={(e) => setTransferItemId(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs text-purple-950 dark:text-white font-medium cursor-pointer"
+              >
+                {items.map((it) => (
+                  <option key={it.id} value={it.id} className="text-purple-950 dark:text-black">
+                    {it.name} ({it.unit}) — Saldo Atual no Balcão: {it.currentQuantity}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-purple-950 dark:text-white">Quantidade a Transferir para o Balcão</label>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={transferQty}
+                onChange={(e) => setTransferQty(parseFloat(e.target.value) || 0)}
+                className="h-10 text-xs rounded-xl font-mono border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-purple-950 dark:text-white"
+              />
+            </div>
+
+            <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800/40 text-xs text-purple-900 dark:text-purple-200 space-y-1">
+              <p className="font-bold">Movimentação Interna:</p>
+              <p>
+                • O estoque central da Matriz será deduzido em <strong>{transferQty} un</strong>.<br />
+                • O balcão físico da loja receberá <strong>{transferQty} un</strong> imediatamente.
+              </p>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-purple-100 dark:border-white/10">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTransferModalOpen(false)}
+                className="h-9 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={transferring}
+                className="h-9 text-xs font-black px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white cursor-pointer shadow-xs flex items-center gap-1.5"
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5" />
+                <span>{transferring ? 'A transferir...' : 'Confirmar Transferência'}</span>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

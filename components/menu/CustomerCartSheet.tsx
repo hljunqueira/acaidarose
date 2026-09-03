@@ -18,6 +18,8 @@ interface CartItem {
   toppings: any[]
   extraBasesCount?: number
   extraToppingsCount?: number
+  customSelections?: Record<string, Record<string, number>> | null
+  optionGroups?: any[] | null
   quantity: number
   unitPrice: number
   lineTotal: number
@@ -167,8 +169,10 @@ export default function CustomerCartSheet({
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         lineTotal: item.lineTotal,
-        bases: item.bases?.map((b) => ({ id: b.id, name: b.name })) || [],
-        toppings: item.toppings?.map((t) => ({ id: t.id, name: t.name, category: t.category, isPremium: t.isPremium })) || [],
+        bases: item.bases?.map((b: any) => ({ id: b.id, name: b.name })) || [],
+        toppings: item.toppings?.map((t: any) => ({ id: t.id, name: t.name, category: t.category, isPremium: t.isPremium })) || [],
+        customSelections: item.customSelections || null,
+        optionGroups: item.optionGroups || null,
         notes: item.notes || '',
       }))
 
@@ -457,18 +461,42 @@ export default function CustomerCartSheet({
                         </div>
 
                         {/* Detalhes dos Ingredientes */}
-                        <div className="text-[11px] text-slate-600 dark:text-purple-200/70 space-y-0.5 bg-white dark:bg-purple-950/30 p-2 rounded-xl border border-purple-100 dark:border-white/5">
-                          {item.bases?.length > 0 && (
-                            <div>
-                              <span className="font-bold text-purple-900 dark:text-purple-300">Base: </span>
-                              <span>{item.bases.map((b: any) => b.name).join(', ')}</span>
-                            </div>
-                          )}
-                          {item.toppings?.length > 0 && (
-                            <div>
-                              <span className="font-bold text-purple-900 dark:text-purple-300">Acompanhamentos: </span>
-                              <span>{item.toppings.map((t: any) => t.name).join(', ')}</span>
-                            </div>
+                        <div className="text-[11px] text-slate-600 dark:text-purple-200/70 space-y-1 bg-white dark:bg-purple-950/30 p-2 rounded-xl border border-purple-100 dark:border-white/5">
+                          {item.optionGroups && item.customSelections ? (
+                            (() => {
+                              const cs = item.customSelections
+                              return item.optionGroups.map((grp: any, gIdx: number) => {
+                                const sel = cs[grp.id || grp.name] || {}
+                                const chosenOpts = (grp.options || []).filter((o: any) => (sel[o.id] || 0) > 0)
+                                if (chosenOpts.length === 0) return null
+                                return (
+                                  <div key={grp.id || gIdx} className="leading-tight">
+                                    <span className="font-bold text-purple-900 dark:text-purple-300">{grp.name}: </span>
+                                    <span>
+                                      {chosenOpts.map((o: any) => {
+                                        const q = sel[o.id]
+                                        return q > 1 ? `${o.name} (${q}x)` : o.name
+                                      }).join(', ')}
+                                    </span>
+                                  </div>
+                                )
+                              })
+                            })()
+                          ) : (
+                            <>
+                              {item.bases?.length > 0 && (
+                                <div>
+                                  <span className="font-bold text-purple-900 dark:text-purple-300">Base: </span>
+                                  <span>{item.bases.map((b: any) => b.name).join(', ')}</span>
+                                </div>
+                              )}
+                              {item.toppings?.length > 0 && (
+                                <div>
+                                  <span className="font-bold text-purple-900 dark:text-purple-300">Acompanhamentos: </span>
+                                  <span>{item.toppings.map((t: any) => t.name).join(', ')}</span>
+                                </div>
+                              )}
+                            </>
                           )}
                           {item.notes && (
                             <div>

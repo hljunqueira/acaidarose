@@ -16,6 +16,7 @@ import { Sliders, Percent, Building, Calendar, Info, Check, ShieldCheck, DollarS
 
 export interface FranchiseContractData {
   id: string
+  tenantId?: string
   storeName: string
   franchiseeName: string
   nif: string

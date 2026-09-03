@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
           message: `Comanda #${o.order_number || o.id.substring(0, 5)} (${o.customer_name || 'Cliente'}) · Estado: ${o.status} · Total: €${Number(o.total || 0).toFixed(2)} · Pagamento: ${o.payment_method || 'Balcão'}`,
           author: o.cashier_name || 'Henrique Linhares Junqueira',
           role: 'OPERADOR',
-          tenant: o.tenant_id === '11111111-1111-1111-1111-111111111111' ? 'Loja 1 - Aveiro' : 'Loja 2 - Torres Novas',
+          tenant: o.tenant_id === '11111111-1111-1111-1111-111111111111' ? 'Loja 1 - Figueira da Foz (Matriz)' : o.tenant_id === '22222222-2222-2222-2222-222222222222' ? 'Loja 2 - Torres Novas' : o.tenant_id === '33333333-3333-3333-3333-333333333333' ? 'Loja 3 - Aveiro' : 'Franqueadora Master',
           entityId: o.id,
           metadata: { orderId: o.id, orderNumber: o.order_number, total: o.total, status: o.status },
         })
@@ -94,7 +94,9 @@ export async function GET(req: NextRequest) {
       const storeName =
         t.tenant_id === '22222222-2222-2222-2222-222222222222' || String(t.tenant_id).includes('torres')
           ? 'Loja 2 - Torres Novas'
-          : 'Loja 1 - Aveiro'
+          : t.tenant_id === '33333333-3333-3333-3333-333333333333' || String(t.tenant_id).includes('aveiro')
+          ? 'Loja 3 - Aveiro'
+          : 'Loja 1 - Figueira da Foz (Matriz)'
 
       formattedLogs.push({
         id: `tbl-${t.id}-${t.updated_at ? new Date(t.updated_at).getTime() : '1'}`,

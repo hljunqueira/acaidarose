@@ -37,7 +37,7 @@ export function isProductTimeAvailable(availableHours: any): boolean {
   if (!availableHours) return true
   try {
     const hours = typeof availableHours === 'string' ? JSON.parse(availableHours) : availableHours
-    if (!hours || !Array.isArray(hours.days)) return true
+    if (!hours) return true
 
     // Obtém dia e hora exatos no fuso horário oficial de Portugal (Europe/Lisbon)
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -51,20 +51,41 @@ export function isProductTimeAvailable(availableHours: any): boolean {
     const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
     const weekdayPart = parts.find((p) => p.type === 'weekday')?.value || ''
     const currentDay = dayMap[weekdayPart] !== undefined ? dayMap[weekdayPart] : new Date().getDay()
-
-    if (!hours.days.includes(currentDay)) return false
-
     const hourPart = Number(parts.find((p) => p.type === 'hour')?.value) || 0
     const minutePart = Number(parts.find((p) => p.type === 'minute')?.value) || 0
-
-    const [startH, startM] = (hours.startTime || '00:00').split(':').map(Number)
-    const [endH, endM] = (hours.endTime || '23:59').split(':').map(Number)
-
     const currentMinutes = hourPart * 60 + minutePart
-    const startMinutes = startH * 60 + startM
-    const endMinutes = endH * 60 + endM
 
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+    // 1. Suporte ao formato granular byDay
+    if (hours.byDay && typeof hours.byDay === 'object') {
+      const dayIntervals = hours.byDay[currentDay]
+      if (Array.isArray(dayIntervals) && dayIntervals.length > 0) {
+        return dayIntervals.some((interval: any) => {
+          const [startH, startM] = (interval.start || '00:00').split(':').map(Number)
+          const [endH, endM] = (interval.end || '23:59').split(':').map(Number)
+          const startMinutes = startH * 60 + startM
+          const endMinutes = endH * 60 + endM
+          return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+        })
+      }
+      const hasAnyDayConfigured = Object.values(hours.byDay).some((arr: any) => Array.isArray(arr) && arr.length > 0)
+      if (hasAnyDayConfigured) return false
+      return true
+    }
+
+    // 2. Suporte ao formato simples legado { days: [...], startTime, endTime }
+    if (Array.isArray(hours.days)) {
+      if (hours.days.length === 0) return true
+      if (!hours.days.includes(currentDay)) return false
+
+      const [startH, startM] = (hours.startTime || '00:00').split(':').map(Number)
+      const [endH, endM] = (hours.endTime || '23:59').split(':').map(Number)
+      const startMinutes = startH * 60 + startM
+      const endMinutes = endH * 60 + endM
+
+      return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+    }
+
+    return true
   } catch {
     return true
   }

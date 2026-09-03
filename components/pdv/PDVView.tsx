@@ -55,8 +55,16 @@ export default function PDVView({
     const weight = Number(draft.container.weightGrams) || 500
     const isUnlimited = weight >= 500
     const maxBases = draft.container.limiteCremes || draft.container.limiteBases || 1
+    const basesModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme'))
+    const toppingsModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
+    const frutasModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta'))
+
+    const additionalBasePrice = basesModel?.additionalPrice !== undefined ? Number(basesModel.additionalPrice) : 2.0
+    const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.5
+    const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.5
+
     const extraBases = Math.max(0, (draft.bases?.length || 0) - maxBases)
-    const extraBasesVal = extraBases * 2.0
+    const extraBasesVal = extraBases * additionalBasePrice
 
     const maxFrutas = draft.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
     const maxToppings = draft.container.limiteToppings || (isUnlimited ? 999 : 3)
@@ -79,9 +87,9 @@ export default function PDVView({
     }
 
     const extraFrutas = isUnlimited ? 0 : Math.max(0, frutasCount - maxFrutas)
-    const extraFrutasVal = extraFrutas * 0.5
+    const extraFrutasVal = extraFrutas * additionalFrutaPrice
     const extraToppings = isUnlimited ? 0 : Math.max(0, toppingsCount - maxToppings)
-    const extraToppingsVal = extraToppings * 0.5
+    const extraToppingsVal = extraToppings * additionalToppingPrice
 
     return {
       basePrice: draft.container.precoBase,
@@ -118,13 +126,23 @@ export default function PDVView({
   }, [tenantId])
 
   const handleAddCurrentToCart = () => {
-    if (!draft?.container || draft.bases.length === 0) {
-      toast.error('Escolha pelo menos uma base de açaí')
+    if (!draft?.container) {
+      toast.error('Selecione uma taça')
       return
     }
+
+    const hasBasesGroup = (draft.container.optionGroups || []).some(
+      (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base')
+    )
+
+    if (hasBasesGroup && draft.bases.length === 0) {
+      toast.error('Escolha pelo menos uma base')
+      return
+    }
+
     addDraftToCart()
     setStep(1)
-    toast.success('Açaí montado e adicionado à comanda!')
+    toast.success('Taça adicionada ao pedido!')
   }
 
   const handleProcessPayment = async (method: PaymentMethodCode, customer: { name: string; phone: string }) => {
@@ -378,7 +396,15 @@ export default function PDVView({
                     <Button
                       size="sm"
                       onClick={() => setStep(step + 1)}
-                      disabled={step === 2 && draft.bases.length === 0}
+                      disabled={
+                        step === 2 &&
+                        Boolean(
+                          (draft.container.optionGroups || []).some(
+                            (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base')
+                          )
+                        ) &&
+                        draft.bases.length === 0
+                      }
                       className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-5 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                     >
                       <span>Avançar</span>
@@ -390,7 +416,7 @@ export default function PDVView({
                       onClick={handleAddCurrentToCart}
                       className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs px-5 rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
                     >
-                      <span>Adicionar à Comanda •</span>
+                      <span>Adicionar ao Pedido •</span>
                       <span className="font-mono text-sm">{formatCurrency(currentDraftTotal)}</span>
                     </Button>
                   )}

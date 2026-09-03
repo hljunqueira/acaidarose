@@ -2,6 +2,7 @@ import { Order, DayReportSummary } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
 import { getTenantByIdOrSlug } from './tenantsRepository'
+import { decrementEstimatedStock } from './inventoryRepository'
 
 export async function createOrder(payload: any): Promise<Order> {
   const orderId = payload.id || uuidv4()
@@ -95,6 +96,11 @@ export async function createOrder(payload: any): Promise<Order> {
   }
 
   const row = res.rows[0]
+
+  // Disparo assíncrono em segundo plano para dedução estimada de estoque e logs do TI (nunca bloqueia o pedido)
+  decrementEstimatedStock(tenantId, orderId, orderNumber, payload.items || []).catch((err) =>
+    console.error('Falha na baixa estimada de estoque em segundo plano:', err)
+  )
 
   return {
     id: row.id,

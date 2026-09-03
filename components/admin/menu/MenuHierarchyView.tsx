@@ -16,7 +16,10 @@ import {
   Building2,
   SlidersHorizontal,
   FolderPlus,
+  Clock,
+  ChevronDown,
 } from 'lucide-react'
+import StoreQuickHoursModal from './StoreQuickHoursModal'
 import ProductRowItem from './ProductRowItem'
 import ProductEditDialog, { buildDynamicOptionGroups } from './ProductEditDialog'
 import FranchiseRequestDialog from './FranchiseRequestDialog'
@@ -43,6 +46,8 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false)
   const [replicateModalOpen, setReplicateModalOpen] = useState(false)
+  const [storeHoursOpen, setStoreHoursOpen] = useState(false)
+  const [gestaoDropdownOpen, setGestaoDropdownOpen] = useState(false)
 
   // Menus e Categorias Oficiais do Store
   const { mainMenus, setMainMenus, categories, setCategories, addCategory } = useMenuConfigStore()
@@ -146,7 +151,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         action: 'update',
       })
       setHasPendingPublish(false)
-      toast.success('Cardápio da loja publicado com sucesso!')
+      toast.success('Todas as alterações de menus, produtos e horários foram publicadas com sucesso!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao publicar')
     } finally {
@@ -489,13 +494,76 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* TOOLBAR DE AÇÕES LIMPA E EM LINHA ÚNICA NO TOPO DIREITA */}
+        <div className="flex items-center gap-1.5 flex-nowrap shrink-0 overflow-x-auto no-scrollbar">
+          {!isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setFranchiseReqOpen(true)}
+              className="h-8 px-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1 cursor-pointer shadow-xs shrink-0 whitespace-nowrap transition"
+            >
+              <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+              <span>Solicitar à Franqueadora</span>
+            </button>
+          )}
+
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={handleOpenNew}
+              className="h-8 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1 transition"
+            >
+              <span>+ Adicionar Novo Item</span>
+            </button>
+          )}
+
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setOptionModelOpen(true)}
+              className="h-8 px-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1 cursor-pointer shadow-xs shrink-0 whitespace-nowrap transition"
+              title="Modelos de Opções e Regras de Montagem de Taça"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+              <span>Modelos de Opções</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setFilterDialogOpen(true)}
+            className={`h-8 px-2.5 rounded-xl border text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs shrink-0 whitespace-nowrap ${
+              hasActiveFilters
+                ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
+                : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+            <span>Filtro</span>
+            {hasActiveFilters && (
+              <span className="h-4 w-4 rounded-full bg-white text-purple-700 text-[10px] font-black flex items-center justify-center">
+                !
+              </span>
+            )}
+          </button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setStoreHoursOpen(true)}
+            className="border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 h-8 px-2.5 text-xs rounded-xl font-bold cursor-pointer flex items-center gap-1 shrink-0 whitespace-nowrap"
+            title="Ajustar horários de atendimento da loja"
+          >
+            <Clock className="h-3.5 w-3.5 text-purple-600 dark:text-pink-400" />
+            <span>Horário da Loja</span>
+          </Button>
+
           {isSuperAdmin && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setReplicateModalOpen(true)}
-              className="border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 h-9 text-xs rounded-xl font-bold cursor-pointer"
+              className="border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 h-8 px-2.5 text-xs rounded-xl font-bold cursor-pointer shrink-0 whitespace-nowrap"
             >
               <span>Replicar Catálogo</span>
             </Button>
@@ -504,16 +572,16 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           <Button
             onClick={handlePublishChanges}
             disabled={publishing}
-            className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-9 px-4 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer"
+            className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-8 px-3 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer shrink-0 whitespace-nowrap"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${publishing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${publishing ? 'animate-spin' : ''}`} />
             <span>{publishing ? 'Sincronizando...' : 'Publicar Alterações'}</span>
           </Button>
         </div>
       </div>
 
-      {/* 2. NÍVEL 1: MENUS PRINCIPAIS */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1">
+      {/* 1. LINHA 1: MENUS PRINCIPAIS */}
+      <div className="flex flex-wrap items-center gap-1.5 max-w-full pb-1">
         <button
           type="button"
           onClick={() => {
@@ -555,8 +623,8 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       <hr className="border-t border-purple-100 dark:border-white/10 my-1" />
 
-      {/* 3. NÍVEL 2: PÍLULAS DE CATEGORIAS VINCULADAS */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 pt-1">
+      {/* 2. LINHA 2: TODAS AS CATEGORIAS */}
+      <div className="flex flex-wrap items-center gap-1.5 max-w-full pb-1 pt-1">
         <button
           type="button"
           onClick={() => setSelectedCategory('all_cats')}
@@ -596,59 +664,6 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             <span>Adicionar Categoria</span>
           </button>
         )}
-      </div>
-
-      {/* 4. BARRA DE AÇÕES RÁPIDAS (ALINHADA À DIREITA) */}
-      <div className="flex items-center justify-end gap-2 pt-1 pb-1">
-        {!isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setFranchiseReqOpen(true)}
-            className="h-8 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-          >
-            <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-            <span>Solicitar à Franqueadora</span>
-          </button>
-        )}
-
-        {isSuperAdmin && (
-          <button
-            type="button"
-            onClick={handleOpenNew}
-            className="h-8 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
-          >
-            <span>Adicionar Novo Item</span>
-          </button>
-        )}
-
-        {isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setOptionModelOpen(true)}
-            className="h-8 px-3.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-            <span>Modelos de Opções</span>
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setFilterDialogOpen(true)}
-          className={`h-8 px-3.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs shrink-0 whitespace-nowrap ${
-            hasActiveFilters
-              ? 'bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white border-purple-600 dark:border-pink-500 shadow-md'
-              : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10'
-          }`}
-        >
-          <Filter className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-          <span>Filtro</span>
-          {hasActiveFilters && (
-            <span className="h-4 w-4 rounded-full bg-white text-purple-700 text-[10px] font-black flex items-center justify-center">
-              !
-            </span>
-          )}
-        </button>
       </div>
 
       {/* 5. LISTAGEM DE PRODUTOS */}
@@ -907,6 +922,13 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         currentTenantId={tenantId}
         catalog={catalog}
         onSuccess={fetchCatalog}
+      />
+
+      <StoreQuickHoursModal
+        open={storeHoursOpen}
+        onOpenChange={setStoreHoursOpen}
+        tenantId={tenantId}
+        storeName={isSuperAdmin ? 'Loja Matriz' : 'Filial'}
       />
 
       {/* Barra Clean de Alterações Pendentes na Loja */}

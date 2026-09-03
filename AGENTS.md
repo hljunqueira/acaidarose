@@ -69,7 +69,15 @@ ext.config.js\, \	sconfig.json\) e credenciais.
 - **Zero Travas Automáticas**: O sistema projeta e alerta consumo estimado; **nunca bloqueia vendas automaticamente** para evitar falsa ruptura.
 - **Decisão Humana em 1 Clique**: O operador recebe alerta no PDV/Estoque e decide entre `[ Pausar no Cardápio ]` (se realmente acabou fisicamente) ou `[ Manter Ativo ]` (se ainda houver produto na câmara fria).
 
-### 6. Horários de Atendimento e Fuso Horário
-- Todo cálculo de horário (`available_hours`) em produtos e opcionais deve ser avaliado no fuso horário oficial de Portugal (`Europe/Lisbon`), utilizando `Intl.DateTimeFormat`.
+### 7. Estrutura Canônica de Lojas e Multi-Tenant 100% Dinâmico
+- **Matriz Canônica**: `Loja 1 - Figueira da Foz (Matriz)` (ID: `11111111-1111-1111-1111-111111111111`, slug `figueira-da-foz`).
+- **Filial 1**: `Loja 2 - Torres Novas (Filial 1)` (ID: `22222222-2222-2222-2222-222222222222`, slug `torres-novas`).
+- **Franquia**: `Loja 3 - Aveiro (Franquia)` (ID: `33333333-3333-3333-3333-333333333333`, slug `aveiro`).
+- **Zero Mapeamentos Estáticos**: Proibido usar dicionários estáticos (`STORE_SLUGS`, `STORE_LABELS`) ou ternários fixos no frontend/backend. Toda resolução de nome, slug, NIF e endereços deve ser consultada dinamicamente via `useFranchiseStore` ou `/api/tenants`. Novas franquias cadastradas na Franqueadora (ex.: Coimbra, Porto, Lisboa) funcionam automaticamente em QR codes de mesas, comandas, chamadas de TV e pedidos de abastecimento.
+
+### 8. Padrão Fiscal de Portugal (IVA) no B2B da Franqueadora
+- Todos os insumos mestres, compras com fornecedores e pedidos de abastecimento segregam explicitamente o Preço Líquido (sem IVA) + Alíquota/Montante do IVA (6% reduzido, 13% intermediário ou 23% normal) = Preço c/ IVA.
+- Fórmulas, pesos (kg), cotações por kg e detalhamento fiscal transparente em todas as tabelas e relatórios comerciais da Matriz e Franquias.
+
 
 

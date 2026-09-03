@@ -34,7 +34,45 @@
   - Purga total de seeds/fallbacks estáticos: removidos `defaultContainers`, `defaultBases` e `defaultToppings` em `productsRepository.ts` e stores Zustand.
   - Gestão e formulário de Opcionais adaptativo em `ProductEditDialog.tsx` (Frutas, Toppings, Caldas Nobres) com preços reais e cálculo de horário no fuso de Lisboa (`Europe/Lisbon`).
   - Modelo de Estoque Híbrido assistido por humano: sem bloqueios automáticos, botões rápidos `[ Pausar no Cardápio ]` e `[ Manter Ativo ]` em `InventoryManagementView.tsx`, e rastreabilidade total no log de auditoria (`AuditLogsView.tsx` - escopo `ESTOQUE_SUPPLY`).
+- **Modelos de Opções & Governança Franqueadora vs Filial (100% PostgreSQL)**:
+  - Adicionada coluna `option_groups JSONB` em `product_containers` e criada a tabela `product_option_models` para modelos reutilizáveis.
+  - Pré-carregamento dos 4 modelos canônicos (Bases, Frutas, Acompanhamentos, Caldas) montados com dados reais do PostgreSQL caso o produto ainda não tenha opções salvas (nunca vem vazio).
+  - Repositório `productsRepository.ts` atualizado para persistir `option_groups` no banco com registro de auditoria completo para o TI (`audit_logs`).
+  - [x] Auditoria do banco de dados real PostgreSQL
+  - [x] Criação da tabela `inventory_categories` e categorização de estoque (Nutella como CALDA)
+  - [x] Separação e padronização dos dois códigos (`supply_code` B2B vs `code` PDV)
+  - [x] Baixa de estoque em segundo plano (`decrementEstimatedStock`) sem travar vendas
+  - [x] Logs de auditoria do TI em `audit_logs` (`AUTO_DECREMENT_STOCK`, `STOCK_ALERT_TRIGGERED`, etc.)
+  - [x] UI Clean de categorias e insumos com filtro dinâmico
+  - [x] Ajuste do PDV e Carrinho para glossário PT-PT e bases dinâmicas
+  - [x] Validação TypeScript `npx tsc --noEmit` com código 0
+  - Governança estrita Franqueadora vs Franqueado em `ProductEditDialog.tsx`:
+    - Franqueadora Master: edição irrestrita de nomes, descrições, fotos, vídeos, preços e regras.
+    - Franqueado Filial: modo leitura com cadeado 🔒, permissão para alternar visibilidade local (`Ativo / Oculto`) e botão **`[ Solicitar Ajuste à Franqueadora ]`** integrado ao `FranchiseRequestDialog`.
+  - Campo de valor adicional (`Valor do Adicional (€)`) dinâmico em `OptionModelDialog.tsx` com botão `[ Aplicar a todos ]`.
+  - Propagação dinâmica do valor adicional para `CustomerProductDetail.tsx`, `cartStore.ts` e `PDVView.tsx`.
+  - Buscador em tempo real dos itens contratados em `OptionModelDialog.tsx` com remoção do placeholder antigo e ícone de pesquisa `Search`.
+  - Ícones informativos `(i)` com descrições em tooltip adicionados a todos os 8 campos de configuração do modelo de opções.
+  - As 8 regras de modelos de opções foram totalmente integradas e validadas no Menu do Cliente:
+    - Cobrança dinâmica de excedentes da cota gratuita com o `Valor do Adicional (€)` (ex: 2º creme soma +2,00€ automaticamente);
+    - Header com regra transparente ao cliente (`Até X grátis (extra +Y,YY€)`);
+    - Exibição detalhada dos grupos e escolhas no Carrinho (`CustomerCartSheet.tsx`);
+  - Limpeza de redundâncias de interface:
+    - Removido o bloco duplicado e rudimentar de horários (`Definir horários específicos de disponibilidade`) de dentro de `ProductEditDialog.tsx`, centralizando toda a configuração na ação do Relógio (`ProductActiveHoursModal.tsx`);
+    - Removido o botão desconectado `[Recomendar]` de `ProductRowItem.tsx`, mantendo a gestão de destaques unificada no módulo oficial `MenuHighlightsAdmin.tsx`.
+  - **Clareza de Adicionais Grátis vs Excedentes com Live Preview (`OptionModelDialog.tsx`)**:
+    - Rótulos adaptativos: Quando "Incluso no Copo (Grátis)", os campos exibem claramente **"Qtd. escolhas grátis incluídas"** *(com badge `Grátis`)* e **"Valor por escolha excedente (€)"** *(com badge `+ Extra`)*;
+    - Botão **"Aplicar a todos"** agora é exibido **apenas no modo Individual**, ficando oculto no modo Grátis para eliminar qualquer confusão com a cota gratuita;
+    - Card de **Pré-visualização Dinâmica no Cardápio (Live Preview)** em tempo real simulando exatamente o cabeçalho, os itens com seletores de quantidade/escolha e a explicação em linguagem natural da regra ativa.
+  - **Dinamização Total Multi-Lojas na Franqueadora & Matriz Canônica (Figueira da Foz)**:
+    - Removidos todos os dicionários e ternários estáticos (`STORE_SLUGS`, `STORE_LABELS`).
+    - `useFranchiseStore` agora armazena a lista de lojas (`tenants: Tenant[]`) sincronizada com o PostgreSQL e provê o método `getTenant(idOrSlug)`.
+    - Placas de mesa (`SingleTableQRDialog`, `BatchTablesQRPrintDialog`), QR codes de balcão (`QRCodeConfigView`), painéis de TV (`TVOrdersControlView`, `TVOrdersPanelView`) e o cardápio `/menu` agora geram e exibem títulos e URLs dinamicamente.
+    - Qualquer nova loja criada na Franqueadora passa a funcionar automaticamente em todos os componentes sem necessidade de novas alterações de código.
+    - Matriz corrigida canonicamente para **`Loja 1 - Figueira da Foz (Matriz)`** (slug `figueira-da-foz`).
+  - **Sistema de IVA de Portugal (B2B da Franqueadora)**:
+    - Segregação de Preço Líquido (sem IVA) + IVA (6%, 13%, 23%) = Total c/ IVA em todo o catálogo mestre de suprimentos, compras de fornecedores e pedidos de abastecimento da rede.
+    - Campos de peso líquido (kg), preço por kg e margem líquida da Matriz integrados e persistidos no banco de dados.
 - **Compilação & Validação**:
   - `npx tsc --noEmit` validado com 0 erros.
-  - `npm run build` validado com sucesso em todas as 29 rotas da aplicação.
-  - Commit `1a0375d4` enviado para `origin/main`.
+

@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         ...catalog,
         tenantId: effectiveTenantId,
         tenantName: tenant?.name || 'Açaí da Rose',
+        tenantOpeningHours: tenant?.openingHours || null,
       },
       {
         headers: {

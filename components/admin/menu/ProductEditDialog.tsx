@@ -17,9 +17,11 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  Building2,
 } from 'lucide-react'
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 import OptionModelsManagerDialog from './OptionModelsManagerDialog'
+import FranchiseRequestDialog from './FranchiseRequestDialog'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
 
 interface ProductEditDialogProps {
@@ -123,7 +125,7 @@ export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionMode
   ]
 }
 
-import { canManageMasterCatalog } from '@/lib/utils/permissions'
+import { canManageMasterCatalog, canEditProductPrices } from '@/lib/utils/permissions'
 
 export default function ProductEditDialog({
   open,
@@ -135,6 +137,7 @@ export default function ProductEditDialog({
 }: ProductEditDialogProps) {
   const { user } = useAuthStore()
   const isSuperAdmin = canManageMasterCatalog(user, item?.tenantId)
+  const isPriceEditable = canEditProductPrices(user, item?.tenantId)
   const { categories } = useMenuConfigStore()
 
   const dynamicAvailableModels = useMemo(
@@ -156,7 +159,7 @@ export default function ProductEditDialog({
     name: '',
     description: '',
     category: 'AÇAÍ 500G',
-    price: 12.9,
+    price: '',
     code: '2885',
     image: '',
     videoUrl: '',
@@ -167,7 +170,7 @@ export default function ProductEditDialog({
   const [optionModelsManagerOpen, setOptionModelsManagerOpen] = useState(false)
   const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
   const [showImageInput, setShowImageInput] = useState(false)
-  const [hasCustomHours, setHasCustomHours] = useState(false)
+  const [franchiseRequestOpen, setFranchiseRequestOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -214,45 +217,42 @@ export default function ProductEditDialog({
     setExpandedGroups({})
 
     if (item) {
-      // Usa exclusivamente os grupos já vinculados a este produto no banco (sem auto-injeção de modelos genéricos)
-      if (item.optionGroups && item.optionGroups.length > 0) {
+      if (Array.isArray(item.optionGroups)) {
         setLinkedOptionGroups(item.optionGroups)
       } else {
         setLinkedOptionGroups([])
       }
 
-      const hasSpecificHours = !!item.availableHours && (
-        (item.availableHours.days && item.availableHours.days.length < 7) ||
-        (item.availableHours.startTime && item.availableHours.startTime !== '00:00') ||
-        (item.availableHours.endTime && item.availableHours.endTime !== '23:59')
-      )
-      setHasCustomHours(hasSpecificHours)
-
       setForm({
         name: item.name || '',
         description: item.description || '',
         category: item.category || getInitialCategory(item),
-        price: item.precoExtra !== undefined ? Number(item.precoExtra) : (item.precoBase || item.price || 12.9),
+        price: item.precoExtra !== undefined ? Number(item.precoExtra) : (item.precoBase || item.price || ''),
         isPremium: !!item.isPremium,
         code: item.code || '2885',
         image: item.image || item.imageUrl || '',
         videoUrl: item.videoUrl || '',
         availableHours: item.availableHours || null,
+        limiteBases: item.limiteBases ?? 1,
+        limiteFrutas: item.limiteFrutas ?? 2,
+        limiteToppings: item.limiteToppings ?? 3,
       })
     } else {
-      // Novo item inicia limpo para que o usuário vincule apenas o que desejar
+      // Novo item SEMPRE inicia sem modelos de opções vinculados (o usuário vincula se quiser)
       setLinkedOptionGroups([])
-      setHasCustomHours(false)
       setForm({
         name: '',
         description: '',
-        category: collection === 'toppings' ? 'Frutas' : collection === 'bases' ? 'Bases' : 'AÇAÍ 500G',
-        price: collection === 'toppings' ? 0.0 : collection === 'bases' ? 0.0 : 12.9,
+        category: collection === 'toppings' ? 'Frutas' : collection === 'bases' ? 'Bases' : (categories[0]?.name || 'AÇAÍ 500G'),
+        price: '',
         isPremium: false,
         code: '2885',
         image: '',
         videoUrl: '',
         availableHours: null,
+        limiteBases: 1,
+        limiteFrutas: 2,
+        limiteToppings: 3,
       })
     }
   }, [item, collection, catalog, open])
@@ -283,7 +283,7 @@ export default function ProductEditDialog({
         description: form.description,
         image: form.image,
         videoUrl: form.videoUrl,
-        availableHours: form.availableHours,
+        availableHours: item?.availableHours ?? null,
       }
 
       if (isTopping) {
@@ -299,26 +299,10 @@ export default function ProductEditDialog({
         payload.category = form.category
         payload.optionGroups = linkedOptionGroups
 
-        // Extrai os limites configurados nos grupos para salvar no container
-        const basesGroup = linkedOptionGroups.find(
-          (g) => g.id === 'model-bases' || g.name.toLowerCase().includes('base') || g.name.toLowerCase().includes('creme')
-        )
-        const toppingsGroup = linkedOptionGroups.find(
-          (g) => g.id === 'model-toppings' || g.name.toLowerCase().includes('topping')
-        )
-        const frutasGroup = linkedOptionGroups.find(
-          (g) => g.id === 'model-frutas' || g.name.toLowerCase().includes('fruta')
-        )
-
-        if (basesGroup && basesGroup.maxQty !== undefined) {
-          payload.limiteBases = Number(basesGroup.maxQty)
-        }
-        if (toppingsGroup && toppingsGroup.maxQty !== undefined) {
-          payload.limiteToppings = Number(toppingsGroup.maxQty)
-        }
-        if (frutasGroup && frutasGroup.maxQty !== undefined) {
-          payload.limiteFrutas = Number(frutasGroup.maxQty)
-        }
+        // Salva as regras de montagem configuradas no produto
+        payload.limiteBases = Number(form.limiteBases ?? 1)
+        payload.limiteFrutas = Number(form.limiteFrutas ?? 2)
+        payload.limiteToppings = Number(form.limiteToppings ?? 3)
       }
 
       await onSave(collection, payload)
@@ -406,7 +390,11 @@ export default function ProductEditDialog({
         <div className="p-4 px-6 border-b border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <DialogTitle className="text-sm font-black text-purple-950 dark:text-white tracking-tight">
-              {isSuperAdmin ? 'Editar Produto — Franqueadora Master' : 'Detalhes do Produto — Filial'}
+              {isSuperAdmin
+                ? item
+                  ? 'Editar Produto — Franqueadora Master'
+                  : 'Novo Produto — Franqueadora Master'
+                : 'Detalhes do Produto — Filial'}
             </DialogTitle>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
               isSuperAdmin
@@ -483,22 +471,6 @@ export default function ProductEditDialog({
                   />
                 </div>
               </div>
-              <div className="pt-1">
-                <input
-                  type="text"
-                  value={form.videoUrl || form.image || ''}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    if (val.endsWith('.mp4') || val.endsWith('.webm') || val.includes('/videos/')) {
-                      setForm({ ...form, videoUrl: val, image: form.image || '' })
-                    } else {
-                      setForm({ ...form, image: val })
-                    }
-                  }}
-                  placeholder="Ou cole a URL direta de imagem ou vídeo..."
-                  className="w-full h-8 px-2.5 text-[11px] border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white"
-                />
-              </div>
             </div>
 
             <div className="space-y-1">
@@ -542,116 +514,14 @@ export default function ProductEditDialog({
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className="w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold bg-white dark:bg-[#160228] text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500 cursor-pointer"
               >
-                <optgroup label="Tamanhos de Açaí">
-                  {categories.map((c) => (
+                {categories
+                  .filter((c) => c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias'))
+                  .map((c) => (
                     <option key={c.id} value={c.name}>
                       {c.name}
                     </option>
                   ))}
-                </optgroup>
-                <optgroup label="Complementos">
-                  <option value="BASES & CREMES">BASES & CREMES</option>
-                  <option value="FRUTAS FRESCAS">FRUTAS FRESCAS</option>
-                  <option value="TOPPINGS & CROCANTES">TOPPINGS & CROCANTES</option>
-                  <option value="CALDAS PREMIUM">CALDAS NOBRES</option>
-                </optgroup>
               </select>
-            </div>
-
-
-
-            {/* Horário de Disponibilidade (Opcional) */}
-            <div className="pt-2 border-t border-purple-100 dark:border-white/10 space-y-2.5">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={hasCustomHours}
-                  onChange={(e) => {
-                    const checked = e.target.checked
-                    setHasCustomHours(checked)
-                    if (!checked) {
-                      setForm((prev: any) => ({ ...prev, availableHours: null }))
-                    } else {
-                      setForm((prev: any) => ({
-                        ...prev,
-                        availableHours: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' }
-                      }))
-                    }
-                  }}
-                  className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-                />
-                <span className="text-xs font-semibold text-purple-900 dark:text-purple-200">
-                  Definir horários específicos de disponibilidade
-                </span>
-              </label>
-
-              {hasCustomHours && (
-                <div className="p-3 bg-purple-50/50 dark:bg-white/5 rounded-xl border border-purple-150 dark:border-white/10 space-y-2.5">
-                  <div className="flex flex-wrap gap-1">
-                    {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((dayName, idx) => {
-                      const active = form.availableHours?.days?.includes(idx)
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            const currentDays = form.availableHours?.days || []
-                            const nextDays = currentDays.includes(idx)
-                              ? currentDays.filter((d: number) => d !== idx)
-                              : [...currentDays, idx]
-                            setForm({
-                              ...form,
-                              availableHours: {
-                                ...form.availableHours,
-                                days: nextDays
-                              }
-                            })
-                          }}
-                          className={`h-7 w-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            active
-                              ? 'bg-purple-600 text-white font-black'
-                              : 'bg-white dark:bg-white/10 text-purple-900 dark:text-purple-300 border border-purple-200 dark:border-white/10'
-                          }`}
-                        >
-                          {dayName}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 space-y-0.5">
-                      <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">Início</span>
-                      <input
-                        type="time"
-                        value={form.availableHours?.startTime || '00:00'}
-                        onChange={(e) => setForm({
-                          ...form,
-                          availableHours: {
-                            ...form.availableHours,
-                            startTime: e.target.value
-                          }
-                        })}
-                        className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex-1 space-y-0.5">
-                      <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold">Fim</span>
-                      <input
-                        type="time"
-                        value={form.availableHours?.endTime || '23:59'}
-                        onChange={(e) => setForm({
-                          ...form,
-                          availableHours: {
-                            ...form.availableHours,
-                            endTime: e.target.value
-                          }
-                        })}
-                        className="w-full h-8 px-2 text-xs border border-purple-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -663,7 +533,7 @@ export default function ProductEditDialog({
                 <div>
                   <div className="text-xs font-bold text-purple-950 dark:text-white">{form.name || 'Produto'}</div>
                   <div className="text-[11px] text-purple-700 dark:text-purple-300/70">
-                    {isSuperAdmin ? 'Preço Master Sugerido' : 'Preço Oficial Fixado pela Franqueadora'}
+                    {isPriceEditable ? 'Preço Master da Matriz' : 'Preço Oficial Fixado pela Matriz (Figueira da Foz)'}
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -671,16 +541,16 @@ export default function ProductEditDialog({
                   <input
                     type="number"
                     step="0.01"
-                    disabled={!isSuperAdmin}
+                    disabled={!isPriceEditable}
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: e.target.value })}
                     className={`w-20 h-8 px-2 text-xs font-bold font-mono border rounded-lg ${
-                      isSuperAdmin
+                      isPriceEditable
                         ? 'border-purple-300 dark:border-white/20 bg-white dark:bg-white/10 text-purple-950 dark:text-white'
                         : 'border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed text-right'
                     }`}
                   />
-                  {!isSuperAdmin && <Lock className="h-3 w-3 text-zinc-400" />}
+                  {!isPriceEditable && <Lock className="h-3 w-3 text-zinc-400" />}
                 </div>
               </div>
             </div>
@@ -851,26 +721,54 @@ export default function ProductEditDialog({
           </div>
         </form>
 
-        <div className="p-4 px-6 bg-purple-50/50 dark:bg-white/5 border-t border-purple-100 dark:border-white/10 flex items-center justify-end gap-2.5">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="px-4 py-2 text-xs font-bold text-purple-900 dark:text-purple-200 bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 rounded-xl hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer transition"
-          >
-            {isSuperAdmin ? 'Cancelar' : 'Fechar'}
-          </button>
-          {isSuperAdmin && (
+        <div className="p-4 px-6 bg-purple-50/50 dark:bg-white/5 border-t border-purple-100 dark:border-white/10 flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            {!isSuperAdmin && (
+              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                <span>🔒 Modo Filial — Apenas visibilidade local</span>
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setFranchiseRequestOpen(true)}
+                className="px-3.5 py-2 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-xl cursor-pointer shadow-sm transition flex items-center gap-1.5"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                <span>Solicitar Ajuste à Franqueadora</span>
+              </button>
+            )}
             <button
               type="button"
-              disabled={saving}
-              onClick={handleSubmit}
-              className="px-6 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 rounded-xl cursor-pointer shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition"
+              onClick={() => onOpenChange(false)}
+              className="px-4 py-2 text-xs font-bold text-purple-900 dark:text-purple-200 bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 rounded-xl hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer transition"
             >
-              {saving ? 'Guardando...' : 'Guardar Alterações'}
+              {isSuperAdmin ? 'Cancelar' : 'Fechar'}
             </button>
-          )}
+            {isSuperAdmin && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSubmit}
+                className="px-6 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 rounded-xl cursor-pointer shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition"
+              >
+                {saving ? 'Guardando...' : item ? 'Guardar Alterações' : 'Criar Produto'}
+              </button>
+            )}
+          </div>
         </div>
       </DialogContent>
+
+      <FranchiseRequestDialog
+        open={franchiseRequestOpen}
+        onOpenChange={setFranchiseRequestOpen}
+        tenantId={item?.tenantId || user?.tenantId || ''}
+        catalog={catalog}
+        initialItem={item}
+        initialType="PRICE_CHANGE"
+      />
 
       {isSuperAdmin && (
         <>

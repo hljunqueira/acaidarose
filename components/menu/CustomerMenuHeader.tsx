@@ -23,20 +23,14 @@ export default function CustomerMenuHeader({
   allowTableTransfer = true,
   onOpenSwitchTable,
 }: CustomerMenuHeaderProps) {
-  let storeName = 'Loja 1 - Aveiro'
+  let storeName = 'Loja 1 - Figueira da Foz (Matriz)'
   if (tenant?.name) {
-    const raw = tenant.name
+    const cleaned = tenant.name
       .replace(/^Açaí da Rose\s*[-—·]\s*/i, '')
       .replace(/Sede Franqueadora & Matriz\s*/i, '')
       .replace(/—/g, '-')
       .trim()
-    if (raw.toLowerCase().includes('torres novas') || raw.includes('2')) {
-      storeName = 'Loja 2 - Torres Novas'
-    } else if (raw.toLowerCase().includes('aveiro') || raw.includes('1')) {
-      storeName = 'Loja 1 - Aveiro'
-    } else if (raw) {
-      storeName = raw
-    }
+    storeName = cleaned || tenant.name
   }
 
   return (

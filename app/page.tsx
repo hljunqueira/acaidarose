@@ -107,21 +107,27 @@ export default function HomePage() {
   useEffect(() => {
     if (user) {
       setAppMode('PDV')
-      // Se for operador de loja (TENANT_ADMIN / CASHIER), força a loja ativa a ser a loja do usuário
-      if (user.role !== 'SUPER_ADMIN' && user.role !== 'FRANCHISOR_ADMIN' && user.tenantId) {
-        authFetch('/api/tenants')
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.tenants) {
-              setTenantsList(data.tenants)
+      authFetch('/api/tenants')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data.tenants)) {
+            setTenantsList(data.tenants)
+            if (user.role !== 'SUPER_ADMIN' && user.role !== 'FRANCHISOR_ADMIN' && user.tenantId) {
               const matched = data.tenants.find((t: Tenant) => t.id === user.tenantId)
               if (matched) setCurrentTenant(matched)
+            } else {
+              const matched = data.tenants.find((t: Tenant) => t.id === currentTenant.id)
+              if (matched) {
+                setCurrentTenant(matched)
+              } else if (data.tenants.length > 0) {
+                setCurrentTenant(data.tenants[0])
+              }
             }
-          })
-          .catch(() => { })
-      }
+          }
+        })
+        .catch(() => {})
     }
-  }, [user, authFetch, setCurrentTenant])
+  }, [user, authFetch, currentTenant.id, setCurrentTenant])
 
   const fetchTenants = useCallback(async () => {
     try {
@@ -274,7 +280,9 @@ export default function HomePage() {
               onNavigateToMenu={() => setView('menu')}
             />
           )}
-          {view === 'supply_hub' && (isSuperAdmin || isFranchisorAdmin) && <SupplyHubView />}
+          {view === 'supply_hub' && (isSuperAdmin || isFranchisorAdmin) && (
+            <StoreSupplyOrdersView tenantId={activeTenantId} />
+          )}
 
           {/* 3. OPERAÇÃO & ATENDIMENTO */}
           {view === 'pdv' && (
@@ -294,7 +302,12 @@ export default function HomePage() {
           {view === 'tables' && isAdmin && <TablesManagementView tenantId={activeTenantId} />}
 
           {/* 4. GESTÃO DE ESTOQUE & SUPPLY CHAIN */}
-          {view === 'inventory' && <InventoryManagementView tenantId={activeTenantId} />}
+          {view === 'inventory' && (
+            <InventoryManagementView
+              tenantId={activeTenantId}
+              onNavigateToSupplyOrders={() => setView('supply_orders')}
+            />
+          )}
           {view === 'supply_orders' && isAdmin && <StoreSupplyOrdersView tenantId={activeTenantId} />}
 
           {/* 5. CARDÁPIO, MÍDIAS & PREÇOS */}

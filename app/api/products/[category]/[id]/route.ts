@@ -11,7 +11,7 @@ export async function PUT(
 ) {
   const user = await getAuthUser(request)
   if (!canManageMasterCatalog(user, user?.tenantId)) {
-    return errorResponse('Apenas a Franqueadora e a Loja Matriz Aveiro podem alterar dados do cardápio mestre. Para alterações, utilize a Solicitação à Franqueadora.', 403)
+    return errorResponse('Apenas a Franqueadora e a Loja Matriz (Figueira da Foz) podem alterar dados do cardápio mestre. Para alterações, utilize a Solicitação à Franqueadora.', 403)
   }
 
   const { category, id } = await params
@@ -31,7 +31,7 @@ export async function DELETE(
 ) {
   const user = await getAuthUser(request)
   if (!canManageMasterCatalog(user, user?.tenantId)) {
-    return errorResponse('Apenas a Franqueadora e a Loja Matriz Aveiro podem excluir itens do cardápio mestre.', 403)
+    return errorResponse('Apenas a Franqueadora e a Loja Matriz (Figueira da Foz) podem excluir itens do cardápio mestre.', 403)
   }
 
   const { category, id } = await params

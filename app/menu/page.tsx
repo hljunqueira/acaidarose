@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, Suspense } from 'react'
+import React, { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { CatalogData, ProductContainer, Tenant } from '@/types'
 import { formatCurrency } from '@/lib/i18n/formatters'
@@ -19,9 +19,56 @@ import CustomerProductDetail from '@/components/menu/CustomerProductDetail'
 import CustomerCartSheet from '@/components/menu/CustomerCartSheet'
 import CallWaiterModal from '@/components/menu/CallWaiterModal'
 import SwitchTableModal from '@/components/menu/SwitchTableModal'
-import { Info } from 'lucide-react'
+import { Info, Clock } from 'lucide-react'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 import { subscribeCatalogSync } from '@/lib/utils/catalogSync'
+
+function checkStoreOpenStatus(openingHours: any): { isOpen: boolean; scheduleText: string } {
+  if (!openingHours) return { isOpen: true, scheduleText: '' }
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Lisbon',
+      hour: 'numeric',
+      minute: 'numeric',
+      weekday: 'short',
+      hour12: false,
+    })
+    const parts = formatter.formatToParts(new Date())
+    const weekdayMap: Record<string, string> = {
+      Sun: 'dom',
+      Mon: 'seg',
+      Tue: 'ter',
+      Wed: 'qua',
+      Thu: 'qui',
+      Fri: 'sex',
+      Sat: 'sab',
+    }
+    const weekdayPart = parts.find((p) => p.type === 'weekday')?.value || 'Mon'
+    const dayKey = weekdayMap[weekdayPart] || 'seg'
+    const today = openingHours[dayKey]
+
+    if (!today || today.closed) {
+      return { isOpen: false, scheduleText: 'Fechado hoje' }
+    }
+
+    const hourPart = Number(parts.find((p) => p.type === 'hour')?.value) || 0
+    const minutePart = Number(parts.find((p) => p.type === 'minute')?.value) || 0
+    const currentMinutes = hourPart * 60 + minutePart
+
+    const [openH, openM] = (today.open || '12:00').split(':').map(Number)
+    const [closeH, closeM] = (today.close || '22:00').split(':').map(Number)
+    const openMinutes = openH * 60 + openM
+    const closeMinutes = closeH * 60 + closeM
+
+    const isOpen = currentMinutes >= openMinutes && currentMinutes <= closeMinutes
+    return {
+      isOpen,
+      scheduleText: `${today.open || '12:00'} às ${today.close || '22:00'}`,
+    }
+  } catch {
+    return { isOpen: true, scheduleText: '' }
+  }
+}
 
 function MenuContent() {
   const searchParams = useSearchParams()
@@ -100,6 +147,11 @@ function MenuContent() {
   const tableLabel = isTable ? `Mesa ${currentTableNum}` : 'Catálogo Digital'
   const cartTotal = cart.reduce((acc, item) => acc + (Number(item.lineTotal) || 0), 0)
 
+  // Status de Aberto/Fechado da Loja no fuso de Portugal
+  const storeStatus = useMemo(() => {
+    return checkStoreOpenStatus(tenant?.openingHours)
+  }, [tenant?.openingHours])
+
   // Sincroniza se o searchParam inicial de número mudar
   useEffect(() => {
     if (paramNumero) setCurrentTableNum(paramNumero)
@@ -110,13 +162,14 @@ function MenuContent() {
       .then((r) => r.json())
       .then((data) => {
         setCatalog(data)
-        const storeName = data.tenantName || (activeLoja === '2' || activeLoja.includes('torres') ? 'Loja 2 - Torres Novas' : 'Loja 1 - Aveiro')
+        const storeName = data.tenantName || (activeLoja === '2' || activeLoja.includes('torres') ? 'Loja 2 - Torres Novas' : activeLoja === '3' || activeLoja.includes('aveiro') ? 'Loja 3 - Aveiro' : 'Loja 1 - Figueira da Foz (Matriz)')
         setTenant({
           id: data.tenantId || '11111111-1111-1111-1111-111111111111',
           name: storeName,
-          slug: data.tenantId?.startsWith('11111111') ? 'aveiro' : 'torres-novas',
+          slug: data.tenantSlug || (data.tenantId?.startsWith('22222222') ? 'torres-novas' : data.tenantId?.startsWith('33333333') ? 'aveiro' : 'figueira-da-foz'),
           nif: '500123456',
           currency: 'EUR',
+          openingHours: data.tenantOpeningHours || null,
           active: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -185,13 +238,29 @@ function MenuContent() {
         isTable={isTable}
         tableLabel={tableLabel}
         cartCount={cart.length}
-        onOpenCart={() => setCartOpen(true)}
+        onOpenCart={() => {
+          if (!storeStatus.isOpen) {
+            toast.warning(`A loja está fechada no momento (${storeStatus.scheduleText}). O cardápio está em modo de consulta.`)
+            return
+          }
+          setCartOpen(true)
+        }}
         allowTableTransfer={qrConfig.allowTableTransfer !== false}
         onOpenSwitchTable={() => setSwitchTableModalOpen(true)}
       />
 
+      {/* Banner de Loja Fechada */}
+      {!storeStatus.isOpen && (
+        <div className="bg-amber-600 dark:bg-amber-700 text-white px-4 py-3 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-md">
+          <Clock className="h-4 w-4 shrink-0" />
+          <span>
+            Loja fechada no momento ({storeStatus.scheduleText}). O cardápio está em modo de consulta.
+          </span>
+        </div>
+      )}
+
       {/* Aviso de Modo Catálogo Vitrine (quando acessado diretamente sem QR Code de mesa) */}
-      {isCatalogOnly && (
+      {isCatalogOnly && storeStatus.isOpen && (
         <div className="bg-purple-100 text-purple-950 dark:bg-purple-950/80 dark:text-purple-200 border-b border-purple-200 dark:border-purple-800/40 px-4 py-2.5 text-center text-xs flex items-center justify-center gap-2">
           <Info className="h-4 w-4 text-pink-500 shrink-0" />
           <span>
@@ -208,7 +277,7 @@ function MenuContent() {
             tenantId={tenant?.id}
             onSelectContainer={handleSelectContainer}
             isTable={isTable}
-            isCatalogOnly={isCatalogOnly}
+            isCatalogOnly={isCatalogOnly || !storeStatus.isOpen}
           />
         )}
         {activeTab === 'search' && (

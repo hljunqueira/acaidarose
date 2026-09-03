@@ -21,13 +21,17 @@ import {
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
 import { Maximize, Minimize, Clock } from 'lucide-react'
+import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import { CrownGoldIcon } from '@/components/ui/CrownGoldIcon'
 
 interface TVOrdersPanelViewProps {
   tenantId?: string
 }
 
-export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) {
+export default function TVOrdersPanelView({ 
+  tenantId = '11111111-1111-1111-1111-111111111111',
+}: TVOrdersPanelViewProps) {
+  const { getTenant, currentTenant } = useFranchiseStore()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
@@ -44,7 +48,8 @@ export default function TVOrdersPanelView({ tenantId }: TVOrdersPanelViewProps) 
   const videoRef = useRef<HTMLVideoElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const storeName = tenantId === '22222222-2222-2222-2222-222222222222' ? 'Loja 2 - Torres Novas' : 'Loja 1 - Aveiro'
+  const storeInfo = getTenant(tenantId) || currentTenant
+  const storeName = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
 
   // Relógio com Fuso Horário Obrigatório de Portugal (Europe/Lisbon)
   useEffect(() => {
