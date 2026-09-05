@@ -88,7 +88,7 @@ export default function TableThermalReceiptDialog({
           >
             {/* Cabeçalho */}
             <div className="text-center space-y-1">
-              <img src="/logo.png" alt="Açaí da Rose" className="mx-auto h-16 w-auto object-contain" />
+              <img src="/logo-oficial.png" alt="Açaí da Rose" className="mx-auto h-16 w-auto object-contain" />
               <div className="font-black text-sm">{storeName}</div>
               <div className="text-[10px]">Açaí Artesanal Brasileiro</div>
               <div className="text-[10px]">Portugal</div>

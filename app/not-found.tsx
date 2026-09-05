@@ -18,7 +18,7 @@ export default function NotFound() {
         {/* Logo Oficial */}
         <div className="flex justify-center mb-2">
           <img
-            src="/logo.png"
+            src="/logo-oficial.png"
             alt="Açaí da Rose"
             className="h-12 w-auto object-contain drop-shadow-2xl"
           />

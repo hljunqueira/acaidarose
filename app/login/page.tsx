@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react'
+import ForgotPasswordDialog from '@/components/auth/ForgotPasswordDialog'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [forgotOpen, setForgotOpen] = useState(false)
 
   useEffect(() => {
     checkAuth()
@@ -59,56 +61,45 @@ export default function LoginPage() {
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-purple-900/20 rounded-full blur-[130px] pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-pink-900/15 rounded-full blur-[130px] pointer-events-none" />
 
-          {/* Top: Voltar ao Site & Logo */}
-          <div className="relative z-10 flex items-center justify-between">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-white transition px-3.5 py-2 rounded-lg bg-[#0A0612] border border-[#2A1E3D] hover:border-purple-500/50"
-            >
-              <ArrowLeft className="h-4 w-4 text-purple-400" />
-              <span>Voltar ao Início</span>
-            </Link>
-
+          {/* Camada de Fundo: Logo em Marca d'Água Transparente */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-0">
             <img
-              src="/logo.png"
-              alt="Açaí da Rose"
-              className="h-8 w-auto object-contain"
+              src="/logo-oficial.png"
+              alt=""
+              aria-hidden="true"
+              className="w-[420px] sm:w-[500px] lg:w-[580px] h-auto object-contain opacity-[0.08] transform -rotate-6 scale-110 pointer-events-none"
             />
           </div>
 
-          {/* Centro: Frases de Impacto */}
-          <div className="relative z-10 my-auto py-10 space-y-6 text-left max-w-lg">
-            <div className="space-y-3">
-              <span className="text-purple-400 text-xs font-semibold uppercase tracking-wider block">
-                Portal Corporativo & PDV
-              </span>
-              <div className="space-y-1 font-bold leading-tight tracking-tight">
-                <div className="text-2xl sm:text-4xl text-white">
-                  AÇAÍ NÃO SE EXPLICA:
-                </div>
-                <div className="text-3xl sm:text-5xl text-purple-300">
-                  SE EXPERIMENTA
-                </div>
-                <div className="text-3xl sm:text-5xl text-pink-400">
-                  SE APAIXONA
-                </div>
-                <div className="text-3xl sm:text-5xl text-purple-200">
-                  E REPETE.
-                </div>
-              </div>
+          {/* Top: Voltar ao Site */}
+          <div className="relative z-10 flex items-center justify-start">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-white transition px-3.5 py-2 rounded-xl bg-[#0A0612]/80 border border-[#2A1E3D] hover:border-purple-500/50 cursor-pointer backdrop-blur-xs"
+            >
+              <ArrowLeft className="h-4 w-4 text-purple-400" />
+              <span>Voltar ao Site</span>
+            </Link>
+          </div>
+
+          {/* Centro: Identificação Corporativa Clean - Portal da Equipa */}
+          <div className="relative z-10 my-auto py-10 space-y-8 text-left max-w-lg">
+            <div className="space-y-4">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight font-['Outfit'] drop-shadow-sm">
+                Portal da Equipa
+              </h1>
+              <p className="text-sm sm:text-base text-gray-300/90 leading-relaxed font-normal">
+                Ambiente operacional e administrativo para operadores de caixa, gerentes de unidade e franqueados autorizados.
+              </p>
             </div>
 
-            <p className="text-xs sm:text-sm text-purple-200/80 font-medium tracking-wide uppercase">
-              O sabor autêntico do melhor açaí de Portugal.
-            </p>
-
-            <div className="p-4 rounded-xl bg-[#0A0612] border border-[#2A1E3D] text-left space-y-1">
-              <div className="text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+            <div className="p-5 rounded-2xl bg-[#0A0612]/90 border border-[#2A1E3D] text-left space-y-2.5 backdrop-blur-sm shadow-xl">
+              <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
                 <span>Ambiente Seguro & Monitorado</span>
               </div>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Área restrita a operadores de caixa, gerentes de unidade e franqueados autorizados.
+                Área restrita a colaboradores autorizados. Todos os acessos e operações no PDV e retaguarda são auditados.
               </p>
             </div>
           </div>
@@ -125,6 +116,10 @@ export default function LoginPage() {
             
             {/* Header do Formulário */}
             <div className="space-y-2">
+              <div className="lg:hidden inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950/60 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-wider mb-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Portal da Equipa
+              </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Iniciar Sessão
               </h2>
@@ -174,6 +169,17 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* Link para Esqueceu a Palavra-passe */}
+              <div className="flex justify-end pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(true)}
+                  className="text-xs text-purple-400 hover:text-pink-300 font-medium transition cursor-pointer hover:underline"
+                >
+                  Esqueceu a palavra-passe?
+                </button>
+              </div>
+
               <Button
                 type="submit"
                 disabled={loading}
@@ -182,15 +188,16 @@ export default function LoginPage() {
                 {loading ? 'A validar...' : 'Entrar no Painel'}
               </Button>
             </form>
-
-            <div className="pt-6 border-t border-[#2A1E3D] text-center">
-              <p className="text-[11px] text-gray-400">
-                Sistema Multi-Tenant Açaí da Rose · Sede Figueira da Foz (Matriz)
-              </p>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de Recuperação de Palavra-passe (Resend API + Franqueadora/TI) */}
+      <ForgotPasswordDialog
+        open={forgotOpen}
+        onOpenChange={setForgotOpen}
+        initialEmail={email}
+      />
     </div>
   )
 }

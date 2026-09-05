@@ -229,7 +229,7 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
             className="w-full max-w-[260px] p-5 rounded-3xl border-2 border-purple-200 dark:border-white/20 bg-gradient-to-b from-purple-50/70 via-white to-purple-50/40 dark:from-white/10 dark:via-[#160228] dark:to-white/5 flex flex-col items-center text-center shadow-lg"
           >
             <img
-              src="/logo.png"
+              src="/logo-oficial.png"
               alt="Açaí da Rose"
               className="h-11 w-auto object-contain mb-1 drop-shadow-xs"
             />

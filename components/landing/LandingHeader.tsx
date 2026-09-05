@@ -27,7 +27,7 @@ export default function LandingHeader({ user, onOpenPDV }: LandingHeaderProps) {
         {/* Logo da Marca */}
         <Link href="/" className="flex items-center gap-3 group">
           <img
-            src="/logo.png"
+            src="/logo-oficial.png"
             alt="Açaí da Rose"
             className="h-10 sm:h-11 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform"
           />
@@ -104,7 +104,7 @@ export default function LandingHeader({ user, onOpenPDV }: LandingHeaderProps) {
               className="h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/20 text-purple-100 hover:text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md transition-all hover:border-pink-500/40"
             >
               <LogIn className="h-4 w-4 text-pink-400" />
-              <span>Área da Equipa</span>
+              <span>Portal da Equipa</span>
             </Link>
           )}
 

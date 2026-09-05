@@ -50,7 +50,7 @@ export default function CustomerMenuHeader({
             title="Açaí da Rose"
           >
             <img
-              src="/logo.png"
+              src="/logo-oficial.png"
               alt="Açaí da Rose"
               className="h-7 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105"
             />

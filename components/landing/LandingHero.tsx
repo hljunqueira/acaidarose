@@ -10,7 +10,7 @@ const CINEMATIC_SCENES = [
   {
     id: 'scene-1',
     side: 'left',
-    phrase: 'AÇAÍ NÃO SE EXPLICA:',
+    phrase: 'AÇAÍ NÃO SE EXPLICA',
     gradient: false,
     videoSrc: '/videos/hero_revealing_cup.mp4',
     poster: '/images/official/acai_copo_300ml.jpg',
@@ -18,7 +18,7 @@ const CINEMATIC_SCENES = [
   {
     id: 'scene-2',
     side: 'right',
-    phrase: 'SE EXPERIMENTA',
+    phrase: 'EXPERIMENTA',
     gradient: true,
     videoSrc: '/videos/hero_orbiting_cup.mp4',
     poster: '/images/official/acai_copo_500ml.jpg',
@@ -26,7 +26,7 @@ const CINEMATIC_SCENES = [
   {
     id: 'scene-3',
     side: 'left',
-    phrase: 'SE APAIXONA',
+    phrase: 'APAIXONA',
     gradient: true,
     videoSrc: '/videos/hero_gliding_texture.mp4',
     poster: '/images/official/acai_copo_novo.jpg',
@@ -34,7 +34,7 @@ const CINEMATIC_SCENES = [
   {
     id: 'scene-4',
     side: 'right',
-    phrase: 'E REPETE.',
+    phrase: 'E REPETE',
     gradient: true,
     videoSrc: '/videos/hero_cup_rotation.mp4',
     poster: '/images/official/acai_copo_700ml.jpg',
@@ -75,17 +75,17 @@ export default function LandingHero() {
   const phrase1X = useTransform(scrollYProgress, [0, 0.18, 0.25], [0, 0, -45])
   const phrase1Y = useTransform(scrollYProgress, [0, 0.18, 0.25], [0, 0, -20])
 
-  // Ato 2 (Direita · 25% -> 50%): "SE EXPERIMENTA"
+  // Ato 2 (Direita · 25% -> 50%): "EXPERIMENTA"
   const phrase2Opacity = useTransform(scrollYProgress, [0.25, 0.32, 0.44, 0.5], [0, 1, 1, 0])
   const phrase2X = useTransform(scrollYProgress, [0.25, 0.32, 0.44, 0.5], [45, 0, 0, 45])
   const phrase2Y = useTransform(scrollYProgress, [0.25, 0.32, 0.44, 0.5], [20, 0, 0, -20])
 
-  // Ato 3 (Esquerda · 50% -> 75%): "SE APAIXONA"
+  // Ato 3 (Esquerda · 50% -> 75%): "APAIXONA"
   const phrase3Opacity = useTransform(scrollYProgress, [0.5, 0.57, 0.69, 0.75], [0, 1, 1, 0])
   const phrase3X = useTransform(scrollYProgress, [0.5, 0.57, 0.69, 0.75], [-45, 0, 0, -45])
   const phrase3Y = useTransform(scrollYProgress, [0.5, 0.57, 0.69, 0.75], [20, 0, 0, -20])
 
-  // Ato 4 (Direita + CTAs · 75% -> 100%): "E REPETE."
+  // Ato 4 (Direita + CTAs · 75% -> 100%): "E REPETE"
   const phrase4Opacity = useTransform(scrollYProgress, [0.75, 0.82, 1], [0, 1, 1])
   const phrase4X = useTransform(scrollYProgress, [0.75, 0.82, 1], [45, 0, 0])
   const phrase4Y = useTransform(scrollYProgress, [0.75, 0.82, 1], [20, 0, 0])
@@ -152,33 +152,33 @@ export default function LandingHero() {
             </h1>
           </motion.div>
 
-          {/* ATO 2: LADO DIREITO ("SE EXPERIMENTA") */}
+          {/* ATO 2: LADO DIREITO ("EXPERIMENTA") */}
           <motion.div
             style={{ opacity: phrase2Opacity, x: phrase2X, y: phrase2Y }}
             className="absolute right-6 sm:right-12 lg:right-16 text-right max-w-sm sm:max-w-md lg:max-w-xl space-y-3 pointer-events-none flex flex-col items-end"
           >
             <h2 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-black bg-gradient-to-r from-pink-400 via-rose-300 to-fuchsia-300 bg-clip-text text-transparent leading-[1.05] tracking-tight font-['Outfit'] drop-shadow-[0_10px_40px_rgba(236,72,153,0.55)]">
-              SE EXPERIMENTA
+              EXPERIMENTA
             </h2>
           </motion.div>
 
-          {/* ATO 3: LADO ESQUERDO ("SE APAIXONA") */}
+          {/* ATO 3: LADO ESQUERDO ("APAIXONA") */}
           <motion.div
             style={{ opacity: phrase3Opacity, x: phrase3X, y: phrase3Y }}
             className="absolute left-6 sm:left-12 lg:left-16 text-left max-w-sm sm:max-w-md lg:max-w-xl space-y-3 pointer-events-none"
           >
             <h2 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-black bg-gradient-to-r from-pink-400 via-fuchsia-400 to-purple-300 bg-clip-text text-transparent leading-[1.05] tracking-tight font-['Outfit'] drop-shadow-[0_10px_40px_rgba(236,72,153,0.55)]">
-              SE APAIXONA
+              APAIXONA
             </h2>
           </motion.div>
 
-          {/* ATO 4: LADO DIREITO COM CTAs ("E REPETE.") */}
+          {/* ATO 4: LADO DIREITO COM CTAs ("E REPETE") */}
           <motion.div
             style={{ opacity: phrase4Opacity, x: phrase4X, y: phrase4Y }}
             className="absolute right-6 sm:right-12 lg:right-16 text-right max-w-sm sm:max-w-md lg:max-w-xl space-y-6 flex flex-col items-end"
           >
             <h2 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-black bg-gradient-to-r from-pink-400 via-fuchsia-400 to-purple-300 bg-clip-text text-transparent leading-[1.05] tracking-tight font-['Outfit'] drop-shadow-[0_10px_40px_rgba(236,72,153,0.55)]">
-              E REPETE.
+              E REPETE
             </h2>
 
             {/* CTAs Finais */}

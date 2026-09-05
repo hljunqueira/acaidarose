@@ -187,7 +187,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
                 className="print-card p-4 rounded-3xl border-2 border-dashed border-purple-300 dark:border-white/20 bg-gradient-to-b from-purple-50/60 via-white to-purple-50/30 dark:from-white/10 dark:via-[#160228] dark:to-white/5 flex flex-col items-center text-center shadow-xs"
               >
                 <img
-                  src="/logo.png"
+                  src="/logo-oficial.png"
                   alt="Açaí da Rose"
                   className="logo h-9 w-auto object-contain mb-1 drop-shadow-xs"
                 />

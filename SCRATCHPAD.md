@@ -1,6 +1,25 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Nova Logo Oficial Global (`/logo-oficial.png`)**:
+  - Purgadas todas as referências ao `/logo.png` legado em todos os 14 componentes e páginas da aplicação (`app/layout.tsx`, `app/login/page.tsx`, `LandingHeader.tsx`, `LandingFooter.tsx`, `AppSidebar.tsx`, `CustomerMenuHeader.tsx`, `TVOrdersPanelView.tsx`, modais de QR code, recibos e página 404).
+  - Nova logo em alta resolução implantada em toda a identidade visual da rede.
+- **Recuperação de Palavra-passe Híbrida (Automação 24/7 + Resgate Franqueadora/TI)**:
+  - Integração com Resend API no domínio oficial verificado (`seguranca@acaidarose.pt`).
+  - Template minimalista responsivo com fundo escuro, nova logo oficial centralizada e código de 6 dígitos em destaque.
+  - Tabelas `password_reset_tokens` e `password_reset_requests` criadas no PostgreSQL 16 da VPS com expiração de 15 minutos e hash de segurança com bcrypt.
+  - Endpoints `POST /api/auth/forgot-password` e `POST /api/auth/reset-password` integrados e auditados em `audit_logs`.
+  - Componente `ForgotPasswordDialog.tsx` com link discreto na tela de login, fluxo em etapas, reenvio com cooldown de 60s e opção de contingência via WhatsApp com a Franqueadora.
+- **Slogan Oficial da Marca & Portal da Equipa (Clean)**:
+  - Corrigido o slogan oficial nos 4 Atos do Hero (`LandingHero.tsx`) e no rodapé institucional (`LandingFooter.tsx`) para:
+    - *Açaí não se explica*
+    - *Experimenta*
+    - *Apaixona*
+    - *E Repete*
+  - Eliminado o bloco promocional com a frase de marketing gigante na tela de login (`app/login/page.tsx`).
+  - Redesenhada a tela de autenticação para foco corporativo limpo no **Portal da Equipa**: removidos o logo pequeno redundante do topo e a pílula de badge, promovendo **"Portal da Equipa"** a título principal H1 de grande impacto com espaçamento perfeitamente equilibrado.
+  - Inserida a logo oficial da marca como camada de fundo transparente (marca d'água sutil `opacity-[0.08]`) no painel do login.
+  - Padronizado o botão de acesso no cabeçalho da landing page (`LandingHeader.tsx`) para `Portal da Equipa`.
 - **Configurações de QR Code & Ementa Digital**:
   - Tabela `store_qrcode_settings` criada no PostgreSQL para persistência multi-tenant permanente.
   - Endpoints `GET` e `PUT` `/api/qrcode-config` 100% integrados ao banco de dados.

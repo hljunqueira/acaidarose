@@ -40,7 +40,7 @@ export default function StoreSelectRadioDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#160228] text-slate-900 dark:text-white shadow-2xl border border-purple-100 dark:border-white/15">
         <DialogHeader className="text-center pb-3 border-b border-purple-50">
-          <img src="/logo.png" alt="Açaí da Rose" className="h-14 w-auto mx-auto object-contain mb-1" />
+          <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-14 w-auto mx-auto object-contain mb-1" />
           <DialogTitle className="text-base font-black text-foreground">
             Selecione uma empresa da franquia
           </DialogTitle>

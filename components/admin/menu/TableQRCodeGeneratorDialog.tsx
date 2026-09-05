@@ -91,7 +91,7 @@ export default function TableQRCodeGeneratorDialog({
               >
                 {/* Logo & Marca */}
                 <div className="flex items-center gap-2 mb-2">
-                  <img src="/logo.png" alt="Açaí da Rose" className="h-9 w-auto" />
+                  <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-9 w-auto" />
                   <div className="text-left leading-tight">
                     <div className="font-black text-xs text-foreground">Açaí da Rose</div>
                     <div className="text-[9px] text-muted-foreground font-semibold">{storeName}</div>

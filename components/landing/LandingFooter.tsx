@@ -12,7 +12,7 @@ export default function LandingFooter() {
         {/* Coluna 1: Marca & Slogan */}
         <div className="space-y-3 text-left md:col-span-2">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Açaí da Rose" className="h-10 w-auto object-contain" />
+            <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-10 w-auto object-contain" />
             <div>
               <div className="text-base font-black text-white uppercase tracking-tight">
                 Açaí da Rose
@@ -23,7 +23,7 @@ export default function LandingFooter() {
             </div>
           </div>
           <p className="text-xs text-purple-200/70 max-w-md leading-relaxed">
-            Açaí não se explica: se experimenta, se apaixona e repete. Levando o verdadeiro sabor e energia do açaí artesanal brasileiro a Portugal.
+            Açaí não se explica: experimenta, apaixona e repete. Levando o verdadeiro sabor e energia do açaí artesanal brasileiro a Portugal.
           </p>
           <div className="text-[11px] text-pink-300 font-mono">
             Torres Novas

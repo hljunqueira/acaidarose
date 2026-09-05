@@ -500,7 +500,7 @@ export default function TVOrdersPanelView({
                 
                 {/* Identificação Superior da Loja Dentro do Quadro */}
                 <div className="flex items-center justify-center gap-2 mb-1">
-                  <img src="/logo.png" alt="Açaí da Rose" className="h-8 w-auto object-contain drop-shadow-xs" />
+                  <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-8 w-auto object-contain drop-shadow-xs" />
                   <span className="font-cursive text-2xl sm:text-3xl text-purple-950 font-bold leading-none">
                     Açaí da Rose
                   </span>
@@ -535,7 +535,7 @@ export default function TVOrdersPanelView({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 my-auto">
-                <img src="/logo.png" alt="Açaí da Rose" className="h-24 sm:h-28 lg:h-32 w-auto object-contain drop-shadow-md mb-2" />
+                <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-24 sm:h-28 lg:h-32 w-auto object-contain drop-shadow-md mb-2" />
                 <div className="font-cursive text-5xl sm:text-6xl lg:text-7xl text-purple-950 font-bold leading-none">
                   Açaí da Rose
                 </div>
@@ -567,7 +567,7 @@ export default function TVOrdersPanelView({
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#2a0845] to-[#160228] p-6 text-center">
-                <img src="/logo.png" alt="Açaí da Rose" className="h-16 w-auto object-contain mb-3" />
+                <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-16 w-auto object-contain mb-3" />
                 <span className="font-cursive text-3xl font-bold text-white uppercase tracking-wider">Açaí da Rose</span>
                 <span className="font-cursive text-2xl text-pink-400 font-bold mt-1">O Verdadeiro Açaí Artesanal</span>
               </div>

@@ -47,7 +47,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
       <div className="bg-white shadow-lg print:shadow-none w-[80mm] p-4 font-mono text-[13px] leading-tight border print:border-none">
         {/* Cabeçalho da Loja / Franquia */}
         <div className="text-center">
-          <img src="/logo.png" alt="Açaí da Rose" className="mx-auto h-20 w-auto" />
+          <img src="/logo-oficial.png" alt="Açaí da Rose" className="mx-auto h-20 w-auto" />
           <div className="text-xs font-bold mt-1">{tenant?.name || 'Açaí da Rose'}</div>
           {tenant?.nif && <div className="text-[11px]">NIF: {tenant.nif}</div>}
           {tenant?.address && <div className="text-[11px]">{tenant.address}</div>}
