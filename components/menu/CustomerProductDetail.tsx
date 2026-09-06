@@ -89,9 +89,10 @@ export default function CustomerProductDetail({
   const [notes, setNotes] = useState('')
   const quantity = 1
 
-  const isUnlimited = container.weightGrams >= 500
-  const maxFrutas = container.limiteFrutas || (isUnlimited ? 999 : container.weightGrams === 250 ? 2 : 3)
-  const maxToppingsGratis = container.limiteToppings || (isUnlimited ? 999 : container.weightGrams === 350 ? 4 : 3)
+  const weight = container.weightGrams || 500
+  const isUnlimited = weight >= 500
+  const maxFrutas = container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
+  const maxToppingsGratis = container.limiteToppings || (isUnlimited ? 999 : weight === 350 ? 4 : 3)
 
   const frutas = useMemo(() => {
     return allToppings.filter((t) => 
@@ -137,7 +138,7 @@ export default function CustomerProductDetail({
   const extraToppingsPrice = extraToppingsCount * additionalToppingPrice
 
   const premiumsPrice = selectedPremiums.reduce((acc, top) => {
-    return acc + getToppingItemPrice(top, container.weightGrams)
+    return acc + getToppingItemPrice(top, weight)
   }, 0)
   const extraPremiumsPrice = premiumsPrice
 
@@ -363,7 +364,7 @@ export default function CustomerProductDetail({
     onClose()
   }
 
-  const video = container.videoUrl || CUP_VIDEOS[container.weightGrams]
+  const video = container.videoUrl || CUP_VIDEOS[weight]
 
   return (
     <Dialog open={Boolean(container)} onOpenChange={(open) => !open && onClose()}>
@@ -392,7 +393,7 @@ export default function CustomerProductDetail({
                 />
               ) : (
                 <img
-                  src={CUP_IMAGES[container.weightGrams] || container.image || '/images/official/acai_copo_500g.jpg'}
+                  src={CUP_IMAGES[weight] || container.image || '/images/official/acai_copo_500g.jpg'}
                   alt={container.name}
                   className="w-full h-36 sm:h-44 object-cover"
                 />
@@ -786,7 +787,7 @@ export default function CustomerProductDetail({
                     {caldasPremium.map((add) => {
                       const isSelected = selectedToppings.some((t) => t.id === add.id)
                       const isAvailable = add.isAvailableInStore !== false
-                      const dynamicPrice = getToppingItemPrice(add, container.weightGrams)
+                      const dynamicPrice = getToppingItemPrice(add, weight)
                       return (
                         <button
                           key={add.id}

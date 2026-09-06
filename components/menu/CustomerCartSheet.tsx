@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/i18n/formatters'
 import { Plus, Minus, Trash2, CheckCircle2, ShoppingBag, Smartphone, CreditCard, Clock, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
+import { useLanguageStore } from '@/lib/stores/languageStore'
 
 interface CartItem {
   id: string
@@ -55,12 +56,17 @@ export default function CustomerCartSheet({
   tableNumber,
   qrConfig,
 }: CustomerCartSheetProps) {
+  const { language } = useLanguageStore()
+  const isEn = language === 'en'
   const { isDark: isCustomerDark } = useCustomerTheme()
   const allowMbway = qrConfig?.allowMbwayPayment !== false
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerNif, setCustomerNif] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'MBWAY' | 'BALCAO'>('MBWAY')
+  const [consumptionType, setConsumptionType] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN')
+  const [needCutlery, setNeedCutlery] = useState(true)
+  const [needBag, setNeedBag] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('CART')
   const [createdOrder, setCreatedOrder] = useState<any | null>(null)
@@ -179,6 +185,13 @@ export default function CustomerCartSheet({
       // Pedido inicial com status Pay-First:
       const initialStatus = paymentMethod === 'MBWAY' ? 'PENDING' : 'AWAITING_PAYMENT'
 
+      const isTakeaway = consumptionType === 'TAKEAWAY'
+      const takeawayLabel = isTakeaway
+        ? (isEn
+            ? `Takeaway (Cutlery: ${needCutlery ? 'Yes' : 'No'}, Bag: ${needBag ? 'Yes' : 'No'})`
+            : `Levar para Casa (Talheres: ${needCutlery ? 'Sim' : 'Não'}, Saco: ${needBag ? 'Sim' : 'Não'})`)
+        : (isEn ? 'Dine-in' : 'Consumir no Local')
+
       const payload = {
         tenantId: tenantId || '11111111-1111-1111-1111-111111111111',
         customerName: customerName.trim(),
@@ -196,7 +209,12 @@ export default function CustomerCartSheet({
         channel: 'QR_CODE',
         isQRCode: true,
         cashierName: 'Autoatendimento QR Code',
-        notes: isTable ? `Mesa ${tableNumber} · ${paymentMethod === 'MBWAY' ? 'MB WAY' : 'Pagar no Balcão'}` : 'Balcão',
+        isTakeaway,
+        needCutlery: isTakeaway ? needCutlery : false,
+        needBag: isTakeaway ? needBag : false,
+        notes: isTable
+          ? `Mesa ${tableNumber} · ${takeawayLabel} · ${paymentMethod === 'MBWAY' ? 'MB WAY' : (isEn ? 'Pay at Counter' : 'Pagar no Balcão')}`
+          : `Balcão · ${takeawayLabel} · ${paymentMethod === 'MBWAY' ? 'MB WAY' : (isEn ? 'Pay at Counter' : 'Pagar no Balcão')}`,
       }
 
       const res = await fetch('/api/orders', {
@@ -536,31 +554,81 @@ export default function CustomerCartSheet({
                     ))}
                   </div>
 
-                  {/* Dados do Cliente */}
-                  <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 space-y-3 text-left">
+                  {/* Dados do Pedido e Identificação */}
+                  <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 space-y-3.5 text-left">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs font-bold text-slate-900 dark:text-white">Identificação do Pedido:</div>
-                      {qrConfig?.pickupModel === 'TABLE_SERVICE' ? (
-                        <span className="text-[10px] font-bold text-purple-700 dark:text-pink-300 bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded-md">
-                          🛎️ Serviço de Mesa
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/30 px-2 py-0.5 rounded-md">
-                          📺 Chamada na Smart TV
-                        </span>
-                      )}
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">
+                        {isEn ? 'Order Type & Consumption' : 'Consumo do Pedido'}
+                      </div>
+                      <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 px-2.5 py-0.5 rounded-lg">
+                        {qrConfig?.pickupModel === 'TABLE_SERVICE'
+                          ? (isEn ? 'Table Service' : 'Serviço de Mesa')
+                          : (isEn ? 'Order Screen' : 'Painel de Chamada')}
+                      </span>
                     </div>
 
+                    {/* Seletor: Consumir no Local vs Levar para Casa (Design Clean, sem emojis) */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConsumptionType('DINE_IN')}
+                        className={`p-2.5 rounded-xl border text-xs font-bold transition text-center cursor-pointer ${
+                          consumptionType === 'DINE_IN'
+                            ? 'bg-purple-900 text-white border-purple-900 dark:bg-pink-600 dark:border-pink-500 shadow-xs'
+                            : 'bg-white dark:bg-white/5 text-slate-700 dark:text-purple-200 border-purple-200/80 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        {isEn ? 'Dine-in' : 'Consumir no Local'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConsumptionType('TAKEAWAY')}
+                        className={`p-2.5 rounded-xl border text-xs font-bold transition text-center cursor-pointer ${
+                          consumptionType === 'TAKEAWAY'
+                            ? 'bg-purple-900 text-white border-purple-900 dark:bg-pink-600 dark:border-pink-500 shadow-xs'
+                            : 'bg-white dark:bg-white/5 text-slate-700 dark:text-purple-200 border-purple-200/80 dark:border-white/10 hover:bg-purple-50 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        {isEn ? 'Takeaway' : 'Levar para Casa'}
+                      </button>
+                    </div>
+
+                    {/* Opções de Levar para Casa: Talheres e Saco */}
+                    {consumptionType === 'TAKEAWAY' && (
+                      <div className="p-3 rounded-xl bg-white dark:bg-purple-950/40 border border-purple-200/80 dark:border-white/10 space-y-2.5">
+                        <label className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-purple-200 cursor-pointer select-none">
+                          <span>{isEn ? 'Need disposable cutlery?' : 'Precisa de talheres descartáveis?'}</span>
+                          <input
+                            type="checkbox"
+                            checked={needCutlery}
+                            onChange={(e) => setNeedCutlery(e.target.checked)}
+                            className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-purple-300 dark:border-white/20 accent-pink-600 cursor-pointer"
+                          />
+                        </label>
+                        <label className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-purple-200 cursor-pointer select-none">
+                          <span>{isEn ? 'Need a transport bag?' : 'Precisa de saco de transporte?'}</span>
+                          <input
+                            type="checkbox"
+                            checked={needBag}
+                            onChange={(e) => setNeedBag(e.target.checked)}
+                            className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-purple-300 dark:border-white/20 accent-pink-600 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                    )}
+
                     {/* Nome do Cliente */}
-                    <div className="space-y-1">
+                    <div className="space-y-1 pt-1">
                       <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
-                        {isNameRequired ? 'O seu Nome (Obrigatório):' : 'O seu Nome (Opcional):'}
+                        {isNameRequired
+                          ? (isEn ? 'Your Name (Required):' : 'O seu Nome (Obrigatório):')
+                          : (isEn ? 'Your Name (Optional):' : 'O seu Nome (Opcional):')}
                       </label>
                       <input
                         type="text"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Ex: João Silva"
+                        placeholder={isEn ? 'e.g. John Smith' : 'Ex: João Silva'}
                         className="w-full h-11 px-3.5 rounded-xl bg-white border border-purple-200 dark:bg-white/5 dark:border-white/15 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-medium"
                       />
                     </div>

@@ -4,6 +4,8 @@ import React from 'react'
 import Link from 'next/link'
 import { MapPin, Utensils, ShoppingBag } from 'lucide-react'
 
+import { useLanguageStore } from '@/lib/stores/languageStore'
+
 interface CustomerMenuHeaderProps {
   tenant?: any
   isTable?: boolean
@@ -23,6 +25,9 @@ export default function CustomerMenuHeader({
   allowTableTransfer = true,
   onOpenSwitchTable,
 }: CustomerMenuHeaderProps) {
+  const { language, setLanguage } = useLanguageStore()
+  const isEn = language === 'en'
+
   let storeName = 'Loja 1 - Figueira da Foz (Matriz)'
   if (tenant?.name) {
     const cleaned = tenant.name
@@ -64,12 +69,42 @@ export default function CustomerMenuHeader({
             <span className="truncate">{storeName}</span>
           </div>
           <span className="text-[9px] sm:text-[10px] text-purple-700 dark:text-purple-300/80 font-bold uppercase tracking-wider">
-            Loja Oficial
+            {isEn ? 'Official Store' : 'Loja Oficial'}
           </span>
         </div>
 
-        {/* 3. Direita: Mesa, Trocar de Mesa & Carrinho */}
+        {/* 3. Direita: Seletor Idioma (🇵🇹/🇺🇸), Mesa & Carrinho */}
         <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Seletor Oficial de Idioma Clean com Bandeiras */}
+          <div className="flex items-center rounded-xl p-0.5 bg-purple-50 dark:bg-white/10 border border-purple-200/80 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setLanguage('pt')}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                language === 'pt'
+                  ? 'bg-white dark:bg-purple-900/80 text-purple-950 dark:text-white shadow-xs'
+                  : 'text-slate-500 dark:text-purple-300/70 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Português"
+            >
+              <span>🇵🇹</span>
+              <span className="text-[10px] hidden sm:inline">PT</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                language === 'en'
+                  ? 'bg-white dark:bg-purple-900/80 text-purple-950 dark:text-white shadow-xs'
+                  : 'text-slate-500 dark:text-purple-300/70 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="English"
+            >
+              <span>🇺🇸</span>
+              <span className="text-[10px] hidden sm:inline">EN</span>
+            </button>
+          </div>
+
           {isTable && tableLabel ? (
             <div className="flex items-center gap-1">
               {/* Badge de Mesa Clicável */}
@@ -83,7 +118,7 @@ export default function CustomerMenuHeader({
                 className={`flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 text-white font-black text-[10px] sm:text-xs shadow-md shadow-pink-600/20 whitespace-nowrap transition-transform ${
                   allowTableTransfer && onOpenSwitchTable ? 'cursor-pointer hover:scale-105 active:scale-95' : ''
                 }`}
-                title={allowTableTransfer ? 'Clique para trocar de mesa' : tableLabel}
+                title={allowTableTransfer ? (isEn ? 'Click to change table' : 'Clique para trocar de mesa') : tableLabel}
               >
                 <Utensils className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                 <span>{tableLabel}</span>
@@ -97,7 +132,7 @@ export default function CustomerMenuHeader({
                   onClick={onOpenSwitchTable}
                   className="text-[10px] sm:text-[11px] font-bold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 underline underline-offset-2 transition cursor-pointer whitespace-nowrap px-1"
                 >
-                  Trocar
+                  {isEn ? 'Switch' : 'Trocar'}
                 </button>
               )}
             </div>
@@ -109,7 +144,7 @@ export default function CustomerMenuHeader({
               type="button"
               onClick={onOpenCart}
               className="relative p-1.5 sm:p-2 rounded-xl bg-pink-100 hover:bg-pink-200 border border-pink-200 text-pink-700 dark:bg-pink-600/20 dark:hover:bg-pink-600/30 dark:border-pink-500/40 dark:text-pink-300 transition-all cursor-pointer shrink-0"
-              title="Ver pedido"
+              title={isEn ? 'View order' : 'Ver pedido'}
             >
               <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="absolute -top-1.5 -right-1.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-pink-600 text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center shadow-md">

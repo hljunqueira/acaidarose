@@ -29,7 +29,7 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
         {containers.filter((c) => c.active !== false).map((c) => {
           const isSelected = selected?.id === c.id
           const isAvailable = c.isAvailableInStore !== false
-          const isUnlimited = c.weightGrams >= 500
+          const isUnlimited = (c.weightGrams || 0) >= 500
 
           return (
             <Card

@@ -79,5 +79,11 @@ ext.config.js\, \	sconfig.json\) e credenciais.
 - Todos os insumos mestres, compras com fornecedores e pedidos de abastecimento segregam explicitamente o Preço Líquido (sem IVA) + Alíquota/Montante do IVA (6% reduzido, 13% intermediário ou 23% normal) = Preço c/ IVA.
 - Fórmulas, pesos (kg), cotações por kg e detalhamento fiscal transparente em todas as tabelas e relatórios comerciais da Matriz e Franquias.
 
+### 9. Design Clean & Sem Ícones Supérfluos (Anti "Cara de IA")
+- **Zero Ícones e Emojis Decorativos**: Proibido usar emojis (como 🍧, 🥪, 🥐, 🥟, ✨) ou ícones desnecessários em botões, abas de menus, abas de categorias ou cards. O visual deve ser corporativo, sofisticado, limpo e sem qualquer aspecto gerado por IA ("sem cara de IA").
+- **Estética Minimalista**: Layout focado em tipografia sóbria, contrastes harmônicos, espaçamento equilibrado e ausência de efeitos visuais cafonas ou genéricos.
+- **Abas Canônicas de Menus na Ementa**: Exatamente denominadas `Açaí da Rose` e `Lanches` (em inglês: `Açaí da Rose` e `Snacks`). Sem adendos desnecessários como "Pastelaria" ou emojis anexados.
+- **Bandeiras Oficiais**: Uso exclusivo das bandeiras de Portugal (🇵🇹) e Estados Unidos (🇺🇸) no seletor de idioma, sem adornos extras.
+
 
 

@@ -27,18 +27,19 @@ export default function ToppingSelector({
 }: ToppingSelectorProps) {
   const [activeCategory, setActiveCategory] = useState('Todos')
 
-  const isUnlimited = container.weightGrams >= 500
-  const frutaLimit = container.limiteFrutas || (isUnlimited ? 999 : container.weightGrams === 250 ? 2 : 3)
+  const weight = container.weightGrams || 500
+  const isUnlimited = weight >= 500
+  const frutaLimit = container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
   const toppingLimit = container.limiteToppings || (isUnlimited ? 999 : 3)
 
   const selectedFrutas = selectedToppings.filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f)))
   const selectedAdicionais = selectedToppings.filter((t) => t.category === 'Adicionais' || t.isSpecialAddon || t.isPremium || (t.precoExtra && t.precoExtra > 0))
   const selectedToppingsList = selectedToppings.filter((t) => !selectedFrutas.includes(t) && !selectedAdicionais.includes(t))
 
-  const isOver500g = container.weightGrams > 500
+  const isOver500g = weight > 500
 
   const getAddonPrice = (t: ProductTopping) => {
-    return getPremiumToppingPrice(t.name, container.weightGrams, t.precoExtra)
+    return getPremiumToppingPrice(t.name, weight, t.precoExtra)
   }
 
   const filtered = toppings.filter((t) => {

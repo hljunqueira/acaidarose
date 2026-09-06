@@ -99,15 +99,18 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
   const containers: ProductContainer[] = []
   const bases: ProductBase[] = []
   const toppings: ProductTopping[] = []
+  const menusList: any[] = []
+  const categoriesList: any[] = []
 
   try {
-    const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes] = await Promise.all([
-      query(`SELECT id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
-      query(`SELECT id, name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
-      query(`SELECT id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+    const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes, menusRes] = await Promise.all([
+      query(`SELECT id, name, name_en, description, description_en, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, name_en, description, description_en, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, name_en, description, description_en, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT product_id, custom_price FROM store_price_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
-      query(`SELECT id, name, slug, active FROM categories ORDER BY display_order ASC`),
+      query(`SELECT id, name, name_en, slug, menu_id, description, description_en, display_order, active, default_price, weight_grams FROM categories WHERE active = true ORDER BY display_order ASC`),
+      query(`SELECT id, name, name_en, code, description, description_en, display_order, active FROM menus WHERE active = true ORDER BY display_order ASC`),
     ])
 
     const priceMap = new Map<string, number>()
@@ -127,11 +130,43 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       })
     }
 
-    const categoryMap = new Map<string, { id: string; name: string; active: boolean }>()
+    const categoryByIdMap = new Map<string, any>()
+    const categoryNameCleanMap = new Map<string, any>()
+
     if (categoriesRes && categoriesRes.rows) {
       categoriesRes.rows.forEach((cat: any) => {
+        const catObj = {
+          id: cat.id,
+          name: cat.name,
+          nameEn: cat.name_en || null,
+          slug: cat.slug,
+          menuId: cat.menu_id,
+          description: cat.description || null,
+          descriptionEn: cat.description_en || null,
+          displayOrder: cat.display_order,
+          active: cat.active !== false,
+          defaultPrice: cat.default_price ? Number(cat.default_price) : undefined,
+          weightGrams: cat.weight_grams,
+        }
+        categoriesList.push(catObj)
+        categoryByIdMap.set(cat.id, catObj)
         const clean = (cat.name || '').toLowerCase().replace(/[\s\-_]/g, '')
-        categoryMap.set(clean, { id: cat.id, name: cat.name, active: cat.active !== false })
+        categoryNameCleanMap.set(clean, catObj)
+      })
+    }
+
+    if (menusRes && menusRes.rows) {
+      menusRes.rows.forEach((m: any) => {
+        menusList.push({
+          id: m.id,
+          name: m.name,
+          nameEn: m.name_en || null,
+          code: m.code,
+          description: m.description || null,
+          descriptionEn: m.description_en || null,
+          displayOrder: m.display_order,
+          active: m.active !== false,
+        })
       })
     }
 
@@ -144,13 +179,15 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         bases.push({
           id: row.id,
           name: row.name,
+          nameEn: row.name_en || null,
           description: row.description || '',
+          descriptionEn: row.description_en || null,
           displayOrder: row.display_order,
           active: isVisible,
           videoUrl: row.video_url,
           videoPoster: row.video_poster,
           availableHours: row.available_hours,
-          isAvailableInStore: isAvailable
+          isAvailableInStore: isAvailable,
         })
       })
     }
@@ -164,7 +201,9 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         toppings.push({
           id: row.id,
           name: row.name,
+          nameEn: row.name_en || null,
           description: row.description || '',
+          descriptionEn: row.description_en || null,
           category: row.category || 'Toppings',
           isPremium: !!row.is_premium,
           precoExtra: customPrice !== undefined ? customPrice : Number(row.preco_extra || 0),
@@ -175,7 +214,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           availableHours: row.available_hours,
           displayOrder: row.display_order,
           active: isVisible,
-          isAvailableInStore: isAvailable
+          isAvailableInStore: isAvailable,
         })
       })
     }
@@ -186,33 +225,40 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         const override = availabilityMap.get(row.id)
         const isVisible = override ? override.isVisible : !!row.active
         const isAvailable = override ? override.isAvailable : !!row.active
-        const weight = Number(row.weight_grams) || 500
+        const weight = row.weight_grams ? Number(row.weight_grams) : null
         const limiteFrutas = weight === 250 ? 2 : weight === 350 ? 3 : 999
+        const isItem = row.product_type === 'ITEM'
 
-        let isCategoryPaused = false
-        let categoryName = ''
-        const weightStr = `${weight}g`
-        for (const [cleanKey, cData] of categoryMap.entries()) {
-          if (cleanKey.includes(weightStr) || cleanKey.includes((row.name || '').toLowerCase().replace(/[\s\-_]/g, ''))) {
-            categoryName = cData.name
-            if (!cData.active) {
-              isCategoryPaused = true
+        // Localiza categoria correspondente
+        let matchedCat = row.category_id ? categoryByIdMap.get(row.category_id) : null
+        if (!matchedCat && weight) {
+          const weightStr = `${weight}g`
+          for (const [cleanKey, cData] of categoryNameCleanMap.entries()) {
+            if (cleanKey.includes(weightStr) || cleanKey.includes((row.name || '').toLowerCase().replace(/[\s\-_]/g, ''))) {
+              matchedCat = cData
+              break
             }
-            break
           }
         }
 
-        // Se o produto já possui modelos configurados no banco, usa-os; caso contrário, monta os 4 canônicos
-        const rawGroups = row.option_groups
-        const hasCustomGroups = rawGroups && Array.isArray(rawGroups) && rawGroups.length > 0
-        const optionGroups = hasCustomGroups
-          ? rawGroups
-          : buildDefaultOptionGroupsForContainer(weight, bases, toppings)
+        const isCategoryPaused = matchedCat ? !matchedCat.active : false
+        const categoryName = matchedCat ? matchedCat.name : ''
+        const menuId = matchedCat ? matchedCat.menuId : null
+
+        // Produtos unitários prontos (lanches) não usam construtor de taça de açaí
+        let optionGroups: any[] = []
+        if (row.option_groups && Array.isArray(row.option_groups) && row.option_groups.length > 0) {
+          optionGroups = row.option_groups
+        } else if (!isItem && weight) {
+          optionGroups = buildDefaultOptionGroupsForContainer(weight, bases, toppings)
+        }
 
         containers.push({
           id: row.id,
           name: row.name,
+          nameEn: row.name_en || null,
           description: row.description || '',
+          descriptionEn: row.description_en || null,
           weightGrams: weight,
           precoBase: customPrice !== undefined ? customPrice : Number(row.preco_base),
           price: customPrice !== undefined ? customPrice : Number(row.preco_base),
@@ -221,7 +267,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           limiteCremes: row.limite_bases,
           limiteFrutas: limiteFrutas,
           emoji: '',
-          image: row.image_url || row.video_poster,
+          image: row.image_url || row.video_poster || null,
           videoUrl: row.video_url,
           videoPoster: row.video_poster,
           availableHours: row.available_hours,
@@ -230,6 +276,9 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           isAvailableInStore: isAvailable,
           isCategoryPaused,
           categoryName,
+          categoryId: matchedCat ? matchedCat.id : row.category_id || null,
+          productType: (row.product_type as any) || (isItem ? 'ITEM' : 'CONTAINER'),
+          menuId,
           optionGroups,
         })
       })
@@ -240,6 +289,8 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       containers: [],
       bases: [],
       toppings: [],
+      menus: [],
+      categories: [],
     }
   }
 
@@ -247,6 +298,8 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
     containers,
     bases,
     toppings,
+    menus: menusList,
+    categories: categoriesList,
   }
 }
 

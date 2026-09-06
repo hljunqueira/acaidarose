@@ -302,6 +302,10 @@ function MenuContent() {
             catalog={catalog}
             tenantId={tenant?.id}
             onSelectContainer={handleSelectContainer}
+            onAddToCart={(item) => {
+              setCart((prev) => [...prev, item])
+              toast.success(`${item.containerName} adicionado ao pedido!`)
+            }}
             isTable={isTable}
             isCatalogOnly={isCatalogOnly || !storeStatus.isOpen}
           />
