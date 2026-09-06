@@ -41,6 +41,7 @@ import OrderHistoryAuditModal from './OrderHistoryAuditModal'
 import OrderEditDialog from './OrderEditDialog'
 import CancelReasonDialog from './CancelReasonDialog'
 import OrderItemsModal from './OrderItemsModal'
+import KitchenOrderPrintModal from './KitchenOrderPrintModal'
 import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 
 interface QRCodeOrdersAdminProps {
@@ -144,6 +145,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
+  const [orderForKitchenPrint, setOrderForKitchenPrint] = useState<Order | null>(null)
 
   const { authFetch } = useAuthStore()
   const { currentTenant } = useFranchiseStore()
@@ -261,15 +263,10 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     }
   }
 
-  // Impressão da comanda de montagem
+  // Impressão da comanda de montagem para a cozinha
   const handlePrintOrder = (e: React.MouseEvent | null, order: Order) => {
     if (e) e.stopPropagation()
-    if (order.paymentStatus !== 'PAID') {
-      toast.error('O pedido precisa ser pago antes de emitir a comanda de produção.')
-      return
-    }
-    window.print()
-    toast.success(`Comanda #${order.orderNumber || 100} enviada para a impressora térmica!`)
+    setOrderForKitchenPrint(order)
   }
 
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null)
@@ -1122,6 +1119,14 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
         onDeleteOrder={handleDeleteOrderPermanently}
         onPrintOrder={(o) => handlePrintOrder(null, o)}
         onCallTV={handleCallTicketOnTV}
+      />
+
+      {/* 4. Modal de Impressão Térmica de Produção para a Cozinha (80mm) */}
+      <KitchenOrderPrintModal
+        open={Boolean(orderForKitchenPrint)}
+        onOpenChange={(open) => !open && setOrderForKitchenPrint(null)}
+        order={orderForKitchenPrint}
+        storeName={currentTenant?.name || 'Açaí da Rose'}
       />
 
       {/* 4. Modal de Histórico e Auditoria do Pedido */}

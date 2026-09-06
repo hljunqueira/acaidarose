@@ -1,10 +1,34 @@
-# Walkthrough — Migração PostgreSQL 16, Eliminação de Mocks e UX Minimalista
+# Walkthrough — Comanda de Cozinha Térmica (80mm) & Padronização de Impressão
 
-Todas as tarefas solicitadas pelo usuário foram concluídas, testadas e enviadas para produção na Vercel com build validado (`16/16` páginas estáticas geradas com sucesso).
+Todas as etapas de padronização, estruturação da comanda de cozinha para a bancada e eliminação da impressão do modal de tela foram concluídas e validadas com compilação TypeScript com 0 erros (`npx tsc --noEmit`).
 
 ---
 
 ## 1. O Que Foi Realizado
+
+### A. Padronização da Impressão de Comanda de Cozinha (Térmica 80mm)
+- **Causa Raiz Resolvida**: Antes, ao clicar no botão "Imprimir" do Kanban ou de `OrderItemsModal.tsx`, era executado um `window.print()` direto na página ativa. Isso imprimia o modal gráfico do navegador flutuando no meio de uma folha A4 em branco com todos os botões de ação ("Eliminar", "Imprimir", "Chamar Smart TV", "Fechar").
+- **Componente Criado**: [`components/admin/orders/KitchenOrderPrintModal.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/admin/orders/KitchenOrderPrintModal.tsx):
+  - **Cabeçalho Oficial**: Logo oficial em alta resolução `/logo-oficial.png` com filtro de contraste térmico, nome dinâmico da loja via `useFranchiseStore` e título operacional `*** COMANDA DE COZINHA ***`;
+  - **Destaque Operacional**:
+    - **SENHA/TICKET**: Número grande e visível à distância (`#001`);
+    - **DESTINO EM DESTAQUE**: Box com borda dupla destacada `>>> MESA 02 <<<` ou `>>> BALCÃO / TAKE-AWAY <<<`;
+    - **IDENTIFICAÇÃO DO CLIENTE**: Nome do cliente e telefone (se preenchido);
+    - **STATUS DE PAGAMENTO**: `[✓ PAGO VIA MB WAY]`, `[✓ PAGO]` ou `[⏳ A PAGAR NO BALCÃO]`;
+  - **Estrutura de Montagem para a Cozinha**:
+    - Quantidade e Taça: `[ 1x ] Taça de Açaí 250g`;
+    - **Bases & Cremes**: discriminadas com sublinhado legível;
+    - **Acompanhamentos (Checklist)**: cada ingrediente em linha individual com marcador `[ ]` para conferência física na bancada de montagem;
+    - **Observações de Item & Pedido**: caixas destacadas com bordas de alerta para instruções específicas (`>> OBS: ... <<`);
+  - **CSS `@media print` Rigoroso**:
+    - `@page { size: 80mm auto; margin: 0; }`
+    - `body * { visibility: hidden !important; }`
+    - Isolamento absoluto de `#kitchen-order-print`, eliminando completamente qualquer modal de fundo, botões ou elementos de tela da impressão;
+- **Integração Realizada**:
+  - [`components/admin/orders/QRCodeOrdersAdmin.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/admin/orders/QRCodeOrdersAdmin.tsx): conectado aos botões `<Printer />` dos cards do Kanban e da tabela, abrindo a prévia e disparo térmico;
+  - [`components/admin/orders/OrderItemsModal.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/admin/orders/OrderItemsModal.tsx): botão atualizado para `"Imprimir Comanda"`, acionando diretamente o mesmo fluxo térmico de 80mm.
+
+---
 
 ### A. Eliminação Total de Mocks e Fallbacks Legados
 - O arquivo `lib/supabase/mockStore.ts` (732 linhas) foi **excluído permanentemente**.

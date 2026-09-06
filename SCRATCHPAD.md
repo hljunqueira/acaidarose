@@ -1,6 +1,15 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Comanda de Cozinha & Impressão Térmica de 80mm Padronizada**:
+  - **Causa Raiz Resolvida**: Ao clicar em "Imprimir" no Kanban ou no modal de detalhes (`OrderItemsModal.tsx`), o navegador disparava um `window.print()` cru sobre a interface, imprimindo o modal cinza com botões ("Eliminar", "Fechar") no meio de uma folha A4.
+  - **Componente Criado (`KitchenOrderPrintModal.tsx`)**:
+    - Cabeçalho com logo oficial em alta resolução `/logo-oficial.png` e identificação da loja;
+    - Título operacional `*** COMANDA DE COZINHA ***` e data/hora de emissão no fuso de Lisboa;
+    - Destaque operacional para SENHA/TICKET grande, box chamativo para `MESA {N}` ou `BALCÃO / TAKE-AWAY`, identificação de cliente e pagamento;
+    - Discriminação de montagem: Taça com quantidade `[ 1x ]`, bases e cremes destacados, checklist individual `[ ]` para cada acompanhamento, e caixas destacadas para observações de itens e do pedido;
+    - CSS `@media print` isolando exclusivamente `#kitchen-order-print` em 80mm com `visibility: hidden !important` em todo o restante da página.
+  - **Integração Realizada**: Conectado ao botão `<Printer />` dos cards e tabela em `QRCodeOrdersAdmin.tsx` e ao botão `"Imprimir Comanda"` em `OrderItemsModal.tsx`.
 - **Sistema Universal de "Publicar Alterações" & Sincronização Dinâmica em Rede**:
   - **Causa Raiz Resolvida**: As alterações em produtos, categorias, destaques, modelos de opções, horários, dados de empresa e TV ficavam isoladas em abas do mesmo navegador (via `localStorage` / `BroadcastChannel`) ou aplicavam imediatamente sem rascunho de homologação.
   - **Tabelas Criadas no PostgreSQL 16 da VPS**:

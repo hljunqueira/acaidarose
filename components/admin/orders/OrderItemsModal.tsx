@@ -200,10 +200,11 @@ export default function OrderItemsModal({
                 variant="outline"
                 size="sm"
                 onClick={() => onPrintOrder(order)}
+                title="Imprimir comanda de produção para a cozinha (80mm)"
                 className="h-8 text-xs font-bold text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 border-purple-200 dark:border-white/15 rounded-xl cursor-pointer gap-1"
               >
-                <Printer className="h-3.5 w-3.5" />
-                <span>Imprimir</span>
+                <Printer className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+                <span>Imprimir Comanda</span>
               </Button>
             )}
           </div>
