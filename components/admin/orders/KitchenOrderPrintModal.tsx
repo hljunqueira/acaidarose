@@ -26,8 +26,12 @@ export default function KitchenOrderPrintModal({
   const isTable = order.isTableOrder !== false && !!order.tableNumber
   const isPaid = order.paymentStatus === 'PAID'
   const items = Array.isArray(order.items) ? order.items : []
+  const foodItems = items.filter((it: any) => !it.isBagItem && it.id !== 'bag-item' && it.containerId !== 'saco-transporte')
   const formattedTicket = String(order.orderNumber || 1).padStart(3, '0')
   const cleanStoreName = getPublicStoreName(null, storeName)
+  const isTakeawayOrder = order.isTakeaway || order.consumptionType === 'TAKEAWAY'
+  const bagQty = typeof order.bagQuantity === 'number' ? order.bagQuantity : (order.needBag ? 1 : 0)
+  const bagTotalFee = order.bagFee ? Number(order.bagFee).toFixed(2) : (bagQty * 0.10).toFixed(2)
 
   // Impressão Térmica Direta via Mount no Body:
   // Ao clonar o conteúdo diretamente para um elemento filho direto de <body> (#kitchen-print-mount),
@@ -200,9 +204,22 @@ export default function KitchenOrderPrintModal({
                 <span className="text-2xl font-black tracking-tight">#{formattedTicket}</span>
               </div>
 
-              {/* Box de Destino (Mesa ou Balcão) */}
-              <div className="border-2 border-black py-1 px-2 text-center font-black text-sm uppercase bg-zinc-100 tracking-wide">
-                {isTable ? `>>> MESA ${order.tableNumber} <<<` : '>>> BALCÃO / TAKE-AWAY <<<'}
+              {/* Box de Destino (Mesa ou Balcão / Takeaway) */}
+              <div className="border-2 border-black py-1.5 px-2 text-center font-black text-sm uppercase bg-zinc-100 tracking-wide">
+                {isTakeawayOrder
+                  ? '>>> PARA LEVAR (TAKEAWAY) <<<'
+                  : isTable
+                  ? `>>> CONSUMO NO LOCAL (MESA ${order.tableNumber}) <<<`
+                  : '>>> CONSUMO NO LOCAL (BALCÃO) <<<'}
+              </div>
+
+              {/* Informação Obrigatória do Saco de Transporte */}
+              <div className={`border border-black py-1 px-2 text-center font-black text-[10.5px] uppercase ${bagQty > 0 ? 'bg-zinc-200' : 'bg-zinc-50'}`}>
+                {bagQty > 0 ? (
+                  <span>SACO DE TRANSPORTE: {bagQty}X ({bagTotalFee}€) · [✓ DISPENSAR {bagQty} UNID.]</span>
+                ) : (
+                  <span>SACO: NÃO DISPENSADO (0 UNID.)</span>
+                )}
               </div>
 
               {/* Dados do Cliente e Pagamento em Formato Menor e Compacto */}
@@ -239,12 +256,12 @@ export default function KitchenOrderPrintModal({
             {/* SEÇÃO PRINCIPAL: ITENS PARA PREPARAÇÃO (DESTAQUE MÁXIMO PARA BANCADA) */}
             <div className="text-[10px] font-black uppercase tracking-wider pb-1 border-b border-black flex justify-between px-0.5">
               <span>ITENS PARA PREPARAÇÃO</span>
-              <span>QTD: {items.length}</span>
+              <span>QTD: {foodItems.length}</span>
             </div>
 
             <div className="py-1 space-y-3">
-              {items.length > 0 ? (
-                items.map((it: any, idx: number) => {
+              {foodItems.length > 0 ? (
+                foodItems.map((it: any, idx: number) => {
                   const bases = it.bases || []
                   const toppings = it.toppings || []
 

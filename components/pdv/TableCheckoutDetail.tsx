@@ -281,9 +281,24 @@ export default function TableCheckoutDetail({
   }
 
   // Finalizar Pagamento no Caixa
-  const handleFinalizePayment = async (method: any, customer: { name: string; phone: string }) => {
+  const handleFinalizePayment = async (
+    method: any,
+    customer: { name: string; phone: string },
+    options?: {
+      consumptionType?: 'DINE_IN' | 'TAKEAWAY'
+      isTakeaway?: boolean
+      needBag?: boolean
+      bagQuantity?: number
+      bagFee?: number
+      totalWithBags?: number
+    }
+  ) => {
     setSubmitting(true)
     try {
+      const consumptionType = options?.consumptionType || 'DINE_IN'
+      const bagQuantity = options?.bagQuantity || 0
+      const bagFee = options?.bagFee || 0
+
       // 1. Gravar pedido como pago no histórico de comandas se necessário
       if (!hasOrdersList) {
         await fetch('/api/orders', {
@@ -297,6 +312,11 @@ export default function TableCheckoutDetail({
             customerPhone: customer.phone,
             isTableOrder: true,
             tableNumber: String(table.number),
+            consumptionType,
+            isTakeaway: consumptionType === 'TAKEAWAY',
+            needBag: bagQuantity > 0,
+            bagQuantity,
+            bagFee,
             status: 'PAID',
           }),
         })
@@ -307,7 +327,15 @@ export default function TableCheckoutDetail({
             await fetch(`/api/orders/${ord.id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: 'PAID', paymentMethod: method }),
+              body: JSON.stringify({
+                status: 'PAID',
+                paymentMethod: method,
+                consumptionType,
+                isTakeaway: consumptionType === 'TAKEAWAY',
+                needBag: bagQuantity > 0,
+                bagQuantity,
+                bagFee,
+              }),
             }).catch(() => {})
           }
         }

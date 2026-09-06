@@ -38,6 +38,8 @@ export default function NewOrderManualModal({
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<OrderStatus>('NEW')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodCode>('NUMERARIO')
+  const [consumptionType, setConsumptionType] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN')
+  const [bagQuantity, setBagQuantity] = useState<number>(0)
   const [loading, setLoading] = useState(false)
 
   // Seleções do Açaí
@@ -74,18 +76,20 @@ export default function NewOrderManualModal({
   }
 
   // Cálculo de Preço Total
+  const bagFee = +(bagQuantity * 0.10).toFixed(2)
   const totalAmount = useMemo(() => {
     const basePrice = selectedContainer.precoBase || 0
     const premiumExtras = selectedToppings
       .filter((t) => t.isPremium)
       .reduce((sum, t) => sum + (t.precoExtra || 1.0), 0)
-    return +(basePrice + premiumExtras).toFixed(2)
-  }, [selectedContainer, selectedToppings])
+    return +(basePrice + premiumExtras + bagFee).toFixed(2)
+  }, [selectedContainer, selectedToppings, bagFee])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
+      const itemsLineTotal = +(selectedContainer.precoBase + selectedToppings.filter((t) => t.isPremium).reduce((sum, t) => sum + (t.precoExtra || 1.0), 0)).toFixed(2)
       const payload = {
         tenantId,
         isTableOrder,
@@ -95,6 +99,11 @@ export default function NewOrderManualModal({
         status,
         paymentStatus: status === 'PAID' ? 'PAID' : 'PENDING',
         paymentMethod,
+        consumptionType,
+        isTakeaway: consumptionType === 'TAKEAWAY',
+        needBag: bagQuantity > 0,
+        bagQuantity,
+        bagFee,
         notes: notes.trim() || null,
         total: totalAmount,
         subtotal: totalAmount,
@@ -112,8 +121,17 @@ export default function NewOrderManualModal({
               isPremium: !!t.isPremium,
               precoCobrado: t.isPremium ? (t.precoExtra || 1.0) : 0,
             })),
-            lineTotal: totalAmount,
+            lineTotal: itemsLineTotal,
           },
+          ...(bagQuantity > 0 ? [{
+            id: 'bag-item',
+            containerId: 'saco-transporte',
+            containerName: 'Saco de Transporte',
+            quantity: bagQuantity,
+            unitPrice: 0.10,
+            lineTotal: bagFee,
+            isBagItem: true,
+          }] : []),
         ],
       }
 
@@ -124,6 +142,8 @@ export default function NewOrderManualModal({
       setCustomerName('')
       setCustomerPhone('')
       setNotes('')
+      setBagQuantity(0)
+      setConsumptionType('DINE_IN')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar comanda manual')
     } finally {
@@ -317,9 +337,74 @@ export default function NewOrderManualModal({
                 </Badge>
               </div>
 
-              {/* Tipo de Atendimento */}
+              {/* Tipo de Consumo (Local vs Takeaway) */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-foreground">Local do Consumo</Label>
+                <Label className="text-xs font-bold text-foreground">Tipo de Consumo</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConsumptionType('DINE_IN')
+                      setBagQuantity(0)
+                    }}
+                    className={`py-2 text-xs font-black rounded-xl border transition cursor-pointer text-center ${
+                      consumptionType === 'DINE_IN'
+                        ? 'bg-purple-700 text-white border-purple-700 shadow-2xs'
+                        : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60'
+                    }`}
+                  >
+                    Consumo no Local
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConsumptionType('TAKEAWAY')
+                      if (bagQuantity === 0) setBagQuantity(1)
+                    }}
+                    className={`py-2 text-xs font-black rounded-xl border transition cursor-pointer text-center ${
+                      consumptionType === 'TAKEAWAY'
+                        ? 'bg-purple-700 text-white border-purple-700 shadow-2xs'
+                        : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60'
+                    }`}
+                  >
+                    Levar para Casa
+                  </button>
+                </div>
+              </div>
+
+              {/* Saco de Transporte */}
+              <div className="p-3 rounded-2xl border border-purple-200/80 bg-white flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-slate-900">Saco de Transporte</div>
+                  <div className="text-[11px] text-muted-foreground">+0,10€ cada</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBagQuantity((q) => Math.max(0, q - 1))}
+                    disabled={bagQuantity <= 0}
+                    className="w-7 h-7 rounded-lg border border-slate-300 bg-white text-slate-700 font-black text-xs hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                    title="Diminuir"
+                  >
+                    -
+                  </button>
+                  <span className="w-6 text-center text-xs font-black font-mono text-slate-900">
+                    {bagQuantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBagQuantity((q) => q + 1)}
+                    className="w-7 h-7 rounded-lg border border-slate-300 bg-white text-slate-700 font-black text-xs hover:bg-slate-100 cursor-pointer flex items-center justify-center"
+                    title="Aumentar"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Local do Atendimento (Mesa vs Balcão) */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-foreground">Local do Atendimento</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -451,9 +536,8 @@ export default function NewOrderManualModal({
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 h-10 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-black text-xs gap-1.5 shadow-sm cursor-pointer"
+                  className="flex-1 h-10 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-black text-xs shadow-sm cursor-pointer"
                 >
-                  <ShoppingBag className="h-4 w-4" />
                   <span>{loading ? 'A registar...' : 'Abrir Comanda'}</span>
                 </Button>
               </div>

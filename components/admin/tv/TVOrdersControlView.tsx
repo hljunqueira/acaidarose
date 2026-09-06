@@ -592,13 +592,22 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                         className="p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex items-center justify-between gap-3 transition-all hover:border-purple-200"
                       >
                         <div className="space-y-0.5 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono font-black text-base text-purple-950 dark:text-white">
                               {ticket}
                             </span>
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                               {order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')}
                             </span>
+                            {order.isTakeaway || order.consumptionType === 'TAKEAWAY' ? (
+                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/40">
+                                Levar{order.bagQuantity ? ` (${order.bagQuantity}x)` : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300">
+                                Local
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-slate-500">
                             {order.items?.length || 1} {order.items?.length === 1 ? 'item' : 'itens'}
@@ -650,13 +659,22 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                         className="p-3.5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between gap-3 transition-all"
                       >
                         <div className="space-y-0.5 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono font-black text-base text-emerald-950 dark:text-emerald-200">
                               {ticket}
                             </span>
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                               {order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')}
                             </span>
+                            {order.isTakeaway || order.consumptionType === 'TAKEAWAY' ? (
+                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/40">
+                                Levar{order.bagQuantity ? ` (${order.bagQuantity}x)` : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300">
+                                Local
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">
                             Aguardando Cliente no Balcão

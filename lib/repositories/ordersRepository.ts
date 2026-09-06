@@ -14,7 +14,27 @@ export async function createOrder(payload: any): Promise<Order> {
     if (resolvedTenant) tenantId = resolvedTenant.id
   }
 
-  const subtotal = (payload.items || []).reduce((s: number, i: any) => s + (Number(i.lineTotal) || 0), 0)
+  const consumptionType = payload.consumptionType === 'TAKEAWAY' || payload.isTakeaway ? 'TAKEAWAY' : 'DINE_IN'
+  const isTakeaway = consumptionType === 'TAKEAWAY'
+  const bagQuantity = payload.bagQuantity !== undefined ? Math.max(0, Number(payload.bagQuantity) || 0) : (payload.needBag ? 1 : 0)
+  const needBag = bagQuantity > 0
+  const bagFee = +(bagQuantity * 0.10).toFixed(2)
+
+  // Garante que o saco de transporte esteja discriminado na lista de itens para que nenhum cálculo fique defasado
+  const rawItems = Array.isArray(payload.items || payload.itemsJson) ? [...(payload.items || payload.itemsJson)] : []
+  if (bagQuantity > 0 && !rawItems.some((it: any) => it.isBagItem || it.containerId === 'saco-transporte')) {
+    rawItems.push({
+      id: `bag-${orderId.slice(0, 8)}`,
+      containerId: 'saco-transporte',
+      containerName: 'Saco de Transporte',
+      quantity: bagQuantity,
+      unitPrice: 0.10,
+      lineTotal: bagFee,
+      isBagItem: true,
+    })
+  }
+
+  const subtotal = rawItems.reduce((s: number, i: any) => s + (Number(i.lineTotal) || 0), 0)
   const total = +subtotal.toFixed(2)
   const vatTotal = +(total * 0.13).toFixed(2) // IVA taxa padrão restauração Portugal (13%)
   const tableNum = payload.tableNumber ? parseInt(String(payload.tableNumber).replace(/\D/g, ''), 10) || null : null
@@ -29,7 +49,7 @@ export async function createOrder(payload: any): Promise<Order> {
   )
   const orderNumber = Number(seqRes.rows[0]?.next_seq) || 1
 
-  const itemsJson = JSON.stringify(payload.items || payload.itemsJson || [])
+  const itemsJson = JSON.stringify(rawItems)
 
   // Inserção na tabela principal orders
   const res = await query(
@@ -76,7 +96,7 @@ export async function createOrder(payload: any): Promise<Order> {
         try {
           existingItems = typeof t.items_json === 'string' ? JSON.parse(t.items_json) : (t.items_json || [])
         } catch {}
-        const newItems = [...existingItems, ...(payload.items || [])]
+        const newItems = [...existingItems, ...rawItems]
         const newTableTotal = +(Number(t.total_amount || 0) + total).toFixed(2)
         await query(
           `UPDATE tables 
@@ -98,9 +118,19 @@ export async function createOrder(payload: any): Promise<Order> {
   const row = res.rows[0]
 
   // Disparo assíncrono em segundo plano para dedução estimada de estoque e logs do TI (nunca bloqueia o pedido)
-  decrementEstimatedStock(tenantId, orderId, orderNumber, payload.items || []).catch((err) =>
+  // Filtra itens especiais (como saco) para não afetar insumos de alimentos
+  const foodItems = rawItems.filter((it: any) => !it.isBagItem && it.containerId !== 'saco-transporte')
+  decrementEstimatedStock(tenantId, orderId, orderNumber, foodItems).catch((err) =>
     console.error('Falha na baixa estimada de estoque em segundo plano:', err)
   )
+
+  const formattedNotes = payload.notes
+    ? payload.notes
+    : isTakeaway
+    ? bagQuantity > 0
+      ? `[PARA LEVAR · ${bagQuantity}x SACO (${bagFee.toFixed(2)}€)]`
+      : `[PARA LEVAR · SEM SACO]`
+    : `[CONSUMO NO LOCAL]`
 
   return {
     id: row.id,
@@ -116,8 +146,13 @@ export async function createOrder(payload: any): Promise<Order> {
     paymentMethod: row.payment_method,
     tableNumber: row.table_number,
     isTableOrder: row.is_table_order !== false,
-    notes: payload.notes || '',
-    items: payload.items || [],
+    consumptionType,
+    isTakeaway,
+    needBag,
+    bagQuantity,
+    bagFee,
+    notes: formattedNotes,
+    items: rawItems,
     createdAt: row.created_at,
   }
 }
@@ -134,6 +169,19 @@ export async function getOrderById(id: string): Promise<Order | null> {
       items = typeof o.items_json === 'string' ? JSON.parse(o.items_json) : (o.items_json || [])
     } catch {}
 
+    const bagItem = items.find((it: any) => it.isBagItem || it.containerId === 'saco-transporte')
+    const bagQuantity = bagItem ? Math.max(0, Number(bagItem.quantity) || 1) : 0
+    const needBag = bagQuantity > 0
+    const bagFee = +(bagQuantity * 0.10).toFixed(2)
+
+    const notesStr = String(o.cancel_reason || o.notes || '')
+    const isTakeaway =
+      o.is_takeaway === true ||
+      notesStr.toLowerCase().includes('levar') ||
+      notesStr.toLowerCase().includes('takeaway') ||
+      bagQuantity > 0
+    const consumptionType = isTakeaway ? 'TAKEAWAY' : 'DINE_IN'
+
     return {
       id: o.id,
       tenantId: o.tenant_id,
@@ -148,7 +196,12 @@ export async function getOrderById(id: string): Promise<Order | null> {
       paymentMethod: o.payment_method,
       tableNumber: o.table_number,
       isTableOrder: o.is_table_order !== false,
-      notes: o.cancel_reason || '',
+      consumptionType,
+      isTakeaway,
+      needBag,
+      bagQuantity,
+      bagFee,
+      notes: notesStr,
       items,
       createdAt: o.created_at,
     }

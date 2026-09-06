@@ -80,6 +80,15 @@ export default function OrderItemsModal({
                   Balcão
                 </Badge>
               )}
+              {order.isTakeaway || order.consumptionType === 'TAKEAWAY' ? (
+                <Badge className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/40 text-xs font-black py-0.5 px-2">
+                  Levar{order.bagQuantity ? ` (${order.bagQuantity}x saco)` : ''}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs font-bold border-slate-300 dark:border-white/20 text-slate-700 dark:text-slate-300">
+                  Local
+                </Badge>
+              )}
             </div>
 
             <div>
@@ -171,11 +180,19 @@ export default function OrderItemsModal({
         </div>
 
         {/* Resumo Financeiro */}
-        <div className="p-3.5 rounded-2xl bg-purple-50/80 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-between text-xs">
-          <span className="font-bold text-purple-950 dark:text-white text-sm">Valor Total do Pedido:</span>
-          <span className="text-xl font-black text-purple-950 dark:text-pink-300 font-mono">
-            {formatCurrency(orderTotal)}
-          </span>
+        <div className="p-3.5 rounded-2xl bg-purple-50/80 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-1.5 text-xs">
+          {((order.bagQuantity && order.bagQuantity > 0) || (order.bagFee && order.bagFee > 0)) && (
+            <div className="flex items-center justify-between text-muted-foreground pb-1 border-b border-purple-100 dark:border-white/10">
+              <span>Saco de Transporte ({order.bagQuantity || 1}x):</span>
+              <span className="font-mono font-bold">+{formatCurrency(order.bagFee || 0.10)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-purple-950 dark:text-white text-sm">Valor Total do Pedido:</span>
+            <span className="text-xl font-black text-purple-950 dark:text-pink-300 font-mono">
+              {formatCurrency(orderTotal)}
+            </span>
+          </div>
         </div>
 
         {/* Rodapé com Ações (Layout Flex-Wrap Organizado) */}

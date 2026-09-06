@@ -45,6 +45,11 @@ export interface Order {
   mbwayPhone?: string | null
   isTableOrder?: boolean
   tableNumber?: string | null
+  consumptionType?: 'DINE_IN' | 'TAKEAWAY' | string
+  isTakeaway?: boolean
+  needBag?: boolean
+  bagQuantity?: number
+  bagFee?: number
   isQRCode?: boolean
   channel?: string | null
   notes?: string | null

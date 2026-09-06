@@ -71,6 +71,20 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           <span>Data</span>
           <span>{formatDateTime(order.createdAt)}</span>
         </div>
+        <div className="flex justify-between text-[11px]">
+          <span>Consumo</span>
+          <span className="font-black uppercase">
+            {order.isTakeaway || order.consumptionType === 'TAKEAWAY' ? 'Levar para Casa (Takeaway)' : 'Consumo no Local'}
+          </span>
+        </div>
+        {((order.bagQuantity && order.bagQuantity > 0) || order.isTakeaway || order.consumptionType === 'TAKEAWAY') && (
+          <div className="flex justify-between text-[11px]">
+            <span>Saco de Transporte</span>
+            <span className="font-black">
+              {order.bagQuantity > 0 ? `${order.bagQuantity}x (+${(order.bagQuantity * 0.10).toFixed(2)}€)` : '0 un (0,00€)'}
+            </span>
+          </div>
+        )}
         {order.cashierName && (
           <div className="flex justify-between text-[11px]">
             <span>Operador</span>
@@ -90,29 +104,45 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         <div className="border-t border-dashed border-black my-2" />
 
         {/* Itens da Comanda */}
-        {order.items.map((it: any, idx: number) => (
-          <div key={it.id} className="mb-2">
-            <div className="flex justify-between font-bold">
-              <span>{idx + 1}. {it.containerEmoji} {it.containerName}</span>
-              <span>{formatCurrency(it.containerPrice)}</span>
-            </div>
-            <div className="text-[11px] pl-3">Bases: {it.bases.map((b: any) => b.name).join(', ')}</div>
-            {it.toppings?.length > 0 && (
-              <div className="text-[11px] pl-3">
-                {it.toppings.map((t: any) => (
-                  <div key={t.id} className="flex justify-between">
-                    <span>+ {t.name}{t.isPremium ? ' (Premium)' : ''}</span>
-                    <span>{t.isPaid ? formatCurrency(t.precoCobrado) : 'Grátis'}</span>
-                  </div>
-                ))}
+        {order.items.map((it: any, idx: number) => {
+          const isBag = it.isBagItem || it.id === 'bag-item' || it.containerId === 'saco-transporte'
+          if (isBag) {
+            return (
+              <div key={it.id || idx} className="mb-2">
+                <div className="flex justify-between font-bold">
+                  <span>{idx + 1}. Saco de Transporte ({it.quantity || 1}x)</span>
+                  <span>{formatCurrency(it.lineTotal || 0.10)}</span>
+                </div>
               </div>
-            )}
-            <div className="flex justify-between text-[11px] mt-1">
-              <span>Subtotal item</span>
-              <span className="font-bold">{formatCurrency(it.lineTotal)}</span>
+            )
+          }
+
+          return (
+            <div key={it.id || idx} className="mb-2">
+              <div className="flex justify-between font-bold">
+                <span>{idx + 1}. {it.containerName || 'Taça'}</span>
+                <span>{formatCurrency(it.containerPrice || it.unitPrice || 0)}</span>
+              </div>
+              {it.bases?.length > 0 && (
+                <div className="text-[11px] pl-3">Bases: {it.bases.map((b: any) => b.name).join(', ')}</div>
+              )}
+              {it.toppings?.length > 0 && (
+                <div className="text-[11px] pl-3">
+                  {it.toppings.map((t: any) => (
+                    <div key={t.id} className="flex justify-between">
+                      <span>+ {t.name}{t.isPremium ? ' (Premium)' : ''}</span>
+                      <span>{t.isPaid ? formatCurrency(t.precoCobrado) : 'Grátis'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex justify-between text-[11px] mt-1">
+                <span>Subtotal item</span>
+                <span className="font-bold">{formatCurrency(it.lineTotal)}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         <div className="border-t border-dashed border-black my-2" />
 

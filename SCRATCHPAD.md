@@ -1,6 +1,18 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Consumo no Local vs Levar para Casa (Takeaway) & Sacos de Transporte (0,10€) [CONCLUÍDO]**:
+  - **Requisito Atendido**: Impressão térmica e todas as telas de pedido agora discriminam explicitamente se o consumo é no local ou para levar, com adição dinâmica de quantidade de sacos de transporte a 0,10€ cada (exigência legal em Portugal).
+  - **Design 100% Clean & Sem Ícones Decorativos**: Eliminados ícones supérfluos (`Coins`, `CreditCard`, `Smartphone`, `Truck`, emojis) nos seletores e talões, mantendo botões de incremento `[-]` e `[+]` de alto contraste e layout sóbrio.
+  - **Fluxo Unificado em Todos os Pontos de Entrada**:
+    - **Cardápio do Cliente (`CustomerCartSheet.tsx`)**: Seletor `Consumo no Local` vs `Levar para Casa`, contador de sacos com incremento dinâmico, cálculo automático no total e envio para a API.
+    - **PDV Balcão (`PaymentModal.tsx`, `PDVView.tsx`)**: Seletor limpo, contador de sacos, recálculo dinâmico de troco para dinheiro e envio das propriedades `consumptionType`, `isTakeaway`, `needBag`, `bagQuantity`, `bagFee`.
+    - **Gestão de Mesas (`TableCheckoutDetail.tsx`, `TableThermalReceiptDialog.tsx`)**: Fechamento de mesa integrado e talão com indicação expressa `CONSUMO: CONSUMO NO LOCAL`.
+    - **Comandas Manuais Staff (`NewOrderManualModal.tsx`, `OrderEditDialog.tsx`)**: Abertura e edição de comandas com tipo de consumo e quantidade de sacos.
+    - **KDS & Smart TV (`QRCodeOrdersAdmin.tsx`, `OrderItemsModal.tsx`, `TVOrdersControlView.tsx`)**: Badges limpos de `Local` vs `Levar (+X sacos)` em Kanban, lista e painel de controle da TV.
+    - **Impressão Térmica de 80mm (`KitchenOrderPrintModal.tsx`, `app/receipt/[id]/page.tsx`)**: Destaque em caixa preta sólida `>>> PARA LEVAR (TAKEAWAY) <<<` vs `>>> CONSUMO NO LOCAL <<<`, linha obrigatória de `SACO DE TRANSPORTE: Xx (0.XX€)` e talão de recibo discriminado.
+  - **Segurança de Estoque & Subtotais**: Sacos de transporte são tratados como itens e campos estruturados, garantindo consistência no `.reduce()` sem decrementar ingredientes alimentares no estoque híbrido.
+  - **Validação**: `npx tsc --noEmit` validado com **0 erros** e Next.js build compilado com sucesso.
 - **Organização por Menu no PDV (Açaí da Rose vs Lanches) & Design Clean**:
   - **Causa Raiz Resolvida**: No Montador Balcão do PDV (`PDVView.tsx`), todos os produtos da base de dados eram injetados diretamente na etapa 1 do seletor de taças de açaí, fazendo com que lanches (Pão de queijo, Pastel de nata, Croissants, etc.) fossem exibidos com regras de taça ("999 frutas inclusas", "0 acompanhamentos", "+ 1 creme incluso").
   - **Separação Canônica por Menus (`Açaí da Rose` / `Lanches`)**:

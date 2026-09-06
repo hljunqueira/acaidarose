@@ -112,6 +112,10 @@ export default function TableThermalReceiptDialog({
             {/* Metadados da Mesa */}
             <div className="space-y-0.5 text-[11px] my-2">
               <div className="flex justify-between">
+                <span>CONSUMO:</span>
+                <span className="font-black">CONSUMO NO LOCAL</span>
+              </div>
+              <div className="flex justify-between">
                 <span>LOCAL:</span>
                 <span className="font-black">
                   MESA {table.number.toString().padStart(2, '0')} {table.nickname ? `(${table.nickname})` : ''}
@@ -139,24 +143,30 @@ export default function TableThermalReceiptDialog({
 
             {/* Lista de Itens */}
             <div className="py-2 space-y-2">
-              {items.map((it, idx) => (
-                <div key={it.id || idx} className="space-y-0.5">
-                  <div className="flex justify-between font-bold">
-                    <span>1x {it.container?.name || 'Açaí Personalizado'}</span>
-                    {!isKitchen && <span>{formatCurrency(it.lineTotal || 0)}</span>}
+              {items.map((it: any, idx) => {
+                const isBag = it.isBagItem || it.id === 'bag-item' || it.containerId === 'saco-transporte'
+                const itemName = isBag ? 'Saco de Transporte' : (it.container?.name || it.containerName || 'Taça de Açaí')
+                const qty = it.quantity || 1
+
+                return (
+                  <div key={it.id || idx} className="space-y-0.5">
+                    <div className="flex justify-between font-bold">
+                      <span>{qty}x {itemName}</span>
+                      {!isKitchen && <span>{formatCurrency(it.lineTotal || 0)}</span>}
+                    </div>
+                    {!isBag && it.bases && it.bases.length > 0 && (
+                      <div className="text-[10px] pl-2 text-zinc-700">
+                        • Base: {it.bases.map((b: any) => b.name).join(', ')}
+                      </div>
+                    )}
+                    {!isBag && it.toppings && it.toppings.length > 0 && (
+                      <div className="text-[10px] pl-2 text-zinc-700">
+                        • Acomp: {it.toppings.map((t: any) => t.name).join(', ')}
+                      </div>
+                    )}
                   </div>
-                  {it.bases && it.bases.length > 0 && (
-                    <div className="text-[10px] pl-2 text-zinc-700">
-                      • Base: {it.bases.map((b: any) => b.name).join(', ')}
-                    </div>
-                  )}
-                  {it.toppings && it.toppings.length > 0 && (
-                    <div className="text-[10px] pl-2 text-zinc-700">
-                      • Acomp: {it.toppings.map((t: any) => t.name).join(', ')}
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="border-t border-dashed border-black my-2" />

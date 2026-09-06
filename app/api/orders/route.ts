@@ -52,6 +52,19 @@ export async function GET(request: NextRequest) {
         (!isQRCode && o.payment_method)
       )
 
+      const bagItem = items.find((it: any) => it.isBagItem || it.containerId === 'saco-transporte')
+      const bagQuantity = bagItem ? Math.max(0, Number(bagItem.quantity) || 1) : 0
+      const needBag = bagQuantity > 0
+      const bagFee = +(bagQuantity * 0.10).toFixed(2)
+
+      const notesStr = String(o.cancel_reason || o.notes || '')
+      const isTakeaway =
+        o.is_takeaway === true ||
+        notesStr.toLowerCase().includes('levar') ||
+        notesStr.toLowerCase().includes('takeaway') ||
+        bagQuantity > 0
+      const consumptionType = isTakeaway ? 'TAKEAWAY' : 'DINE_IN'
+
       return {
         id: o.id,
         tenantId: o.tenant_id,
@@ -68,7 +81,12 @@ export async function GET(request: NextRequest) {
         paymentMethod: o.payment_method || 'MBWAY',
         tableNumber: o.table_number,
         isTableOrder: o.is_table_order !== false,
-        notes: o.cancel_reason || '',
+        consumptionType,
+        isTakeaway,
+        needBag,
+        bagQuantity,
+        bagFee,
+        notes: notesStr,
         items,
         createdAt: o.created_at,
       }

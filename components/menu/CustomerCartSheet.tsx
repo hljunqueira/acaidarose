@@ -66,11 +66,20 @@ export default function CustomerCartSheet({
   const [paymentMethod, setPaymentMethod] = useState<'MBWAY' | 'BALCAO'>('MBWAY')
   const [consumptionType, setConsumptionType] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN')
   const [needCutlery, setNeedCutlery] = useState(true)
-  const [needBag, setNeedBag] = useState(true)
+  const [bagQuantity, setBagQuantity] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('CART')
   const [createdOrder, setCreatedOrder] = useState<any | null>(null)
   const [countdown, setCountdown] = useState<number>(240) // 4 min para autorização MB WAY
+
+  const handleSelectConsumption = (type: 'DINE_IN' | 'TAKEAWAY') => {
+    setConsumptionType(type)
+    if (type === 'TAKEAWAY' && bagQuantity === 0) {
+      setBagQuantity(1)
+    } else if (type === 'DINE_IN' && bagQuantity === 1) {
+      setBagQuantity(0)
+    }
+  }
 
   // Sincroniza forma de pagamento com a configuração do QR Code
   useEffect(() => {
@@ -82,7 +91,9 @@ export default function CustomerCartSheet({
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const activeOrderIdRef = useRef<string | null>(null)
 
-  const cartTotal = +(cart.reduce((acc, item) => acc + (Number(item.lineTotal) || 0), 0)).toFixed(2)
+  const itemsTotal = +(cart.reduce((acc, item) => acc + (Number(item.lineTotal) || 0), 0)).toFixed(2)
+  const bagFee = +(bagQuantity * 0.10).toFixed(2)
+  const cartTotal = +(itemsTotal + bagFee).toFixed(2)
 
   // Iniciar polling do status quando estiver aguardando MB WAY
   useEffect(() => {
@@ -188,8 +199,8 @@ export default function CustomerCartSheet({
       const isTakeaway = consumptionType === 'TAKEAWAY'
       const takeawayLabel = isTakeaway
         ? (isEn
-            ? `Takeaway (Cutlery: ${needCutlery ? 'Yes' : 'No'}, Bag: ${needBag ? 'Yes' : 'No'})`
-            : `Levar para Casa (Talheres: ${needCutlery ? 'Sim' : 'Não'}, Saco: ${needBag ? 'Sim' : 'Não'})`)
+            ? `Takeaway (Cutlery: ${needCutlery ? 'Yes' : 'No'}, Bags: ${bagQuantity})`
+            : `Levar para Casa (Talheres: ${needCutlery ? 'Sim' : 'Não'}, Sacos: ${bagQuantity})`)
         : (isEn ? 'Dine-in' : 'Consumir no Local')
 
       const payload = {
@@ -204,14 +215,17 @@ export default function CustomerCartSheet({
         status: initialStatus,
         items: itemsPayload,
         itemsJson: itemsPayload,
-        subtotal: cartTotal,
+        subtotal: itemsTotal,
         total: cartTotal,
         channel: 'QR_CODE',
         isQRCode: true,
         cashierName: 'Autoatendimento QR Code',
+        consumptionType,
         isTakeaway,
         needCutlery: isTakeaway ? needCutlery : false,
-        needBag: isTakeaway ? needBag : false,
+        needBag: bagQuantity > 0,
+        bagQuantity,
+        bagFee,
         notes: isTable
           ? `Mesa ${tableNumber} · ${takeawayLabel} · ${paymentMethod === 'MBWAY' ? 'MB WAY' : (isEn ? 'Pay at Counter' : 'Pagar no Balcão')}`
           : `Balcão · ${takeawayLabel} · ${paymentMethod === 'MBWAY' ? 'MB WAY' : (isEn ? 'Pay at Counter' : 'Pagar no Balcão')}`,
@@ -571,7 +585,7 @@ export default function CustomerCartSheet({
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => setConsumptionType('DINE_IN')}
+                        onClick={() => handleSelectConsumption('DINE_IN')}
                         className={`p-2.5 rounded-xl border text-xs font-bold transition text-center cursor-pointer ${
                           consumptionType === 'DINE_IN'
                             ? 'bg-purple-900 text-white border-purple-900 dark:bg-pink-600 dark:border-pink-500 shadow-xs'
@@ -582,7 +596,7 @@ export default function CustomerCartSheet({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setConsumptionType('TAKEAWAY')}
+                        onClick={() => handleSelectConsumption('TAKEAWAY')}
                         className={`p-2.5 rounded-xl border text-xs font-bold transition text-center cursor-pointer ${
                           consumptionType === 'TAKEAWAY'
                             ? 'bg-purple-900 text-white border-purple-900 dark:bg-pink-600 dark:border-pink-500 shadow-xs'
@@ -593,11 +607,11 @@ export default function CustomerCartSheet({
                       </button>
                     </div>
 
-                    {/* Opções de Levar para Casa: Talheres e Saco */}
-                    {consumptionType === 'TAKEAWAY' && (
-                      <div className="p-3 rounded-xl bg-white dark:bg-purple-950/40 border border-purple-200/80 dark:border-white/10 space-y-2.5">
+                    {/* Opções de Consumo: Talheres e Sacos de Transporte (Clean, Sem Ícones) */}
+                    <div className="p-3 rounded-xl bg-white dark:bg-purple-950/40 border border-purple-200/80 dark:border-white/10 space-y-2.5">
+                      {consumptionType === 'TAKEAWAY' && (
                         <label className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-purple-200 cursor-pointer select-none">
-                          <span>{isEn ? 'Need disposable cutlery?' : 'Precisa de talheres descartáveis?'}</span>
+                          <span>{isEn ? 'Disposable cutlery?' : 'Talheres descartáveis?'}</span>
                           <input
                             type="checkbox"
                             checked={needCutlery}
@@ -605,17 +619,41 @@ export default function CustomerCartSheet({
                             className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-purple-300 dark:border-white/20 accent-pink-600 cursor-pointer"
                           />
                         </label>
-                        <label className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-purple-200 cursor-pointer select-none">
-                          <span>{isEn ? 'Need a transport bag?' : 'Precisa de saco de transporte?'}</span>
-                          <input
-                            type="checkbox"
-                            checked={needBag}
-                            onChange={(e) => setNeedBag(e.target.checked)}
-                            className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-purple-300 dark:border-white/20 accent-pink-600 cursor-pointer"
-                          />
-                        </label>
+                      )}
+
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-purple-200 select-none pt-0.5">
+                        <div className="leading-tight">
+                          <div>{isEn ? 'Transport bags (+€0.10 each)' : 'Sacos de transporte (+0,10€ un.)'}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-purple-300/60 font-normal">
+                            {bagQuantity > 0
+                              ? (isEn ? `${bagQuantity} bag(s) = +€${(bagQuantity * 0.10).toFixed(2)}` : `${bagQuantity} saco(s) = +${(bagQuantity * 0.10).toFixed(2)}€`)
+                              : (isEn ? 'No bags requested' : 'Sem saco')}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-white/10 p-1 rounded-lg border border-purple-200 dark:border-white/15">
+                          <button
+                            type="button"
+                            onClick={() => setBagQuantity((q) => Math.max(0, q - 1))}
+                            className="w-6 h-6 rounded bg-white dark:bg-purple-900/60 hover:bg-purple-100 text-purple-950 dark:text-white font-black text-xs flex items-center justify-center cursor-pointer border border-purple-200 dark:border-white/20 transition-colors"
+                            title="Diminuir sacos"
+                          >
+                            -
+                          </button>
+                          <span className="w-5 text-center font-mono font-black text-xs text-purple-950 dark:text-white">
+                            {bagQuantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setBagQuantity((q) => q + 1)}
+                            className="w-6 h-6 rounded bg-purple-900 dark:bg-pink-600 hover:bg-purple-800 text-white font-black text-xs flex items-center justify-center cursor-pointer transition-colors"
+                            title="Aumentar sacos"
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
-                    )}
+                    </div>
 
                     {/* Nome do Cliente */}
                     <div className="space-y-1 pt-1">
@@ -733,6 +771,13 @@ export default function CustomerCartSheet({
                 <div className="text-xl font-bold text-fuchsia-600 dark:text-fuchsia-300 font-mono">
                   {formatCurrency(cartTotal)}
                 </div>
+                {bagQuantity > 0 && (
+                  <div className="text-[9.5px] text-slate-500 dark:text-purple-300/80 font-medium">
+                    {isEn
+                      ? `Includes ${bagQuantity}x bag (+€${(bagQuantity * 0.10).toFixed(2)})`
+                      : `Inclui ${bagQuantity}x saco (+${(bagQuantity * 0.10).toFixed(2)}€)`}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2">

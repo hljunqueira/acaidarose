@@ -720,15 +720,26 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
 
                         {/* Origem & Mesa */}
                         <td className="py-3 px-3">
-                          {isTable ? (
-                            <Badge className="bg-purple-700 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-lg">
-                              Mesa {order.tableNumber}
-                            </Badge>
-                          ) : (
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                              Balcão / Levar
-                            </span>
-                          )}
+                          <div className="flex flex-col gap-1 items-start">
+                            {isTable ? (
+                              <Badge className="bg-purple-700 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-lg">
+                                Mesa {order.tableNumber}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                Balcão
+                              </span>
+                            )}
+                            {order.isTakeaway || order.consumptionType === 'TAKEAWAY' ? (
+                              <span className="inline-flex items-center text-[10px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/40">
+                                Levar{order.bagQuantity ? ` (${order.bagQuantity}x saco)` : ''}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300">
+                                Local
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Cliente */}
@@ -931,6 +942,17 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
                               <Badge variant="outline" className="border-purple-200 dark:border-white/20 bg-purple-50/50 dark:bg-white/5 text-purple-900 dark:text-purple-200 text-[8.5px] font-bold py-0 px-1.5 rounded-md shrink-0 flex items-center gap-0.5">
                                 <Store className="h-2.5 w-2.5" />
                                 <span>Balcão</span>
+                              </Badge>
+                            )}
+
+                            {/* Consumo: Local vs Levar */}
+                            {order.isTakeaway || order.consumptionType === 'TAKEAWAY' ? (
+                              <Badge className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/40 text-[8.5px] font-black py-0 px-1.5 rounded-md shrink-0">
+                                Levar{order.bagQuantity ? ` (${order.bagQuantity}x)` : ''}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-[8.5px] font-bold py-0 px-1.5 rounded-md shrink-0">
+                                Local
                               </Badge>
                             )}
                           </div>

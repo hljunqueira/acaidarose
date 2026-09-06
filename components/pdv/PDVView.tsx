@@ -263,12 +263,26 @@ export default function PDVView({
     toast.success('Taça adicionada ao pedido!')
   }
 
-  const handleProcessPayment = async (method: PaymentMethodCode, customer: { name: string; phone: string }) => {
+  const handleProcessPayment = async (
+    method: PaymentMethodCode,
+    customer: { name: string; phone: string },
+    options?: {
+      consumptionType?: 'DINE_IN' | 'TAKEAWAY'
+      isTakeaway?: boolean
+      needBag?: boolean
+      bagQuantity?: number
+      bagFee?: number
+      totalWithBags?: number
+    }
+  ) => {
     setSubmitting(true)
     try {
       const isTable = orderType === 'MESA' && selectedTable
       const finalCustomerName = customer.name?.trim() || customerNameInput.trim() || (isTable ? `Cliente Mesa ${selectedTable?.number}` : 'Balcão')
       const tableNumber = isTable ? String(selectedTable?.number || '1') : 'Balcão'
+      const consumptionType = options?.consumptionType || (isTable ? 'DINE_IN' : 'DINE_IN')
+      const bagQuantity = options?.bagQuantity || 0
+      const bagFee = options?.bagFee || 0
 
       // 1. Criar pedido oficial com status PREPARING e pagamento liquidado no balcão
       const res = await fetch('/api/orders', {
@@ -285,6 +299,11 @@ export default function PDVView({
           channel: 'POS',
           isQRCode: false,
           cashierName: 'Operador de Caixa',
+          consumptionType,
+          isTakeaway: consumptionType === 'TAKEAWAY',
+          needBag: bagQuantity > 0,
+          bagQuantity,
+          bagFee,
           status: 'PREPARING',
           paymentStatus: 'PAID',
           paidAt: new Date().toISOString(),

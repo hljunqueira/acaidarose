@@ -31,6 +31,8 @@ export default function OrderEditDialog({
   const [customerPhone, setCustomerPhone] = useState('')
   const [tableNumber, setTableNumber] = useState('')
   const [isTableOrder, setIsTableOrder] = useState(true)
+  const [consumptionType, setConsumptionType] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN')
+  const [bagQuantity, setBagQuantity] = useState<number>(0)
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<OrderStatus>('NEW')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodCode>('NUMERARIO')
@@ -43,6 +45,8 @@ export default function OrderEditDialog({
       setCustomerPhone(order.customerPhone || '')
       setTableNumber(order.tableNumber || '')
       setIsTableOrder(order.isTableOrder !== false)
+      setConsumptionType(order.consumptionType === 'TAKEAWAY' || order.isTakeaway ? 'TAKEAWAY' : 'DINE_IN')
+      setBagQuantity(typeof order.bagQuantity === 'number' ? order.bagQuantity : (order.needBag ? 1 : 0))
       setNotes(order.notes || '')
       setStatus(order.status || 'NEW')
       setPaymentMethod((order.paymentMethod as PaymentMethodCode) || 'NUMERARIO')
@@ -55,11 +59,17 @@ export default function OrderEditDialog({
     if (!order) return
     setLoading(true)
     try {
+      const bagFee = +(bagQuantity * 0.10).toFixed(2)
       await onSave(order.id, {
         customerName: customerName.trim() || null,
         customerPhone: customerPhone.trim() || null,
         tableNumber: isTableOrder ? (tableNumber.trim() || 'Mesa 01') : null,
         isTableOrder,
+        consumptionType,
+        isTakeaway: consumptionType === 'TAKEAWAY',
+        needBag: bagQuantity > 0,
+        bagQuantity,
+        bagFee,
         notes: notes.trim() || null,
         status,
         paymentMethod,
@@ -84,14 +94,79 @@ export default function OrderEditDialog({
             Editar Comanda #{order.orderNumber || 100}
           </DialogTitle>
           <p className="text-xs text-muted-foreground">
-            Altere a mesa, dados do cliente ou observações da preparação.
+            Altere a mesa, tipo de consumo, dados do cliente ou observações.
           </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 my-2">
+          {/* Tipo de Consumo (Local vs Levar) */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-foreground">Tipo de Consumo</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setConsumptionType('DINE_IN')
+                  setBagQuantity(0)
+                }}
+                className={`py-2 text-xs font-black rounded-xl border transition cursor-pointer text-center ${
+                  consumptionType === 'DINE_IN'
+                    ? 'bg-purple-700 text-white border-purple-700'
+                    : 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100/60'
+                }`}
+              >
+                Consumo no Local
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConsumptionType('TAKEAWAY')
+                  if (bagQuantity === 0) setBagQuantity(1)
+                }}
+                className={`py-2 text-xs font-black rounded-xl border transition cursor-pointer text-center ${
+                  consumptionType === 'TAKEAWAY'
+                    ? 'bg-purple-700 text-white border-purple-700'
+                    : 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100/60'
+                }`}
+              >
+                Levar para Casa
+              </button>
+            </div>
+          </div>
+
+          {/* Saco de Transporte */}
+          <div className="p-3 rounded-2xl border border-purple-100 bg-purple-50/40 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-slate-900">Saco de Transporte</div>
+              <div className="text-[11px] text-muted-foreground">+0,10€ por unidade</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setBagQuantity((q) => Math.max(0, q - 1))}
+                disabled={bagQuantity <= 0}
+                className="w-7 h-7 rounded-lg border border-slate-300 bg-white text-slate-700 font-black text-xs hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                title="Diminuir"
+              >
+                -
+              </button>
+              <span className="w-6 text-center text-xs font-black font-mono text-slate-900">
+                {bagQuantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setBagQuantity((q) => q + 1)}
+                className="w-7 h-7 rounded-lg border border-slate-300 bg-white text-slate-700 font-black text-xs hover:bg-slate-100 cursor-pointer flex items-center justify-center"
+                title="Aumentar"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-foreground">Tipo de Atendimento</Label>
+              <Label className="text-xs font-bold text-foreground">Local do Atendimento</Label>
               <div className="flex gap-2">
                 <button
                   type="button"
