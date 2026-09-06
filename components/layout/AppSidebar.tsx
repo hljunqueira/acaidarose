@@ -432,9 +432,9 @@ export default function AppSidebar({
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-purple-700 to-pink-600 p-0.5 shadow-md flex items-center justify-center shrink-0">
               <img
-                src="/logo-oficial.png"
+                src="/logo-oficial-1.png"
                 alt="Açaí da Rose"
-                className="h-full w-full object-cover rounded-[14px]"
+                className="h-full w-full object-contain rounded-[14px]"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none'
                 }}

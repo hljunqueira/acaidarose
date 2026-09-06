@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { MapPin, Utensils, ShoppingBag } from 'lucide-react'
 
 import { useLanguageStore } from '@/lib/stores/languageStore'
+import { getDisplayStoreLocation } from '@/lib/stores/franchiseStore'
 
 interface CustomerMenuHeaderProps {
   tenant?: any
@@ -28,15 +29,7 @@ export default function CustomerMenuHeader({
   const { language, setLanguage } = useLanguageStore()
   const isEn = language === 'en'
 
-  let storeName = 'Loja 1 - Figueira da Foz (Matriz)'
-  if (tenant?.name) {
-    const cleaned = tenant.name
-      .replace(/^Açaí da Rose\s*[-—·]\s*/i, '')
-      .replace(/Sede Franqueadora & Matriz\s*/i, '')
-      .replace(/—/g, '-')
-      .trim()
-    storeName = cleaned || tenant.name
-  }
+  const storeName = getDisplayStoreLocation(tenant)
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 text-slate-900 border-b border-purple-100 shadow-xs dark:bg-[#160228]/95 dark:text-white dark:border-white/10 dark:shadow-2xl backdrop-blur-xl transition-colors duration-200 select-none">
@@ -55,7 +48,7 @@ export default function CustomerMenuHeader({
             title="Açaí da Rose"
           >
             <img
-              src="/logo-oficial.png"
+              src="/logo-oficial-1.png"
               alt="Açaí da Rose"
               className="h-7 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105"
             />

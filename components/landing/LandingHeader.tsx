@@ -27,7 +27,7 @@ export default function LandingHeader({ user, onOpenPDV }: LandingHeaderProps) {
         {/* Logo da Marca */}
         <Link href="/" className="flex items-center gap-3 group">
           <img
-            src="/logo-oficial.png"
+            src="/logo-oficial-1.png"
             alt="Açaí da Rose"
             className="h-10 sm:h-11 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform"
           />

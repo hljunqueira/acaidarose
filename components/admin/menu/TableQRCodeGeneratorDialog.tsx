@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { QRCodeSVG } from 'qrcode.react'
 import { Printer, QrCode, Store, Smartphone } from 'lucide-react'
+import { getDisplayStoreLocation } from '@/lib/stores/franchiseStore'
 
 interface TableQRCodeGeneratorDialogProps {
   open: boolean
@@ -23,6 +24,7 @@ export default function TableQRCodeGeneratorDialog({
   storeName,
 }: TableQRCodeGeneratorDialogProps) {
   const [tableCount, setTableCount] = useState<number>(10)
+  const cleanStoreName = getDisplayStoreLocation(null, storeName)
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
 
   const tables = Array.from({ length: Math.min(Math.max(tableCount, 1), 30) }, (_, i) => i + 1)
@@ -91,10 +93,10 @@ export default function TableQRCodeGeneratorDialog({
               >
                 {/* Logo & Marca */}
                 <div className="flex items-center gap-2 mb-2">
-                  <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-9 w-auto" />
+                  <img src="/logo-oficial-1.png" alt="Açaí da Rose" className="h-9 w-auto" />
                   <div className="text-left leading-tight">
                     <div className="font-black text-xs text-foreground">Açaí da Rose</div>
-                    <div className="text-[9px] text-muted-foreground font-semibold">{storeName}</div>
+                    <div className="text-[9px] text-muted-foreground font-semibold">{cleanStoreName}</div>
                   </div>
                 </div>
 

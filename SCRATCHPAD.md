@@ -39,9 +39,14 @@
   - Implementada e exportada a função canônica universal `resolveTenant(idOrSlug, tenants)` em `franchiseStore.ts`, resolvendo dinamicamente por slug (`aveiro`, `torres-novas`, `figueira-da-foz`), atalhos numéricos (`1`, `2`, `3`), nomes e UUIDs.
   - Integrado o carregamento em background dos tenants do banco de dados (`fetchTenants()`) no `TVOrdersPanelView.tsx` e vinculadas todas as chamadas de pedidos, áudio TTS e marquee ao `actualTenantId` resolvido.
   - A rota `/tv/aveiro` agora exibe corretamente **"Loja 3 - Aveiro (Franquia)"** e consome os pedidos exclusivos da unidade de Aveiro.
-- **Nova Logo Oficial Global (`/logo-oficial.png`)**:
-  - Purgadas todas as referências ao `/logo.png` legado em todos os 14 componentes e páginas da aplicação (`app/layout.tsx`, `app/login/page.tsx`, `LandingHeader.tsx`, `LandingFooter.tsx`, `AppSidebar.tsx`, `CustomerMenuHeader.tsx`, `TVOrdersPanelView.tsx`, modais de QR code, recibos e página 404).
-  - Nova logo em alta resolução implantada em toda a identidade visual da rede.
+- **Nova Logo Oficial Global (`/logo-oficial-1.png`) & Sanitização de Lojas no Frontend**:
+  - **Substituição da Logo Oficial**:
+    - Nova logo em alta resolução com símbolo de marca registrada copiada para `public/logo-oficial-1.png` e espelhada em `public/logo-oficial.png`.
+    - Todas as referências da aplicação atualizadas para `/logo-oficial-1.png` (`app/layout.tsx`, `app/login/page.tsx`, `app/not-found.tsx`, `app/receipt/[id]/page.tsx`, `CustomerMenuHeader.tsx`, `AppSidebar.tsx`, `LandingHeader.tsx`, `LandingFooter.tsx`, `TVOrdersPanelView.tsx`, `KitchenOrderPrintModal.tsx`, `TableThermalReceiptDialog.tsx`, `StoreSelectRadioDialog.tsx`, `SingleTableQRDialog.tsx`, `BatchTablesQRPrintDialog.tsx`, `TableQRCodeGeneratorDialog.tsx`, `emailService.ts`).
+  - **Sanitização de Nome de Loja nas Telas de Clientes (TVs e QR Codes)**:
+    - Funções canônicas `getDisplayStoreLocation(tenant, rawLoja)` e `getPublicStoreName(tenant, rawLoja, includeBrand)` em `franchiseStore.ts` higienizam strings como "Loja 1 - Figueira da Foz (Matriz)" para "Figueira da Foz" ou "Açaí da Rose — Figueira da Foz".
+    - Telas de Smart TV (`/tv`, `/tv/[loja]`, `/chamada`), placas físicas de QR Code de mesas, gerador de QR codes e cabeçalho do menu do cliente agora exibem estritamente a nova logo e o nome limpo da localização da loja.
+    - O ambiente interno de gestão (Admin Sidebar, Franqueadora B2B, Gestão de Lojas, Logs de Auditoria e banco PostgreSQL) permanece 100% íntegro com a nomenclatura canônica operacional ("Loja 1...", "Loja 2...", "Loja 3...").
 - **Recuperação de Palavra-passe Híbrida (Automação 24/7 + Resgate Franqueadora/TI)**:
   - Integração com Resend API no domínio oficial verificado (`seguranca@acaidarose.pt`).
   - Template minimalista responsivo com fundo escuro, nova logo oficial centralizada e código de 6 dígitos em destaque.

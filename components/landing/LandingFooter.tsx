@@ -12,7 +12,7 @@ export default function LandingFooter() {
         {/* Coluna 1: Marca & Slogan */}
         <div className="space-y-3 text-left md:col-span-2">
           <div className="flex items-center gap-3">
-            <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-10 w-auto object-contain" />
+            <img src="/logo-oficial-1.png" alt="Açaí da Rose" className="h-10 w-auto object-contain" />
             <div>
               <div className="text-base font-black text-white uppercase tracking-tight">
                 Açaí da Rose

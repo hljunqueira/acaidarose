@@ -20,27 +20,28 @@ interface SingleTableQRDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-import { useFranchiseStore } from '@/lib/stores/franchiseStore'
+import { useFranchiseStore, getDisplayStoreLocation } from '@/lib/stores/franchiseStore'
 
 export default function SingleTableQRDialog({ table, tenantId, open, onOpenChange }: SingleTableQRDialogProps) {
-  if (!table) return null
-
-  const { getTenant, currentTenant } = useFranchiseStore()
-  const [detectedOrigin, setDetectedOrigin] = useState<string>('https://acaidarose.vercel.app')
   const [copied, setCopied] = useState(false)
-  const cardRef = useRef<HTMLDivElement>(null)
+  const [detectedOrigin, setDetectedOrigin] = useState('https://acaidarose.vercel.app')
+  const { currentTenant, getTenant } = useFranchiseStore()
   const qrRef = useRef<SVGSVGElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setDetectedOrigin(window.location.origin)
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      setDetectedOrigin(isLocal ? window.location.origin : 'https://acaidarose.vercel.app')
     }
   }, [])
+
+  if (!table) return null
 
   const effectiveTenantId = table.tenantId || tenantId || currentTenant?.id || '11111111-1111-1111-1111-111111111111'
   const storeInfo = getTenant(effectiveTenantId) || currentTenant
   const lojaSlug = storeInfo?.slug || 'figueira-da-foz'
-  const storeTitle = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
+  const storeTitle = getDisplayStoreLocation(storeInfo, lojaSlug)
   const formattedTableNumber = table.number.toString().padStart(2, '0')
   const tableUrl = `${detectedOrigin}/menu?tipo=mesa&numero=${formattedTableNumber}&loja=${lojaSlug}&token=${encodeURIComponent(table.code || '')}`
 
@@ -229,7 +230,7 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
             className="w-full max-w-[260px] p-5 rounded-3xl border-2 border-purple-200 dark:border-white/20 bg-gradient-to-b from-purple-50/70 via-white to-purple-50/40 dark:from-white/10 dark:via-[#160228] dark:to-white/5 flex flex-col items-center text-center shadow-lg"
           >
             <img
-              src="/logo-oficial.png"
+              src="/logo-oficial-1.png"
               alt="Açaí da Rose"
               className="h-11 w-auto object-contain mb-1 drop-shadow-xs"
             />

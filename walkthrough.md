@@ -1,6 +1,60 @@
-# Walkthrough — Comanda de Cozinha Térmica (80mm) & Padronização de Impressão
+# Walkthrough — Nova Logo Oficial & Sanitização de Lojas no Frontend
 
-Todas as etapas de padronização, estruturação da comanda de cozinha para a bancada e eliminação da impressão do modal de tela foram concluídas e validadas com compilação TypeScript com 0 erros (`npx tsc --noEmit`).
+Todas as etapas do plano aprovado foram executadas com sucesso e validadas através da compilação TypeScript (`npx tsc --noEmit`) com **0 erros**.
+
+---
+
+## 1. O Que Foi Realizado
+
+### A. Substituição Universal da Logo Oficial (`/logo-oficial-1.png`)
+- **Asset Oficial em Alta Resolução**:
+  - O arquivo [`public/logo-oficial-1.png`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/public/logo-oficial-1.png) (contendo a marca oficial com o símbolo registrado `®`) foi integrado como o asset mestre em todo o sistema.
+  - Para retrocompatibilidade absoluta com caches de navegadores legados, manifestos PWA e links diretos, o arquivo [`public/logo-oficial.png`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/public/logo-oficial.png) foi sobrescrito de forma binária com o mesmo conteúdo.
+- **Substituição em Todos os Pontos da Aplicação**:
+  - [`app/layout.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/app/layout.tsx): favicons, shortcut e apple-touch-icon.
+  - [`app/login/page.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/app/login/page.tsx): marca d'água de alta resolução no fundo do Portal da Equipa.
+  - [`app/not-found.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/app/not-found.tsx): página 404 de erro.
+  - [`components/landing/LandingHeader.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/landing/LandingHeader.tsx) e [`components/landing/LandingFooter.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/landing/LandingFooter.tsx): navbar e rodapé da landing institucional.
+  - [`components/layout/AppSidebar.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/layout/AppSidebar.tsx): cabeçalho do menu lateral do painel administrativo.
+  - [`components/menu/CustomerMenuHeader.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/menu/CustomerMenuHeader.tsx): topo fixo do cardápio digital do cliente.
+  - [`components/admin/tv/TVOrdersPanelView.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/admin/tv/TVOrdersPanelView.tsx): chamador de senhas na TV, tela de espera sem pedidos e fallback do player de vídeo.
+  - [`components/admin/orders/KitchenOrderPrintModal.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/admin/orders/KitchenOrderPrintModal.tsx): cabeçalho da comanda de cozinha térmica (80mm).
+  - [`components/pdv/TableThermalReceiptDialog.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/pdv/TableThermalReceiptDialog.tsx) e [`app/receipt/[id]/page.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/app/receipt/[id]/page.tsx): cupom térmico e recibo público digital.
+  - [`components/auth/StoreSelectRadioDialog.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/auth/StoreSelectRadioDialog.tsx): seletor de loja no login.
+  - [`components/admin/tables/SingleTableQRDialog.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/admin/tables/SingleTableQRDialog.tsx), [`components/admin/tables/BatchTablesQRPrintDialog.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/admin/tables/BatchTablesQRPrintDialog.tsx) e [`components/admin/menu/TableQRCodeGeneratorDialog.tsx`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/components/admin/menu/TableQRCodeGeneratorDialog.tsx): placas de mesa e cartões de QR Code para impressão.
+  - [`lib/services/emailService.ts`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/lib/services/emailService.ts): template de e-mails transacionais de segurança/recuperação de senha.
+
+---
+
+### B. Sanitização Canônica de Nomes de Loja no Frontend
+- **Funções Canônicas em [`lib/stores/franchiseStore.ts`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/lib/stores/franchiseStore.ts)**:
+  - `getDisplayStoreLocation(tenant, rawLoja)`: higieniza termos operacionais e sufixos (`Loja X - `, `(Matriz)`, `(Filial)`, `(Franquia)`), retornando apenas a localização limpa (ex: `"Figueira da Foz"`, `"Torres Novas"`, `"Aveiro"`).
+  - `getPublicStoreName(tenant, rawLoja, includeBrand)`: formata para telas públicas e recibos com a marca limpa (ex: `"Açaí da Rose — Figueira da Foz"`).
+- **Aparência Exclusiva de Logo + Nome da Loja nas Telas de Clientes**:
+  - **Smart TVs (`/tv`, `/tv/[loja]`, `/chamada`)**: O painel exibe a nova logo e o nome limpo `· Figueira da Foz` (ou de qualquer filial/franquia), eliminando jargões operacionais na visão do consumidor.
+  - **Placas e Cartões de QR Code de Mesa**: Exibem a nova logo e `"Figueira da Foz"`, `"Torres Novas"` etc. abaixo da marca.
+  - **Comandas e Recibos**: Exibem a logo oficial e `"Açaí da Rose — Figueira da Foz"`.
+  - **Cardápio Digital Mobile (`CustomerMenuHeader.tsx`)**: O topo exibe a logo e o nome limpo da loja com ícone de pin discreto.
+- **Preservação dos Nomes Canônicos Internos (Auditoria)**:
+  - O painel administrativo (`AppSidebar.tsx`), auditoria do sistema (`AuditLogsView.tsx`), catálogo e armazém B2B (`SupplyHubView.tsx`), trocador de lojas e registros do banco de dados continuam exibindo os nomes completos para controle estrito da equipe e auditoria:
+    - `Loja 1 - Figueira da Foz (Matriz)`
+    - `Loja 2 - Torres Novas (Filial 1)`
+    - `Loja 3 - Aveiro (Franquia)`
+
+---
+
+## 2. Validação e Evidência
+
+- **TypeScript Check**:
+  ```bash
+  npx tsc --noEmit
+  # Exit code 0 (Zero erros)
+  ```
+- **Auditoria de Código**:
+  ```bash
+  git grep -n "logo-oficial.png"
+  # 0 ocorrências no código-fonte ativo (apenas histórico em documentação)
+  ```
 
 ---
 

@@ -126,9 +126,21 @@ export function getDisplayStoreLocation(tenant?: Tenant | null, rawLoja?: string
   const clean = raw
     .replace(/^Loja\s*\d+\s*[-–—]\s*/i, '')
     .replace(/\s*\((Matriz|Franquia|Filial\s*\d*)\)/gi, '')
+    .replace(/^Açaí da Rose\s*[-–—·]\s*/i, '')
     .trim()
 
   return clean || tenant.city || 'Figueira da Foz'
+}
+
+/**
+ * Retorna o nome público e sanitizado da loja para clientes (Smart TVs, QR Codes de mesa e Ementa),
+ * removendo termos de auditoria interna como "Loja 1 -", "(Matriz)", "(Filial 1)", "(Franquia)".
+ * Formato limpo: "Açaí da Rose — Figueira da Foz" ou apenas "Figueira da Foz"
+ */
+export function getPublicStoreName(tenant?: Tenant | null, rawLoja?: string, includeBrand = true): string {
+  const location = getDisplayStoreLocation(tenant, rawLoja)
+  if (!includeBrand) return location
+  return `Açaí da Rose — ${location}`
 }
 
 interface FranchiseState {

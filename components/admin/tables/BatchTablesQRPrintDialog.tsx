@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { QRCodeSVG } from 'qrcode.react'
 import { Printer, Scissors } from 'lucide-react'
 
-import { useFranchiseStore } from '@/lib/stores/franchiseStore'
+import { useFranchiseStore, getDisplayStoreLocation } from '@/lib/stores/franchiseStore'
 
 interface BatchTablesQRPrintDialogProps {
   tables: RestaurantTable[]
@@ -170,7 +170,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
           {tables.map((table) => {
             const storeInfo = getTenant(table.tenantId) || currentTenant
             const lojaSlug = storeInfo?.slug || 'figueira-da-foz'
-            const branchLabel = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
+            const branchLabel = getDisplayStoreLocation(storeInfo, lojaSlug)
             const formattedNum = table.number.toString().padStart(2, '0')
             const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${formattedNum}&loja=${lojaSlug}`
 
@@ -187,7 +187,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
                 className="print-card p-4 rounded-3xl border-2 border-dashed border-purple-300 dark:border-white/20 bg-gradient-to-b from-purple-50/60 via-white to-purple-50/30 dark:from-white/10 dark:via-[#160228] dark:to-white/5 flex flex-col items-center text-center shadow-xs"
               >
                 <img
-                  src="/logo-oficial.png"
+                  src="/logo-oficial-1.png"
                   alt="Açaí da Rose"
                   className="logo h-9 w-auto object-contain mb-1 drop-shadow-xs"
                 />

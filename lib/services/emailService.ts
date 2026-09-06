@@ -29,7 +29,7 @@ export function renderMinimalistPasswordResetEmail(code: string, name?: string):
           <tr>
             <td align="center" style="padding-bottom: 24px;">
               <img 
-                src="https://acaidarose.pt/logo-oficial.png?v=2026" 
+                src="https://acaidarose.pt/logo-oficial-1.png?v=2026" 
                 alt="Açaí da Rose" 
                 width="140" 
                 style="display: block; width: 140px; max-width: 100%; height: auto; margin: 0 auto; border: 0;"

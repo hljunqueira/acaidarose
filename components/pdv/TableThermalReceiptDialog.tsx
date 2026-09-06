@@ -6,6 +6,7 @@ import { formatCurrency, formatDateTime } from '@/lib/i18n/formatters'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Printer, X } from 'lucide-react'
+import { getPublicStoreName } from '@/lib/stores/franchiseStore'
 
 interface TableThermalReceiptDialogProps {
   open: boolean
@@ -27,6 +28,7 @@ export default function TableThermalReceiptDialog({
   const items = table.items || []
   const total = table.total || items.reduce((acc, it) => acc + (it.lineTotal || 0), 0)
   const isKitchen = type === 'FICHA_PRODUCAO'
+  const cleanStoreName = getPublicStoreName(null, storeName)
 
   const handlePrint = () => {
     window.print()
@@ -88,8 +90,8 @@ export default function TableThermalReceiptDialog({
           >
             {/* Cabeçalho */}
             <div className="text-center space-y-1">
-              <img src="/logo-oficial.png" alt="Açaí da Rose" className="mx-auto h-16 w-auto object-contain" />
-              <div className="font-black text-sm">{storeName}</div>
+              <img src="/logo-oficial-1.png" alt="Açaí da Rose" className="mx-auto h-16 w-auto object-contain" />
+              <div className="font-black text-sm">{cleanStoreName}</div>
               <div className="text-[10px]">Açaí Artesanal Brasileiro</div>
               <div className="text-[10px]">Portugal</div>
               {storePhone && <div className="text-[10px]">Tel: {storePhone}</div>}

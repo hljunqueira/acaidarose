@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Printer, X, ChefHat } from 'lucide-react'
 import { formatDateTime } from '@/lib/i18n/formatters'
+import { getPublicStoreName } from '@/lib/stores/franchiseStore'
 
 interface KitchenOrderPrintModalProps {
   open: boolean
@@ -26,6 +27,7 @@ export default function KitchenOrderPrintModal({
   const isPaid = order.paymentStatus === 'PAID'
   const items = Array.isArray(order.items) ? order.items : []
   const formattedTicket = String(order.orderNumber || 1).padStart(3, '0')
+  const cleanStoreName = getPublicStoreName(null, storeName)
 
   const handlePrint = () => {
     window.print()
@@ -102,11 +104,11 @@ export default function KitchenOrderPrintModal({
             {/* Cabeçalho com Logo Oficial */}
             <div className="text-center space-y-1">
               <img
-                src="/logo-oficial.png"
+                src="/logo-oficial-1.png"
                 alt="Açaí da Rose"
                 className="mx-auto h-14 w-auto object-contain filter contrast-125"
               />
-              <div className="font-black text-xs uppercase tracking-tight">{storeName}</div>
+              <div className="font-black text-xs uppercase tracking-tight">{cleanStoreName}</div>
               <div className="text-[9px] uppercase tracking-wider text-zinc-600 font-bold">
                 Portugal 🇵🇹
               </div>

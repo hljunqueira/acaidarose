@@ -64,7 +64,7 @@ export default function LoginPage() {
           {/* Camada de Fundo: Logo em Marca d'Água Transparente */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-0">
             <img
-              src="/logo-oficial.png"
+              src="/logo-oficial-1.png"
               alt=""
               aria-hidden="true"
               className="w-[420px] sm:w-[500px] lg:w-[580px] h-auto object-contain opacity-[0.08] transform -rotate-6 scale-110 pointer-events-none"
