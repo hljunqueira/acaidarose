@@ -14,14 +14,18 @@
     - Itens unitários de lanches possuem botões `+` e `-` para incremento ágil na comanda sem abrir modais de taça.
     - Suporte nativo em `useCartStore` (`addSimpleItem` e `updateItemQuantity`).
 - **Comanda de Cozinha & Impressão Térmica de 80mm Padronizada**:
-  - **Causa Raiz Resolvida**: Ao clicar em "Imprimir" no Kanban ou no modal de detalhes (`OrderItemsModal.tsx`), o navegador disparava um `window.print()` cru sobre a interface, imprimindo o modal cinza com botões ("Eliminar", "Fechar") no meio de uma folha A4.
-  - **Componente Criado (`KitchenOrderPrintModal.tsx`)**:
-    - Cabeçalho com logo oficial em alta resolução `/logo-oficial.png` e identificação da loja;
-    - Título operacional `*** COMANDA DE COZINHA ***` e data/hora de emissão no fuso de Lisboa;
-    - Destaque operacional para SENHA/TICKET grande, box chamativo para `MESA {N}` ou `BALCÃO / TAKE-AWAY`, identificação de cliente e pagamento;
-    - Discriminação de montagem: Taça com quantidade `[ 1x ]`, bases e cremes destacados, checklist individual `[ ]` para cada acompanhamento, e caixas destacadas para observações de itens e do pedido;
-    - CSS `@media print` isolando exclusivamente `#kitchen-order-print` em 80mm com `visibility: hidden !important` em todo o restante da página.
-  - **Integração Realizada**: Conectado ao botão `<Printer />` dos cards e tabela em `QRCodeOrdersAdmin.tsx` e ao botão `"Imprimir Comanda"` em `OrderItemsModal.tsx`.
+  - **Causa Raiz Resolvida (Corte/Não Renderização)**: O elemento `#kitchen-order-print` ficava encapsulado dentro do `DialogContent` do Radix UI com restrições de `overflow-y: auto`, `max-height: 75vh` e `position: fixed; transform: translate(-50%, -50%)`. No Chrome/Chromium, o motor de impressão corta a renderização na altura do container scrollável, gerando folhas em branco após o cabeçalho.
+  - **Solução Definitiva (Iframe Isolado)**:
+    - O botão "Imprimir Agora" agora clona o conteúdo HTML e copia todas as folhas de estilos do documento pai para um `<iframe>` oculto e limpo no `document.body`. Sem ancestrais com overflow, o rolo da MP-4200 TH imprime 100% da altura da comanda sem cortes.
+    - Adicionado reset global no `@media print` para garantir compatibilidade caso o operador utilize `Ctrl+P`.
+  - **Nova Hierarquia Visual (Design Térmico de Bancada)**:
+    - **Cabeçalho & Cliente Compactos**: Logo oficial reduzida para tamanho compacto (`h-9`), loja e emissão em linha única (`text-[9.5px]` e `text-[8.5px]`), e dados de cliente (`CLIENTE`, `CONTACTO`, `PAGAMENTO`) em fonte econômica (`text-[9px]`) para poupar papel.
+    - **Destaque Máximo para a Produção**:
+      - `SENHA: #001` grande e nítida com box de destino (`>>> MESA X <<<` ou `>>> BALCÃO <<<`) em borda preta sólida;
+      - Recipiente / Taça em destaque reforçado (`border-2 border-black bg-zinc-100 p-1 font-black text-[13px]` com badge da quantidade);
+      - Bases em destaque negrito;
+      - Acompanhamentos em checklist quadrado bem nítido `[ ]` (`text-[11.5px] font-bold`) para conferência e marcação física rápida na bancada;
+      - Observações em caixas de alto contraste (`border border-black bg-zinc-50`).
 - **Sistema Universal de "Publicar Alterações" & Sincronização Dinâmica em Rede**:
   - **Causa Raiz Resolvida**: As alterações em produtos, categorias, destaques, modelos de opções, horários, dados de empresa e TV ficavam isoladas em abas do mesmo navegador (via `localStorage` / `BroadcastChannel`) ou aplicavam imediatamente sem rascunho de homologação.
   - **Tabelas Criadas no PostgreSQL 16 da VPS**:
