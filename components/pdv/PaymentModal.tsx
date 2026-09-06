@@ -290,39 +290,41 @@ export default function PaymentModal({
               </div>
             </div>
 
-            {/* Saco de Transporte (+0,10€ cada) */}
-            <div className="p-3 rounded-2xl border border-slate-200 dark:border-white/15 bg-slate-50/70 dark:bg-white/5 flex items-center justify-between">
-              <div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white">
-                  Saco de Transporte
+            {/* Saco de Transporte (+0,10€ cada) - Apenas para Takeaway */}
+            {consumptionType === 'TAKEAWAY' && (
+              <div className="p-3 rounded-2xl border border-slate-200 dark:border-white/15 bg-slate-50/70 dark:bg-white/5 flex items-center justify-between animate-in fade-in duration-150">
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">
+                    Saco de Transporte
+                  </div>
+                  <div className="text-[11px] text-slate-700 dark:text-slate-300">
+                    +0,10€ por unidade
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-700 dark:text-slate-300">
-                  +0,10€ por unidade
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBagQuantity((q) => Math.max(0, q - 1))}
+                    disabled={bagQuantity <= 0}
+                    className="w-7 h-7 rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-white/10 text-slate-700 dark:text-white font-black text-xs hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                    title="Diminuir sacos"
+                  >
+                    -
+                  </button>
+                  <span className="w-6 text-center text-xs font-black font-mono text-slate-900 dark:text-white">
+                    {bagQuantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBagQuantity((q) => q + 1)}
+                    className="w-7 h-7 rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-white/10 text-slate-700 dark:text-white font-black text-xs hover:bg-slate-100 cursor-pointer flex items-center justify-center"
+                    title="Aumentar sacos"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBagQuantity((q) => Math.max(0, q - 1))}
-                  disabled={bagQuantity <= 0}
-                  className="w-7 h-7 rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-white/10 text-slate-700 dark:text-white font-black text-xs hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
-                  title="Diminuir sacos"
-                >
-                  -
-                </button>
-                <span className="w-6 text-center text-xs font-black font-mono text-slate-900 dark:text-white">
-                  {bagQuantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setBagQuantity((q) => q + 1)}
-                  className="w-7 h-7 rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-white/10 text-slate-700 dark:text-white font-black text-xs hover:bg-slate-100 cursor-pointer flex items-center justify-center"
-                  title="Aumentar sacos"
-                >
-                  +
-                </button>
-              </div>
-            </div>
+            )}
 
             {/* Lista Limpa de Métodos de Pagamento (Sem Ícones Supérfluos) */}
             <div className="grid grid-cols-2 gap-2.5 pt-1">

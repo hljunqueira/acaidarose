@@ -134,35 +134,37 @@ export default function OrderEditDialog({
             </div>
           </div>
 
-          {/* Saco de Transporte */}
-          <div className="p-3 rounded-2xl border border-purple-100 bg-purple-50/40 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-bold text-slate-900">Saco de Transporte</div>
-              <div className="text-[11px] text-muted-foreground">+0,10€ por unidade</div>
+          {/* Saco de Transporte - Apenas para Takeaway */}
+          {consumptionType === 'TAKEAWAY' && (
+            <div className="p-3 rounded-2xl border border-purple-100 bg-purple-50/40 flex items-center justify-between animate-in fade-in duration-150">
+              <div>
+                <div className="text-xs font-bold text-slate-900">Saco de Transporte</div>
+                <div className="text-[11px] text-muted-foreground">+0,10€ por unidade</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBagQuantity((q) => Math.max(0, q - 1))}
+                  disabled={bagQuantity <= 0}
+                  className="w-7 h-7 rounded-lg border border-slate-300 bg-white text-slate-700 font-black text-xs hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                  title="Diminuir"
+                >
+                  -
+                </button>
+                <span className="w-6 text-center text-xs font-black font-mono text-slate-900">
+                  {bagQuantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setBagQuantity((q) => q + 1)}
+                  className="w-7 h-7 rounded-lg border border-slate-300 bg-white text-slate-700 font-black text-xs hover:bg-slate-100 cursor-pointer flex items-center justify-center"
+                  title="Aumentar"
+                >
+                  +
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setBagQuantity((q) => Math.max(0, q - 1))}
-                disabled={bagQuantity <= 0}
-                className="w-7 h-7 rounded-lg border border-slate-300 bg-white text-slate-700 font-black text-xs hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
-                title="Diminuir"
-              >
-                -
-              </button>
-              <span className="w-6 text-center text-xs font-black font-mono text-slate-900">
-                {bagQuantity}
-              </span>
-              <button
-                type="button"
-                onClick={() => setBagQuantity((q) => q + 1)}
-                className="w-7 h-7 rounded-lg border border-slate-300 bg-white text-slate-700 font-black text-xs hover:bg-slate-100 cursor-pointer flex items-center justify-center"
-                title="Aumentar"
-              >
-                +
-              </button>
-            </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
