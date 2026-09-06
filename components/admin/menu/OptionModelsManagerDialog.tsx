@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Search, Edit2, Copy, Trash2, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
+import { useAuthStore } from '@/lib/stores/authStore'
+import { usePublishStore } from '@/lib/stores/publishStore'
 
 interface OptionModelsManagerDialogProps {
   open: boolean
@@ -15,6 +17,7 @@ interface OptionModelsManagerDialogProps {
   models: OptionModelData[]
   onSaveModels: (models: OptionModelData[]) => void
   isSuperAdmin?: boolean
+  tenantId?: string
 }
 
 export default function OptionModelsManagerDialog({
@@ -23,7 +26,10 @@ export default function OptionModelsManagerDialog({
   models,
   onSaveModels,
   isSuperAdmin = true,
+  tenantId,
 }: OptionModelsManagerDialogProps) {
+  const { authFetch } = useAuthStore()
+  const markDirty = usePublishStore((state) => state.markDirty)
   const [searchTerm, setSearchTerm] = useState('')
   const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
   const [modelFormOpen, setModelFormOpen] = useState(false)
@@ -85,6 +91,9 @@ export default function OptionModelsManagerDialog({
       toast.success(`Modelo "${savedModel.name}" criado com sucesso!`)
     }
     onSaveModels(updated)
+    if (tenantId) {
+      markDirty(tenantId, `Modelo de opções "${savedModel.name}" alterado`, authFetch)
+    }
     setModelFormOpen(false)
   }
 
@@ -123,6 +132,9 @@ export default function OptionModelsManagerDialog({
 
     const updated = [...models, duplicated]
     onSaveModels(updated)
+    if (tenantId) {
+      markDirty(tenantId, `Modelo de opções "${duplicated.name}" duplicado`, authFetch)
+    }
     toast.success(`Modelo duplicado como "${duplicated.name}"!`)
     setDuplicateConfirmOpen(false)
     setModelToDuplicate(null)
@@ -139,6 +151,9 @@ export default function OptionModelsManagerDialog({
     }
     const updated = models.filter((m) => m.id !== modelId)
     onSaveModels(updated)
+    if (tenantId) {
+      markDirty(tenantId, 'Modelo de opções excluído', authFetch)
+    }
     toast.success('Modelo de opções excluído com sucesso!')
   }
 

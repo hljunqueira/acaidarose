@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
+import { usePublishStore } from '@/lib/stores/publishStore'
 import {
   broadcastTVCall,
   broadcastTVClearCall,
@@ -73,6 +74,19 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const storeInfo = getTenant(tenantId) || currentTenant
   const storeSlug = storeInfo?.slug || 'figueira-da-foz'
   const storeTitle = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
+  const markDirty = usePublishStore((s) => s.markDirty)
+
+  const syncTVSettings = useCallback(async (payload: any) => {
+    try {
+      await (authFetch || fetch)('/api/tv/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, ...payload }),
+      })
+    } catch (e) {
+      console.error('Erro ao salvar configurações da TV no PostgreSQL:', e)
+    }
+  }, [tenantId, authFetch])
 
   useEffect(() => {
     const config = getStoredTVMarqueeConfig(tenantId)
@@ -81,12 +95,36 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     setCurrentTVCall(getLastTVCall(tenantId))
     setSoundConfig(getStoredTVSoundConfig())
     setDisplayConfig(getStoredTVDisplayConfig())
-  }, [tenantId])
 
-  const handleToggleShowCompleted = (showCompletedOrders: boolean) => {
+    // Sincroniza dados persistentes reais do PostgreSQL
+    const loadFromDb = async () => {
+      try {
+        const res = await (authFetch || fetch)(`/api/tv/settings?tenantId=${encodeURIComponent(tenantId)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.marqueeConfig && Object.keys(data.marqueeConfig).length > 0) {
+            setMarqueeConfig(data.marqueeConfig)
+          }
+          if (Array.isArray(data.videosPlaylist) && data.videosPlaylist.length > 0) {
+            setStoreVideos(data.videosPlaylist)
+          }
+          if (data.soundConfig) {
+            setSoundConfig(data.soundConfig)
+          }
+          if (data.displayConfig) {
+            setDisplayConfig(data.displayConfig)
+          }
+        }
+      } catch (e) {}
+    }
+    loadFromDb()
+  }, [tenantId, authFetch])
+
+  const handleToggleShowCompleted = async (showCompletedOrders: boolean) => {
     const updated = { ...displayConfig, showCompletedOrders }
     setDisplayConfig(updated)
     broadcastTVDisplayConfig(updated)
+    await syncTVSettings({ displayConfig: updated })
     toast.success(
       showCompletedOrders
         ? 'Barra de últimos pedidos ativada na Smart TV!'
@@ -94,12 +132,14 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     )
   }
 
-  const handleSaveMarquee = () => {
+  const handleSaveMarquee = async () => {
     broadcastTVMarqueeConfig(marqueeConfig, tenantId)
-    toast.success('Configurações do rodapé da TV transmitidas com sucesso!')
+    await syncTVSettings({ marqueeConfig })
+    await markDirty(tenantId, 'Configurações de rodapé da Smart TV atualizadas', authFetch)
+    toast.success('Configurações do rodapé da TV transmitidas e guardadas com sucesso!')
   }
 
-  const handleResetMarquee = () => {
+  const handleResetMarquee = async () => {
     const resetConfig: TVMarqueeConfig = {
       ...DEFAULT_MARQUEE_CONFIG,
       promoText: '',
@@ -108,21 +148,25 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     }
     setMarqueeConfig(resetConfig)
     broadcastTVMarqueeConfig(resetConfig, tenantId)
+    await syncTVSettings({ marqueeConfig: resetConfig })
+    await markDirty(tenantId, 'Rodapé da Smart TV reiniciado', authFetch)
     toast.success('Textos e estilos do rodapé limpos!')
   }
 
   // --- Handlers de Áudio e Voz ---
-  const handleToggleSoundEnabled = (enabled: boolean) => {
+  const handleToggleSoundEnabled = async (enabled: boolean) => {
     const updated = { ...soundConfig, enabled }
     setSoundConfig(updated)
     broadcastTVSoundConfig(updated)
+    await syncTVSettings({ soundConfig: updated })
     toast.success(`Áudio da Smart TV ${enabled ? 'ativado' : 'desativado'}!`)
   }
 
-  const handleSelectVoiceGender = (gender: 'female' | 'male') => {
+  const handleSelectVoiceGender = async (gender: 'female' | 'male') => {
     const updated = { ...soundConfig, gender }
     setSoundConfig(updated)
     broadcastTVSoundConfig(updated)
+    await syncTVSettings({ soundConfig: updated })
     toast.success(`Voz da TV configurada para: ${gender === 'female' ? 'Feminina' : 'Masculina'}`)
   }
 
@@ -132,23 +176,27 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   }
 
   // --- Handlers de Gestão de Vídeos da Smart TV ---
-  const handleToggleVideoActive = (videoId: string) => {
+  const handleToggleVideoActive = async (videoId: string) => {
     const updated = storeVideos.map((v) =>
       v.id === videoId ? { ...v, active: !v.active } : v
     )
     setStoreVideos(updated)
     broadcastTVVideos(updated, tenantId)
+    await syncTVSettings({ videosPlaylist: updated })
+    await markDirty(tenantId, 'Status de vídeo da Smart TV alterado', authFetch)
     toast.success('Status do vídeo atualizado!')
   }
 
-  const handleDeleteVideo = (videoId: string) => {
+  const handleDeleteVideo = async (videoId: string) => {
     const updated = storeVideos.filter((v) => v.id !== videoId)
     setStoreVideos(updated)
     broadcastTVVideos(updated, tenantId)
+    await syncTVSettings({ videosPlaylist: updated })
+    await markDirty(tenantId, 'Vídeo removido da Smart TV', authFetch)
     toast.success('Vídeo removido da playlist!')
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -172,12 +220,14 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     const updated = [newVideo, ...storeVideos]
     setStoreVideos(updated)
     broadcastTVVideos(updated, tenantId)
+    await syncTVSettings({ videosPlaylist: updated })
+    await markDirty(tenantId, `Novo vídeo "${newVideo.title}" adicionado à Smart TV`, authFetch)
     setVideoTitleInput('')
     if (fileInputRef.current) fileInputRef.current.value = ''
     toast.success('Novo vídeo gastronômico carregado e ativado na Smart TV!')
   }
 
-  const handleAddVideoByUrl = () => {
+  const handleAddVideoByUrl = async () => {
     if (!videoUrlInput.trim()) {
       toast.error('Informe a URL do vídeo')
       return
@@ -196,14 +246,18 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     const updated = [newVideo, ...storeVideos]
     setStoreVideos(updated)
     broadcastTVVideos(updated, tenantId)
+    await syncTVSettings({ videosPlaylist: updated })
+    await markDirty(tenantId, `Novo vídeo "${newVideo.title}" adicionado à Smart TV`, authFetch)
     setVideoUrlInput('')
     setVideoTitleInput('')
     toast.success('Vídeo adicionado por link e ativado na Smart TV!')
   }
 
-  const handleRestoreOfficialVideos = () => {
+  const handleRestoreOfficialVideos = async () => {
     setStoreVideos(DEFAULT_OFFICIAL_VIDEOS)
     broadcastTVVideos(DEFAULT_OFFICIAL_VIDEOS, tenantId)
+    await syncTVSettings({ videosPlaylist: DEFAULT_OFFICIAL_VIDEOS })
+    await markDirty(tenantId, 'Playlist da Smart TV restaurada para oficiais', authFetch)
     toast.success('Playlist restaurada com os 4 vídeos oficiais da Franqueadora!')
   }
 

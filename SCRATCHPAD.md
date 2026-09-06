@@ -1,6 +1,35 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Sistema Universal de "Publicar Alterações" & Sincronização Dinâmica em Rede**:
+  - **Causa Raiz Resolvida**: As alterações em produtos, categorias, destaques, modelos de opções, horários, dados de empresa e TV ficavam isoladas em abas do mesmo navegador (via `localStorage` / `BroadcastChannel`) ou aplicavam imediatamente sem rascunho de homologação.
+  - **Tabelas Criadas no PostgreSQL 16 da VPS**:
+    - `store_catalog_versions`: Controla `version`, `has_pending_changes`, `pending_changes_count`, `pending_changes_summary` (JSONB) e `published_at` por loja (`tenant_id`).
+    - `store_tv_configs`: Persiste as definições reais de `marquee_config`, `videos_playlist`, `sound_config` e `display_config` na VPS para Smart TVs externas consumirem.
+  - **Rotas de API Criadas**:
+    - `GET /api/catalog/version`: Endpoint ultra-leve com `Cache-Control` e ETag para polling a cada 15s sem sobrecarga no servidor.
+    - `POST /api/catalog/publish`: Publicação individual ou em rede completa (`replicateAll: true`), bump de versão e auditoria em `audit_logs`.
+    - `POST /api/catalog/mark-dirty`: Marcação de rascunhos com histórico de ações amigáveis.
+    - `GET / POST /api/tv/settings`: Persistência real de configurações de Smart TV.
+  - **Componentes Instrumentados**:
+    - `PublishChangesBanner.tsx`: Banner flutuante no topo de alto contraste visível em todas as 20 telas administrativas com badge de contagem de pendências, modal de resumo detalhado e botão de publicar com confirmação em rede.
+    - `MenuHierarchyView.tsx`: Conectado `markDirty` em toggle de visibilidade/disponibilidade, exclusão, criação de categoria, reordenação e salvamento de itens.
+    - `MenuCategoriesAdmin.tsx` e `MenuSectionsAdmin.tsx`: Conectado `markDirty` ao salvar, reordenar, deletar e ativar/desativar categorias e menus.
+    - `QRCodeConfigView.tsx`: Conectado `markDirty` ao alterar modo de atendimento, regras de formulário e MB WAY.
+    - `StoreCompanySettingsView.tsx`: Conectado `markDirty` ao alterar horários de funcionamento, NIF, contactos e morada.
+    - `OptionModelsManagerDialog.tsx`: Conectado `markDirty` ao salvar, duplicar ou deletar modelos de opções.
+    - `MenuHighlightsAdmin.tsx`: Conectado `markDirty` ao criar, editar, alterar visibilidade, horários, replicar ou excluir destaques.
+    - `InventoryManagementView.tsx`: Conectado `markDirty` no botão `[ Pausar no Cardápio ]` do estoque híbrido.
+    - `TVOrdersControlView.tsx`: Salva marquee, playlist e áudio no PostgreSQL e marca pendências no banner.
+    - `TVOrdersPanelView.tsx`: Lê periodicamente as configurações completas do PostgreSQL.
+    - `app/menu/page.tsx`: Polling a cada 15s para `/api/catalog/version` que recarrega o cardápio sem perda de carrinho (`cart`) do cliente.
+    - `PDVView.tsx`: Atualização reativa de catálogo e polling a cada 15s preservando a comanda e montagem de taça ativa.
+
+- **Correção da Identificação de Lojas nas Telas de TV (`/tv/[loja]`, `/tv`, `/chamada`)**:
+  - Eliminado o ternário estático antigo em `app/tv/[loja]/page.tsx`, `app/tv/page.tsx` e `app/chamada/page.tsx` que forçava qualquer slug não-Torres Novas para a Matriz (Figueira da Foz).
+  - Implementada e exportada a função canônica universal `resolveTenant(idOrSlug, tenants)` em `franchiseStore.ts`, resolvendo dinamicamente por slug (`aveiro`, `torres-novas`, `figueira-da-foz`), atalhos numéricos (`1`, `2`, `3`), nomes e UUIDs.
+  - Integrado o carregamento em background dos tenants do banco de dados (`fetchTenants()`) no `TVOrdersPanelView.tsx` e vinculadas todas as chamadas de pedidos, áudio TTS e marquee ao `actualTenantId` resolvido.
+  - A rota `/tv/aveiro` agora exibe corretamente **"Loja 3 - Aveiro (Franquia)"** e consome os pedidos exclusivos da unidade de Aveiro.
 - **Nova Logo Oficial Global (`/logo-oficial.png`)**:
   - Purgadas todas as referências ao `/logo.png` legado em todos os 14 componentes e páginas da aplicação (`app/layout.tsx`, `app/login/page.tsx`, `LandingHeader.tsx`, `LandingFooter.tsx`, `AppSidebar.tsx`, `CustomerMenuHeader.tsx`, `TVOrdersPanelView.tsx`, modais de QR code, recibos e página 404).
   - Nova logo em alta resolução implantada em toda a identidade visual da rede.

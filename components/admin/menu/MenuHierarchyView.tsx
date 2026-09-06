@@ -29,6 +29,7 @@ import OptionModelsManagerDialog from './OptionModelsManagerDialog'
 import MenuFilterDialog, { MenuFilterOptions } from './MenuFilterDialog'
 import ReplicateCatalogModal from './ReplicateCatalogModal'
 import { emitCatalogSync, subscribeCatalogSync } from '@/lib/utils/catalogSync'
+import { usePublishStore } from '@/lib/stores/publishStore'
 
 import { canManageMasterCatalog } from '@/lib/utils/permissions'
 
@@ -40,11 +41,11 @@ interface MenuHierarchyViewProps {
 export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) {
   const { user, authFetch } = useAuthStore()
   const isSuperAdmin = canManageMasterCatalog(user, tenantId)
+  const { publish, isPublishing, markDirty } = usePublishStore()
 
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
   const [optionModels, setOptionModels] = useState<OptionModelData[]>([])
   const [loading, setLoading] = useState(true)
-  const [publishing, setPublishing] = useState(false)
   const [replicateModalOpen, setReplicateModalOpen] = useState(false)
   const [storeHoursOpen, setStoreHoursOpen] = useState(false)
   const [gestaoDropdownOpen, setGestaoDropdownOpen] = useState(false)
@@ -143,19 +144,11 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   }, [fetchCatalog])
 
   const handlePublishChanges = async () => {
-    setPublishing(true)
-    try {
-      emitCatalogSync({
-        tenantId,
-        entity: 'catalog',
-        action: 'update',
-      })
-      setHasPendingPublish(false)
-      toast.success('Todas as alterações de menus, produtos e horários foram publicadas com sucesso!')
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao publicar')
-    } finally {
-      setPublishing(false)
+    const res = await publish(tenantId, {}, authFetch)
+    if (res.success) {
+      toast.success(res.message || 'Todas as alterações de menus, produtos e horários foram publicadas com sucesso!')
+    } else {
+      toast.error(res.message || 'Erro ao publicar alterações')
     }
   }
 
@@ -227,6 +220,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         entity: 'product',
         action: 'reorder',
       })
+      markDirty(tenantId, 'Reordenação de itens do catálogo', authFetch)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao sincronizar ordenação')
     }
@@ -268,6 +262,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       if (!res.ok) throw new Error('Falha ao atualizar status')
 
+      await markDirty(tenantId, 'Visibilidade ou disponibilidade de item alterada', authFetch)
       setHasPendingPublish(true)
       fetchCatalog()
     } catch (err: any) {
@@ -286,6 +281,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Falha ao excluir item')
+      await markDirty(tenantId, `Item "${item.name}" excluído do cardápio`, authFetch)
       toast.success(`"${item.name}" excluído com sucesso!`)
       fetchCatalog()
     } catch (err: any) {
@@ -309,6 +305,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       if (!res.ok) throw new Error('Falha ao salvar produto')
 
+      await markDirty(tenantId, isNew ? `Produto "${itemData.name}" cadastrado` : `Produto "${itemData.name}" atualizado`, authFetch)
       toast.success(isNew ? 'Produto cadastrado com sucesso!' : 'Produto atualizado com sucesso!')
       fetchCatalog()
     } catch (err: any) {
@@ -340,6 +337,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       })
       if (!res.ok) throw new Error('Falha ao criar categoria no banco')
       const data = await res.json()
+      await markDirty(tenantId, `Categoria "${newCatName.trim().toUpperCase()}" criada`, authFetch)
       toast.success(`Categoria "${newCatName.trim().toUpperCase()}" criada com sucesso!`)
       if (data.category) {
         addCategory(data.category)
@@ -571,11 +569,11 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
           <Button
             onClick={handlePublishChanges}
-            disabled={publishing}
+            disabled={isPublishing}
             className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-8 px-3 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer shrink-0 whitespace-nowrap"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${publishing ? 'animate-spin' : ''}`} />
-            <span>{publishing ? 'Sincronizando...' : 'Publicar Alterações'}</span>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isPublishing ? 'animate-spin' : ''}`} />
+            <span>{isPublishing ? 'Publicando...' : 'Publicar Alterações'}</span>
           </Button>
         </div>
       </div>
@@ -907,6 +905,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         models={optionModels.length > 0 ? optionModels : buildDynamicOptionGroups(catalog)}
         onSaveModels={setOptionModels}
         isSuperAdmin={isSuperAdmin}
+        tenantId={tenantId}
       />
 
       <MenuFilterDialog
@@ -938,10 +937,10 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           <button
             type="button"
             onClick={handlePublishChanges}
-            disabled={publishing}
+            disabled={isPublishing}
             className="bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl transition cursor-pointer disabled:opacity-50"
           >
-            {publishing ? 'A publicar...' : 'Publicar Alterações'}
+            {isPublishing ? 'A publicar...' : 'Publicar Alterações'}
           </button>
         </div>
       )}

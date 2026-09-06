@@ -17,6 +17,7 @@ import CartSummary from './CartSummary'
 import PaymentModal from './PaymentModal'
 import OrderReceiptModal from './OrderReceiptModal'
 import { ShoppingBag, Store, ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react'
+import { subscribeCatalogSync } from '@/lib/utils/catalogSync'
 
 interface PDVViewProps {
   tenantId: string
@@ -104,26 +105,62 @@ export default function PDVView({
     }
   }, [draft])
 
+  const [catalogVersion, setCatalogVersion] = useState<number>(0)
+
+  const loadCatalogData = React.useCallback(async () => {
+    try {
+      const res = await fetch(`/api/products?tenantId=${encodeURIComponent(tenantId)}&_t=${Date.now()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCatalog(data)
+      }
+    } catch {}
+  }, [tenantId])
+
   useEffect(() => {
     let alive = true
     setLoading(true)
     Promise.all([
       fetch(`/api/products?tenantId=${encodeURIComponent(tenantId)}`).then((r) => r.json()),
       fetch(`/api/tables?tenantId=${encodeURIComponent(tenantId)}`).then((r) => r.json()),
+      fetch(`/api/catalog/version?tenantId=${encodeURIComponent(tenantId)}`).then((r) => r.json()).catch(() => null),
     ])
-      .then(([dataCatalog, dataTables]) => {
+      .then(([dataCatalog, dataTables, dataVersion]) => {
         if (alive) {
           if (dataCatalog) setCatalog(dataCatalog)
           if (dataTables?.tables) setAllTables(dataTables.tables)
+          if (dataVersion?.version) setCatalogVersion(dataVersion.version)
         }
       })
       .catch(() => toast.error('Erro ao carregar dados do PDV'))
       .finally(() => alive && setLoading(false))
 
+    // Ouvinte imediato via BroadcastChannel
+    const unsubscribe = subscribeCatalogSync(() => {
+      loadCatalogData()
+    })
+
+    // Polling leve a cada 15s para sincronizar PDVs em múltiplos terminais
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/catalog/version?tenantId=${encodeURIComponent(tenantId)}&_t=${Date.now()}`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) return
+        const vData = await res.json()
+        if (vData?.version && vData.version > catalogVersion) {
+          setCatalogVersion(vData.version)
+          loadCatalogData()
+        }
+      } catch {}
+    }, 15000)
+
     return () => {
       alive = false
+      unsubscribe()
+      clearInterval(interval)
     }
-  }, [tenantId])
+  }, [tenantId, loadCatalogData, catalogVersion])
 
   const handleAddCurrentToCart = () => {
     if (!draft?.container) {

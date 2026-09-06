@@ -21,17 +21,19 @@ import {
 import { announceTVCall } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
 import { Maximize, Minimize, Clock } from 'lucide-react'
-import { useFranchiseStore } from '@/lib/stores/franchiseStore'
+import { useFranchiseStore, resolveTenant, getDisplayStoreLocation } from '@/lib/stores/franchiseStore'
 import { CrownGoldIcon } from '@/components/ui/CrownGoldIcon'
 
 interface TVOrdersPanelViewProps {
   tenantId?: string
+  lojaSlug?: string
 }
 
 export default function TVOrdersPanelView({ 
   tenantId = '11111111-1111-1111-1111-111111111111',
+  lojaSlug,
 }: TVOrdersPanelViewProps) {
-  const { getTenant, currentTenant } = useFranchiseStore()
+  const { getTenant, currentTenant, fetchTenants, tenants } = useFranchiseStore()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
@@ -48,8 +50,15 @@ export default function TVOrdersPanelView({
   const videoRef = useRef<HTMLVideoElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const storeInfo = getTenant(tenantId) || currentTenant
-  const storeName = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
+  const storeInfo = resolveTenant(lojaSlug || tenantId, tenants) || getTenant(tenantId) || currentTenant
+  const actualTenantId = storeInfo?.id || tenantId
+  const displayLocation = getDisplayStoreLocation(storeInfo, lojaSlug || tenantId)
+  const storeName = storeInfo?.name || displayLocation
+
+  // Carrega as lojas atualizadas da franqueadora no backend
+  useEffect(() => {
+    fetchTenants()
+  }, [fetchTenants])
 
   // Relógio com Fuso Horário Obrigatório de Portugal (Europe/Lisbon)
   useEffect(() => {
@@ -77,7 +86,7 @@ export default function TVOrdersPanelView({
   // 1. Carregamento de pedidos reais da loja ativa e sincronização de chamadas via API (para Smart TVs em outros dispositivos/rede)
   const fetchLiveOrders = useCallback(async () => {
     try {
-      const url = tenantId ? `/api/orders?tenantId=${encodeURIComponent(tenantId)}` : '/api/orders'
+      const url = actualTenantId ? `/api/orders?tenantId=${encodeURIComponent(actualTenantId)}` : '/api/orders'
       const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
@@ -93,7 +102,7 @@ export default function TVOrdersPanelView({
 
     // Consulta de chamadas em tempo real via Backend API
     try {
-      const callUrl = tenantId ? `/api/tv/call?tenantId=${encodeURIComponent(tenantId)}` : '/api/tv/call'
+      const callUrl = actualTenantId ? `/api/tv/call?tenantId=${encodeURIComponent(actualTenantId)}` : '/api/tv/call'
       const callRes = await fetch(callUrl)
       if (callRes.ok) {
         const callData = await callRes.json()
@@ -142,21 +151,32 @@ export default function TVOrdersPanelView({
       // fallback silencioso
     }
 
-    // Consulta de configurações do Marquee em tempo real via Backend API
+    // Consulta de configurações da TV (rodapé, vídeos, som, exibição) em tempo real via PostgreSQL API
     try {
-      const marqueeUrl = tenantId ? `/api/tv/marquee?tenantId=${encodeURIComponent(tenantId)}` : '/api/tv/marquee'
-      const marqueeRes = await fetch(marqueeUrl)
-      if (marqueeRes.ok) {
-        const marqueeData = await marqueeRes.json()
-        if (marqueeData?.success && marqueeData.config) {
-          setMarqueeConfig((prev) => ({
-            ...prev,
-            ...marqueeData.config,
-          }))
+      const settingsUrl = actualTenantId ? `/api/tv/settings?tenantId=${encodeURIComponent(actualTenantId)}` : '/api/tv/settings'
+      const settingsRes = await fetch(settingsUrl)
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json()
+        if (settingsData?.success) {
+          if (settingsData.marqueeConfig && Object.keys(settingsData.marqueeConfig).length > 0) {
+            setMarqueeConfig((prev) => ({
+              ...prev,
+              ...settingsData.marqueeConfig,
+            }))
+          }
+          if (Array.isArray(settingsData.videosPlaylist) && settingsData.videosPlaylist.length > 0) {
+            setStoreVideos(settingsData.videosPlaylist)
+          }
+          if (settingsData.soundConfig) {
+            setSoundConfig(settingsData.soundConfig)
+          }
+          if (settingsData.displayConfig) {
+            setDisplayConfig(settingsData.displayConfig)
+          }
         }
       }
     } catch {}
-  }, [tenantId, soundConfig, audioEnabled])
+  }, [actualTenantId, soundConfig, audioEnabled])
 
   // Polling a cada 2 segundos para sincronização contínua com PostgreSQL e chamadas
   useEffect(() => {
@@ -167,7 +187,7 @@ export default function TVOrdersPanelView({
 
   // 2. Ouvinte de Chamadas em Tempo Real via BroadcastChannel e LocalStorage (mesmo navegador)
   useEffect(() => {
-    const initialCall = getLastTVCall(tenantId)
+    const initialCall = getLastTVCall(actualTenantId)
     if (initialCall) {
       setLastCalled({
         ticket: initialCall.ticket,
@@ -209,11 +229,11 @@ export default function TVOrdersPanelView({
         // Limpar chamada da TV
         setLastCalled(null)
       },
-      tenantId
+      actualTenantId
     )
 
     return () => unsubscribe()
-  }, [audioEnabled, fetchLiveOrders, tenantId, soundConfig])
+  }, [audioEnabled, fetchLiveOrders, actualTenantId, soundConfig])
 
   // Ouvinte de configurações de Som da TV em tempo real
   useEffect(() => {
@@ -226,12 +246,12 @@ export default function TVOrdersPanelView({
 
   // Ouvinte de configuração rica do Marquee em tempo real
   useEffect(() => {
-    setMarqueeConfig(getStoredTVMarqueeConfig(tenantId))
+    setMarqueeConfig(getStoredTVMarqueeConfig(actualTenantId))
     const unsubscribeMarquee = subscribeToTVMarqueeConfig((cfg) => {
       setMarqueeConfig(cfg)
-    }, tenantId)
+    }, actualTenantId)
     return () => unsubscribeMarquee()
-  }, [tenantId])
+  }, [actualTenantId])
 
   // Ouvinte de configuração de exibição da TV (exibir/ocultar últimos finalizados)
   useEffect(() => {
@@ -244,12 +264,12 @@ export default function TVOrdersPanelView({
 
   // Ouvinte e Carregamento de Vídeos da Playlist da Loja em tempo real
   useEffect(() => {
-    setStoreVideos(getStoreTVVideos(tenantId))
+    setStoreVideos(getStoreTVVideos(actualTenantId))
     const unsubscribeVideos = subscribeToTVVideos((videos) => {
       setStoreVideos(videos)
-    }, tenantId)
+    }, actualTenantId)
     return () => unsubscribeVideos()
-  }, [tenantId])
+  }, [actualTenantId])
 
   // Filtra estritamente os vídeos ativos na playlist da loja
   const activeVideos = storeVideos.filter((v) => v.active)
@@ -500,12 +520,9 @@ export default function TVOrdersPanelView({
                 
                 {/* Identificação Superior da Loja Dentro do Quadro */}
                 <div className="flex items-center justify-center gap-2 mb-1">
-                  <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-8 w-auto object-contain drop-shadow-xs" />
-                  <span className="font-cursive text-2xl sm:text-3xl text-purple-950 font-bold leading-none">
-                    Açaí da Rose
-                  </span>
-                  <span className="text-pink-600 font-black text-xs sm:text-sm uppercase tracking-wider ml-1">
-                    · {storeName}
+                  <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-10 sm:h-12 w-auto object-contain drop-shadow-xs" />
+                  <span className="text-pink-600 font-black text-sm sm:text-base lg:text-lg uppercase tracking-wider ml-1">
+                    · {displayLocation}
                   </span>
                 </div>
 
@@ -534,13 +551,14 @@ export default function TVOrdersPanelView({
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 my-auto">
-                <img src="/logo-oficial.png" alt="Açaí da Rose" className="h-24 sm:h-28 lg:h-32 w-auto object-contain drop-shadow-md mb-2" />
-                <div className="font-cursive text-5xl sm:text-6xl lg:text-7xl text-purple-950 font-bold leading-none">
-                  Açaí da Rose
-                </div>
-                <div className="text-pink-600 font-black text-xl sm:text-2xl lg:text-3xl uppercase tracking-widest mt-1">
-                  {storeName}
+              <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-center my-auto w-full">
+                <img
+                  src="/logo-oficial.png"
+                  alt="Açaí da Rose"
+                  className="h-44 sm:h-52 lg:h-64 xl:h-72 w-auto max-w-[85%] object-contain drop-shadow-2xl mb-4 animate-in fade-in zoom-in duration-300"
+                />
+                <div className="text-pink-600 font-black text-2xl sm:text-3xl lg:text-4xl uppercase tracking-widest mt-1">
+                  {displayLocation}
                 </div>
               </div>
             )}

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
+import { usePublishStore } from '@/lib/stores/publishStore'
 
 interface StoreCompanySettingsViewProps {
   tenantId: string
@@ -18,6 +19,7 @@ interface StoreCompanySettingsViewProps {
 export default function StoreCompanySettingsView({ tenantId }: StoreCompanySettingsViewProps) {
   const { authFetch } = useAuthStore()
   const { setCurrentTenant } = useFranchiseStore()
+  const markDirty = usePublishStore((state) => state.markDirty)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -78,6 +80,7 @@ export default function StoreCompanySettingsView({ tenantId }: StoreCompanySetti
       if (data.tenant) {
         setCurrentTenant(data.tenant)
       }
+      await markDirty(tenantId, 'Dados da empresa, horários e contactos atualizados', authFetch)
       toast.success('Dados da empresa e horários atualizados com sucesso!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao guardar dados')

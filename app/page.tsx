@@ -51,6 +51,7 @@ import SupplyHubView from '@/components/admin/supply/SupplyHubView'
 import TVOrdersControlView from '@/components/admin/tv/TVOrdersControlView'
 import InventoryManagementView from '@/components/admin/inventory/InventoryManagementView'
 import StoreSupplyOrdersView from '@/components/admin/inventory/StoreSupplyOrdersView'
+import PublishChangesBanner from '@/components/admin/common/PublishChangesBanner'
 import { useAdminTheme } from '@/lib/hooks/useIsolatedTheme'
 
 export default function HomePage() {
@@ -262,6 +263,12 @@ export default function HomePage() {
             </Button>
           </div>
         </div>
+
+        {/* Banner Global de Alterações Pendentes de Publicação */}
+        <PublishChangesBanner
+          tenantId={activeTenantId}
+          storeName={effectiveTenant.name}
+        />
 
         {/* Conteúdo Dinâmico das Views do PDV / Admin */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-[#f8f6fc] dark:bg-[#0e0117] transition-colors duration-150">

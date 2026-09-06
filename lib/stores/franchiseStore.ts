@@ -64,6 +64,73 @@ export const INITIAL_TENANTS: Tenant[] = [
   DEFAULT_AVEIRO_FRANCHISE_TENANT,
 ]
 
+export function resolveTenant(idOrSlug?: string | null, tenantsList?: Tenant[]): Tenant {
+  const list = tenantsList && tenantsList.length > 0 ? tenantsList : INITIAL_TENANTS
+  if (!idOrSlug) return list[0] || DEFAULT_FIGUEIRA_TENANT
+
+  const clean = String(idOrSlug).trim().toLowerCase()
+
+  // 1. Busca exata por ID
+  const byId = list.find((t) => t.id.toLowerCase() === clean)
+  if (byId) return byId
+
+  // 2. Busca exata por Slug
+  const bySlug = list.find((t) => t.slug.toLowerCase() === clean)
+  if (bySlug) return bySlug
+
+  // 3. Busca inteligente por identificadores canônicos
+  if (clean === '3' || clean === 'loja-3' || clean === 'loja 3' || clean.includes('aveiro')) {
+    const aveiro = list.find(
+      (t) => t.id.startsWith('3333') || t.slug.includes('aveiro') || t.name.toLowerCase().includes('aveiro')
+    )
+    if (aveiro) return aveiro
+  }
+
+  if (clean === '2' || clean === 'loja-2' || clean === 'loja 2' || clean.includes('torres')) {
+    const torres = list.find(
+      (t) => t.id.startsWith('2222') || t.slug.includes('torres') || t.name.toLowerCase().includes('torres')
+    )
+    if (torres) return torres
+  }
+
+  if (clean === '1' || clean === 'loja-1' || clean === 'loja 1' || clean.includes('figueira') || clean === 'matriz') {
+    const figueira = list.find(
+      (t) => t.id.startsWith('1111') || t.slug.includes('figueira') || t.name.toLowerCase().includes('figueira')
+    )
+    if (figueira) return figueira
+  }
+
+  // 4. Busca parcial no slug ou nome
+  const partial = list.find((t) => t.slug.toLowerCase().includes(clean) || t.name.toLowerCase().includes(clean))
+  if (partial) return partial
+
+  return list[0] || DEFAULT_FIGUEIRA_TENANT
+}
+
+/**
+ * Retorna o nome limpo da cidade/localização da loja para exibição em Smart TVs e cabeçalhos,
+ * eliminando prefixos técnicos e termos internos como "Loja 1 -" ou "(Matriz)".
+ */
+export function getDisplayStoreLocation(tenant?: Tenant | null, rawLoja?: string): string {
+  if (rawLoja) {
+    const clean = rawLoja.toLowerCase().trim()
+    if (clean.includes('aveiro') || clean === '3') return 'Aveiro'
+    if (clean.includes('torres') || clean === '2') return 'Torres Novas'
+    if (clean.includes('figueira') || clean === '1') return 'Figueira da Foz'
+  }
+
+  if (!tenant) return 'Figueira da Foz'
+  if (tenant.city && tenant.city.trim()) return tenant.city.trim()
+
+  const raw = tenant.name || ''
+  const clean = raw
+    .replace(/^Loja\s*\d+\s*[-–—]\s*/i, '')
+    .replace(/\s*\((Matriz|Franquia|Filial\s*\d*)\)/gi, '')
+    .trim()
+
+  return clean || tenant.city || 'Figueira da Foz'
+}
+
 interface FranchiseState {
   currentTenant: Tenant
   tenants: Tenant[]
@@ -109,18 +176,11 @@ export const useFranchiseStore = create<FranchiseState>()(
       },
       getTenant: (idOrSlug?: string | null) => {
         if (!idOrSlug) return get().currentTenant
-        const clean = String(idOrSlug).trim().toLowerCase()
-        const list = get().tenants || INITIAL_TENANTS
-        // Busca exata por ID ou por Slug
-        return (
-          list.find((t) => t.id === idOrSlug || t.slug.toLowerCase() === clean) ||
-          list.find((t) => t.name.toLowerCase().includes(clean)) ||
-          get().currentTenant
-        )
+        return resolveTenant(idOrSlug, get().tenants)
       },
     }),
     {
-      name: 'acai-rose-franchise-v3', // v3 para limpar cache persistido com nome antigo de Aveiro na Matriz
+      name: 'acai-rose-franchise-v4', // v4 para limpar caches persistidos de versões anteriores
     }
   )
 )

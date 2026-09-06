@@ -18,6 +18,7 @@ import {
   GripVertical,
 } from 'lucide-react'
 import { emitCatalogSync } from '@/lib/utils/catalogSync'
+import { usePublishStore } from '@/lib/stores/publishStore'
 
 interface MenuSectionsAdminProps {
   tenantId?: string
@@ -48,6 +49,7 @@ import { canManageMasterCatalog } from '@/lib/utils/permissions'
 export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps = {}) {
   const { user, authFetch } = useAuthStore()
   const isSuperAdmin = canManageMasterCatalog(user, tenantId)
+  const { markDirty } = usePublishStore()
 
   const { mainMenus, setMainMenus, addMenu, updateMenu, deleteMenu } = useMenuConfigStore()
 
@@ -127,6 +129,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
         entity: 'menu',
         action: 'reorder',
       })
+      markDirty(tenantId || user?.tenantId || '', 'Reordenação de seções de menu', authFetch)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao sincronizar ordenação')
     }
@@ -207,6 +210,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
         })
         if (!res.ok) throw new Error('Falha ao atualizar cardápio')
         toast.success(`Cardápio "${formData.name}" atualizado com sucesso!`)
+        markDirty(tenantId || user?.tenantId || '', `Cardápio "${formData.name}" atualizado`, authFetch)
       } else {
         const res = await authFetch(`/api/menus`, {
           method: 'POST',
@@ -222,6 +226,7 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
         })
         if (!res.ok) throw new Error('Falha ao criar cardápio')
         toast.success(`Cardápio "${formData.name}" criado com sucesso!`)
+        markDirty(tenantId || user?.tenantId || '', `Novo cardápio "${formData.name}" criado`, authFetch)
       }
 
       await fetchMenus()
@@ -240,8 +245,10 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
       })
       if (!res.ok) throw new Error('Falha ao excluir cardápio no servidor')
 
+      const menuName = deletingMenu.name
       deleteMenu(deletingMenu.id)
-      toast.success(`Cardápio "${deletingMenu.name}" removido com sucesso!`)
+      toast.success(`Cardápio "${menuName}" removido com sucesso!`)
+      markDirty(tenantId || user?.tenantId || '', `Cardápio "${menuName}" removido`, authFetch)
       await fetchMenus()
       setDeleteOpen(false)
     } catch (err: any) {
@@ -268,6 +275,11 @@ export default function MenuSectionsAdmin({ tenantId }: MenuSectionsAdminProps =
         entityId: menu.id,
         active: nextActive,
       })
+      markDirty(
+        (tenantId || user?.tenantId) || '',
+        `Cardápio "${menu.name}" ${nextActive ? 'ativado' : 'desativado'}`,
+        authFetch
+      )
       toast.success(
         nextActive
           ? `Cardápio "${menu.name}" ativado com sucesso!`

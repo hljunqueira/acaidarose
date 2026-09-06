@@ -183,10 +183,20 @@ function MenuContent() {
       })
   }
 
+  const [catalogVersion, setCatalogVersion] = useState<number>(0)
+
   // Carregar dados da loja e configurações de QR Code com escuta em tempo real
   useEffect(() => {
     setLoading(true)
     loadCatalog()
+
+    // 1. Consulta inicial e registro da versão do catálogo
+    fetch(`/api/catalog/version?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.version) setCatalogVersion(data.version)
+      })
+      .catch(() => {})
 
     // 2. Configurações de QR Code da Unidade
     fetch(`/api/qrcode-config?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, { cache: 'no-store' })
@@ -209,11 +219,27 @@ function MenuContent() {
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
+    // Polling leve a cada 15s para sincronizar Smart TVs, telemóveis e outros navegadores
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/catalog/version?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (data?.version && data.version > catalogVersion) {
+          setCatalogVersion(data.version)
+          loadCatalog()
+        }
+      } catch {}
+    }, 15000)
+
     return () => {
       unsubscribe()
+      clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [activeLoja])
+  }, [activeLoja, catalogVersion])
 
   const handleSelectContainer = (container: ProductContainer, showInfoOnly = false) => {
     if (showInfoOnly) {

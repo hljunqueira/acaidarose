@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
+import { usePublishStore } from '@/lib/stores/publishStore'
 import { InventoryItemRow } from '@/lib/repositories/inventoryRepository'
 import {
   Dialog,
@@ -44,6 +45,7 @@ export default function InventoryManagementView({
   onNavigateToSupplyOrders?: () => void
 }) {
   const { authFetch, user } = useAuthStore()
+  const markDirty = usePublishStore((s) => s.markDirty)
   const [items, setItems] = useState<InventoryItemRow[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -236,6 +238,7 @@ export default function InventoryManagementView({
         }),
       })
       if (!res.ok) throw new Error('Falha ao pausar')
+      await markDirty(tenantId, `"${item.name}" pausado no cardápio (ruptura de estoque)`, authFetch)
       toast.success(`"${item.name}" pausado no Cardápio QR Code desta loja.`)
     } catch {
       toast.error(`Erro ao pausar "${item.name}" no cardápio`)

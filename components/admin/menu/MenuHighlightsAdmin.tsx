@@ -24,6 +24,8 @@ import {
 import SafeDeleteDialog from '@/components/admin/common/SafeDeleteDialog'
 import type { HighlightItem } from '@/types/highlights'
 import type { ProductContainer } from '@/types'
+import { useAuthStore } from '@/lib/stores/authStore'
+import { usePublishStore } from '@/lib/stores/publishStore'
 
 interface MenuHighlightsAdminProps {
   tenantId: string
@@ -40,6 +42,8 @@ const DAYS_OF_WEEK = [
 ]
 
 export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminProps) {
+  const { authFetch } = useAuthStore()
+  const markDirty = usePublishStore((s) => s.markDirty)
   const [highlights, setHighlights] = useState<HighlightItem[]>([])
   const [products, setProducts] = useState<ProductContainer[]>([])
   const [loading, setLoading] = useState(true)
@@ -227,6 +231,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
           body: JSON.stringify({ id: editingItem.id, ...payload }),
         })
         if (!res.ok) throw new Error('Falha ao atualizar destaque')
+        await markDirty(tenantId, `Destaque "${payload.title}" atualizado`, authFetch)
         toast.success('Destaque atualizado com sucesso!')
       } else {
         const res = await fetch('/api/highlights', {
@@ -235,6 +240,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
           body: JSON.stringify(payload),
         })
         if (!res.ok) throw new Error('Falha ao criar destaque')
+        await markDirty(tenantId, `Novo destaque "${payload.title}" criado`, authFetch)
         toast.success('Destaque cadastrado com sucesso!')
       }
 
@@ -257,6 +263,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         body: JSON.stringify({ id: item.id, active: nextActive }),
       })
       if (!res.ok) throw new Error('Erro ao alterar status')
+      await markDirty(tenantId, `Visibilidade do destaque "${item.title}" alterada`, authFetch)
       toast.success(nextActive ? 'Destaque agora está Visível!' : 'Destaque ocultado.')
     } catch {
       setHighlights((prev) => prev.map((h) => (h.id === item.id ? { ...h, active: item.active } : h)))
@@ -305,6 +312,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       })
 
       if (!res.ok) throw new Error('Falha ao atualizar horários')
+      await markDirty(tenantId, `Horários ativos do destaque "${schedulingItem.title}" atualizados`, authFetch)
       toast.success('Horários ativos atualizados!')
       setScheduleModalOpen(false)
       fetchHighlights()
@@ -326,6 +334,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro na replicação')
+      await markDirty(tenantId, 'Destaques replicados para a rede', authFetch)
       toast.success(`Destaques replicados com sucesso para ${data.totalStores - 1} filial(is)!`)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao replicar filial')
@@ -343,6 +352,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Falha ao excluir')
+      await markDirty(tenantId, `Destaque "${deletingItem.title}" excluído`, authFetch)
       toast.success('Destaque excluído com sucesso!')
       setDeleteOpen(false)
       fetchHighlights()

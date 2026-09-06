@@ -17,6 +17,7 @@ import {
   GripVertical,
 } from 'lucide-react'
 import { emitCatalogSync } from '@/lib/utils/catalogSync'
+import { usePublishStore } from '@/lib/stores/publishStore'
 
 interface MenuCategoriesAdminProps {
   tenantId?: string
@@ -50,6 +51,7 @@ import { canManageMasterCatalog } from '@/lib/utils/permissions'
 export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminProps = {}) {
   const { user, authFetch } = useAuthStore()
   const isSuperAdmin = canManageMasterCatalog(user, tenantId)
+  const { markDirty } = usePublishStore()
 
   const { categories, setCategories, addCategory, updateCategory, deleteCategory } = useMenuConfigStore()
 
@@ -146,6 +148,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
       })
       if (!res.ok) throw new Error('Falha ao salvar nova ordem')
       toast.success('Ordem das categorias atualizada com sucesso!')
+      markDirty(tenantId || user?.tenantId || '', 'Reordenação de categorias no cardápio', authFetch)
     } catch {
       toast.error('Erro ao salvar nova ordem das categorias')
       fetchCategories()
@@ -211,6 +214,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
         })
         if (!res.ok) throw new Error('Falha ao atualizar categoria')
         toast.success(`Categoria "${formData.name}" atualizada com sucesso!`)
+        markDirty(targetTenant || '', `Categoria "${formData.name}" atualizada`, authFetch)
       } else {
         const res = await authFetch('/api/categories', {
           method: 'POST',
@@ -227,6 +231,7 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
         })
         if (!res.ok) throw new Error('Falha ao cadastrar categoria')
         toast.success(`Categoria "${formData.name}" criada com sucesso!`)
+        markDirty(targetTenant || '', `Nova categoria "${formData.name}" criada`, authFetch)
       }
 
       await fetchCategories()
@@ -244,8 +249,10 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Falha ao excluir categoria')
+      const catName = deletingCategory.name
       deleteCategory(deletingCategory.id)
-      toast.success(`Categoria "${deletingCategory.name}" removida com sucesso!`)
+      toast.success(`Categoria "${catName}" removida com sucesso!`)
+      markDirty(tenantId || user?.tenantId || '', `Categoria "${catName}" removida`, authFetch)
       setDeleteOpen(false)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao excluir categoria')
@@ -271,6 +278,11 @@ export default function MenuCategoriesAdmin({ tenantId }: MenuCategoriesAdminPro
         entityId: cat.id,
         active: nextActive,
       })
+      markDirty(
+        (tenantId || user?.tenantId) || '',
+        `Categoria "${cat.name}" ${nextActive ? 'ativada' : 'pausada'} no cardápio`,
+        authFetch
+      )
       toast.success(
         nextActive
           ? `Categoria "${cat.name}" ativada no cardápio.`

@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
+import { useAuthStore } from '@/lib/stores/authStore'
+import { usePublishStore } from '@/lib/stores/publishStore'
 
 interface QRCodeConfigViewProps {
   tenantId: string
@@ -60,10 +62,13 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
     fetchConfig()
   }, [fetchConfig])
 
+  const { authFetch } = useAuthStore()
+  const markDirty = usePublishStore((state) => state.markDirty)
+
   const handleSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch('/api/qrcode-config', {
+      const res = await (authFetch || fetch)('/api/qrcode-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,6 +87,8 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
       })
 
       if (!res.ok) throw new Error('Falha ao guardar as configurações')
+      
+      await markDirty(tenantId, 'Configurações de QR Code e Ementa Digital atualizadas', authFetch)
       toast.success('Configurações do QR Code guardadas com sucesso!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao gravar')
