@@ -29,8 +29,9 @@ export default function KitchenOrderPrintModal({
   const formattedTicket = String(order.orderNumber || 1).padStart(3, '0')
   const cleanStoreName = getPublicStoreName(null, storeName)
 
-  // Impressão Térmica Isolada via Iframe Oculto:
-  // Evita cortes de conteúdo causados por modais com overflow-y, fixed ou max-height no Chrome/Edge.
+  // Impressão Térmica Direta via Mount no Body:
+  // Ao clonar o conteúdo diretamente para um elemento filho direto de <body> (#kitchen-print-mount),
+  // eliminamos qualquer interferência de modais, portais Radix, overflow-y ou transforms.
   const handlePrint = () => {
     const printEl = document.getElementById('kitchen-order-print')
     if (!printEl) {
@@ -38,74 +39,50 @@ export default function KitchenOrderPrintModal({
       return
     }
 
-    let iframe = document.getElementById('thermal-print-frame') as HTMLIFrameElement
-    if (!iframe) {
-      iframe = document.createElement('iframe')
-      iframe.id = 'thermal-print-frame'
-      iframe.style.position = 'fixed'
-      iframe.style.right = '0'
-      iframe.style.bottom = '0'
-      iframe.style.width = '0'
-      iframe.style.height = '0'
-      iframe.style.border = '0'
-      document.body.appendChild(iframe)
+    // Limpa qualquer iframe residual antigo
+    const oldIframe = document.getElementById('thermal-print-frame')
+    if (oldIframe) oldIframe.remove()
+
+    let mount = document.getElementById('kitchen-print-mount')
+    if (!mount) {
+      mount = document.createElement('div')
+      mount.id = 'kitchen-print-mount'
+      document.body.appendChild(mount)
     }
 
-    const doc = iframe.contentWindow?.document
-    if (!doc) {
-      window.print()
+    mount.innerHTML = printEl.innerHTML
+
+    // Dispara a impressão nativa
+    window.print()
+  }
+
+  // Sincroniza o mount sempre que o modal estiver aberto
+  React.useEffect(() => {
+    if (!open) {
+      const mount = document.getElementById('kitchen-print-mount')
+      if (mount) mount.remove()
       return
     }
 
-    // Coleta todas as folhas de estilos do documento pai para garantir Tailwind nativo
-    const styleTags = Array.from(
-      document.querySelectorAll('link[rel="stylesheet"], style')
-    )
-      .map((tag) => tag.outerHTML)
-      .join('\n')
+    const timer = setTimeout(() => {
+      const printEl = document.getElementById('kitchen-order-print')
+      if (printEl) {
+        let mount = document.getElementById('kitchen-print-mount')
+        if (!mount) {
+          mount = document.createElement('div')
+          mount.id = 'kitchen-print-mount'
+          document.body.appendChild(mount)
+        }
+        mount.innerHTML = printEl.innerHTML
+      }
+    }, 100)
 
-    doc.open()
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Comanda #${formattedTicket} - Cozinha</title>
-          ${styleTags}
-          <style>
-            @page {
-              size: 80mm auto;
-              margin: 0;
-            }
-            *, *::before, *::after {
-              box-sizing: border-box;
-            }
-            body {
-              margin: 0 !important;
-              padding: 2mm 3mm !important;
-              width: 80mm !important;
-              background: #ffffff !important;
-              color: #000000 !important;
-              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-          </style>
-        </head>
-        <body>
-          <div style="width: 74mm; margin: 0 auto; color: #000000; font-family: monospace;">
-            ${printEl.innerHTML}
-          </div>
-        </body>
-      </html>
-    `)
-    doc.close()
-
-    // Aguarda o carregamento das mídias antes de invocar a impressão
-    setTimeout(() => {
-      iframe.contentWindow?.focus()
-      iframe.contentWindow?.print()
-    }, 250)
-  }
+    return () => {
+      clearTimeout(timer)
+      const mount = document.getElementById('kitchen-print-mount')
+      if (mount) mount.remove()
+    }
+  }, [open, order])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -114,8 +91,13 @@ export default function KitchenOrderPrintModal({
           <DialogTitle>Comanda de Produção — Cozinha</DialogTitle>
         </DialogHeader>
 
-        {/* Reset Global de Segurança para Caso o Operador Use Ctrl+P */}
+        {/* CSS Estrito para Impressão Térmica de 80mm */}
         <style jsx global>{`
+          /* Em tela normal: o mount fica invisível */
+          #kitchen-print-mount {
+            display: none;
+          }
+
           @media print {
             @page {
               size: 80mm auto;
@@ -126,39 +108,33 @@ export default function KitchenOrderPrintModal({
               height: auto !important;
               margin: 0 !important;
               padding: 0 !important;
-            }
-            body * {
-              visibility: hidden !important;
-            }
-            div[role="dialog"],
-            div[data-state="open"],
-            div[data-radix-portal] {
-              position: static !important;
-              transform: none !important;
-              max-height: none !important;
-              overflow: visible !important;
-              width: 100% !important;
-              height: auto !important;
-              padding: 0 !important;
-              margin: 0 !important;
-            }
-            #kitchen-order-print,
-            #kitchen-order-print * {
-              visibility: visible !important;
-            }
-            #kitchen-order-print {
-              position: absolute !important;
-              left: 0 !important;
-              top: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
               width: 80mm !important;
-              margin: 0 !important;
-              padding: 2mm 3mm !important;
-              background: white !important;
-              color: black !important;
-              box-shadow: none !important;
-              border: none !important;
+            }
+            /* Oculta tudo que é filho do body, exceto o nosso mount direto */
+            body > *:not(#kitchen-print-mount) {
+              display: none !important;
+            }
+            /* Exibe estritamente o mount de 80mm no topo da bobina */
+            #kitchen-print-mount {
+              display: block !important;
+              width: 74mm !important;
+              margin: 0 auto !important;
+              padding: 2mm 1mm !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              position: static !important;
               overflow: visible !important;
               height: auto !important;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            #kitchen-print-mount * {
+              visibility: visible !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
           }
         `}</style>
