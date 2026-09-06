@@ -12,6 +12,7 @@ interface CartSummaryProps {
   items: CartItem[]
   total: number
   onRemoveItem: (id: string) => void
+  onUpdateQuantity?: (id: string, delta: number) => void
   onClearCart: () => void
   onOpenPayment: () => void
 }
@@ -20,6 +21,7 @@ export default function CartSummary({
   items,
   total,
   onRemoveItem,
+  onUpdateQuantity,
   onClearCart,
   onOpenPayment,
 }: CartSummaryProps) {
@@ -41,7 +43,7 @@ export default function CartSummary({
           <button
             type="button"
             onClick={onClearCart}
-            className="text-xs text-muted-foreground hover:text-red-600 font-semibold transition-colors"
+            className="text-xs text-muted-foreground hover:text-red-600 font-semibold transition-colors cursor-pointer"
           >
             Limpar
           </button>
@@ -55,50 +57,88 @@ export default function CartSummary({
               <ShoppingBag className="h-6 w-6 text-purple-400" />
             </div>
             <p className="font-bold text-xs text-foreground">Comanda Vazia</p>
-            <p className="text-[11px] text-muted-foreground mt-1">Monte um açaí no painel ao lado para fechar o pedido.</p>
+            <p className="text-[11px] text-muted-foreground mt-1">Selecione itens no painel ao lado para fechar o pedido.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {items.map((item, idx) => (
-              <div
-                key={item.id}
-                className="p-3 rounded-2xl border border-purple-100 bg-purple-50/40 hover:bg-purple-50 transition flex justify-between items-start gap-2 shadow-2xs"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 font-extrabold text-xs text-foreground">
-                    <span className="text-purple-600">{idx + 1}.</span>
-                    <span>{item.container.emoji}</span>
-                    <span className="truncate">{item.container.name}</span>
-                  </div>
+            {items.map((item, idx) => {
+              const isSimple = (!item.bases || item.bases.length === 0) && (!item.toppings || item.toppings.length === 0)
+              const qty = item.quantity || 1
 
-                  <div className="text-[11px] text-muted-foreground mt-1 pl-4 space-y-0.5">
-                    <div><b>Bases:</b> {item.bases.map((b) => b.name).join(', ')}</div>
-                    {item.toppings.length > 0 && (
-                      <div>
-                        <b>Toppings:</b>{' '}
-                        {item.toppings
-                          .map((t) => `${t.name}${t.isPaid ? ` (+${formatCurrency(t.precoCobrado)})` : ''}`)
-                          .join(', ')}
+              return (
+                <div
+                  key={item.id}
+                  className="p-3 rounded-2xl border border-purple-100 bg-purple-50/40 hover:bg-purple-50 transition flex justify-between items-start gap-2 shadow-2xs"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 font-extrabold text-xs text-foreground">
+                      <span className="text-purple-600">{idx + 1}.</span>
+                      <span className="truncate">{item.container.name}</span>
+                      {qty > 1 && (
+                        <span className="text-[10px] bg-purple-200/70 text-purple-900 font-black px-1.5 py-0.2 rounded-md">
+                          {qty}x
+                        </span>
+                      )}
+                    </div>
+
+                    {!isSimple && (
+                      <div className="text-[11px] text-muted-foreground mt-1 pl-4 space-y-0.5">
+                        {item.bases && item.bases.length > 0 && (
+                          <div><b>Bases:</b> {item.bases.map((b) => b.name).join(', ')}</div>
+                        )}
+                        {item.toppings && item.toppings.length > 0 && (
+                          <div>
+                            <b>Acompanhamentos:</b>{' '}
+                            {item.toppings
+                              .map((t) => `${t.name}${t.isPaid ? ` (+${formatCurrency(t.precoCobrado)})` : ''}`)
+                              .join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Controles de Quantidade para Itens Rápidos */}
+                    {isSimple && onUpdateQuantity && (
+                      <div className="flex items-center gap-2 mt-2 pl-4">
+                        <button
+                          type="button"
+                          onClick={() => onUpdateQuantity(item.id, -1)}
+                          className="h-6 w-6 rounded-lg bg-white border border-purple-200 text-purple-900 hover:bg-purple-100 flex items-center justify-center font-bold text-xs cursor-pointer"
+                          title="Diminuir"
+                        >
+                          -
+                        </button>
+                        <span className="text-xs font-black text-purple-950 min-w-[16px] text-center">
+                          {qty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateQuantity(item.id, 1)}
+                          className="h-6 w-6 rounded-lg bg-white border border-purple-200 text-purple-900 hover:bg-purple-100 flex items-center justify-center font-bold text-xs cursor-pointer"
+                          title="Aumentar"
+                        >
+                          +
+                        </button>
                       </div>
                     )}
                   </div>
-                </div>
 
-                <div className="flex flex-col justify-between items-end gap-2 flex-shrink-0">
-                  <span className="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded-md">
-                    {formatCurrency(item.lineTotal)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveItem(item.id)}
-                    className="h-6 w-6 rounded-md hover:bg-red-100 text-muted-foreground hover:text-red-600 flex items-center justify-center transition"
-                    title="Remover item"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex flex-col justify-between items-end gap-2 flex-shrink-0">
+                    <span className="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded-md">
+                      {formatCurrency(item.lineTotal)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveItem(item.id)}
+                      className="h-6 w-6 rounded-md hover:bg-red-100 text-muted-foreground hover:text-red-600 flex items-center justify-center transition cursor-pointer"
+                      title="Remover item"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </ScrollArea>
@@ -110,7 +150,7 @@ export default function CartSummary({
             <div className="text-xl font-black">{formatCurrency(total)}</div>
           </div>
           <div className="text-right text-[11px] text-purple-200">
-            {items.length} {items.length === 1 ? 'açaí' : 'açaís'}
+            {items.length} {items.length === 1 ? 'item' : 'itens'}
           </div>
         </div>
 

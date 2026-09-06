@@ -1,6 +1,18 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Organização por Menu no PDV (Açaí da Rose vs Lanches) & Design Clean**:
+  - **Causa Raiz Resolvida**: No Montador Balcão do PDV (`PDVView.tsx`), todos os produtos da base de dados eram injetados diretamente na etapa 1 do seletor de taças de açaí, fazendo com que lanches (Pão de queijo, Pastel de nata, Croissants, etc.) fossem exibidos com regras de taça ("999 frutas inclusas", "0 acompanhamentos", "+ 1 creme incluso").
+  - **Separação Canônica por Menus (`Açaí da Rose` / `Lanches`)**:
+    - Adicionada barra de navegação com as abas canônicas `Açaí da Rose` e `Lanches` no cabeçalho do catálogo do PDV.
+    - **Aba Açaí da Rose**: Exibe o wizard de 3 etapas de montagem de taça (`1. Tamanho da Taça`, `2. Cremes Gelados`, `3. Frutas & Acompanhamentos`) filtrando estritamente taças e recipientes.
+    - **Aba Lanches**: Exibe grid de produtos unitários com categorias em pílulas (`Todas as Categorias`, `Tapiocas`, `Lanches`, `Pão de Queijo`, `Pastel de Nata`, `Croissants`), buscador rápido por nome e adição imediata à comanda com 1 clique.
+  - **Design 100% Clean & Sem Ícones Decorativos**:
+    - Removidos ícones supérfluos (como `Sparkles`, ícones de pacotes, talheres e animações `animate-pulse`), priorizando indicadores numéricos sóbrios e tipografia corporativa.
+    - Ajustado glossário PT-PT: "Taça" e "Acompanhamentos".
+  - **Controle Dinâmico de Quantidades no Carrinho (`CartSummary.tsx`)**:
+    - Itens unitários de lanches possuem botões `+` e `-` para incremento ágil na comanda sem abrir modais de taça.
+    - Suporte nativo em `useCartStore` (`addSimpleItem` e `updateItemQuantity`).
 - **Comanda de Cozinha & Impressão Térmica de 80mm Padronizada**:
   - **Causa Raiz Resolvida**: Ao clicar em "Imprimir" no Kanban ou no modal de detalhes (`OrderItemsModal.tsx`), o navegador disparava um `window.print()` cru sobre a interface, imprimindo o modal cinza com botões ("Eliminar", "Fechar") no meio de uma folha A4.
   - **Componente Criado (`KitchenOrderPrintModal.tsx`)**:

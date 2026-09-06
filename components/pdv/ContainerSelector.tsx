@@ -18,10 +18,10 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
     <div className="space-y-4">
       <div>
         <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-          Escolha o Tamanho do Açaí
+          Escolha o Tamanho da Taça
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Selecione o recipiente para aplicar as regras de frutas, acompanhamentos e valor
+          Selecione o tamanho para aplicar as regras de frutas, acompanhamentos e valor
         </p>
       </div>
 
@@ -35,17 +35,17 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
             <Card
               key={c.id}
               onClick={() => isAvailable && onSelect(c)}
-              className={`relative overflow-hidden transition-all duration-200 p-3.5 flex flex-col justify-between border-2 rounded-3xl group ${
+              className={`relative overflow-hidden transition-all duration-200 p-3.5 flex flex-col justify-between border rounded-3xl group ${
                 !isAvailable
                   ? 'border-border/60 bg-muted/30 opacity-60 cursor-not-allowed'
                   : isSelected
-                  ? 'border-purple-600 bg-purple-50/70 shadow-xl shadow-purple-700/15 ring-2 ring-purple-500/30 scale-[1.02] cursor-pointer'
-                  : 'border-purple-100/90 hover:border-purple-300 hover:shadow-lg hover:scale-[1.01] bg-white cursor-pointer'
+                  ? 'border-purple-600 bg-purple-50/70 shadow-md scale-[1.02] cursor-pointer'
+                  : 'border-purple-100/90 hover:border-purple-300 hover:shadow-md hover:scale-[1.01] bg-white cursor-pointer'
               }`}
             >
               {/* Selected Check Badge */}
               {isSelected && isAvailable && (
-                <div className="absolute top-0 right-0 bg-purple-700 text-white rounded-bl-2xl p-1.5 shadow-md z-10">
+                <div className="absolute top-0 right-0 bg-purple-700 text-white rounded-bl-2xl p-1.5 shadow-xs z-10">
                   <Check className="h-4 w-4 stroke-[3]" />
                 </div>
               )}
@@ -87,8 +87,8 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
                 <div className="mt-2 space-y-1 text-xs">
                   {isUnlimited ? (
                     <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-extrabold flex items-center gap-1.5 border border-emerald-200/60">
-                      <span className="h-2 w-2 rounded-full bg-emerald-600 flex-shrink-0 animate-pulse"></span>
-                      <span className="text-[11px] leading-tight">Frutas & Toppings Livres</span>
+                      <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0"></span>
+                      <span className="text-[11px] leading-tight">Frutas & Acompanhamentos Livres</span>
                     </div>
                   ) : (
                     <div className="space-y-0.5 text-muted-foreground text-[11px]">
@@ -96,7 +96,7 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
                         • <b>{c.limiteFrutas}</b> frutas inclusas
                       </div>
                       <div className="font-semibold text-purple-950">
-                        • <b>{c.limiteToppings}</b> toppings inclusos
+                        • <b>{c.limiteToppings}</b> acompanhamentos inclusos
                       </div>
                     </div>
                   )}

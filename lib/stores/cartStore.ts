@@ -123,6 +123,8 @@ interface CartState {
   toggleBase: (base: ProductBase) => void
   toggleTopping: (topping: ProductTopping) => void
   addDraftToCart: () => void
+  addSimpleItem: (container: ProductContainer, quantity?: number) => void
+  updateItemQuantity: (id: string, delta: number) => void
   removeItem: (id: string) => void
   clearCart: () => void
   total: () => number
@@ -174,8 +176,64 @@ export const useCartStore = create<CartState>()(
             bases: s.draft.bases,
             toppings: enrichedToppings,
             lineTotal,
+            quantity: 1,
           }
           return { items: [...s.items, item], draft: null }
+        }),
+
+      addSimpleItem: (container: ProductContainer, quantity = 1) =>
+        set((s) => {
+          const existingIndex = s.items.findIndex(
+            (i) => i.container?.id === container.id && (!i.bases || i.bases.length === 0) && (!i.toppings || i.toppings.length === 0)
+          )
+          const unitPrice = Number(container.precoBase) || Number(container.price) || 0
+          if (existingIndex >= 0) {
+            const existing = s.items[existingIndex]
+            const currentQty = existing.quantity || 1
+            const newQty = currentQty + quantity
+            const updatedItem: CartItem = {
+              ...existing,
+              quantity: newQty,
+              lineTotal: +(unitPrice * newQty).toFixed(2),
+            }
+            const newItems = [...s.items]
+            newItems[existingIndex] = updatedItem
+            return { items: newItems }
+          } else {
+            const newItem: CartItem = {
+              id: genId(),
+              container,
+              bases: [],
+              toppings: [],
+              quantity,
+              lineTotal: +(unitPrice * quantity).toFixed(2),
+            }
+            return { items: [...s.items, newItem] }
+          }
+        }),
+
+      updateItemQuantity: (id: string, delta: number) =>
+        set((s) => {
+          const existingIndex = s.items.findIndex((i) => i.id === id)
+          if (existingIndex < 0) return s
+          const existing = s.items[existingIndex]
+          const currentQty = existing.quantity || 1
+          const newQty = currentQty + delta
+          if (newQty <= 0) {
+            return { items: s.items.filter((i) => i.id !== id) }
+          }
+          const isSimple = (!existing.bases || existing.bases.length === 0) && (!existing.toppings || existing.toppings.length === 0)
+          const unitPrice = isSimple
+            ? (Number(existing.container.precoBase) || Number(existing.container.price) || 0)
+            : (Number(existing.lineTotal) / currentQty)
+          const updated: CartItem = {
+            ...existing,
+            quantity: newQty,
+            lineTotal: +(unitPrice * newQty).toFixed(2),
+          }
+          const newItems = [...s.items]
+          newItems[existingIndex] = updated
+          return { items: newItems }
         }),
 
       removeItem: (id: string) =>

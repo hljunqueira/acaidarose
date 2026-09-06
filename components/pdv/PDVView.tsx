@@ -16,8 +16,12 @@ import ToppingSelector from './ToppingSelector'
 import CartSummary from './CartSummary'
 import PaymentModal from './PaymentModal'
 import OrderReceiptModal from './OrderReceiptModal'
-import { ShoppingBag, Store, ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react'
+import { ShoppingBag, Store, ArrowLeft, Search, Plus } from 'lucide-react'
 import { subscribeCatalogSync } from '@/lib/utils/catalogSync'
+
+// Identificadores canônicos de Menus
+const MASTER_ACAI_MENU_ID = '1c8ff060-3048-47c3-a5ec-efb60a56d0c1'
+const MASTER_LANCHES_MENU_ID = '2c8ff060-3048-47c3-a5ec-efb60a56d0c2'
 
 interface PDVViewProps {
   tenantId: string
@@ -32,7 +36,7 @@ export default function PDVView({
   initialTable,
   onBackToTables,
 }: PDVViewProps) {
-  const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
+  const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [], menus: [], categories: [] })
   const [loading, setLoading] = useState(true)
   const [step, setStep] = useState<number>(1)
   const [payOpen, setPayOpen] = useState(false)
@@ -40,16 +44,93 @@ export default function PDVView({
   const [lastOrder, setLastOrder] = useState<Order | null>(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
 
+  // Menu Selecionado no PDV (Açaí da Rose vs Lanches)
+  const [selectedMenuTab, setSelectedMenuTab] = useState<'acai' | 'lanches'>('acai')
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
+  const [lanchesSearchQuery, setLanchesSearchQuery] = useState<string>('')
+
   // Tipo de Pedido: BALCAO vs MESA
   const [orderType, setOrderType] = useState<'BALCAO' | 'MESA'>(initialTable ? 'MESA' : 'BALCAO')
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(initialTable || null)
   const [customerNameInput, setCustomerNameInput] = useState<string>('')
   const [allTables, setAllTables] = useState<RestaurantTable[]>([])
 
-  const { items, draft, startDraft, resetDraft, toggleBase, toggleTopping, addDraftToCart, removeItem, clearCart, total } = useCartStore()
+  const {
+    items,
+    draft,
+    startDraft,
+    resetDraft,
+    toggleBase,
+    toggleTopping,
+    addDraftToCart,
+    addSimpleItem,
+    updateItemQuantity,
+    removeItem,
+    clearCart,
+    total,
+  } = useCartStore()
 
   const currentTotal = total()
   const currentDraftTotal = draft?.container ? computeItemLineTotal(draft) : 0
+
+  // Filtra itens ativos e visíveis
+  const allContainers = useMemo(() => {
+    return (catalog.containers || [])
+      .filter((c) => c.active !== false && !c.isCategoryPaused)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+  }, [catalog.containers])
+
+  // Produtos do Menu Açaí da Rose (Taças e recipientes)
+  const acaiProducts = useMemo(() => {
+    return allContainers.filter((c) => {
+      if (c.menuId) return c.menuId === MASTER_ACAI_MENU_ID
+      return c.productType !== 'ITEM'
+    })
+  }, [allContainers])
+
+  // Produtos do Menu Lanches (Itens unitários prontos)
+  const lanchesProducts = useMemo(() => {
+    return allContainers.filter((c) => {
+      if (c.menuId) return c.menuId === MASTER_LANCHES_MENU_ID
+      return c.productType === 'ITEM'
+    })
+  }, [allContainers])
+
+  // Categorias de Lanches cadastradas no menu Lanches
+  const lanchesCategories = useMemo(() => {
+    return (catalog.categories || []).filter(
+      (cat) => cat.menuId === MASTER_LANCHES_MENU_ID && cat.active !== false
+    )
+  }, [catalog.categories])
+
+  // Taças de Açaí filtradas pela subcategoria ativa
+  const displayedAcaiContainers = useMemo(() => {
+    if (selectedCategoryId === 'all') return acaiProducts
+    if (selectedCategoryId === 'acai-tradicional') {
+      return acaiProducts.filter(
+        (p) => p.categoryId !== 'cat-somente-creme' && !p.name.toLowerCase().includes('somente creme')
+      )
+    }
+    if (selectedCategoryId === 'cat-somente-creme') {
+      return acaiProducts.filter(
+        (p) => p.categoryId === 'cat-somente-creme' || p.name.toLowerCase().includes('somente creme')
+      )
+    }
+    return acaiProducts
+  }, [acaiProducts, selectedCategoryId])
+
+  // Lanches filtrados por subcategoria e busca
+  const displayedLanches = useMemo(() => {
+    let list = lanchesProducts
+    if (selectedCategoryId !== 'all') {
+      list = list.filter((p) => p.categoryId === selectedCategoryId)
+    }
+    if (lanchesSearchQuery.trim()) {
+      const q = lanchesSearchQuery.toLowerCase()
+      list = list.filter((p) => p.name.toLowerCase().includes(q))
+    }
+    return list
+  }, [lanchesProducts, selectedCategoryId, lanchesSearchQuery])
 
   const draftBreakdown = useMemo(() => {
     if (!draft?.container) return null
@@ -317,147 +398,344 @@ export default function PDVView({
 
       {/* Grid Principal: Montador + Resumo da Comanda */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Coluna Esquerda: Montador / Wizard de Açaí */}
+        {/* Coluna Esquerda: Catálogo / Montador por Menu */}
         <div className="lg:col-span-8 space-y-4">
-          <Card className="p-4 md:p-6 bg-white dark:bg-[#160228] shadow-xs border border-purple-100 dark:border-white/10 rounded-3xl">
-            <StepIndicator current={step} onSelectStep={setStep} />
+          <Card className="p-4 md:p-6 bg-white dark:bg-[#160228] shadow-xs border border-purple-100 dark:border-white/10 rounded-3xl space-y-4">
+            {/* 1. SELETOR DE MENUS CANÔNICOS: Açaí da Rose vs Lanches */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-purple-100/70 dark:bg-white/5 border border-purple-200/70 dark:border-white/10 w-full sm:w-80">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMenuTab('acai')
+                    setSelectedCategoryId('all')
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
+                    selectedMenuTab === 'acai'
+                      ? 'bg-purple-700 text-white dark:bg-pink-600 shadow-sm'
+                      : 'text-purple-900 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white'
+                  }`}
+                >
+                  Açaí da Rose
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMenuTab('lanches')
+                    setSelectedCategoryId('all')
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
+                    selectedMenuTab === 'lanches'
+                      ? 'bg-purple-700 text-white dark:bg-pink-600 shadow-sm'
+                      : 'text-purple-900 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white'
+                  }`}
+                >
+                  Lanches
+                </button>
+              </div>
 
-            {/* Cabeçalho da Taça Sendo Montada com Preço em Tempo Real */}
-            {draft?.container && (
-              <div className="space-y-2 py-3 px-4 my-3 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-purple-700 text-white font-extrabold text-xs px-2.5 py-1 rounded-xl">
-                      {draft.container.name}
-                    </Badge>
-                    <span className="text-xs font-bold text-purple-900/70 dark:text-purple-200/70">
-                      Base: {formatCurrency(draft.container.precoBase)}
-                    </span>
-                  </div>
-                  <div className="text-sm sm:text-base font-black text-purple-950 dark:text-white font-mono">
-                    Subtotal: <span className="text-pink-600 dark:text-pink-400 font-extrabold">{formatCurrency(currentDraftTotal)}</span>
-                  </div>
-                </div>
-
-                {/* Tags de Extras Ativos na Taça */}
-                {draftBreakdown && (draftBreakdown.extraBases > 0 || draftBreakdown.extraFrutas > 0 || draftBreakdown.extraToppings > 0 || draftBreakdown.premiumsVal > 0) && (
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] font-black border-t border-purple-100/60 dark:border-white/10">
-                    <span className="text-muted-foreground text-[10px]">Adicionais somados:</span>
-                    {draftBreakdown.extraBases > 0 && (
-                      <span className="bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 px-2 py-0.5 rounded-md">
-                        +{draftBreakdown.extraBases}x Creme Extra (+{formatCurrency(draftBreakdown.extraBasesVal)})
-                      </span>
-                    )}
-                    {draftBreakdown.extraFrutas > 0 && (
-                      <span className="bg-pink-100 text-pink-900 dark:bg-pink-950/60 dark:text-pink-200 px-2 py-0.5 rounded-md">
-                        +{draftBreakdown.extraFrutas}x Fruta Extra (+{formatCurrency(draftBreakdown.extraFrutasVal)})
-                      </span>
-                    )}
-                    {draftBreakdown.extraToppings > 0 && (
-                      <span className="bg-fuchsia-100 text-fuchsia-900 dark:bg-fuchsia-950/60 dark:text-fuchsia-200 px-2 py-0.5 rounded-md">
-                        +{draftBreakdown.extraToppings}x Topping Extra (+{formatCurrency(draftBreakdown.extraToppingsVal)})
-                      </span>
-                    )}
-                    {draftBreakdown.premiumsVal > 0 && (
-                      <span className="bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-200 px-2 py-0.5 rounded-md">
-                        + Especiais/Premium (+{formatCurrency(draftBreakdown.premiumsVal)})
-                      </span>
-                    )}
-                  </div>
+              {/* Subcategorias em Pílulas (Clean & Sem Emojis) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs font-bold">
+                {selectedMenuTab === 'acai' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategoryId('all')}
+                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
+                        selectedCategoryId === 'all'
+                          ? 'bg-purple-900 text-white dark:bg-pink-600'
+                          : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      Todas as Taças
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategoryId('acai-tradicional')}
+                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
+                        selectedCategoryId === 'acai-tradicional'
+                          ? 'bg-purple-900 text-white dark:bg-pink-600'
+                          : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      Açaí Tradicional
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategoryId('cat-somente-creme')}
+                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
+                        selectedCategoryId === 'cat-somente-creme'
+                          ? 'bg-purple-900 text-white dark:bg-pink-600'
+                          : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      Somente Creme
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategoryId('all')}
+                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
+                        selectedCategoryId === 'all'
+                          ? 'bg-purple-900 text-white dark:bg-pink-600'
+                          : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      Todas as Categorias
+                    </button>
+                    {lanchesCategories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedCategoryId(cat.id)}
+                        className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
+                          selectedCategoryId === cat.id
+                            ? 'bg-purple-900 text-white dark:bg-pink-600'
+                            : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                  </>
                 )}
               </div>
-            )}
+            </div>
 
             {loading ? (
               <div className="text-center py-16 text-muted-foreground text-xs font-bold">
                 A carregar cardápio oficial...
               </div>
-            ) : (
-              <div className="min-h-[320px] pt-2">
-                {step === 1 && (
-                  <ContainerSelector
-                    containers={catalog.containers}
-                    selected={draft?.container || null}
-                    onSelect={(c) => {
-                      startDraft(c)
-                      setStep(2)
-                    }}
-                  />
+            ) : selectedMenuTab === 'acai' ? (
+              <>
+                {/* WIZARD DE AÇAÍ: ETAPAS 1, 2 e 3 */}
+                <StepIndicator current={step} onSelectStep={setStep} />
+
+                {/* Cabeçalho da Taça Sendo Montada com Preço em Tempo Real */}
+                {draft?.container && (
+                  <div className="space-y-2 py-3 px-4 my-3 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-purple-700 text-white font-extrabold text-xs px-2.5 py-1 rounded-xl">
+                          {draft.container.name}
+                        </Badge>
+                        <span className="text-xs font-bold text-purple-900/70 dark:text-purple-200/70">
+                          Base: {formatCurrency(draft.container.precoBase)}
+                        </span>
+                      </div>
+                      <div className="text-sm sm:text-base font-black text-purple-950 dark:text-white font-mono">
+                        Subtotal: <span className="text-pink-600 dark:text-pink-400 font-extrabold">{formatCurrency(currentDraftTotal)}</span>
+                      </div>
+                    </div>
+
+                    {/* Tags de Extras Ativos na Taça */}
+                    {draftBreakdown && (draftBreakdown.extraBases > 0 || draftBreakdown.extraFrutas > 0 || draftBreakdown.extraToppings > 0 || draftBreakdown.premiumsVal > 0) && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] font-black border-t border-purple-100/60 dark:border-white/10">
+                        <span className="text-muted-foreground text-[10px]">Adicionais somados:</span>
+                        {draftBreakdown.extraBases > 0 && (
+                          <span className="bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 px-2 py-0.5 rounded-md">
+                            +{draftBreakdown.extraBases}x Creme Extra (+{formatCurrency(draftBreakdown.extraBasesVal)})
+                          </span>
+                        )}
+                        {draftBreakdown.extraFrutas > 0 && (
+                          <span className="bg-pink-100 text-pink-900 dark:bg-pink-950/60 dark:text-pink-200 px-2 py-0.5 rounded-md">
+                            +{draftBreakdown.extraFrutas}x Fruta Extra (+{formatCurrency(draftBreakdown.extraFrutasVal)})
+                          </span>
+                        )}
+                        {draftBreakdown.extraToppings > 0 && (
+                          <span className="bg-fuchsia-100 text-fuchsia-900 dark:bg-fuchsia-950/60 dark:text-fuchsia-200 px-2 py-0.5 rounded-md">
+                            +{draftBreakdown.extraToppings}x Acompanhamento Extra (+{formatCurrency(draftBreakdown.extraToppingsVal)})
+                          </span>
+                        )}
+                        {draftBreakdown.premiumsVal > 0 && (
+                          <span className="bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-200 px-2 py-0.5 rounded-md">
+                            + Especiais/Premium (+{formatCurrency(draftBreakdown.premiumsVal)})
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
 
-                {step === 2 && draft?.container && (
-                  <BaseSelector
-                    bases={catalog.bases}
-                    container={draft.container}
-                    selectedBases={draft.bases}
-                    onToggleBase={toggleBase}
-                  />
-                )}
-
-                {step === 3 && draft?.container && (
-                  <ToppingSelector
-                    toppings={catalog.toppings}
-                    container={draft.container}
-                    selectedToppings={draft.toppings}
-                    onToggleTopping={toggleTopping}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Rodapé de Ações do Montador com Soma Dinâmica */}
-            {draft?.container && (
-              <div className="mt-6 pt-4 border-t border-purple-50 dark:border-white/10 flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetDraft}
-                  className="text-xs text-muted-foreground hover:text-red-600 font-bold cursor-pointer"
-                >
-                  Reiniciar Açaí
-                </Button>
-
-                <div className="flex items-center gap-2">
-                  {step > 1 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setStep(step - 1)}
-                      className="text-xs font-bold border-purple-200 dark:border-white/15 cursor-pointer"
-                    >
-                      Voltar Etapa
-                    </Button>
+                <div className="min-h-[320px] pt-2">
+                  {step === 1 && (
+                    <ContainerSelector
+                      containers={displayedAcaiContainers}
+                      selected={draft?.container || null}
+                      onSelect={(c) => {
+                        startDraft(c)
+                        setStep(2)
+                      }}
+                    />
                   )}
 
-                  {step < 3 ? (
-                    <Button
-                      size="sm"
-                      onClick={() => setStep(step + 1)}
-                      disabled={
-                        step === 2 &&
-                        Boolean(
-                          (draft.container.optionGroups || []).some(
-                            (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base')
-                          )
-                        ) &&
-                        draft.bases.length === 0
-                      }
-                      className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-5 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>Avançar</span>
-                      <span className="opacity-90 font-mono text-[11px]">({formatCurrency(currentDraftTotal)})</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={handleAddCurrentToCart}
-                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs px-5 rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>Adicionar ao Pedido •</span>
-                      <span className="font-mono text-sm">{formatCurrency(currentDraftTotal)}</span>
-                    </Button>
+                  {step === 2 && draft?.container && (
+                    <BaseSelector
+                      bases={catalog.bases}
+                      container={draft.container}
+                      selectedBases={draft.bases}
+                      onToggleBase={toggleBase}
+                    />
+                  )}
+
+                  {step === 3 && draft?.container && (
+                    <ToppingSelector
+                      toppings={catalog.toppings}
+                      container={draft.container}
+                      selectedToppings={draft.toppings}
+                      onToggleTopping={toggleTopping}
+                    />
                   )}
                 </div>
+
+                {/* Rodapé de Ações do Montador de Açaí */}
+                {draft?.container && (
+                  <div className="mt-6 pt-4 border-t border-purple-50 dark:border-white/10 flex items-center justify-between">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={resetDraft}
+                      className="text-xs text-muted-foreground hover:text-red-600 font-bold cursor-pointer"
+                    >
+                      Reiniciar Açaí
+                    </Button>
+
+                    <div className="flex items-center gap-2">
+                      {step > 1 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setStep(step - 1)}
+                          className="text-xs font-bold border-purple-200 dark:border-white/15 cursor-pointer"
+                        >
+                          Voltar Etapa
+                        </Button>
+                      )}
+
+                      {step < 3 ? (
+                        <Button
+                          size="sm"
+                          onClick={() => setStep(step + 1)}
+                          disabled={
+                            step === 2 &&
+                            Boolean(
+                              (draft.container.optionGroups || []).some(
+                                (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base')
+                              )
+                            ) &&
+                            draft.bases.length === 0
+                          }
+                          className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-5 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>Avançar</span>
+                          <span className="opacity-90 font-mono text-[11px]">({formatCurrency(currentDraftTotal)})</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={handleAddCurrentToCart}
+                          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs px-5 rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>Adicionar ao Pedido •</span>
+                          <span className="font-mono text-sm">{formatCurrency(currentDraftTotal)}</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* CATÁLOGO DE LANCHES E ITENS DIRETOS */
+              <div className="space-y-4 pt-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+                      Lanches
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Selecione os itens para adicionar diretamente à comanda
+                    </p>
+                  </div>
+
+                  {/* Campo de Busca Rápida de Lanches */}
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={lanchesSearchQuery}
+                      onChange={(e) => setLanchesSearchQuery(e.target.value)}
+                      placeholder="Buscar lanche por nome..."
+                      className="h-9 pl-9 pr-3 w-full rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/40 dark:bg-[#1f0337] text-xs font-bold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-600"
+                    />
+                  </div>
+                </div>
+
+                {displayedLanches.length === 0 ? (
+                  <div className="text-center py-16 text-muted-foreground text-xs font-bold">
+                    Nenhum lanche encontrado nesta categoria.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
+                    {displayedLanches.map((p) => {
+                      const inCartCount = items
+                        .filter((i) => i.container.id === p.id)
+                        .reduce((sum, i) => sum + (i.quantity || 1), 0)
+
+                      return (
+                        <Card
+                          key={p.id}
+                          onClick={() => {
+                            addSimpleItem(p, 1)
+                            toast.success(`${p.name} adicionado à comanda!`)
+                          }}
+                          className="p-3.5 rounded-3xl border border-purple-150 hover:border-purple-300 hover:shadow-md transition-all duration-200 bg-white dark:bg-[#1f0337] cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+                        >
+                          {inCartCount > 0 && (
+                            <div className="absolute top-2 right-2 z-10 bg-purple-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                              {inCartCount} na comanda
+                            </div>
+                          )}
+
+                          <div>
+                            <div className="h-28 w-full rounded-2xl overflow-hidden bg-purple-100 dark:bg-purple-950/40 relative mb-3 border border-purple-100 dark:border-white/10">
+                              {p.image ? (
+                                <img
+                                  src={p.image}
+                                  alt={p.name}
+                                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center text-xs font-black text-purple-700 dark:text-purple-300 p-2 text-center">
+                                  {p.name}
+                                </div>
+                              )}
+                              <div className="absolute bottom-2 right-2 bg-[#1b032e]/85 backdrop-blur-md text-fuchsia-200 px-2.5 py-0.5 rounded-xl font-black text-xs shadow-md border border-white/10">
+                                {formatCurrency(p.precoBase)}
+                              </div>
+                            </div>
+
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-pink-400">
+                              {p.categoryName || 'Lanche'}
+                            </div>
+                            <div className="font-black text-sm text-foreground leading-tight mt-0.5 line-clamp-2">
+                              {p.name}
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="mt-3 w-full h-8 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold text-xs flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            <span>Adicionar</span>
+                          </Button>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </Card>
@@ -469,6 +747,7 @@ export default function PDVView({
             items={items}
             total={currentTotal}
             onRemoveItem={removeItem}
+            onUpdateQuantity={updateItemQuantity}
             onClearCart={clearCart}
             onOpenPayment={() => setPayOpen(true)}
           />

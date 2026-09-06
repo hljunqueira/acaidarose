@@ -21,6 +21,8 @@ export interface CartItem {
   bases: ProductBase[]
   toppings: OrderItemTopping[]
   lineTotal: number
+  quantity?: number
+  observations?: string
 }
 
 export interface Order {
