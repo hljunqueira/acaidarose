@@ -15,9 +15,10 @@
     - Suporte nativo em `useCartStore` (`addSimpleItem` e `updateItemQuantity`).
 - **Comanda de Cozinha & Impressão Térmica de 80mm Padronizada**:
   - **Causa Raiz Resolvida (Corte/Não Renderização)**: O elemento `#kitchen-order-print` ficava encapsulado dentro do `DialogContent` do Radix UI com restrições de `overflow-y: auto`, `max-height: 75vh` e `position: fixed; transform: translate(-50%, -50%)`. No Chrome/Chromium, o motor de impressão corta a renderização na altura do container scrollável, gerando folhas em branco após o cabeçalho.
-  - **Solução Definitiva (Iframe Isolado)**:
-    - O botão "Imprimir Agora" agora clona o conteúdo HTML e copia todas as folhas de estilos do documento pai para um `<iframe>` oculto e limpo no `document.body`. Sem ancestrais com overflow, o rolo da MP-4200 TH imprime 100% da altura da comanda sem cortes.
-    - Adicionado reset global no `@media print` para garantir compatibilidade caso o operador utilize `Ctrl+P`.
+  - **Solução Definitiva (Direct Body Mount `#kitchen-print-mount`)**:
+    - Em vez de um iframe oculto (que em browsers Chromium pode sofrer com viewport 0x0 gerando página em branco), agora o conteúdo é clonado diretamente para um container `<div id="kitchen-print-mount">` anexado diretamente ao `document.body`.
+    - No `@media print`, todos os demais elementos do DOM (`body > *:not(#kitchen-print-mount)`) recebem `display: none !important`, e `#kitchen-print-mount` recebe `display: block !important` com largura estrita de 74mm (perfeito para bobinas de 80mm).
+    - Essa abordagem é 100% livre de modais, `overflow-y`, `max-height` e `transforms`, renderizando todos os estilos Tailwind nativos e o pedido completo sem cortes nem páginas em branco.
   - **Nova Hierarquia Visual (Design Térmico de Bancada)**:
     - **Cabeçalho & Cliente Compactos**: Logo oficial reduzida para tamanho compacto (`h-9`), loja e emissão em linha única (`text-[9.5px]` e `text-[8.5px]`), e dados de cliente (`CLIENTE`, `CONTACTO`, `PAGAMENTO`) em fonte econômica (`text-[9px]`) para poupar papel.
     - **Destaque Máximo para a Produção**:
