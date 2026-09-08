@@ -1,6 +1,13 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Limpeza de Processos na Porta 3000 & Otimização do Servidor [CONCLUÍDO]**:
+  - **Porta 3000 Liberada**: Verificação via `netstat` e encerramento de processos órfãos. Servidor Next.js 15 dev reiniciado de forma limpa e respondendo com sucesso (`✓ Ready in 8.7s`).
+  - **Espaço em Disco Recuperado (C:)**: Purgados caches pesados do `.next/cache` que causavam `ENOSPC: no space left on device`, restaurando mais de 6.3 GB de espaço livre no disco C:.
+  - **Otimização de Salvamento de Vídeos**:
+    - Criado endpoint de upload multipart `/api/upload` que grava diretamente em `public/uploads/videos/`.
+    - Eliminado o gargalo de conversão para Base64 (que gerava payloads de 5MB+ no PostgreSQL e travava requisições).
+    - `ProductEditDialog.tsx` atualizado com preview local instantâneo (`URL.createObjectURL`) e upload assíncrono leve.
 - **Consumo no Local vs Levar para Casa (Takeaway) & Sacos de Transporte (0,10€) [CONCLUÍDO]**:
   - **Requisito Atendido**: Impressão térmica e todas as telas de pedido agora discriminam explicitamente se o consumo é no local ou para levar, com adição dinâmica de quantidade de sacos de transporte a 0,10€ cada (exigência legal em Portugal).
   - **Design 100% Clean & Sem Ícones Decorativos**: Eliminados ícones supérfluos (`Coins`, `CreditCard`, `Smartphone`, `Truck`, emojis) nos seletores e talões, mantendo botões de incremento `[-]` e `[+]` de alto contraste e layout sóbrio.

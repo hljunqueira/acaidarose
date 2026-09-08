@@ -9,6 +9,8 @@ import { toast } from 'sonner'
 import { MapPin, Phone, Clock, Star, ExternalLink, Heart, CheckCircle2, Sun, Moon } from 'lucide-react'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 
+import CustomerRatingModal from '@/components/menu/CustomerRatingModal'
+
 interface CustomerMenuMoreProps {
   tenant: Tenant | null
 }
@@ -16,41 +18,6 @@ interface CustomerMenuMoreProps {
 export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
   const { theme, setTheme } = useCustomerTheme()
   const [ratingOpen, setRatingOpen] = useState(false)
-  const [ratingStars, setRatingStars] = useState(5)
-  const [ratingComment, setRatingComment] = useState('')
-  const [submittingRating, setSubmittingRating] = useState(false)
-
-  const handleCopyWifi = () => {
-    if (tenant?.wifiPassword) {
-      navigator.clipboard.writeText(tenant.wifiPassword)
-      toast.success('Senha do Wi-Fi copiada para a área de transferência!')
-    }
-  }
-
-  const handleSendRating = async () => {
-    setSubmittingRating(true)
-    try {
-      const res = await fetch('/api/ratings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenantId: tenant?.id || 'tenant-torres-novas',
-          stars: ratingStars,
-          comment: ratingComment,
-        }),
-      })
-
-      if (!res.ok) throw new Error('Falha ao registar avaliação')
-
-      toast.success('Obrigado pela sua avaliação! A sua opinião é muito importante para o Açaí da Rose.')
-      setRatingOpen(false)
-      setRatingComment('')
-    } catch {
-      toast.error('Erro ao enviar avaliação. Tente novamente.')
-    } finally {
-      setSubmittingRating(false)
-    }
-  }
 
   // Horários de funcionamento
   const now = new Date()
@@ -359,66 +326,12 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
         </div>
       </div>
 
-      {/* Modal de Avaliação Corrigido com Botões Perfeitos */}
-      <Dialog open={ratingOpen} onOpenChange={setRatingOpen}>
-        <DialogContent className="max-w-md p-6 bg-[#160228] text-white border border-white/20 rounded-3xl shadow-2xl">
-          <DialogHeader className="text-center">
-            <DialogTitle className="text-lg font-black text-white">
-              Como foi a sua experiência?
-            </DialogTitle>
-            <p className="text-xs text-purple-200/70 mt-1">
-              {tenant?.name || 'Açaí da Rose'}
-            </p>
-          </DialogHeader>
-
-          <div className="my-4 space-y-4 text-center">
-            {/* Estrelas */}
-            <div className="flex items-center justify-center gap-2 py-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRatingStars(star)}
-                  className="p-1 transition hover:scale-125 cursor-pointer"
-                >
-                  <Star
-                    className={`h-8 w-8 sm:h-9 sm:w-9 ${
-                      star <= ratingStars ? 'fill-amber-400 text-amber-400' : 'text-purple-300/40 hover:text-purple-200'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-
-            <textarea
-              value={ratingComment}
-              onChange={(e) => setRatingComment(e.target.value)}
-              placeholder="Deixe um comentário opcional (ex: atendimento excelente, açaí muito saboroso)..."
-              rows={3}
-              className="w-full p-3.5 rounded-2xl bg-white/5 border border-white/15 text-xs text-white placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none"
-            />
-          </div>
-
-          <DialogFooter className="flex items-center justify-end gap-2.5 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setRatingOpen(false)}
-              className="h-11 rounded-2xl px-5 text-xs font-bold bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white cursor-pointer"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={submittingRating}
-              onClick={handleSendRating}
-              className="h-11 rounded-2xl px-6 bg-gradient-to-r from-fuchsia-600 to-purple-700 hover:from-fuchsia-500 hover:to-purple-600 text-white font-black text-xs shadow-lg shadow-fuchsia-600/30 cursor-pointer"
-            >
-              {submittingRating ? 'A enviar...' : 'Enviar Avaliação'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Modal de Avaliação & Pesquisa de Satisfação Dinâmica da Loja */}
+      <CustomerRatingModal
+        open={ratingOpen}
+        onOpenChange={setRatingOpen}
+        tenantId={tenant?.id || '11111111-1111-1111-1111-111111111111'}
+      />
     </div>
   )
 }

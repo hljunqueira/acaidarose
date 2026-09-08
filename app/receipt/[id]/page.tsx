@@ -5,6 +5,8 @@ import { formatCurrency, formatDateTime, formatOrderNumber } from '@/lib/i18n/fo
 import { QRCodeSVG } from 'qrcode.react'
 import { generateOrderReceiptUrl } from '@/lib/services/qrCodeService'
 import { getPublicStoreName } from '@/lib/stores/franchiseStore'
+import CustomerRatingModal from '@/components/menu/CustomerRatingModal'
+import { Star } from 'lucide-react'
 
 const METHODS: Record<string, string> = {
   NUMERARIO: 'Numerário',
@@ -17,6 +19,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params)
   const [data, setData] = useState<any>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   useEffect(() => {
     fetch(`/api/orders/${id}`)
@@ -136,6 +139,22 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                   ))}
                 </div>
               )}
+              {(it.selectedOptions?.length > 0 || it.options?.length > 0) && (
+                <div className="text-[11px] pl-3">
+                  {(it.selectedOptions || it.options).map((opt: any, optIdx: number) => (
+                    <div key={optIdx} className="flex justify-between">
+                      <span>• {opt.groupName ? `${opt.groupName}: ` : ''}{opt.name}</span>
+                      {opt.price > 0 && <span>{formatCurrency(opt.price)}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {it.observations && (
+                <div className="text-[11px] pl-3 italic text-gray-700">Obs: {it.observations}</div>
+              )}
+              {it.notes && (
+                <div className="text-[11px] pl-3 italic text-gray-700">Obs: {it.notes}</div>
+              )}
               <div className="flex justify-between text-[11px] mt-1">
                 <span>Subtotal item</span>
                 <span className="font-bold">{formatCurrency(it.lineTotal)}</span>
@@ -171,15 +190,36 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           Obrigado pela sua visita! 💜
         </div>
 
-        <div className="no-print mt-4 flex gap-2 justify-center">
-          <button onClick={() => window.print()} className="px-3 py-1.5 bg-purple-600 text-white rounded font-bold text-xs">
-            Imprimir
+        <div className="no-print mt-4 flex flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFeedbackOpen(true)}
+            className="w-full py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:opacity-90"
+          >
+            <Star className="h-3.5 w-3.5 fill-white" />
+            <span>Avaliar Atendimento da Loja</span>
           </button>
-          <button onClick={() => window.close()} className="px-3 py-1.5 bg-gray-200 rounded font-bold text-xs">
-            Fechar
-          </button>
+
+          <div className="flex gap-2 w-full justify-center">
+            <button onClick={() => window.print()} className="flex-1 px-3 py-1.5 bg-purple-600 text-white rounded font-bold text-xs">
+              Imprimir
+            </button>
+            <button onClick={() => window.close()} className="flex-1 px-3 py-1.5 bg-gray-200 rounded font-bold text-xs">
+              Fechar
+            </button>
+          </div>
         </div>
       </div>
+
+      <CustomerRatingModal
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+        tenantId={order.tenantId}
+        orderId={order.id}
+        initialTable={order.tableNumber}
+        initialCustomerName={order.customerName}
+        initialCustomerPhone={order.customerPhone}
+      />
     </div>
   )
 }

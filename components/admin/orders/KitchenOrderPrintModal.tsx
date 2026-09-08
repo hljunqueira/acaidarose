@@ -307,10 +307,30 @@ export default function KitchenOrderPrintModal({
                         </div>
                       )}
 
+                      {/* Modificadores / Opções do Item (Leite, Textura, etc.) */}
+                      {(it.selectedOptions?.length > 0 || it.options?.length > 0) && (
+                        <div className="pl-1 pt-0.5 space-y-0.5 text-black">
+                          <div className="font-bold underline text-[9.5px] uppercase tracking-wide">
+                            MODIFICADORES / OPÇÕES:
+                          </div>
+                          <div className="grid grid-cols-1 gap-1 pl-1">
+                            {(it.selectedOptions || it.options).map((opt: any, optIdx: number) => {
+                              const label = typeof opt === 'string' ? opt : opt.groupName ? `${opt.groupName}: ${opt.name}` : opt.name
+                              return (
+                                <div key={optIdx} className="flex items-center gap-1.5 text-[11.5px] font-bold">
+                                  <span className="font-mono font-black text-xs leading-none">[ ]</span>
+                                  <span className="leading-tight">{label}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Observações do Item em Caixa de Alto Contraste */}
-                      {it.notes && (
+                      {(it.notes || it.observations) && (
                         <div className="mx-1 mt-1 p-1 border border-black bg-zinc-50 text-[10px] font-black">
-                          &gt;&gt; OBS: {it.notes}
+                          &gt;&gt; OBS: {it.notes || it.observations}
                         </div>
                       )}
                     </div>

@@ -3,8 +3,10 @@ export interface ProductContainer {
   tenantId?: string | null
   name: string
   nameEn?: string | null
+  nameEs?: string | null
   description?: string | null
   descriptionEn?: string | null
+  descriptionEs?: string | null
   weightGrams?: number | null // 250, 350, 500, 750, 1000, ou null para lanches
   precoBase: number
   price?: number
@@ -34,8 +36,10 @@ export interface ProductBase {
   tenantId?: string | null
   name: string
   nameEn?: string | null
+  nameEs?: string | null
   description?: string
   descriptionEn?: string | null
+  descriptionEs?: string | null
   emoji?: string
   videoUrl?: string | null
   videoPoster?: string | null
@@ -52,8 +56,10 @@ export interface ProductTopping {
   tenantId?: string | null
   name: string
   nameEn?: string | null
+  nameEs?: string | null
   description?: string | null
   descriptionEn?: string | null
+  descriptionEs?: string | null
   category: ToppingCategory | string
   isPremium?: boolean
   precoExtra?: number
@@ -78,9 +84,11 @@ export interface Menu {
   id: string
   name: string
   nameEn?: string | null
+  nameEs?: string | null
   code?: string
   description?: string | null
   descriptionEn?: string | null
+  descriptionEs?: string | null
   displayOrder?: number
   active: boolean
 }
@@ -89,10 +97,12 @@ export interface Category {
   id: string
   name: string
   nameEn?: string | null
+  nameEs?: string | null
   slug: string
   menuId?: string | null
   description?: string | null
   descriptionEn?: string | null
+  descriptionEs?: string | null
   displayOrder?: number
   active: boolean
   defaultPrice?: number

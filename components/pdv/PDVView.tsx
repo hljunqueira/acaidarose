@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { CatalogData, Order, PaymentMethodCode } from '@/types'
+import { CatalogData, Order, PaymentMethodCode, ProductContainer } from '@/types'
 import { RestaurantTable } from '@/types/tables'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -16,12 +16,12 @@ import ToppingSelector from './ToppingSelector'
 import CartSummary from './CartSummary'
 import PaymentModal from './PaymentModal'
 import OrderReceiptModal from './OrderReceiptModal'
-import { ShoppingBag, Store, ArrowLeft, Search, Plus } from 'lucide-react'
+import PDVItemOptionsModal from './PDVItemOptionsModal'
+import { ShoppingBag, Store, ArrowLeft, Search, Plus, SlidersHorizontal } from 'lucide-react'
 import { subscribeCatalogSync } from '@/lib/utils/catalogSync'
 
 // Identificadores canônicos de Menus
 const MASTER_ACAI_MENU_ID = '1c8ff060-3048-47c3-a5ec-efb60a56d0c1'
-const MASTER_LANCHES_MENU_ID = '2c8ff060-3048-47c3-a5ec-efb60a56d0c2'
 
 interface PDVViewProps {
   tenantId: string
@@ -44,10 +44,11 @@ export default function PDVView({
   const [lastOrder, setLastOrder] = useState<Order | null>(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
 
-  // Menu Selecionado no PDV (Açaí da Rose vs Lanches)
-  const [selectedMenuTab, setSelectedMenuTab] = useState<'acai' | 'lanches'>('acai')
+  // Menu Selecionado no PDV (Dinâmico do Banco)
+  const [selectedMenuId, setSelectedMenuId] = useState<string>('')
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
   const [lanchesSearchQuery, setLanchesSearchQuery] = useState<string>('')
+  const [optionsModalProduct, setOptionsModalProduct] = useState<ProductContainer | null>(null)
 
   // Tipo de Pedido: BALCAO vs MESA
   const [orderType, setOrderType] = useState<'BALCAO' | 'MESA'>(initialTable ? 'MESA' : 'BALCAO')
@@ -80,48 +81,41 @@ export default function PDVView({
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
   }, [catalog.containers])
 
-  // Produtos do Menu Açaí da Rose (Taças e recipientes)
-  const acaiProducts = useMemo(() => {
-    return allContainers.filter((c) => {
-      if (c.menuId) return c.menuId === MASTER_ACAI_MENU_ID
-      return c.productType !== 'ITEM'
-    })
-  }, [allContainers])
+  // Menus Dinâmicos do Catálogo (Carregados diretamente do banco de dados)
+  const pdvMenus = useMemo(() => {
+    return (catalog.menus || [])
+      .filter((m) => m.active !== false)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+  }, [catalog.menus])
 
-  // Produtos do Menu Lanches (Itens unitários prontos)
-  const lanchesProducts = useMemo(() => {
-    return allContainers.filter((c) => {
-      if (c.menuId) return c.menuId === MASTER_LANCHES_MENU_ID
-      return c.productType === 'ITEM'
-    })
-  }, [allContainers])
+  useEffect(() => {
+    if (pdvMenus.length > 0 && !pdvMenus.some((m) => m.id === selectedMenuId)) {
+      setSelectedMenuId(pdvMenus[0].id)
+    }
+  }, [pdvMenus, selectedMenuId])
 
-  // Categorias de Lanches cadastradas no menu Lanches
-  const lanchesCategories = useMemo(() => {
+  // Identifica dinamicamente se o menu atual é o montador de Taças de Açaí
+  const isAcaiMenu = useMemo(() => {
+    const m = pdvMenus.find((menu) => menu.id === selectedMenuId)
+    if (!m) return false
+    return m.code === 'MENU_ACAI_ROSE' || m.id === MASTER_ACAI_MENU_ID || m.name.toLowerCase().includes('açaí')
+  }, [pdvMenus, selectedMenuId])
+
+  // Categorias cadastradas para o menu ativo
+  const activeMenuCategories = useMemo(() => {
     return (catalog.categories || []).filter(
-      (cat) => cat.menuId === MASTER_LANCHES_MENU_ID && cat.active !== false
+      (cat) => cat.menuId === selectedMenuId && cat.active !== false
     )
-  }, [catalog.categories])
+  }, [catalog.categories, selectedMenuId])
 
-  // Taças de Açaí filtradas pela subcategoria ativa
-  const displayedAcaiContainers = useMemo(() => {
-    if (selectedCategoryId === 'all') return acaiProducts
-    if (selectedCategoryId === 'acai-tradicional') {
-      return acaiProducts.filter(
-        (p) => p.categoryId !== 'cat-somente-creme' && !p.name.toLowerCase().includes('somente creme')
-      )
-    }
-    if (selectedCategoryId === 'cat-somente-creme') {
-      return acaiProducts.filter(
-        (p) => p.categoryId === 'cat-somente-creme' || p.name.toLowerCase().includes('somente creme')
-      )
-    }
-    return acaiProducts
-  }, [acaiProducts, selectedCategoryId])
+  // Produtos do menu atual selecionado (100% Dinâmico do PostgreSQL)
+  const currentMenuProducts = useMemo(() => {
+    return allContainers.filter((c) => c.menuId === selectedMenuId)
+  }, [allContainers, selectedMenuId])
 
-  // Lanches filtrados por subcategoria e busca
-  const displayedLanches = useMemo(() => {
-    let list = lanchesProducts
+  // Produtos filtrados por subcategoria e busca
+  const displayedItems = useMemo(() => {
+    let list = currentMenuProducts
     if (selectedCategoryId !== 'all') {
       list = list.filter((p) => p.categoryId === selectedCategoryId)
     }
@@ -130,7 +124,7 @@ export default function PDVView({
       list = list.filter((p) => p.name.toLowerCase().includes(q))
     }
     return list
-  }, [lanchesProducts, selectedCategoryId, lanchesSearchQuery])
+  }, [currentMenuProducts, selectedCategoryId, lanchesSearchQuery])
 
   const draftBreakdown = useMemo(() => {
     if (!draft?.container) return null
@@ -261,6 +255,27 @@ export default function PDVView({
     addDraftToCart()
     setStep(1)
     toast.success('Taça adicionada ao pedido!')
+  }
+
+  const handleOptionsModalConfirm = (payload: {
+    containerId: string
+    containerName: string
+    unitPrice: number
+    quantity: number
+    lineTotal: number
+    selectedOptions: any[]
+    observations?: string
+  }) => {
+    if (!optionsModalProduct) return
+    addSimpleItem(
+      optionsModalProduct,
+      payload.quantity || 1,
+      payload.selectedOptions,
+      payload.observations || '',
+      payload.unitPrice
+    )
+    toast.success(`${optionsModalProduct.name} adicionado ao pedido!`)
+    setOptionsModalProduct(null)
   }
 
   const handleProcessPayment = async (
@@ -420,106 +435,56 @@ export default function PDVView({
         {/* Coluna Esquerda: Catálogo / Montador por Menu */}
         <div className="lg:col-span-8 space-y-4">
           <Card className="p-4 md:p-6 bg-white dark:bg-[#160228] shadow-xs border border-purple-100 dark:border-white/10 rounded-3xl space-y-4">
-            {/* 1. SELETOR DE MENUS CANÔNICOS: Açaí da Rose vs Lanches */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
-              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-purple-100/70 dark:bg-white/5 border border-purple-200/70 dark:border-white/10 w-full sm:w-80">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedMenuTab('acai')
-                    setSelectedCategoryId('all')
-                  }}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
-                    selectedMenuTab === 'acai'
-                      ? 'bg-purple-700 text-white dark:bg-pink-600 shadow-sm'
-                      : 'text-purple-900 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white'
-                  }`}
-                >
-                  Açaí da Rose
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedMenuTab('lanches')
-                    setSelectedCategoryId('all')
-                  }}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
-                    selectedMenuTab === 'lanches'
-                      ? 'bg-purple-700 text-white dark:bg-pink-600 shadow-sm'
-                      : 'text-purple-900 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white'
-                  }`}
-                >
-                  Lanches
-                </button>
+            {/* 1. SELETOR DE MENUS CANÔNICOS (5 Menus Oficiais) */}
+            <div className="flex flex-col gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-purple-100/70 dark:bg-white/5 border border-purple-200/70 dark:border-white/10 overflow-x-auto no-scrollbar">
+                {pdvMenus.map((menu) => (
+                  <button
+                    key={menu.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMenuId(menu.id)
+                      setSelectedCategoryId('all')
+                    }}
+                    className={`shrink-0 py-2 px-3.5 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
+                      selectedMenuId === menu.id
+                        ? 'bg-purple-700 text-white dark:bg-pink-600 shadow-sm'
+                        : 'text-purple-900 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white'
+                    }`}
+                  >
+                    {menu.name}
+                  </button>
+                ))}
               </div>
 
               {/* Subcategorias em Pílulas (Clean & Sem Emojis) */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs font-bold">
-                {selectedMenuTab === 'acai' ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategoryId('all')}
-                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
-                        selectedCategoryId === 'all'
-                          ? 'bg-purple-900 text-white dark:bg-pink-600'
-                          : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      Todas as Taças
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategoryId('acai-tradicional')}
-                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
-                        selectedCategoryId === 'acai-tradicional'
-                          ? 'bg-purple-900 text-white dark:bg-pink-600'
-                          : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      Açaí Tradicional
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategoryId('cat-somente-creme')}
-                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
-                        selectedCategoryId === 'cat-somente-creme'
-                          ? 'bg-purple-900 text-white dark:bg-pink-600'
-                          : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      Somente Creme
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategoryId('all')}
-                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
-                        selectedCategoryId === 'all'
-                          ? 'bg-purple-900 text-white dark:bg-pink-600'
-                          : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      Todas as Categorias
-                    </button>
-                    {lanchesCategories.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setSelectedCategoryId(cat.id)}
-                        className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
-                          selectedCategoryId === cat.id
-                            ? 'bg-purple-900 text-white dark:bg-pink-600'
-                            : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
-                        }`}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategoryId('all')}
+                  className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
+                    selectedCategoryId === 'all'
+                      ? 'bg-purple-900 text-white dark:bg-pink-600'
+                      : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
+                  }`}
+                >
+                  {isAcaiMenu ? 'Todas as Taças' : 'Todas as Categorias'}
+                </button>
+
+                {activeMenuCategories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategoryId(cat.id)}
+                    className={`px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0 text-xs ${
+                      selectedCategoryId === cat.id
+                        ? 'bg-purple-900 text-white dark:bg-pink-600'
+                        : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -527,7 +492,7 @@ export default function PDVView({
               <div className="text-center py-16 text-muted-foreground text-xs font-bold">
                 A carregar cardápio oficial...
               </div>
-            ) : selectedMenuTab === 'acai' ? (
+            ) : isAcaiMenu ? (
               <>
                 {/* WIZARD DE AÇAÍ: ETAPAS 1, 2 e 3 */}
                 <StepIndicator current={step} onSelectStep={setStep} />
@@ -581,7 +546,7 @@ export default function PDVView({
                 <div className="min-h-[320px] pt-2">
                   {step === 1 && (
                     <ContainerSelector
-                      containers={displayedAcaiContainers}
+                      containers={displayedItems}
                       selected={draft?.container || null}
                       onSelect={(c) => {
                         startDraft(c)
@@ -666,54 +631,60 @@ export default function PDVView({
                 )}
               </>
             ) : (
-              /* CATÁLOGO DE LANCHES E ITENS DIRETOS */
+              /* CATÁLOGO DE PRODUTOS DIRETOS (LANCHES, MILK SHAKES, BEBIDAS, CHOCOLATES) */
               <div className="space-y-4 pt-1">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-                      Lanches
+                      {pdvMenus.find((m) => m.id === selectedMenuId)?.name || 'Itens'}
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Selecione os itens para adicionar diretamente à comanda
+                      Selecione os itens para adicionar diretamente ao pedido
                     </p>
                   </div>
 
-                  {/* Campo de Busca Rápida de Lanches */}
+                  {/* Campo de Busca Rápida de Itens */}
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <input
                       type="text"
                       value={lanchesSearchQuery}
                       onChange={(e) => setLanchesSearchQuery(e.target.value)}
-                      placeholder="Buscar lanche por nome..."
+                      placeholder="Buscar item por nome..."
                       className="h-9 pl-9 pr-3 w-full rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/40 dark:bg-[#1f0337] text-xs font-bold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-600"
                     />
                   </div>
                 </div>
 
-                {displayedLanches.length === 0 ? (
+                {displayedItems.length === 0 ? (
                   <div className="text-center py-16 text-muted-foreground text-xs font-bold">
-                    Nenhum lanche encontrado nesta categoria.
+                    Nenhum item encontrado nesta categoria.
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
-                    {displayedLanches.map((p) => {
+                    {displayedItems.map((p) => {
                       const inCartCount = items
                         .filter((i) => i.container.id === p.id)
                         .reduce((sum, i) => sum + (i.quantity || 1), 0)
+
+                      const hasOptions = Array.isArray(p.optionGroups) && p.optionGroups.length > 0
 
                       return (
                         <Card
                           key={p.id}
                           onClick={() => {
-                            addSimpleItem(p, 1)
-                            toast.success(`${p.name} adicionado à comanda!`)
+                            if (hasOptions) {
+                              setOptionsModalProduct(p)
+                            } else {
+                              addSimpleItem(p, 1)
+                              toast.success(`${p.name} adicionado ao pedido!`)
+                            }
                           }}
                           className="p-3.5 rounded-3xl border border-purple-150 hover:border-purple-300 hover:shadow-md transition-all duration-200 bg-white dark:bg-[#1f0337] cursor-pointer flex flex-col justify-between group relative overflow-hidden"
                         >
                           {inCartCount > 0 && (
                             <div className="absolute top-2 right-2 z-10 bg-purple-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
-                              {inCartCount} na comanda
+                              {inCartCount} no pedido
                             </div>
                           )}
 
@@ -736,7 +707,7 @@ export default function PDVView({
                             </div>
 
                             <div className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-pink-400">
-                              {p.categoryName || 'Lanche'}
+                              {p.categoryName || 'Item'}
                             </div>
                             <div className="font-black text-sm text-foreground leading-tight mt-0.5 line-clamp-2">
                               {p.name}
@@ -748,7 +719,7 @@ export default function PDVView({
                             size="sm"
                             className="mt-3 w-full h-8 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold text-xs flex items-center justify-center cursor-pointer transition-colors"
                           >
-                            <span>Adicionar</span>
+                            <span>{hasOptions ? 'Personalizar' : 'Adicionar'}</span>
                           </Button>
                         </Card>
                       )
@@ -796,6 +767,16 @@ export default function PDVView({
           clearCart()
         }}
       />
+
+      {/* Modal de Opções do Item Selecionado */}
+      {optionsModalProduct && (
+        <PDVItemOptionsModal
+          open={Boolean(optionsModalProduct)}
+          product={optionsModalProduct}
+          onClose={() => setOptionsModalProduct(null)}
+          onConfirm={handleOptionsModalConfirm}
+        />
+      )}
     </div>
   )
 }

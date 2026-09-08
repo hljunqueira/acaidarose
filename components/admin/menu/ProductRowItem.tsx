@@ -155,6 +155,21 @@ export default function ProductRowItem({
       <div className="hidden lg:block flex-1 px-3 text-[11px] text-purple-900/80 dark:text-purple-200/80 font-medium space-y-0.5 max-w-sm">
         {categoryType === 'containers' ? (
           (() => {
+            const isItem = product.productType === 'ITEM' || (!product.weightGrams && !product.limiteBases)
+            if (isItem) {
+              return (
+                <>
+                  <div className="text-purple-950 dark:text-white font-bold truncate">
+                    {product.categoryName || 'Item Individual'}
+                  </div>
+                  <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
+                    {product.optionGroups && product.optionGroups.length > 0
+                      ? `${product.optionGroups.length} modelo(s) de opções vinculado(s)`
+                      : 'Pronto para consumo / Sem montagem'}
+                  </div>
+                </>
+              )
+            }
             const weight = product.weightGrams || 500
             const basesLimit = product.limiteBases || (weight >= 1000 ? 3 : weight >= 500 ? 2 : 1)
             const frutasLimit = product.limiteFrutas !== undefined

@@ -123,7 +123,7 @@ interface CartState {
   toggleBase: (base: ProductBase) => void
   toggleTopping: (topping: ProductTopping) => void
   addDraftToCart: () => void
-  addSimpleItem: (container: ProductContainer, quantity?: number) => void
+  addSimpleItem: (container: ProductContainer, quantity?: number, options?: any[], notes?: string, customUnitPrice?: number) => void
   updateItemQuantity: (id: string, delta: number) => void
   removeItem: (id: string) => void
   clearCart: () => void
@@ -181,12 +181,21 @@ export const useCartStore = create<CartState>()(
           return { items: [...s.items, item], draft: null }
         }),
 
-      addSimpleItem: (container: ProductContainer, quantity = 1) =>
+      addSimpleItem: (container: ProductContainer, quantity = 1, options?: any[], notes?: string, customUnitPrice?: number) =>
         set((s) => {
-          const existingIndex = s.items.findIndex(
-            (i) => i.container?.id === container.id && (!i.bases || i.bases.length === 0) && (!i.toppings || i.toppings.length === 0)
-          )
-          const unitPrice = Number(container.precoBase) || Number(container.price) || 0
+          const unitPrice = customUnitPrice !== undefined ? customUnitPrice : (Number(container.precoBase) || Number(container.price) || 0)
+          const hasModifiers = (options && options.length > 0) || Boolean(notes)
+
+          const existingIndex = !hasModifiers
+            ? s.items.findIndex(
+                (i) =>
+                  i.container?.id === container.id &&
+                  (!i.bases || i.bases.length === 0) &&
+                  (!i.toppings || i.toppings.length === 0) &&
+                  (!i.selectedOptions || i.selectedOptions.length === 0)
+              )
+            : -1
+
           if (existingIndex >= 0) {
             const existing = s.items[existingIndex]
             const currentQty = existing.quantity || 1
@@ -206,6 +215,10 @@ export const useCartStore = create<CartState>()(
               bases: [],
               toppings: [],
               quantity,
+              unitPrice,
+              selectedOptions: options || [],
+              options: options || [],
+              notes: notes || undefined,
               lineTotal: +(unitPrice * quantity).toFixed(2),
             }
             return { items: [...s.items, newItem] }

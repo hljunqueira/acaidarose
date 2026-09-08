@@ -314,6 +314,7 @@ export default function MenuAdmin({ tenantId }: MenuAdminProps) {
         onOpenChange={setDialogOpen}
         collection={editing.collection}
         item={editing.item}
+        catalog={data}
         onSave={handleSave}
       />
 

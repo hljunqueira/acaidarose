@@ -157,7 +157,8 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       setFranchiseReqOpen(true)
       return
     }
-    setEditingItem(null)
+    const defaultCatId = selectedCategory !== 'all_cats' ? selectedCategory : (visibleCategories[0]?.id || undefined)
+    setEditingItem(defaultCatId ? { categoryId: defaultCatId } : null)
     if (activeViewMode === 'options') {
       if (selectedOptionCategory === 'bases') {
         setEditingType('bases')
@@ -228,14 +229,14 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
   const handleEdit = (item: any) => {
     setEditingItem(item)
-    const categoryType = item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
+    const categoryType = item.categoryId !== undefined || item.productType !== undefined || item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
     setEditingType(categoryType)
     setEditOpen(true)
   }
 
   const handleToggleStatus = async (item: any, field?: 'visibility' | 'availability', targetValue?: boolean) => {
     try {
-      const categoryType = item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
+      const categoryType = item.categoryId !== undefined || item.productType !== undefined || item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
       
       const payload: any = {
         tenantId,
@@ -276,7 +277,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       return
     }
     try {
-      const categoryType = item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
+      const categoryType = item.categoryId !== undefined || item.productType !== undefined || item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
       const res = await authFetch(`/api/products/${categoryType}/${item.id}?tenantId=${encodeURIComponent(tenantId)}`, {
         method: 'DELETE',
       })
@@ -351,35 +352,68 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
     }
   }
 
-  // Categorias estritamente visíveis conforme o menu selecionado
-  const visibleCategories = useMemo(() => {
-    if (selectedMainMenu === 'all_menus') {
-      return categories.filter((c) => c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias'))
-    }
-    return categories.filter(
-      (c) => c.menuId === selectedMainMenu && c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias')
-    )
-  }, [categories, selectedMainMenu])
+  // Mapa de ordem oficial dos menus principais (100% dinâmico do banco)
+  const menuOrderMap = useMemo(() => {
+    const map = new Map<string, number>()
+    const sourceMenus = catalog.menus && catalog.menus.length > 0 ? catalog.menus : mainMenus
+    sourceMenus.forEach((m: any, idx: number) => {
+      map.set(m.id, m.displayOrder !== undefined ? Number(m.displayOrder) : idx + 1)
+    })
+    return map
+  }, [catalog.menus, mainMenus])
 
-  // Taças que pertencem ao menu selecionado (ou todas se "all_menus")
+  // Categorias estritamente visíveis conforme o menu selecionado, organizadas pela ordem canônica dos menus
+  const visibleCategories = useMemo(() => {
+    const sourceList = catalog.categories && catalog.categories.length > 0 ? catalog.categories : categories
+    let list = sourceList.filter((c) => c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias'))
+
+    if (selectedMainMenu !== 'all_menus') {
+      list = list.filter((c) => c.menuId === selectedMainMenu)
+    }
+
+    return [...list].sort((a, b) => {
+      const menuOrderA = a.menuId ? (menuOrderMap.get(a.menuId) ?? 999) : 999
+      const menuOrderB = b.menuId ? (menuOrderMap.get(b.menuId) ?? 999) : 999
+      if (menuOrderA !== menuOrderB) {
+        return menuOrderA - menuOrderB
+      }
+      return (a.displayOrder || 0) - (b.displayOrder || 0)
+    })
+  }, [catalog.categories, categories, selectedMainMenu, menuOrderMap])
+
+  // Mapeamento de ordem das categorias para ordenação sequencial dos produtos
+  const categoryOrderMap = useMemo(() => {
+    const map = new Map<string, number>()
+    visibleCategories.forEach((c, idx) => {
+      map.set(c.id, idx + 1)
+    })
+    return map
+  }, [visibleCategories])
+
+  // Helper para obter a ordem do menu de um produto
+  const getItemMenuOrder = useCallback((item: any) => {
+    if (item.menuId && menuOrderMap.has(item.menuId)) {
+      return menuOrderMap.get(item.menuId)!
+    }
+    const cat = (catalog.categories || []).find((c: any) => c.id === item.categoryId)
+    if (cat?.menuId && menuOrderMap.has(cat.menuId)) {
+      return menuOrderMap.get(cat.menuId)!
+    }
+    return 999
+  }, [catalog.categories, menuOrderMap])
+
+  // Produtos que pertencem ao menu selecionado (ou todos se "all_menus")
   const menuContainers = useMemo(() => {
     const allContainers = catalog.containers || []
     if (selectedMainMenu === 'all_menus') return allContainers
-    if (visibleCategories.length === 0) return []
-
-    const weights = visibleCategories.map((c) => c.weightGrams).filter(Boolean)
-    const names = visibleCategories.map((c) =>
-      (c.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '')
-    )
+    const validCategoryIds = new Set(visibleCategories.map((c) => c.id))
 
     return allContainers.filter((c) => {
-      if (c.weightGrams && weights.includes(c.weightGrams)) return true
-      const cleanProd = (c.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '')
-      return names.some((n) => cleanProd === n || cleanProd.includes(n) || n.includes(cleanProd))
+      return (c.menuId && c.menuId === selectedMainMenu) || (c.categoryId && validCategoryIds.has(c.categoryId))
     })
   }, [catalog.containers, selectedMainMenu, visibleCategories])
 
-  // Filtragem dos Produtos por Categoria (Tamanho de Açaí) & Opcionais
+  // Filtragem dos Produtos por Categoria & Opcionais com Ordenação Canônica de Menus
   const displayedItems = useMemo(() => {
     const list: Array<{ item: any; type: 'containers' | 'bases' | 'toppings' }> = []
     const containersList = menuContainers
@@ -406,30 +440,34 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           .forEach((t) => list.push({ item: t, type: 'toppings' }))
       }
     } else {
-      // MODO PRODUTOS (TAÇAS)
+      // MODO PRODUTOS (TAÇAS / ITENS)
       if (selectedCategory === 'all_cats') {
         containersList.forEach((c) => list.push({ item: c, type: 'containers' }))
       } else {
-        const catObj = visibleCategories.find((c) => c.id === selectedCategory) || categories.find((c) => c.id === selectedCategory)
-        if (catObj) {
-          const catWeight = catObj.weightGrams ||
-            (catObj.name.includes('250') ? 250 :
-             catObj.name.includes('350') ? 350 :
-             catObj.name.includes('500') ? 500 :
-             catObj.name.includes('750') ? 750 :
-             (catObj.name.includes('1') || catObj.name.toLowerCase().includes('barca')) ? 1000 : undefined)
-
-          const cleanCat = (catObj.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '')
-
-          containersList
-            .filter((c) => {
-              if (catWeight && c.weightGrams === catWeight) return true
-              const cleanProd = (c.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '')
-              return cleanProd === cleanCat || cleanProd.includes(cleanCat) || cleanCat.includes(cleanProd)
-            })
-            .forEach((c) => list.push({ item: c, type: 'containers' }))
-        }
+        containersList
+          .filter((c) => c.categoryId === selectedCategory)
+          .forEach((c) => list.push({ item: c, type: 'containers' }))
       }
+
+      // Ordena rigorosamente por: 1. Ordem do Menu -> 2. Ordem da Categoria -> 3. Ordem do Produto
+      list.sort((a, b) => {
+        const itemA = a.item
+        const itemB = b.item
+
+        const menuA = getItemMenuOrder(itemA)
+        const menuB = getItemMenuOrder(itemB)
+        if (menuA !== menuB) {
+          return menuA - menuB
+        }
+
+        const catA = itemA.categoryId ? (categoryOrderMap.get(itemA.categoryId) ?? 999) : 999
+        const catB = itemB.categoryId ? (categoryOrderMap.get(itemB.categoryId) ?? 999) : 999
+        if (catA !== catB) {
+          return catA - catB
+        }
+
+        return (itemA.displayOrder || 0) - (itemB.displayOrder || 0)
+      })
     }
 
     // Aplicação dos Filtros Avançados
@@ -452,7 +490,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       return true
     })
-  }, [catalog, activeViewMode, selectedCategory, selectedOptionCategory, filterOptions, categories, visibleCategories, menuContainers])
+  }, [catalog, activeViewMode, selectedCategory, selectedOptionCategory, filterOptions, categories, visibleCategories, menuContainers, menuOrderMap, categoryOrderMap, getItemMenuOrder])
 
   const hasActiveFilters =
     filterOptions.status !== 'all' ||
@@ -570,9 +608,9 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           <Button
             onClick={handlePublishChanges}
             disabled={isPublishing}
-            className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs h-8 px-3 rounded-xl shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 cursor-pointer shrink-0 whitespace-nowrap"
+            className="bg-purple-950 hover:bg-purple-900 text-white font-bold text-xs h-8 px-3 rounded-xl border border-purple-800/40 shadow-xs cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isPublishing ? 'animate-spin' : ''}`} />
+            {isPublishing && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
             <span>{isPublishing ? 'Publicando...' : 'Publicar Alterações'}</span>
           </Button>
         </div>
@@ -883,6 +921,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         collection={editingType}
         item={editingItem}
         catalog={catalog}
+        defaultCategoryId={selectedCategory !== 'all_cats' ? selectedCategory : (visibleCategories[0]?.id || undefined)}
         onSave={handleSaveProduct}
       />
 

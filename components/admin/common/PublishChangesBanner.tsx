@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { RefreshCw, Sparkles, ListChecks, CheckCircle2, Globe, AlertCircle } from 'lucide-react'
+import { RefreshCw, ListChecks, CheckCircle2, Globe, AlertCircle } from 'lucide-react'
 
 interface PublishChangesBannerProps {
   tenantId: string
@@ -60,16 +60,13 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
   return (
     <>
       {/* BANNER FLUTUANTE DE ALTO IMPACTO */}
-      <div className="w-full bg-gradient-to-r from-amber-600 via-pink-600 to-purple-800 text-white px-4 py-2.5 shadow-lg border-b border-white/20 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="w-full bg-[#2A0845] text-white px-4 py-2.5 shadow-lg border-b border-purple-900/60 animate-in fade-in slide-in-from-top-2 duration-300">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-7 w-7 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-              <Sparkles className="h-4 w-4 text-amber-200 animate-pulse" />
-            </div>
-            <div className="text-xs sm:text-sm font-black leading-tight truncate">
+            <div className="text-xs sm:text-sm font-bold leading-tight truncate">
               <span>Há alterações aguardando publicação em </span>
-              <strong className="underline decoration-amber-300 font-extrabold">{storeName}</strong>
-              <Badge className="ml-2 bg-white/20 text-white font-mono text-[10px] border-white/30">
+              <strong className="underline decoration-purple-300 font-extrabold">{storeName}</strong>
+              <Badge className="ml-2 bg-purple-900/70 text-purple-100 font-mono text-[10px] border-purple-700/50">
                 {pendingCount} {pendingCount === 1 ? 'modificação' : 'modificações'}
               </Badge>
             </div>
@@ -82,9 +79,8 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
                 variant="outline"
                 size="sm"
                 onClick={() => setDetailsModalOpen(true)}
-                className="h-8 px-2.5 rounded-xl bg-white/10 hover:bg-white/20 border-white/30 text-white font-bold text-xs cursor-pointer shadow-xs transition"
+                className="h-8 px-2.5 rounded-xl bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold text-xs cursor-pointer shadow-xs transition"
               >
-                <ListChecks className="h-3.5 w-3.5 mr-1" />
                 <span>Ver Lista ({pendingCount})</span>
               </Button>
             )}
@@ -96,7 +92,7 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
               onClick={() => handlePublishNow(false)}
               className="h-8 px-3.5 rounded-xl bg-white text-purple-950 hover:bg-purple-50 font-black text-xs shadow-md cursor-pointer transition flex items-center gap-1.5"
             >
-              <RefreshCw className={`h-3.5 w-3.5 text-pink-600 ${isPublishing ? 'animate-spin' : ''}`} />
+              {isPublishing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-purple-950" />}
               <span>{isPublishing ? 'Publicando...' : 'Publicar Alterações'}</span>
             </Button>
           </div>
@@ -171,9 +167,9 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
               size="sm"
               disabled={isPublishing}
               onClick={() => handlePublishNow(replicateAll)}
-              className="rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs"
+              className="rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-800/50 text-white font-bold text-xs"
             >
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isPublishing ? 'animate-spin' : ''}`} />
+              {isPublishing && <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
               <span>{isPublishing ? 'Publicando...' : replicateAll ? 'Publicar na Rede Toda' : 'Publicar Agora'}</span>
             </Button>
           </DialogFooter>

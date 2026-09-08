@@ -9,7 +9,7 @@ export type { HighlightItem }
 export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<HighlightItem[]> {
   try {
     const res = await query(
-      `SELECT id, tenant_id, title, subtitle, video_url, thumbnail_url, badge_text, badge_color, price, display_order, active, available_hours
+      `SELECT id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, video_url, thumbnail_url, badge_text, badge_text_en, badge_text_es, badge_color, price, display_order, active, available_hours
        FROM store_stories
        WHERE tenant_id = $1 AND deleted_at IS NULL AND active = true
        ORDER BY display_order ASC, created_at ASC`,
@@ -24,8 +24,14 @@ export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Pr
       id: r.id,
       tenantId: r.tenant_id,
       title: r.title,
+      titleEn: r.title_en || null,
+      titleEs: r.title_es || null,
       subtitle: r.subtitle || '',
+      subtitleEn: r.subtitle_en || null,
+      subtitleEs: r.subtitle_es || null,
       badgeLabel: r.badge_text || 'DESTAQUE',
+      badgeLabelEn: r.badge_text_en || null,
+      badgeLabelEs: r.badge_text_es || null,
       badgeColor: r.badge_color || 'bg-pink-600',
       price: Number(r.price) || 0,
       imageUrl: r.thumbnail_url || '/images/official/acai_copo_500g.jpg',
@@ -44,7 +50,7 @@ export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Pr
 export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Promise<HighlightItem[]> {
   try {
     const res = await query(
-      `SELECT id, tenant_id, title, subtitle, video_url, thumbnail_url, badge_text, badge_color, price, display_order, active, available_hours
+      `SELECT id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, video_url, thumbnail_url, badge_text, badge_text_en, badge_text_es, badge_color, price, display_order, active, available_hours
        FROM store_stories
        WHERE tenant_id = $1 AND deleted_at IS NULL
        ORDER BY display_order ASC, created_at ASC`,
@@ -59,8 +65,14 @@ export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Pr
       id: r.id,
       tenantId: r.tenant_id,
       title: r.title,
+      titleEn: r.title_en || null,
+      titleEs: r.title_es || null,
       subtitle: r.subtitle || '',
+      subtitleEn: r.subtitle_en || null,
+      subtitleEs: r.subtitle_es || null,
       badgeLabel: r.badge_text || 'DESTAQUE',
+      badgeLabelEn: r.badge_text_en || null,
+      badgeLabelEs: r.badge_text_es || null,
       badgeColor: r.badge_color || 'bg-pink-600',
       price: Number(r.price) || 0,
       imageUrl: r.thumbnail_url || '/images/official/acai_copo_500g.jpg',
@@ -79,8 +91,14 @@ export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Pr
 export async function createHighlightItem(tenantId: string, item: Partial<HighlightItem>): Promise<HighlightItem> {
   const id = item.id && item.id.length === 36 ? item.id : uuidv4()
   const title = item.title || 'Novo Destaque'
+  const titleEn = item.titleEn || null
+  const titleEs = item.titleEs || null
   const subtitle = item.subtitle || ''
+  const subtitleEn = item.subtitleEn || null
+  const subtitleEs = item.subtitleEs || null
   const badgeLabel = item.badgeLabel || 'DESTAQUE'
+  const badgeLabelEn = item.badgeLabelEn || null
+  const badgeLabelEs = item.badgeLabelEs || null
   const badgeColor = item.badgeColor || 'bg-pink-600'
   const price = Number(item.price) || 0
   const imageUrl = item.imageUrl || '/images/official/acai_copo_500g.jpg'
@@ -90,10 +108,10 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
   const availableHours = item.availableHours ? (typeof item.availableHours === 'string' ? item.availableHours : JSON.stringify(item.availableHours)) : null
 
   const res = await query(
-    `INSERT INTO store_stories (id, tenant_id, title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active, available_hours)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    `INSERT INTO store_stories (id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, badge_text, badge_text_en, badge_text_es, badge_color, price, thumbnail_url, video_url, display_order, active, available_hours)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
      RETURNING *`,
-    [id, tenantId, title, subtitle, badgeLabel, badgeColor, price, imageUrl, videoUrl, displayOrder, active, availableHours]
+    [id, tenantId, title, titleEn, titleEs, subtitle, subtitleEn, subtitleEs, badgeLabel, badgeLabelEn, badgeLabelEs, badgeColor, price, imageUrl, videoUrl, displayOrder, active, availableHours]
   )
 
   await recordAuditLog({
@@ -110,8 +128,14 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
     id: r.id,
     tenantId: r.tenant_id,
     title: r.title,
+    titleEn: r.title_en || null,
+    titleEs: r.title_es || null,
     subtitle: r.subtitle,
+    subtitleEn: r.subtitle_en || null,
+    subtitleEs: r.subtitle_es || null,
     badgeLabel: r.badge_text,
+    badgeLabelEn: r.badge_text_en || null,
+    badgeLabelEs: r.badge_text_es || null,
     badgeColor: r.badge_color,
     price: Number(r.price) || 0,
     imageUrl: r.thumbnail_url,
@@ -131,23 +155,35 @@ export async function updateHighlightItem(id: string, item: Partial<HighlightIte
   const res = await query(
     `UPDATE store_stories
      SET title = COALESCE($2, title),
-         subtitle = COALESCE($3, subtitle),
-         badge_text = COALESCE($4, badge_text),
-         badge_color = COALESCE($5, badge_color),
-         price = COALESCE($6, price),
-         thumbnail_url = COALESCE($7, thumbnail_url),
-         video_url = COALESCE($8, video_url),
-         display_order = COALESCE($9, display_order),
-         active = COALESCE($10, active),
-         available_hours = CASE WHEN $11::text = '__NULL__' THEN NULL WHEN $11 IS NOT NULL THEN $11::jsonb ELSE available_hours END,
+         title_en = COALESCE($3, title_en),
+         title_es = COALESCE($4, title_es),
+         subtitle = COALESCE($5, subtitle),
+         subtitle_en = COALESCE($6, subtitle_en),
+         subtitle_es = COALESCE($7, subtitle_es),
+         badge_text = COALESCE($8, badge_text),
+         badge_text_en = COALESCE($9, badge_text_en),
+         badge_text_es = COALESCE($10, badge_text_es),
+         badge_color = COALESCE($11, badge_color),
+         price = COALESCE($12, price),
+         thumbnail_url = COALESCE($13, thumbnail_url),
+         video_url = COALESCE($14, video_url),
+         display_order = COALESCE($15, display_order),
+         active = COALESCE($16, active),
+         available_hours = CASE WHEN $17::text = '__NULL__' THEN NULL WHEN $17 IS NOT NULL THEN $17::jsonb ELSE available_hours END,
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING *`,
     [
       id,
       item.title || null,
+      item.titleEn !== undefined ? item.titleEn : null,
+      item.titleEs !== undefined ? item.titleEs : null,
       item.subtitle !== undefined ? item.subtitle : null,
+      item.subtitleEn !== undefined ? item.subtitleEn : null,
+      item.subtitleEs !== undefined ? item.subtitleEs : null,
       item.badgeLabel || null,
+      item.badgeLabelEn !== undefined ? item.badgeLabelEn : null,
+      item.badgeLabelEs !== undefined ? item.badgeLabelEs : null,
       item.badgeColor || null,
       item.price !== undefined ? Number(item.price) : null,
       item.imageUrl || null,

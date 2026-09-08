@@ -155,11 +155,25 @@ export default function OrderItemsModal({
                     </div>
                   )}
 
+                  {/* Opções Selecionadas / Modificadores (Leite, Textura, Adicionais) */}
+                  {(item.selectedOptions?.length > 0 || item.options?.length > 0) && (
+                    <div className="text-[11px] text-purple-900 dark:text-purple-100 break-words">
+                      <span className="font-bold text-purple-700/80 dark:text-purple-200/70">Opções/Modificadores:</span>{' '}
+                      {(item.selectedOptions || item.options).map((opt: any) =>
+                        typeof opt === 'string'
+                          ? opt
+                          : opt.groupName
+                          ? `${opt.groupName}: ${opt.name}`
+                          : opt.name
+                      ).join(' • ')}
+                    </div>
+                  )}
+
                   {/* Observações da Montagem */}
-                  {item.notes && (
+                  {(item.notes || item.observations) && (
                     <div className="p-2 rounded-xl bg-amber-50/70 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 text-[10.5px] text-amber-900 dark:text-amber-200 italic flex items-center gap-1.5">
                       <AlertCircle className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span>Obs: {item.notes}</span>
+                      <span>Obs: {item.notes || item.observations}</span>
                     </div>
                   )}
                 </div>

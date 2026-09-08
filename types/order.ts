@@ -23,6 +23,10 @@ export interface CartItem {
   lineTotal: number
   quantity?: number
   observations?: string
+  notes?: string
+  unitPrice?: number
+  selectedOptions?: any[]
+  options?: any[]
 }
 
 export interface Order {

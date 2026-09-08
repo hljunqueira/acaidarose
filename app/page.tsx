@@ -52,6 +52,9 @@ import TVOrdersControlView from '@/components/admin/tv/TVOrdersControlView'
 import InventoryManagementView from '@/components/admin/inventory/InventoryManagementView'
 import StoreSupplyOrdersView from '@/components/admin/inventory/StoreSupplyOrdersView'
 import PublishChangesBanner from '@/components/admin/common/PublishChangesBanner'
+import MultilingualManagementView from '@/components/admin/menu/MultilingualManagementView'
+import CustomerFeedbackAdminView from '@/components/admin/reports/CustomerFeedbackAdminView'
+import AnalyticsModuleView from '@/components/admin/analytics/AnalyticsModuleView'
 import { useAdminTheme } from '@/lib/hooks/useIsolatedTheme'
 
 export default function HomePage() {
@@ -291,7 +294,28 @@ export default function HomePage() {
             <StoreSupplyOrdersView tenantId={activeTenantId} />
           )}
 
-          {/* 3. OPERAÇÃO & ATENDIMENTO */}
+          {/* 3. ANALYTICS (VISÃO GERAL, PRODUTOS & OPCIONAIS) */}
+          {(view === 'analytics_overview' ||
+            view === 'analytics_products' ||
+            view === 'analytics_toppings') && (
+            <AnalyticsModuleView
+              initialTab={
+                view === 'analytics_products'
+                  ? 'products'
+                  : view === 'analytics_toppings'
+                  ? 'toppings'
+                  : 'overview'
+              }
+              onTabChange={(tab) => {
+                if (tab === 'products') setView('analytics_products')
+                else if (tab === 'toppings') setView('analytics_toppings')
+                else setView('analytics_overview')
+              }}
+              onNavigateToFeedback={() => setView('customer_feedback')}
+            />
+          )}
+
+          {/* 4. OPERAÇÃO & ATENDIMENTO */}
           {view === 'pdv' && (
             <TablesHallView
               tenantId={activeTenantId}
@@ -308,7 +332,7 @@ export default function HomePage() {
           {view === 'tv_panel' && <TVOrdersControlView tenantId={activeTenantId} />}
           {view === 'tables' && isAdmin && <TablesManagementView tenantId={activeTenantId} />}
 
-          {/* 4. GESTÃO DE ESTOQUE & SUPPLY CHAIN */}
+          {/* 5. GESTÃO DE ESTOQUE & SUPPLY CHAIN */}
           {view === 'inventory' && (
             <InventoryManagementView
               tenantId={activeTenantId}
@@ -317,14 +341,18 @@ export default function HomePage() {
           )}
           {view === 'supply_orders' && isAdmin && <StoreSupplyOrdersView tenantId={activeTenantId} />}
 
-          {/* 5. CARDÁPIO, MÍDIAS & PREÇOS */}
+          {/* 6. CARDÁPIO, MÍDIAS & PREÇOS */}
           {view === 'menu' && isAdmin && <MenuHierarchyView tenantId={activeTenantId} />}
           {view === 'menu_categories' && isAdmin && <MenuCategoriesAdmin tenantId={activeTenantId} />}
           {view === 'menu_menus' && isAdmin && <MenuSectionsAdmin tenantId={activeTenantId} />}
           {view === 'menu_highlights' && isAdmin && <MenuHighlightsAdmin tenantId={activeTenantId} />}
           {view === 'menu_schedules' && isAdmin && <MenuSchedulesAdmin tenantId={activeTenantId} />}
+          {view === 'menu_languages' && isAdmin && <MultilingualManagementView />}
 
-          {/* 6. CONFIGURAÇÕES DA UNIDADE */}
+          {/* 7. FEEDBACKS & AVALIAÇÕES (ANTES DE CONFIGURAÇÕES) */}
+          {view === 'customer_feedback' && <CustomerFeedbackAdminView />}
+
+          {/* 8. CONFIGURAÇÕES DA UNIDADE */}
           {view === 'company' && isAdmin && <StoreCompanySettingsView tenantId={activeTenantId} />}
           {view === 'qrcode_config' && isAdmin && <QRCodeConfigView tenantId={activeTenantId} />}
           {view === 'users' && isAdmin && <UsersAdmin tenantId={activeTenantId} currentUser={loggedUser} />}

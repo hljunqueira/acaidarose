@@ -8,6 +8,7 @@ import { Plus, Minus, Trash2, CheckCircle2, ShoppingBag, Smartphone, CreditCard,
 import { toast } from 'sonner'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 import { useLanguageStore } from '@/lib/stores/languageStore'
+import CustomerRatingModal from '@/components/menu/CustomerRatingModal'
 
 interface CartItem {
   id: string
@@ -71,6 +72,7 @@ export default function CustomerCartSheet({
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('CART')
   const [createdOrder, setCreatedOrder] = useState<any | null>(null)
   const [countdown, setCountdown] = useState<number>(240) // 4 min para autorização MB WAY
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
 
   const handleSelectConsumption = (type: 'DINE_IN' | 'TAKEAWAY') => {
     setConsumptionType(type)
@@ -415,6 +417,16 @@ export default function CustomerCartSheet({
               <p className="text-[11px] text-slate-500 dark:text-purple-300/80 max-w-sm mx-auto">
                 Acompanhe o estado do seu açaí no ecrã da Smart TV no salão.
               </p>
+
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  onClick={() => setFeedbackModalOpen(true)}
+                  className="h-10 px-4 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-950 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white font-bold text-xs border border-purple-200 dark:border-white/15 cursor-pointer shadow-xs"
+                >
+                  {isEn ? 'Rate your Experience' : 'Avaliar Atendimento da Loja'}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -446,6 +458,16 @@ export default function CustomerCartSheet({
 
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-200 text-left max-w-sm mx-auto">
                 <strong>Atenção:</strong> A preparação do açaí na copa terá início logo após a validação do pagamento no caixa da loja.
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  onClick={() => setFeedbackModalOpen(true)}
+                  className="h-10 px-4 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-950 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white font-bold text-xs border border-purple-200 dark:border-white/15 cursor-pointer shadow-xs"
+                >
+                  {isEn ? 'Rate your Experience' : 'Avaliar Atendimento da Loja'}
+                </Button>
               </div>
             </div>
           )}
@@ -806,6 +828,16 @@ export default function CustomerCartSheet({
           )}
         </div>
       </DialogContent>
+
+      <CustomerRatingModal
+        open={feedbackModalOpen}
+        onOpenChange={setFeedbackModalOpen}
+        tenantId={tenantId || '11111111-1111-1111-1111-111111111111'}
+        orderId={createdOrder?.id || null}
+        initialTable={tableNumber ? String(tableNumber) : null}
+        initialCustomerName={customerName}
+        initialCustomerPhone={customerPhone}
+      />
     </Dialog>
   )
 }

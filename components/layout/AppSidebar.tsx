@@ -20,6 +20,10 @@ import {
   Sparkles,
   Users,
   FileText,
+  Star,
+  Globe,
+  TrendingUp,
+  BarChart3,
 } from 'lucide-react'
 
 export type AppViewId =
@@ -31,6 +35,9 @@ export type AppViewId =
   | 'store_requests'
   | 'franchise_requests'
   | 'supply_hub'
+  | 'analytics_overview'
+  | 'analytics_products'
+  | 'analytics_toppings'
   | 'pdv'
   | 'qrcode'
   | 'tv_panel'
@@ -42,10 +49,12 @@ export type AppViewId =
   | 'menu_menus'
   | 'menu_highlights'
   | 'menu_schedules'
+  | 'menu_languages'
   | 'company'
   | 'qrcode_config'
   | 'users'
   | 'reports'
+  | 'customer_feedback'
 
 interface AppSidebarProps {
   currentView: AppViewId
@@ -124,22 +133,26 @@ export default function AppSidebar({
   const getGroupForView = (v: AppViewId): string => {
     if (['dev_hub', 'prevention_center', 'audit_logs'].includes(v)) return 'devHub'
     if (['franchise', 'franchise_candidates', 'store_requests', 'franchise_requests', 'supply_hub'].includes(v)) return 'franchise'
+    if (['analytics_overview', 'analytics_products', 'analytics_toppings'].includes(v)) return 'analytics'
     if (['pdv', 'qrcode', 'tables'].includes(v)) return 'salon'
-    if (['menu', 'menu_categories', 'menu_menus', 'menu_highlights', 'menu_schedules'].includes(v)) return 'menu'
+    if (['menu', 'menu_categories', 'menu_menus', 'menu_highlights', 'menu_schedules', 'menu_languages'].includes(v)) return 'menu'
     if (['inventory', 'supply_orders'].includes(v)) return 'inventory'
+    if (['customer_feedback'].includes(v)) return 'quality'
     if (['company', 'qrcode_config', 'tv_panel', 'users', 'reports'].includes(v)) return 'storeConfig'
     return 'salon'
   }
 
   // Inicialização inteligente: apenas o primeiro grupo relevante (ou o ativo) inicia aberto
-  const initialActiveGroup = getGroupForView(currentView) || (isSuperAdmin ? 'devHub' : isFranchisorAdmin ? 'franchise' : 'salon')
+  const initialActiveGroup = getGroupForView(currentView) || (isSuperAdmin ? 'devHub' : isFranchisorAdmin ? 'franchise' : 'analytics')
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
     devHub: initialActiveGroup === 'devHub',
     franchise: initialActiveGroup === 'franchise',
+    analytics: initialActiveGroup === 'analytics',
     salon: initialActiveGroup === 'salon',
     menu: initialActiveGroup === 'menu',
     inventory: initialActiveGroup === 'inventory',
+    quality: initialActiveGroup === 'quality',
     storeConfig: initialActiveGroup === 'storeConfig',
   }))
 
@@ -202,6 +215,17 @@ export default function AppSidebar({
         ],
       },
       {
+        key: 'analytics',
+        title: 'ANALYTICS',
+        icon: TrendingUp,
+        accentClass: 'text-blue-600 dark:text-blue-400',
+        items: [
+          { id: 'analytics_overview', label: 'Visão Geral', subtitle: 'Receita, Ticket Médio & Volume', show: true },
+          { id: 'analytics_products', label: 'Vendas produtos', subtitle: 'Mais & Menos Vendidos', show: true },
+          { id: 'analytics_toppings', label: 'Vendas opcionais', subtitle: 'Acompanhamentos & Toppings', show: true },
+        ],
+      },
+      {
         key: 'salon',
         title: 'OPERAÇÃO & ATENDIMENTO',
         icon: Store,
@@ -222,6 +246,7 @@ export default function AppSidebar({
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
           { id: 'menu_menus', label: 'Menus do Cardápio', subtitle: 'Organização de Seções', show: true },
           { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Carrossel & Promoções', show: true },
+          { id: 'menu_languages', label: 'Gestão de Idiomas', subtitle: 'Traduções PT, EN & ES', show: true },
         ],
       },
       {
@@ -237,6 +262,15 @@ export default function AppSidebar({
             subtitle: isMatrizTenant ? 'Pedidos B2B & Distribuição' : 'Pedidos B2B & Entrada de Carga',
             show: true,
           },
+        ],
+      },
+      {
+        key: 'quality',
+        title: 'FEEDBACKS & AVALIAÇÕES',
+        icon: Star,
+        accentClass: 'text-amber-500 dark:text-amber-400',
+        items: [
+          { id: 'customer_feedback', label: 'Feedbacks & Satisfação', subtitle: 'Pesquisa NPS & Critérios', show: true },
         ],
       },
       {
@@ -285,6 +319,17 @@ export default function AppSidebar({
         ],
       },
       {
+        key: 'analytics',
+        title: 'ANALYTICS',
+        icon: TrendingUp,
+        accentClass: 'text-blue-600 dark:text-blue-400',
+        items: [
+          { id: 'analytics_overview', label: 'Visão Geral', subtitle: 'Receita, Ticket Médio & Volume', show: true },
+          { id: 'analytics_products', label: 'Vendas produtos', subtitle: 'Mais & Menos Vendidos', show: true },
+          { id: 'analytics_toppings', label: 'Vendas opcionais', subtitle: 'Acompanhamentos & Toppings', show: true },
+        ],
+      },
+      {
         key: 'salon',
         title: 'OPERAÇÃO & ATENDIMENTO',
         icon: Store,
@@ -305,6 +350,7 @@ export default function AppSidebar({
           { id: 'menu_categories', label: 'Categorias', subtitle: 'Estruturação Visual', show: true },
           { id: 'menu_menus', label: 'Menus do Cardápio', subtitle: 'Organização de Seções', show: true },
           { id: 'menu_highlights', label: 'Destaques & Stories', subtitle: 'Carrossel & Promoções', show: true },
+          { id: 'menu_languages', label: 'Gestão de Idiomas', subtitle: 'Traduções PT, EN & ES', show: true },
         ],
       },
       {
@@ -320,6 +366,15 @@ export default function AppSidebar({
             subtitle: isMatrizTenant ? 'Pedidos B2B & Distribuição' : 'Pedidos B2B & Entrada de Carga',
             show: true,
           },
+        ],
+      },
+      {
+        key: 'quality',
+        title: 'FEEDBACKS & AVALIAÇÕES',
+        icon: Star,
+        accentClass: 'text-amber-500 dark:text-amber-400',
+        items: [
+          { id: 'customer_feedback', label: 'Feedbacks & Satisfação', subtitle: 'Pesquisa NPS & Critérios', show: true },
         ],
       },
       {
@@ -339,6 +394,17 @@ export default function AppSidebar({
   } else if (isTenantAdmin) {
     // 🏬 3. TENANT_ADMIN (Gerente Loja Franqueada — ex: Torres Novas)
     navGroups = [
+      {
+        key: 'analytics',
+        title: 'ANALYTICS',
+        icon: TrendingUp,
+        accentClass: 'text-blue-600 dark:text-blue-400',
+        items: [
+          { id: 'analytics_overview', label: 'Visão Geral da Loja', subtitle: 'Pedidos, Receita & Ticket Médio', show: true },
+          { id: 'analytics_products', label: 'Vendas produtos', subtitle: 'Mais & Menos Vendidos', show: true },
+          { id: 'analytics_toppings', label: 'Vendas opcionais', subtitle: 'Acompanhamentos & Toppings', show: true },
+        ],
+      },
       {
         key: 'salon',
         title: 'OPERAÇÃO & ATENDIMENTO',
@@ -376,6 +442,15 @@ export default function AppSidebar({
         items: [
           { id: 'inventory', label: 'Gestão de Estoque Local', subtitle: 'Controle Físico & Auditoria', show: true },
           { id: 'supply_orders', label: 'Reposição com a Matriz', subtitle: 'Pedidos B2B & Entrada de Carga', show: true },
+        ],
+      },
+      {
+        key: 'quality',
+        title: 'FEEDBACKS & AVALIAÇÕES',
+        icon: Star,
+        accentClass: 'text-amber-500 dark:text-amber-400',
+        items: [
+          { id: 'customer_feedback', label: 'Feedbacks da Loja', subtitle: 'Pesquisa NPS & Satisfação', show: true },
         ],
       },
       {

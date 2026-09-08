@@ -104,13 +104,13 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
 
   try {
     const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes, menusRes] = await Promise.all([
-      query(`SELECT id, name, name_en, description, description_en, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
-      query(`SELECT id, name, name_en, description, description_en, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
-      query(`SELECT id, name, name_en, description, description_en, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, name_en, name_es, description, description_en, description_es, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, name_en, name_es, description, description_en, description_es, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
+      query(`SELECT id, name, name_en, name_es, description, description_en, description_es, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT product_id, custom_price FROM store_price_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
-      query(`SELECT id, name, name_en, slug, menu_id, description, description_en, display_order, active, default_price, weight_grams FROM categories WHERE active = true ORDER BY display_order ASC`),
-      query(`SELECT id, name, name_en, code, description, description_en, display_order, active FROM menus WHERE active = true ORDER BY display_order ASC`),
+      query(`SELECT id, name, name_en, name_es, slug, menu_id, description, description_en, description_es, display_order, active, default_price, weight_grams FROM categories WHERE active = true ORDER BY display_order ASC`),
+      query(`SELECT id, name, name_en, name_es, code, description, description_en, description_es, display_order, active FROM menus WHERE active = true ORDER BY display_order ASC`),
     ])
 
     const priceMap = new Map<string, number>()
@@ -139,10 +139,12 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           id: cat.id,
           name: cat.name,
           nameEn: cat.name_en || null,
+          nameEs: cat.name_es || null,
           slug: cat.slug,
           menuId: cat.menu_id,
           description: cat.description || null,
           descriptionEn: cat.description_en || null,
+          descriptionEs: cat.description_es || null,
           displayOrder: cat.display_order,
           active: cat.active !== false,
           defaultPrice: cat.default_price ? Number(cat.default_price) : undefined,
@@ -161,9 +163,11 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           id: m.id,
           name: m.name,
           nameEn: m.name_en || null,
+          nameEs: m.name_es || null,
           code: m.code,
           description: m.description || null,
           descriptionEn: m.description_en || null,
+          descriptionEs: m.description_es || null,
           displayOrder: m.display_order,
           active: m.active !== false,
         })
@@ -180,8 +184,10 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           id: row.id,
           name: row.name,
           nameEn: row.name_en || null,
+          nameEs: row.name_es || null,
           description: row.description || '',
           descriptionEn: row.description_en || null,
+          descriptionEs: row.description_es || null,
           displayOrder: row.display_order,
           active: isVisible,
           videoUrl: row.video_url,
@@ -202,8 +208,10 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           id: row.id,
           name: row.name,
           nameEn: row.name_en || null,
+          nameEs: row.name_es || null,
           description: row.description || '',
           descriptionEn: row.description_en || null,
+          descriptionEs: row.description_es || null,
           category: row.category || 'Toppings',
           isPremium: !!row.is_premium,
           precoExtra: customPrice !== undefined ? customPrice : Number(row.preco_extra || 0),
@@ -257,8 +265,10 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           id: row.id,
           name: row.name,
           nameEn: row.name_en || null,
+          nameEs: row.name_es || null,
           description: row.description || '',
           descriptionEn: row.description_en || null,
+          descriptionEs: row.description_es || null,
           weightGrams: weight,
           precoBase: customPrice !== undefined ? customPrice : Number(row.preco_base),
           price: customPrice !== undefined ? customPrice : Number(row.preco_base),
@@ -422,7 +432,7 @@ export async function syncAllStoresCatalog(payload?: {
 
     // 2. Carregar catálogo canônico da Matriz (Loja 1)
     const [sourceContainersRes, sourceBasesRes, sourceToppingsRes] = await Promise.all([
-      query(`SELECT name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+      query(`SELECT name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
       query(`SELECT name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
       query(`SELECT name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
     ])
@@ -433,24 +443,25 @@ export async function syncAllStoresCatalog(payload?: {
 
     // 3. Replicar para cada loja de destino
     for (const targetId of targetIds) {
-      // Containers (Taças)
+      // Containers (Taças e Itens)
       for (const c of containers) {
         const customPrice = payload?.prices?.[c.weight_grams] ?? payload?.prices?.[`weight-${c.weight_grams}`] ?? c.preco_base
-        const check = await query(`SELECT id FROM product_containers WHERE tenant_id = $1 AND weight_grams = $2 AND deleted_at IS NULL`, [targetId, c.weight_grams])
+        const check = await query(`SELECT id FROM product_containers WHERE tenant_id = $1 AND name = $2 AND deleted_at IS NULL`, [targetId, c.name])
         if (check.rows && check.rows.length > 0) {
           await query(
             `UPDATE product_containers
-             SET name = $1, description = $2, preco_base = $3, limite_bases = $4, limite_complementos_gratis = $5,
-                 image_url = $6, video_url = $7, video_poster = $8, available_hours = $9,
-                 display_order = $10, active = $11, updated_at = timezone('utc'::text, now())
-             WHERE tenant_id = $12 AND weight_grams = $13 AND deleted_at IS NULL`,
-            [c.name, c.description || null, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active, targetId, c.weight_grams]
+             SET description = $1, preco_base = $2, limite_bases = $3, limite_complementos_gratis = $4,
+                 image_url = $5, video_url = $6, video_poster = $7, available_hours = $8,
+                 display_order = $9, active = $10, option_groups = $11::jsonb, category_id = $12,
+                 product_type = $13, weight_grams = $14, updated_at = timezone('utc'::text, now())
+             WHERE tenant_id = $15 AND name = $16 AND deleted_at IS NULL`,
+            [c.description || null, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active, JSON.stringify(c.option_groups || []), c.category_id, c.product_type, c.weight_grams, targetId, c.name]
           )
         } else {
           await query(
-            `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-            [uuidv4(), targetId, c.name, c.description || null, c.weight_grams, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active]
+            `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17)`,
+            [uuidv4(), targetId, c.name, c.description || null, c.weight_grams, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active, JSON.stringify(c.option_groups || []), c.category_id, c.product_type]
           )
         }
       }
@@ -544,18 +555,27 @@ export async function createProductItem(category: string, item: any): Promise<an
 
   try {
     if (category === 'containers') {
+      let categoryId = item.categoryId || item.category_id || null
+      if (!categoryId && item.category) {
+        const catCheck = await query('SELECT id FROM categories WHERE id = $1 OR name ILIKE $2 LIMIT 1', [item.category, item.category])
+        if (catCheck.rows.length > 0) {
+          categoryId = catCheck.rows[0].id
+        }
+      }
+      const productType = item.productType || item.product_type || (item.weightGrams ? 'CONTAINER' : 'ITEM')
+
       const res = await query(
-        `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb)
+        `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17)
          RETURNING *`,
         [
           id,
           tenantId,
           item.name,
           item.description || null,
-          Number(item.weightGrams) || 500,
+          item.weightGrams ? Number(item.weightGrams) : null,
           Number(item.precoBase || item.price) || 0,
-          Number(item.limiteBases || item.limiteCremes) || 1,
+          Number(item.limiteBases || item.limiteCremes) || 0,
           Number(item.limiteToppings || item.limiteComplementosGratis) || 0,
           item.image || item.imageUrl || null,
           item.videoUrl || null,
@@ -563,7 +583,9 @@ export async function createProductItem(category: string, item: any): Promise<an
           item.availableHours ? JSON.stringify(item.availableHours) : null,
           Number(item.displayOrder) || 0,
           true,
-          item.optionGroups ? JSON.stringify(item.optionGroups) : '[]'
+          item.optionGroups ? JSON.stringify(item.optionGroups) : '[]',
+          categoryId,
+          productType
         ]
       )
       const created = res.rows[0]
@@ -572,10 +594,12 @@ export async function createProductItem(category: string, item: any): Promise<an
         action: 'PRODUCT_CONTAINER_CREATED',
         entity: 'product_containers',
         entityId: id,
-        message: `Novo produto criado: "${item.name}" (${created.weight_grams}g, ${created.preco_base}€, ${(item.optionGroups || []).length} modelos de opções vinculados)`,
+        message: `Novo produto criado: "${item.name}" (categoria: ${categoryId || 'nenhuma'}, ${created.weight_grams ? created.weight_grams + 'g, ' : ''}${created.preco_base}€, ${(item.optionGroups || []).length} modelos de opções vinculados)`,
         metadata: {
           productId: id,
           name: item.name,
+          categoryId,
+          productType,
           weightGrams: created.weight_grams,
           precoBase: created.preco_base,
           optionGroupsCount: (item.optionGroups || []).length,
@@ -664,20 +688,33 @@ export async function updateProductItem(category: string, id: string, item: any)
     let updated: any = null
     if (category === 'containers') {
       const hasOptionGroups = item.optionGroups !== undefined
+      let targetCategoryId = item.categoryId !== undefined ? item.categoryId : item.category_id !== undefined ? item.category_id : undefined
+      if (targetCategoryId === undefined && item.category !== undefined) {
+        const catCheck = await query('SELECT id FROM categories WHERE id = $1 OR name ILIKE $2 LIMIT 1', [item.category, item.category])
+        if (catCheck.rows.length > 0) {
+          targetCategoryId = catCheck.rows[0].id
+        }
+      }
+      const hasCategory = targetCategoryId !== undefined
+      const targetProductType = item.productType || item.product_type || (item.weightGrams ? 'CONTAINER' : 'ITEM')
+      const hasProductType = item.productType !== undefined || item.product_type !== undefined || item.weightGrams !== undefined
+
       const res = await query(
         `UPDATE product_containers
          SET name = COALESCE($2, name),
              description = CASE WHEN $3 = true THEN $4 ELSE description END,
-             weight_grams = COALESCE($5, weight_grams),
-             preco_base = COALESCE($6, preco_base),
-             limite_bases = COALESCE($7, limite_bases),
-             limite_complementos_gratis = COALESCE($8, limite_complementos_gratis),
-             image_url = COALESCE($9, image_url),
-             video_url = COALESCE($10, video_url),
-             video_poster = COALESCE($11, video_poster),
-             available_hours = COALESCE($12, available_hours),
-             display_order = COALESCE($13, display_order),
-             option_groups = CASE WHEN $14 = true THEN $15::jsonb ELSE option_groups END,
+             weight_grams = CASE WHEN $5 = true THEN $6 ELSE weight_grams END,
+             preco_base = COALESCE($7, preco_base),
+             limite_bases = COALESCE($8, limite_bases),
+             limite_complementos_gratis = COALESCE($9, limite_complementos_gratis),
+             image_url = COALESCE($10, image_url),
+             video_url = COALESCE($11, video_url),
+             video_poster = COALESCE($12, video_poster),
+             available_hours = COALESCE($13, available_hours),
+             display_order = COALESCE($14, display_order),
+             option_groups = CASE WHEN $15 = true THEN $16::jsonb ELSE option_groups END,
+             category_id = CASE WHEN $17 = true THEN $18 ELSE category_id END,
+             product_type = CASE WHEN $19 = true THEN $20 ELSE product_type END,
              updated_at = timezone('utc'::text, now())
          WHERE id::text = $1
          RETURNING *`,
@@ -686,8 +723,9 @@ export async function updateProductItem(category: string, id: string, item: any)
           item.name || null,
           item.description !== undefined,
           item.description || null,
-          item.weightGrams !== undefined ? Number(item.weightGrams) : null,
-          item.precoBase !== undefined ? Number(item.precoBase) : null,
+          item.weightGrams !== undefined,
+          item.weightGrams ? Number(item.weightGrams) : null,
+          item.precoBase !== undefined ? Number(item.precoBase) : (item.price !== undefined ? Number(item.price) : null),
           item.limiteBases !== undefined ? Number(item.limiteBases) : null,
           item.limiteToppings !== undefined ? Number(item.limiteToppings) : null,
           item.image || item.imageUrl || null,
@@ -696,7 +734,11 @@ export async function updateProductItem(category: string, id: string, item: any)
           item.availableHours ? JSON.stringify(item.availableHours) : null,
           item.displayOrder !== undefined ? Number(item.displayOrder) : null,
           hasOptionGroups,
-          hasOptionGroups ? JSON.stringify(item.optionGroups || []) : '[]'
+          hasOptionGroups ? JSON.stringify(item.optionGroups || []) : '[]',
+          hasCategory,
+          targetCategoryId || null,
+          hasProductType,
+          targetProductType || null
         ]
       )
       updated = res.rows[0] || item

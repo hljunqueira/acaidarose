@@ -30,6 +30,7 @@ interface ProductEditDialogProps {
   collection: 'containers' | 'bases' | 'toppings'
   item: any
   catalog?: any
+  defaultCategoryId?: string
   onSave: (collection: string, item: any) => Promise<void>
 }
 
@@ -133,77 +134,119 @@ export default function ProductEditDialog({
   collection,
   item,
   catalog,
+  defaultCategoryId,
   onSave,
 }: ProductEditDialogProps) {
   const { user } = useAuthStore()
   const isSuperAdmin = canManageMasterCatalog(user, item?.tenantId)
   const isPriceEditable = canEditProductPrices(user, item?.tenantId)
-  const { categories } = useMenuConfigStore()
+  const { categories: storeCategories } = useMenuConfigStore()
+
+  // Categorias canônicas dinâmicas direto do catálogo / banco de dados (sem mocks/seeds)
+  const allCategories = useMemo(() => {
+    if (catalog?.categories && Array.isArray(catalog.categories) && catalog.categories.length > 0) {
+      return catalog.categories.filter((c: any) => c.id !== 'all_cats' && !c.name?.toLowerCase().includes('todas as categorias'))
+    }
+    return storeCategories.filter((c: any) => c.id !== 'all_cats' && !c.name?.toLowerCase().includes('todas as categorias'))
+  }, [catalog?.categories, storeCategories])
+
+  const menuByIdMap = useMemo(() => {
+    const map = new Map<string, string>()
+    if (catalog?.menus && Array.isArray(catalog.menus)) {
+      catalog.menus.forEach((m: any) => map.set(m.id, m.name))
+    }
+    return map
+  }, [catalog?.menus])
 
   const dynamicAvailableModels = useMemo(
     () => buildDynamicOptionGroups(catalog, item),
     [catalog, item]
   )
 
-  const getInitialCategory = (prod: any) => {
-    if (prod?.category) return prod.category
-    if (prod?.weightGrams === 250 || prod?.name?.includes('250')) return 'AÇAÍ 250G'
-    if (prod?.weightGrams === 350 || prod?.name?.includes('350')) return 'AÇAÍ 350G'
-    if (prod?.weightGrams === 500 || prod?.name?.includes('500')) return 'AÇAÍ 500G'
-    if (prod?.weightGrams === 750 || prod?.name?.includes('750')) return 'AÇAÍ 750G'
-    if (prod?.weightGrams === 1000 || prod?.name?.includes('1')) return 'AÇAÍ 1 KG'
-    return 'AÇAÍ 500G'
-  }
-
   const [form, setForm] = useState<any>({
     name: '',
     description: '',
-    category: 'AÇAÍ 500G',
+    categoryId: '',
+    category: '',
+    weightGrams: null,
     price: '',
     code: '2885',
     image: '',
     videoUrl: '',
     availableHours: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '23:59' },
+    limiteBases: 1,
+    limiteFrutas: 2,
+    limiteToppings: 3,
+    isPremium: false,
   })
   const [saving, setSaving] = useState(false)
   const [optionModelOpen, setOptionModelOpen] = useState(false)
   const [optionModelsManagerOpen, setOptionModelsManagerOpen] = useState(false)
   const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
-  const [showImageInput, setShowImageInput] = useState(false)
   const [franchiseRequestOpen, setFranchiseRequestOpen] = useState(false)
-
+  const [uploadingMedia, setUploadingMedia] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const triggerFileSelect = () => {
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     const isVideo = file.type.startsWith('video/')
-    const reader = new FileReader()
 
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string
-      if (isVideo) {
-        setForm((prev: any) => ({
-          ...prev,
-          videoUrl: dataUrl,
-          image: prev.image || '',
-        }))
-        toast.success('Vídeo de apresentação vinculado com sucesso!')
-      } else {
-        setForm((prev: any) => ({
-          ...prev,
-          image: dataUrl,
-        }))
-        toast.success('Imagem de apresentação vinculada com sucesso!')
-      }
+    // 1. Preview imediato em tempo real via ObjectURL (zero atraso de leitura base64)
+    const localPreviewUrl = URL.createObjectURL(file)
+    if (isVideo) {
+      setForm((prev: any) => ({
+        ...prev,
+        videoUrl: localPreviewUrl,
+      }))
+    } else {
+      setForm((prev: any) => ({
+        ...prev,
+        image: localPreviewUrl,
+      }))
     }
 
-    reader.readAsDataURL(file)
+    // 2. Upload de alto desempenho em stream para /api/upload (armazenamento estático direto)
+    setUploadingMedia(true)
+    const toastId = toast.loading(isVideo ? 'A enviar vídeo de apresentação...' : 'A enviar imagem...')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) throw new Error('Falha no upload do ficheiro')
+
+      const data = await res.json()
+      if (data?.url) {
+        if (isVideo) {
+          setForm((prev: any) => ({
+            ...prev,
+            videoUrl: data.url,
+          }))
+          toast.success('Vídeo de apresentação carregado com sucesso!', { id: toastId })
+        } else {
+          setForm((prev: any) => ({
+            ...prev,
+            image: data.url,
+          }))
+          toast.success('Imagem de apresentação carregada com sucesso!', { id: toastId })
+        }
+      }
+    } catch (err: any) {
+      toast.error('Erro ao enviar ficheiro de mídia. Tente novamente.', { id: toastId })
+      console.error(err)
+    } finally {
+      setUploadingMedia(false)
+    }
   }
 
   // Estado para controlar quais grupos de opções estão expandidos (colapsáveis)
@@ -223,11 +266,24 @@ export default function ProductEditDialog({
         setLinkedOptionGroups([])
       }
 
+      const initialCatId =
+        item.categoryId ||
+        item.category_id ||
+        (allCategories.find((c: any) => c.name === item.category)?.id) ||
+        defaultCategoryId ||
+        (allCategories[0]?.id || '')
+
+      const matchedCategory = allCategories.find((c: any) => c.id === initialCatId)
+      const initialCatName = matchedCategory ? matchedCategory.name : (item.category || item.categoryName || '')
+      const weight = item.weightGrams ?? matchedCategory?.weightGrams ?? matchedCategory?.weight_grams ?? null
+
       setForm({
         name: item.name || '',
         description: item.description || '',
-        category: item.category || getInitialCategory(item),
-        price: item.precoExtra !== undefined ? Number(item.precoExtra) : (item.precoBase || item.price || ''),
+        categoryId: initialCatId,
+        category: initialCatName,
+        weightGrams: weight,
+        price: item.precoExtra !== undefined ? Number(item.precoExtra) : (item.precoBase !== undefined ? Number(item.precoBase) : (item.price || '')),
         isPremium: !!item.isPremium,
         code: item.code || '2885',
         image: item.image || item.imageUrl || '',
@@ -240,11 +296,20 @@ export default function ProductEditDialog({
     } else {
       // Novo item SEMPRE inicia sem modelos de opções vinculados (o usuário vincula se quiser)
       setLinkedOptionGroups([])
+
+      const initialCatId = defaultCategoryId || (allCategories[0]?.id || '')
+      const matchedCategory = allCategories.find((c: any) => c.id === initialCatId)
+      const initialCatName = matchedCategory ? matchedCategory.name : (collection === 'toppings' ? 'Frutas' : collection === 'bases' ? 'Bases' : '')
+      const weight = matchedCategory?.weightGrams || matchedCategory?.weight_grams || null
+      const defaultPrice = matchedCategory?.defaultPrice ? String(matchedCategory.defaultPrice) : ''
+
       setForm({
         name: '',
         description: '',
-        category: collection === 'toppings' ? 'Frutas' : collection === 'bases' ? 'Bases' : (categories[0]?.name || 'AÇAÍ 500G'),
-        price: '',
+        categoryId: initialCatId,
+        category: collection === 'toppings' ? 'Frutas' : collection === 'bases' ? 'Bases' : initialCatName,
+        weightGrams: weight,
+        price: defaultPrice,
         isPremium: false,
         code: '2885',
         image: '',
@@ -255,7 +320,7 @@ export default function ProductEditDialog({
         limiteToppings: 3,
       })
     }
-  }, [item, collection, catalog, open])
+  }, [item, collection, catalog, open, defaultCategoryId, allCategories])
 
   const handleUpdateGroupRules = (groupId: string | undefined, patch: Partial<OptionModelData>) => {
     setLinkedOptionGroups((prev) =>
@@ -294,9 +359,12 @@ export default function ProductEditDialog({
       } else if (isBase) {
         payload.precoExtra = 0
       } else {
-        payload.precoBase = Number(form.price)
-        payload.price = Number(form.price)
+        payload.precoBase = Number(form.price) || 0
+        payload.price = Number(form.price) || 0
         payload.category = form.category
+        payload.categoryId = form.categoryId
+        payload.weightGrams = form.weightGrams ? Number(form.weightGrams) : null
+        payload.productType = form.weightGrams ? 'CONTAINER' : 'ITEM'
         payload.optionGroups = linkedOptionGroups
 
         // Salva as regras de montagem configuradas no produto
@@ -507,22 +575,35 @@ export default function ProductEditDialog({
               />
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria:</Label>
-              <select
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold bg-white dark:bg-[#160228] text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500 cursor-pointer"
-              >
-                {categories
-                  .filter((c) => c.id !== 'all_cats' && !c.name.toLowerCase().includes('todas as categorias'))
-                  .map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
+            {collection === 'containers' && (
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria do Cardápio:</Label>
+                <select
+                  value={form.categoryId || ''}
+                  onChange={(e) => {
+                    const selectedId = e.target.value
+                    const found = allCategories.find((c: any) => c.id === selectedId)
+                    setForm((prev: any) => ({
+                      ...prev,
+                      categoryId: selectedId,
+                      category: found ? found.name : prev.category,
+                      weightGrams: found?.weightGrams || found?.weight_grams || null,
+                      price: prev.price || (found?.defaultPrice ? String(found.defaultPrice) : prev.price),
+                    }))
+                  }}
+                  className="w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold bg-white dark:bg-[#160228] text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500 cursor-pointer"
+                >
+                  {allCategories.map((c: any) => {
+                    const menuName = menuByIdMap.get(c.menuId)
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.name}{menuName ? ` (${menuName})` : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* LADO DIREITO: PREÇO & GRUPOS DE OPCIONAIS COLAPSÁVEIS COM CONTROLE DE VISIBILIDADE */}

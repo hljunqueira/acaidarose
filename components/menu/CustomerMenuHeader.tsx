@@ -96,6 +96,19 @@ export default function CustomerMenuHeader({
               <span>🇺🇸</span>
               <span className="text-[10px] hidden sm:inline">EN</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('es')}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                language === 'es'
+                  ? 'bg-white dark:bg-purple-900/80 text-purple-950 dark:text-white shadow-xs'
+                  : 'text-slate-500 dark:text-purple-300/70 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Español"
+            >
+              <span>🇪🇸</span>
+              <span className="text-[10px] hidden sm:inline">ES</span>
+            </button>
           </div>
 
           {isTable && tableLabel ? (
