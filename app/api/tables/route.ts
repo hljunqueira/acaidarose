@@ -4,7 +4,8 @@ import { getTablesByTenant, createTable, createBatchTables, deleteAllTablesByTen
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const tenantId = searchParams.get('tenantId') || 'tenant-torres-novas'
+    const rawTenant = searchParams.get('tenantId') || searchParams.get('loja')
+    const tenantId = rawTenant || 'ALL'
     const tables = await getTablesByTenant(tenantId)
     return NextResponse.json({ tables })
   } catch (err: any) {

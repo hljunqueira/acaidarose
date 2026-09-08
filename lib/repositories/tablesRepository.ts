@@ -38,14 +38,21 @@ export function generateTableHash(tableNumber: number): string {
 export async function getTablesByTenant(tenantId: string): Promise<RestaurantTable[]> {
   await ensureTablesTable()
   try {
-    const res = await query(
-      `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
-              total_amount, last_activity, activated_at, created_at, updated_at
-       FROM tables 
-       WHERE tenant_id::text = $1 AND deleted_at IS NULL
-       ORDER BY table_number ASC`,
-      [tenantId]
-    )
+    const isAll = !tenantId || tenantId === 'all' || tenantId === 'ALL'
+    const sql = isAll
+      ? `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
+                total_amount, last_activity, activated_at, created_at, updated_at
+         FROM tables 
+         WHERE deleted_at IS NULL
+         ORDER BY table_number ASC`
+      : `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
+                total_amount, last_activity, activated_at, created_at, updated_at
+         FROM tables 
+         WHERE tenant_id::text = $1 AND deleted_at IS NULL
+         ORDER BY table_number ASC`
+    const params = isAll ? [] : [tenantId]
+
+    const res = await query(sql, params)
 
     if (res.rows && res.rows.length > 0) {
       return res.rows.map((t: any) => ({

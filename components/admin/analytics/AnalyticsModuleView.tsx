@@ -21,8 +21,9 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
+import OrderHistoryAdminView from '../orders/OrderHistoryAdminView'
 
-export type AnalyticsTab = 'overview' | 'products' | 'toppings'
+export type AnalyticsTab = 'overview' | 'products' | 'toppings' | 'orders'
 
 interface AnalyticsModuleViewProps {
   initialTab?: AnalyticsTab
@@ -36,7 +37,7 @@ export default function AnalyticsModuleView({
   onNavigateToFeedback,
 }: AnalyticsModuleViewProps) {
   const { user } = useAuthStore()
-  const { tenants, currentTenant } = useFranchiseStore()
+  const { tenants, currentTenant, fetchTenants } = useFranchiseStore()
 
   // Governança Multi-Tenant: apenas franqueadora master pode alternar filiais
   const isMaster = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN'
@@ -44,7 +45,18 @@ export default function AnalyticsModuleView({
 
   const [activeTab, setActiveTab] = useState<AnalyticsTab>(initialTab)
   const [selectedBranch, setSelectedBranch] = useState<string>(defaultLoja)
-  const [period, setPeriod] = useState<'today' | 'yesterday' | 'month' | 'custom'>('yesterday')
+  const [period, setPeriod] = useState<'today' | 'yesterday' | 'month' | 'custom'>('today')
+
+  // Datas para período customizado (padrão: últimos 7 dias até hoje)
+  const [startDate, setStartDate] = useState<string>(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 7)
+    return d.toISOString().slice(0, 10)
+  })
+  const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+
+  // Filtro de busca textual por produto / acompanhamento
+  const [searchTerm, setSearchTerm] = useState<string>('')
 
   // Sub-abas de ordenação nas tabelas de Produtos e Opcionais
   const [rankingSort, setRankingSort] = useState<'most' | 'least'>('most')
@@ -74,6 +86,20 @@ export default function AnalyticsModuleView({
     npsScore: 0,
   })
 
+  // Sincroniza lista de tenants se ainda não carregada
+  useEffect(() => {
+    if (tenants.length === 0) {
+      fetchTenants()
+    }
+  }, [tenants.length, fetchTenants])
+
+  // Sincroniza loja ativa quando o usuário alterna no header global
+  useEffect(() => {
+    if (isMaster && currentTenant?.id && (selectedBranch === 'ALL' || !selectedBranch)) {
+      setSelectedBranch(currentTenant.id)
+    }
+  }, [currentTenant?.id, isMaster])
+
   // Sincroniza activeTab externa caso o prop mude
   useEffect(() => {
     if (initialTab) setActiveTab(initialTab)
@@ -94,6 +120,10 @@ export default function AnalyticsModuleView({
         q.set('loja', user.tenantId)
       }
       q.set('periodo', period)
+      if (period === 'custom') {
+        if (startDate) q.set('startDate', startDate)
+        if (endDate) q.set('endDate', endDate)
+      }
 
       const res = await fetch(`/api/analytics/sales?${q.toString()}`)
       if (!res.ok) throw new Error('Falha ao carregar métricas')
@@ -122,6 +152,67 @@ export default function AnalyticsModuleView({
     return maxVal > 0 ? maxVal : 10
   }, [hourlyData])
 
+  // Componente de controle dos filtros de período com suporte a datas customizadas
+  const renderPeriodSelector = () => (
+    <div className="flex flex-col items-start sm:items-end gap-2 w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10 w-fit">
+        {[
+          { id: 'today', label: 'Hoje' },
+          { id: 'yesterday', label: 'Ontem' },
+          { id: 'month', label: 'Este mês' },
+          { id: 'custom', label: 'Customizado' },
+        ].map((p) => {
+          const isActive = period === p.id
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setPeriod(p.id as any)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-blue-600 dark:bg-purple-900 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {p.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {period === 'custom' && (
+        <div className="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-white/5 p-2 rounded-xl border border-slate-200 dark:border-white/10 text-xs animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">De:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-7 px-2 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#160228] text-slate-800 dark:text-slate-200 text-xs font-mono font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Até:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-7 px-2 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#160228] text-slate-800 dark:text-slate-200 text-xs font-mono font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={loadAnalytics}
+            className="h-7 px-3 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+          >
+            Filtrar
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
       {/* 1. SELETOR DE ABAS SUPERIOR DO ANALYTICS */}
@@ -131,6 +222,7 @@ export default function AnalyticsModuleView({
             { id: 'overview', label: 'Visão Geral' },
             { id: 'products', label: 'Venda de produtos' },
             { id: 'toppings', label: 'Vendas opcionais' },
+            { id: 'orders', label: 'Histórico de pedidos' },
           ].map((tab) => {
             const isActive = activeTab === tab.id
             return (
@@ -205,31 +297,8 @@ export default function AnalyticsModuleView({
               </p>
             </div>
 
-            {/* Pílulas de Período (Fiel ao Benchmark) */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10 w-fit">
-              {[
-                { id: 'today', label: 'Hoje' },
-                { id: 'yesterday', label: 'Ontem' },
-                { id: 'month', label: 'Este mês' },
-                { id: 'custom', label: 'Customizado' },
-              ].map((p) => {
-                const isActive = period === p.id
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPeriod(p.id as any)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                )
-              })}
-            </div>
+            {/* Pílulas de Período e Seletor de Datas Customizadas */}
+            {renderPeriodSelector()}
           </div>
 
           {/* Cards de Métricas Principais (Topo) */}
@@ -264,8 +333,9 @@ export default function AnalyticsModuleView({
             {/* Gráfico de Vendas por Horário (Timeline 24h) */}
             <div className="pt-6 border-t border-slate-100 dark:border-white/10 space-y-3">
               <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span>R$ 0,00</span>
-                <span className="text-[10px] font-mono">24 Horas</span>
+                <span>{formatCurrency(maxHourlyRevenue > 0 ? maxHourlyRevenue : 0)} máx.</span>
+                <span className="text-[10px] font-mono">Linha do Tempo 24 Horas</span>
+                <span>{formatCurrency(0)}</span>
               </div>
 
               {/* Barra / Timeline Horária */}
@@ -364,66 +434,55 @@ export default function AnalyticsModuleView({
               Venda de produtos
             </h1>
 
-            {/* Pílulas de Período */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10 w-fit">
-              {[
-                { id: 'today', label: 'Hoje' },
-                { id: 'yesterday', label: 'Ontem' },
-                { id: 'month', label: 'Este mês' },
-                { id: 'custom', label: 'Customizado' },
-              ].map((p) => {
-                const isActive = period === p.id
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPeriod(p.id as any)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                )
-              })}
-            </div>
+            {/* Pílulas de Período e Seletor Customizado */}
+            {renderPeriodSelector()}
           </div>
 
-          {/* Tabela com Sub-abas Mais Vendidos / Menos Vendidos */}
+          {/* Tabela com Sub-abas Mais Vendidos / Menos Vendidos e Busca */}
           <div className="bg-white dark:bg-[#160228] rounded-2xl border border-slate-200 dark:border-white/10 shadow-xs overflow-hidden">
-            {/* Sub-abas Internas (Mais vendidos / Menos vendidos com sublinhado) */}
-            <div className="flex items-center gap-6 px-6 pt-4 border-b border-slate-100 dark:border-white/10">
-              <button
-                type="button"
-                onClick={() => setRankingSort('most')}
-                className={`pb-3 text-xs font-bold transition-all cursor-pointer relative ${
-                  rankingSort === 'most'
-                    ? 'text-blue-600 dark:text-pink-400'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <span>Mais vendidos</span>
-                {rankingSort === 'most' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-pink-400 rounded-full" />
-                )}
-              </button>
+            {/* Sub-abas Internas e Input de Busca */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 pt-4 border-b border-slate-100 dark:border-white/10">
+              <div className="flex items-center gap-6">
+                <button
+                  type="button"
+                  onClick={() => setRankingSort('most')}
+                  className={`pb-3 text-xs font-bold transition-all cursor-pointer relative ${
+                    rankingSort === 'most'
+                      ? 'text-blue-600 dark:text-pink-400'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <span>Mais vendidos</span>
+                  {rankingSort === 'most' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-pink-400 rounded-full" />
+                  )}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setRankingSort('least')}
-                className={`pb-3 text-xs font-bold transition-all cursor-pointer relative ${
-                  rankingSort === 'least'
-                    ? 'text-blue-600 dark:text-pink-400'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <span>Menos vendidos</span>
-                {rankingSort === 'least' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-pink-400 rounded-full" />
-                )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setRankingSort('least')}
+                  className={`pb-3 text-xs font-bold transition-all cursor-pointer relative ${
+                    rankingSort === 'least'
+                      ? 'text-blue-600 dark:text-pink-400'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <span>Menos vendidos</span>
+                  {rankingSort === 'least' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-pink-400 rounded-full" />
+                  )}
+                </button>
+              </div>
+
+              <div className="pb-3">
+                <input
+                  type="text"
+                  placeholder="Filtrar produto por nome..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-8 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-56"
+                />
+              </div>
             </div>
 
             {/* Cabeçalho da Tabela: PRODUTO | VENDAS | RECEITA */}
@@ -435,11 +494,15 @@ export default function AnalyticsModuleView({
 
             {/* Linhas ou Estado Vazio */}
             {(() => {
-              const list = rankingSort === 'most' ? productsData.mostSold : productsData.leastSold
+              const baseList = rankingSort === 'most' ? productsData.mostSold : productsData.leastSold
+              const list = searchTerm
+                ? baseList.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                : baseList
+
               if (list.length === 0) {
                 return (
                   <div className="py-16 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
-                    <p>Nenhum produto vendido no período selecionado.</p>
+                    <p>{searchTerm ? 'Nenhum produto encontrado para este filtro.' : 'Nenhum produto vendido no período selecionado.'}</p>
                   </div>
                 )
               }
@@ -475,66 +538,55 @@ export default function AnalyticsModuleView({
               Vendas opcionais
             </h1>
 
-            {/* Pílulas de Período */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10 w-fit">
-              {[
-                { id: 'today', label: 'Hoje' },
-                { id: 'yesterday', label: 'Ontem' },
-                { id: 'month', label: 'Este mês' },
-                { id: 'custom', label: 'Customizado' },
-              ].map((p) => {
-                const isActive = period === p.id
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPeriod(p.id as any)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                )
-              })}
-            </div>
+            {/* Pílulas de Período e Seletor Customizado */}
+            {renderPeriodSelector()}
           </div>
 
-          {/* Tabela de Acompanhamentos com Sub-abas Mais Vendidos / Menos Vendidos */}
+          {/* Tabela de Acompanhamentos com Sub-abas Mais Vendidos / Menos Vendidos e Busca */}
           <div className="bg-white dark:bg-[#160228] rounded-2xl border border-slate-200 dark:border-white/10 shadow-xs overflow-hidden">
-            {/* Sub-abas Internas */}
-            <div className="flex items-center gap-6 px-6 pt-4 border-b border-slate-100 dark:border-white/10">
-              <button
-                type="button"
-                onClick={() => setRankingSort('most')}
-                className={`pb-3 text-xs font-bold transition-all cursor-pointer relative ${
-                  rankingSort === 'most'
-                    ? 'text-blue-600 dark:text-pink-400'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <span>Mais vendidos</span>
-                {rankingSort === 'most' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-pink-400 rounded-full" />
-                )}
-              </button>
+            {/* Sub-abas Internas e Input de Busca */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 pt-4 border-b border-slate-100 dark:border-white/10">
+              <div className="flex items-center gap-6">
+                <button
+                  type="button"
+                  onClick={() => setRankingSort('most')}
+                  className={`pb-3 text-xs font-bold transition-all cursor-pointer relative ${
+                    rankingSort === 'most'
+                      ? 'text-blue-600 dark:text-pink-400'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <span>Mais vendidos</span>
+                  {rankingSort === 'most' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-pink-400 rounded-full" />
+                  )}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setRankingSort('least')}
-                className={`pb-3 text-xs font-bold transition-all cursor-pointer relative ${
-                  rankingSort === 'least'
-                    ? 'text-blue-600 dark:text-pink-400'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <span>Menos vendidos</span>
-                {rankingSort === 'least' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-pink-400 rounded-full" />
-                )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setRankingSort('least')}
+                  className={`pb-3 text-xs font-bold transition-all cursor-pointer relative ${
+                    rankingSort === 'least'
+                      ? 'text-blue-600 dark:text-pink-400'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <span>Menos vendidos</span>
+                  {rankingSort === 'least' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-pink-400 rounded-full" />
+                  )}
+                </button>
+              </div>
+
+              <div className="pb-3">
+                <input
+                  type="text"
+                  placeholder="Filtrar acompanhamento por nome..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-8 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-56"
+                />
+              </div>
             </div>
 
             {/* Cabeçalho da Tabela: PRODUTO (ou ACOMPANHAMENTO) | VENDAS | RECEITA */}
@@ -546,11 +598,15 @@ export default function AnalyticsModuleView({
 
             {/* Linhas ou Estado Vazio */}
             {(() => {
-              const list = rankingSort === 'most' ? toppingsData.mostSold : toppingsData.leastSold
+              const baseList = rankingSort === 'most' ? toppingsData.mostSold : toppingsData.leastSold
+              const list = searchTerm
+                ? baseList.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                : baseList
+
               if (list.length === 0) {
                 return (
                   <div className="py-16 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
-                    <p>Nenhum opcional vendido no período selecionado.</p>
+                    <p>{searchTerm ? 'Nenhum acompanhamento encontrado para este filtro.' : 'Nenhum opcional vendido no período selecionado.'}</p>
                   </div>
                 )
               }
@@ -574,6 +630,15 @@ export default function AnalyticsModuleView({
             })()}
           </div>
         </div>
+      )}
+
+      {/* 5. HISTÓRICO DE PEDIDOS */}
+      {activeTab === 'orders' && (
+        <OrderHistoryAdminView
+          tenantId={selectedBranch}
+          currentUser={user}
+          initialPeriod={period}
+        />
       )}
     </div>
   )

@@ -1,6 +1,38 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Mesas Reais de Cada Loja no Histórico de Pedidos [CONCLUÍDO]**:
+  - **Causa Raiz Resolvida**: No frontend `OrderHistoryAdminView.tsx`, a busca de mesas mapeava `t.tableNumber` em vez de `t.number` retornado pelo repositório PostgreSQL, caindo num mock fallback estático de 1 a 15/20.
+  - **Mapeamento Canônico & Dinâmico**:
+    - Ajustado `lib/repositories/tablesRepository.ts` e `/api/tables` para suportar `tenantId === 'ALL'` (retornando todas as mesas ativas da rede) ou filial específica.
+    - No `OrderHistoryAdminView.tsx`, as opções de mesa agora utilizam `t.number` e `t.nickname`, exibindo fielmente:
+      - **Loja 1 - Figueira da Foz (Matriz)**: estritamente as 10 mesas cadastradas (`Mesa 01` a `Mesa 10`);
+      - **Loja 2 - Torres Novas (Filial 1)**: estritamente as 30 mesas cadastradas (`Mesa 01` a `Mesa 30`);
+      - **Todas as Unidades (Rede)**: todas as mesas deduplicadas em ordem numérica.
+    - Reset suave do filtro caso a mesa selecionada não exista na nova filial escolhida.
+- **Pesquisa de Satisfação: Correção de Erro de Respostas & Tipos Flexíveis [CONCLUÍDO]**:
+  - **Causa Raiz do Erro 500 Resolvida**: Tabela `satisfaction_survey_responses` no PostgreSQL não possuía as colunas `customer_email`, `customer_birthday` e `nps_score`, gerando a falha `column r.customer_email does not exist` ao abrir a aba "Respostas".
+  - **Migração PostgreSQL Concluída**: Executado `scripts/migrate_satisfaction_responses_columns.js`, criando as 3 colunas dedicadas, a coluna `survey_type` em `satisfaction_surveys` e índices de performance (`idx_survey_responses_nps`, `idx_survey_responses_email`).
+  - **Resiliência da API de Respostas**: Adicionado fallback em `/api/surveys/[id]/responses` para recuperar dados do JSONB `answers` caso alguma coluna esteja nula. Testado e validado com retorno HTTP 200 e analytics completo.
+  - **Presets Rápidos de 1-Clique no Editor (`SurveyEditorView.tsx`)**:
+    - `[Somente NPS]` (1 etapa · Nota 0 a 10 + comentário opcional);
+    - `[Dados do Cliente]` (1 etapa · Captação de Leads: Nome, WhatsApp, Email, Aniversário);
+    - `[NPS + Dados]` (2 etapas · Avaliação e Fidelização);
+    - `[Pesquisa Completa 2.0]` (5 etapas · NPS + Métricas com estrelas + Como conheceu + Leads + Sugestão).
+  - **Seletor Dinâmico de Tipo por Pergunta**:
+    - Substituído o texto estático fixo por um `<select>` nativo e estilizado na pergunta ativa, permitindo ao administrador alternar o tipo de qualquer pergunta a qualquer momento (sem precisar deletar e recriar a pergunta).
+  - **Badges de Formato no Modal (`SatisfactionSurveyManagerModal.tsx`)**:
+    - Cada modelo na aba "Modelos de pesquisa" agora exibe o badge do seu formato (`Somente NPS`, `Dados do Cliente`, `NPS + Dados`, `Pesquisa Completa`, `Personalizada`) e a quantidade de perguntas.
+  - **Compilação**: `npx tsc --noEmit` validado com **0 erros**.
+  - Banco de dados migrado (`satisfaction_surveys`, `satisfaction_survey_responses`, `store_languages_config`), 5 tipos canônicos de perguntas, ativação por loja (1 pesquisa ativa por unidade), aba de tradução em Gestão de Idiomas e avaliação no menu público `/menu`.
+- **Limpeza no Painel de Feedbacks [CONCLUÍDO]**:
+  - Botão/modal `Critérios` e ação destrutiva `Zerar Avaliações` removidos, mantendo header limpo com `[Atualizar]`, `[Exportar relatório]` e `[Pesquisa de Satisfação]`.
+- **Ajuste & Funcionalidade Completa dos Filtros do Analytics [CONCLUÍDO]**:
+  - **Datas Customizadas**: Implementado seletor dinâmico de intervalo (`De: [AAAA-MM-DD]` e `Até: [AAAA-MM-DD]` com botão `Filtrar`) quando a opção "Customizado" é ativada, enviando `startDate` e `endDate` sanitizados para a API.
+  - **Fuso Horário Canônico**: Ajustada formatação de data para `Europe/Lisbon` no PostgreSQL e JavaScript (`toLocaleDateString('pt-PT')`), garantindo correspondência exata para `Hoje`, `Ontem`, `Este mês` e `Customizado`.
+  - **Correção Monetária**: Substituída a legenda residual brasileira `R$ 0,00` no gráfico de vendas por hora pelo padrão oficial em euros (`€ 0,00` e escala dinâmica proporcional via `formatCurrency`).
+  - **Filtro de Busca Textual**: Adicionado campo de busca em tempo real por nome de produto e acompanhamento nas abas de "Venda de produtos" e "Vendas opcionais".
+  - **Sincronização de Loja**: Sincronizado seletor de lojas com `useFranchiseStore` e `currentTenant`, com suporte para visão global da rede (`ALL`) ou filial específica.
 - **Limpeza de Processos na Porta 3000 & Otimização do Servidor [CONCLUÍDO]**:
   - **Porta 3000 Liberada**: Verificação via `netstat` e encerramento de processos órfãos. Servidor Next.js 15 dev reiniciado de forma limpa e respondendo com sucesso (`✓ Ready in 8.7s`).
   - **Espaço em Disco Recuperado (C:)**: Purgados caches pesados do `.next/cache` que causavam `ENOSPC: no space left on device`, restaurando mais de 6.3 GB de espaço livre no disco C:.

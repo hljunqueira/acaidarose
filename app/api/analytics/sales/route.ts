@@ -18,12 +18,13 @@ export async function GET(req: NextRequest) {
       targetTenantId = t ? t.id : rawTenant
     }
 
-    const periodo = (req.nextUrl.searchParams.get('periodo') || 'yesterday').toLowerCase()
+    const periodo = (req.nextUrl.searchParams.get('periodo') || 'today').toLowerCase()
     const startDateParam = req.nextUrl.searchParams.get('startDate')
     const endDateParam = req.nextUrl.searchParams.get('endDate')
 
     // 1. Construir cláusulas de período no fuso de Portugal ('Europe/Lisbon')
     let dateFilterSql = ''
+    let ratingDateFilterSql = ''
     const params: any[] = []
 
     if (targetTenantId) {
@@ -36,7 +37,9 @@ export async function GET(req: NextRequest) {
 
     if (periodo === 'today') {
       dateFilterSql += ` AND (o.created_at AT TIME ZONE 'Europe/Lisbon')::date = (now() AT TIME ZONE 'Europe/Lisbon')::date`
+      ratingDateFilterSql += ` AND (created_at AT TIME ZONE 'Europe/Lisbon')::date = (now() AT TIME ZONE 'Europe/Lisbon')::date`
       dateFormatted = now.toLocaleDateString('pt-PT', {
+        timeZone: 'Europe/Lisbon',
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -44,8 +47,10 @@ export async function GET(req: NextRequest) {
       })
     } else if (periodo === 'yesterday') {
       dateFilterSql += ` AND (o.created_at AT TIME ZONE 'Europe/Lisbon')::date = ((now() AT TIME ZONE 'Europe/Lisbon')::date - INTERVAL '1 day')`
+      ratingDateFilterSql += ` AND (created_at AT TIME ZONE 'Europe/Lisbon')::date = ((now() AT TIME ZONE 'Europe/Lisbon')::date - INTERVAL '1 day')`
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
       dateFormatted = yesterday.toLocaleDateString('pt-PT', {
+        timeZone: 'Europe/Lisbon',
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -53,18 +58,34 @@ export async function GET(req: NextRequest) {
       })
     } else if (periodo === 'month') {
       dateFilterSql += ` AND date_trunc('month', o.created_at AT TIME ZONE 'Europe/Lisbon') = date_trunc('month', now() AT TIME ZONE 'Europe/Lisbon')`
-      dateFormatted = now.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
-    } else if (periodo === 'custom' && startDateParam && endDateParam) {
-      params.push(startDateParam)
+      ratingDateFilterSql += ` AND date_trunc('month', created_at AT TIME ZONE 'Europe/Lisbon') = date_trunc('month', now() AT TIME ZONE 'Europe/Lisbon')`
+      dateFormatted = now.toLocaleDateString('pt-PT', { timeZone: 'Europe/Lisbon', month: 'long', year: 'numeric' })
+    } else if (periodo === 'custom' && (startDateParam || endDateParam)) {
+      let s = startDateParam || endDateParam!
+      let e = endDateParam || startDateParam!
+      if (s > e) {
+        const tmp = s
+        s = e
+        e = tmp
+      }
+      params.push(s)
       const p1 = params.length
-      params.push(endDateParam)
+      params.push(e)
       const p2 = params.length
       dateFilterSql += ` AND (o.created_at AT TIME ZONE 'Europe/Lisbon')::date BETWEEN $${p1}::date AND $${p2}::date`
-      dateFormatted = `${startDateParam} até ${endDateParam}`
+      ratingDateFilterSql += ` AND (created_at AT TIME ZONE 'Europe/Lisbon')::date BETWEEN '${s}'::date AND '${e}'::date`
+      
+      const sParts = s.split('-')
+      const eParts = e.split('-')
+      const sFmt = sParts.length === 3 ? `${sParts[2]}/${sParts[1]}/${sParts[0]}` : s
+      const eFmt = eParts.length === 3 ? `${eParts[2]}/${eParts[1]}/${eParts[0]}` : e
+      dateFormatted = s === e ? sFmt : `${sFmt} até ${eFmt}`
     } else {
-      // Default: todos ou yesterday
-      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-      dateFormatted = yesterday.toLocaleDateString('pt-PT', {
+      // Default: today
+      dateFilterSql += ` AND (o.created_at AT TIME ZONE 'Europe/Lisbon')::date = (now() AT TIME ZONE 'Europe/Lisbon')::date`
+      ratingDateFilterSql += ` AND (created_at AT TIME ZONE 'Europe/Lisbon')::date = (now() AT TIME ZONE 'Europe/Lisbon')::date`
+      dateFormatted = now.toLocaleDateString('pt-PT', {
+        timeZone: 'Europe/Lisbon',
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -189,7 +210,7 @@ export async function GET(req: NextRequest) {
     const worstToppings = [...allToppings].sort((a, b) => a.quantity - b.quantity || a.revenue - b.revenue)
 
     // 6. Resumo das Avaliações de Clientes para o card da Visão Geral
-    let ratingSql = `SELECT score FROM customer_ratings WHERE 1=1`
+    let ratingSql = `SELECT score FROM customer_ratings WHERE 1=1 ${ratingDateFilterSql}`
     const ratingParams: any[] = []
     if (targetTenantId) {
       ratingParams.push(targetTenantId)

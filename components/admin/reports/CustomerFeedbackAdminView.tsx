@@ -11,14 +11,13 @@ import {
   Download,
   Calendar,
   Building2,
-  SlidersHorizontal,
   RefreshCw,
   Clock,
   User,
   Phone,
   Trash2,
   AlertTriangle,
-  RotateCcw,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +31,7 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
-import RatingCriteriaModal from './RatingCriteriaModal'
+import SatisfactionSurveyManagerModal from '../surveys/SatisfactionSurveyManagerModal'
 
 interface FeedbackItem {
   id: string
@@ -76,15 +75,12 @@ export default function CustomerFeedbackAdminView() {
   const [selectedBranch, setSelectedBranch] = useState<string>(storeId || 'ALL')
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | '7d' | '30d'>('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [criteriaModalOpen, setCriteriaModalOpen] = useState(false)
+  const [surveyModalOpen, setSurveyModalOpen] = useState(false)
 
   // Modais de Segurança (sem window.confirm nativo)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [feedbackToDelete, setFeedbackToDelete] = useState<FeedbackItem | null>(null)
   const [deletingOne, setDeletingOne] = useState(false)
-
-  const [clearModalOpen, setClearModalOpen] = useState(false)
-  const [clearingAll, setClearingAll] = useState(false)
 
   // Sincroniza selectedBranch quando o storeId mudar
   useEffect(() => {
@@ -197,25 +193,7 @@ export default function CustomerFeedbackAdminView() {
     }
   }
 
-  // Confirmação para Zerar Todas as Avaliações
-  const handleConfirmClearAll = async () => {
-    setClearingAll(true)
-    try {
-      const targetLoja = isMaster && selectedBranch ? selectedBranch : user?.tenantId || 'ALL'
-      const res = await fetch(`/api/ratings?clearLoja=${encodeURIComponent(targetLoja)}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) throw new Error('Falha ao zerar avaliações')
 
-      toast.success('Todas as avaliações foram zeradas com sucesso!')
-      setClearModalOpen(false)
-      loadFeedbacks()
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao zerar avaliações')
-    } finally {
-      setClearingAll(false)
-    }
-  }
 
   // Exportação CSV
   const handleExportCSV = () => {
@@ -316,20 +294,8 @@ export default function CustomerFeedbackAdminView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {/* BOTÃO ZERAR AVALIAÇÕES (COM MODAL DE SEGURANÇA) */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setClearModalOpen(true)}
-            className="h-10 rounded-xl text-xs font-bold border-rose-200 dark:border-rose-900/40 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
-            title="Zerar avaliações de teste"
-          >
-            <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-            <span>Zerar Avaliações</span>
-          </Button>
-
+        <div className="flex flex-wrap items-center gap-2">
+          {/* BOTÃO ATUALIZAR */}
           <Button
             type="button"
             variant="outline"
@@ -340,6 +306,28 @@ export default function CustomerFeedbackAdminView() {
           >
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
+          </Button>
+
+          {/* BOTÃO EXPORTAR RELATÓRIO */}
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleExportCSV}
+            className="h-10 rounded-xl text-xs font-bold bg-purple-900 hover:bg-purple-800 text-white cursor-pointer shadow-xs flex items-center gap-1.5"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Exportar relatório</span>
+          </Button>
+
+          {/* BOTÃO PESQUISA DE SATISFAÇÃO */}
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setSurveyModalOpen(true)}
+            className="h-10 rounded-xl text-xs font-bold bg-purple-950 hover:bg-purple-900 text-white cursor-pointer shadow-xs flex items-center gap-1.5 border border-purple-700/40"
+          >
+            <FileText className="h-3.5 w-3.5 text-pink-400" />
+            <span>Pesquisa de Satisfação</span>
           </Button>
         </div>
       </div>
@@ -455,11 +443,11 @@ export default function CustomerFeedbackAdminView() {
         </div>
       </div>
 
-      {/* 3. TOOLBAR DE AÇÕES (Botões Corporativos e Filtros) */}
+      {/* 3. TOOLBAR DE FILTROS (Filial à esquerda, Filtros de dias e Buscar juntos no final) */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* BOTÃO [ FILIAIS ] — RENDERIZADO EXCLUSIVAMENTE PARA FRANQUEADORA MASTER */}
-          {isMaster && (
+        {/* Lado Esquerdo: SELETOR DE LOJAS / FILIAIS */}
+        <div>
+          {isMaster ? (
             <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15">
               <Building2 className="h-4 w-4 text-purple-700 dark:text-pink-400 ml-2" />
               <select
@@ -483,19 +471,15 @@ export default function CustomerFeedbackAdminView() {
                 ))}
               </select>
             </div>
+          ) : (
+            <div className="text-xs font-bold text-slate-500">
+              {feedbacks.length} avaliações registadas
+            </div>
           )}
+        </div>
 
-          {/* BOTÃO [ CRITÉRIOS DE AVALIAÇÃO ] */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setCriteriaModalOpen(true)}
-            className="h-10 rounded-2xl text-xs font-bold border-purple-200 dark:border-white/15 text-slate-700 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 cursor-pointer shadow-xs"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5 text-purple-700 dark:text-pink-400" />
-            <span>Critérios de avaliação</span>
-          </Button>
-
+        {/* Lado Direito (JUNTOS NO FINAL): FILTROS DE DIAS E BUSCAR */}
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* SELETOR DE PERÍODO / DATA */}
           <div className="flex items-center gap-1 p-1 rounded-2xl bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-xs font-bold">
             <Calendar className="h-3.5 w-3.5 text-slate-400 ml-2 mr-1" />
@@ -544,30 +528,18 @@ export default function CustomerFeedbackAdminView() {
               30 Dias
             </button>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
           {/* BUSCA RÁPIDA */}
-          <div className="relative flex-1 sm:w-60">
+          <div className="relative w-56 sm:w-64">
             <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar cliente ou comentário..."
+              placeholder="Buscar comentário..."
               className="w-full h-10 pl-8 pr-3 rounded-2xl text-xs bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
-
-          {/* BOTÃO [ EXPORTAR RELATÓRIO ] */}
-          <Button
-            type="button"
-            onClick={handleExportCSV}
-            className="h-10 rounded-2xl text-xs font-bold bg-purple-900 hover:bg-purple-800 text-white cursor-pointer shadow-xs flex items-center gap-1.5 shrink-0"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span>Exportar relatório</span>
-          </Button>
         </div>
       </div>
 
@@ -690,13 +662,7 @@ export default function CustomerFeedbackAdminView() {
         </div>
       )}
 
-      {/* Modal de Gerenciamento de Critérios (CRUD COMPLETO) */}
-      <RatingCriteriaModal
-        open={criteriaModalOpen}
-        onOpenChange={setCriteriaModalOpen}
-        tenantId={storeId}
-        onUpdated={loadFeedbacks}
-      />
+
 
       {/* MODAL DE SEGURANÇA: ELIMINAR 1 AVALIAÇÃO (SEM WINDOW NATIVO) */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
@@ -742,43 +708,13 @@ export default function CustomerFeedbackAdminView() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL DE SEGURANÇA: ZERAR TODAS AS AVALIAÇÕES (SEM WINDOW NATIVO) */}
-      <Dialog open={clearModalOpen} onOpenChange={setClearModalOpen}>
-        <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-rose-200 dark:border-rose-900/40 rounded-3xl shadow-2xl">
-          <DialogHeader className="space-y-2 text-left">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-500/20 text-rose-600 flex items-center justify-center">
-              <RotateCcw className="h-6 w-6" />
-            </div>
-            <DialogTitle className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              Zerar Avaliações da Unidade?
-            </DialogTitle>
-            <p className="text-xs text-slate-600 dark:text-purple-200/80 leading-relaxed">
-              Tem a certeza de que deseja zerar todas as avaliações desta unidade? Todas as notas,
-              comentários e dados de NPS serão reiniciados para zero. Esta ação não pode ser desfeita.
-            </p>
-          </DialogHeader>
 
-          <DialogFooter className="pt-4 flex items-center justify-end gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={clearingAll}
-              onClick={() => setClearModalOpen(false)}
-              className="h-9 px-4 rounded-xl text-xs font-bold border-purple-200 dark:border-white/15 cursor-pointer"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={clearingAll}
-              onClick={handleConfirmClearAll}
-              className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-sm shadow-rose-600/20"
-            >
-              {clearingAll ? 'A zerar...' : 'Confirmar e Zerar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+      {/* GESTOR DE PESQUISA DE SATISFAÇÃO 2.0 */}
+      <SatisfactionSurveyManagerModal
+        open={surveyModalOpen}
+        onOpenChange={setSurveyModalOpen}
+      />
     </div>
   )
 }

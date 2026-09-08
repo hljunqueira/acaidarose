@@ -55,6 +55,7 @@ import PublishChangesBanner from '@/components/admin/common/PublishChangesBanner
 import MultilingualManagementView from '@/components/admin/menu/MultilingualManagementView'
 import CustomerFeedbackAdminView from '@/components/admin/reports/CustomerFeedbackAdminView'
 import AnalyticsModuleView from '@/components/admin/analytics/AnalyticsModuleView'
+import OrderHistoryAdminView from '@/components/admin/orders/OrderHistoryAdminView'
 import { useAdminTheme } from '@/lib/hooks/useIsolatedTheme'
 
 export default function HomePage() {
@@ -309,6 +310,7 @@ export default function HomePage() {
               onTabChange={(tab) => {
                 if (tab === 'products') setView('analytics_products')
                 else if (tab === 'toppings') setView('analytics_toppings')
+                else if (tab === 'orders') setView('orders_history')
                 else setView('analytics_overview')
               }}
               onNavigateToFeedback={() => setView('customer_feedback')}
@@ -327,6 +329,12 @@ export default function HomePage() {
             <QRCodeOrdersAdmin
               tenantId={activeTenantId}
               onOpenPDV={() => setView('pdv')}
+            />
+          )}
+          {view === 'orders_history' && (
+            <OrderHistoryAdminView
+              tenantId={activeTenantId}
+              currentUser={loggedUser}
             />
           )}
           {view === 'tv_panel' && <TVOrdersControlView tenantId={activeTenantId} />}

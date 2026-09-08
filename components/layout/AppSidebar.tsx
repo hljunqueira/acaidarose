@@ -40,6 +40,7 @@ export type AppViewId =
   | 'analytics_toppings'
   | 'pdv'
   | 'qrcode'
+  | 'orders_history'
   | 'tv_panel'
   | 'tables'
   | 'inventory'
@@ -134,7 +135,7 @@ export default function AppSidebar({
     if (['dev_hub', 'prevention_center', 'audit_logs'].includes(v)) return 'devHub'
     if (['franchise', 'franchise_candidates', 'store_requests', 'franchise_requests', 'supply_hub'].includes(v)) return 'franchise'
     if (['analytics_overview', 'analytics_products', 'analytics_toppings'].includes(v)) return 'analytics'
-    if (['pdv', 'qrcode', 'tables'].includes(v)) return 'salon'
+    if (['pdv', 'qrcode', 'orders_history', 'tables'].includes(v)) return 'salon'
     if (['menu', 'menu_categories', 'menu_menus', 'menu_highlights', 'menu_schedules', 'menu_languages'].includes(v)) return 'menu'
     if (['inventory', 'supply_orders'].includes(v)) return 'inventory'
     if (['customer_feedback'].includes(v)) return 'quality'
@@ -233,6 +234,7 @@ export default function AppSidebar({
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
+          { id: 'orders_history', label: 'Histórico de Pedidos', subtitle: 'Auditoria & Filtro por Data', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
@@ -337,6 +339,7 @@ export default function AppSidebar({
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
+          { id: 'orders_history', label: 'Histórico de Pedidos', subtitle: 'Auditoria & Filtro por Data', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
@@ -413,6 +416,7 @@ export default function AppSidebar({
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
+          { id: 'orders_history', label: 'Histórico de Pedidos', subtitle: 'Auditoria & Filtro por Data', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
         ],
       },
@@ -478,6 +482,7 @@ export default function AppSidebar({
         items: [
           { id: 'pdv', label: 'PDV Balcão & Mesas', subtitle: 'Montagem de Taça', show: true },
           { id: 'qrcode', label: 'Pedidos & KDS Cozinha', subtitle: 'Fila em Tempo Real', show: true },
+          { id: 'orders_history', label: 'Histórico de Pedidos', subtitle: 'Auditoria & Filtro por Data', show: true },
           { id: 'tables', label: 'Gestão de Mesas', subtitle: 'Salão & Comandas', show: true },
           { id: 'inventory', label: 'Estoque do Turno', subtitle: 'Checklist Rápido 2 min', show: true },
         ],
