@@ -516,7 +516,13 @@ export default function PDVView({
                     </div>
 
                     {/* Seletor de Embalagem para 750g e 1kg */}
-                    {draft.container && ((draft.container.weightGrams || 0) >= 750 || draft.container.name.toLowerCase().includes('taça ou caixa')) && (
+                    {draft.container && (
+                      (draft.container.weightGrams || 0) >= 750 || 
+                      draft.container.name.toLowerCase().includes('taça ou caixa') ||
+                      draft.container.name.toLowerCase().includes('sensação') ||
+                      draft.container.name.toLowerCase().includes('família') ||
+                      draft.container.name.toLowerCase().includes('familia')
+                    ) && (
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-100 dark:border-white/10">
                         <span className="text-xs font-black uppercase text-purple-950 dark:text-purple-200">
                           Embalagem:

@@ -90,7 +90,17 @@ export default function CustomerProductDetail({
   const quantity = 1
 
   const weight = container.weightGrams || 500
-  const isLargeContainer = weight === 750 || weight === 1000 || (container.name && (container.name.includes('750') || container.name.includes('1kg') || container.name.includes('1 kg')))
+  const isLargeContainer = 
+    weight === 750 || 
+    weight === 1000 || 
+    (container.name && (
+      container.name.includes('750') || 
+      container.name.includes('1kg') || 
+      container.name.includes('1 kg') ||
+      container.name.toLowerCase().includes('sensação') ||
+      container.name.toLowerCase().includes('família') ||
+      container.name.toLowerCase().includes('familia')
+    ))
   const [containerFormat, setContainerFormat] = useState<'TACA' | 'CAIXA' | null>(null)
   const isUnlimited = weight >= 500
   const maxFrutas = container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)

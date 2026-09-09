@@ -1,6 +1,24 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Nomenclatura Oficial dos Recipientes Grandes: Açaí Sensação (750g) & Açaí Família (1kg) [CONCLUÍDO]**:
+  - **Identificação Comercial Oficial**:
+    - O formato de **750g** foi padronizado oficialmente como **Açaí Sensação**, removendo qualquer referência a "Família".
+    - O formato de **1kg (1000g)** foi consagrado como **Açaí Família** ("o tamanho perfeito para partilhar com toda a família").
+  - **Migração no Banco de Dados PostgreSQL (`scripts/migrate_rename_sensacao_familia.js`)**:
+    - **Tabela `product_containers` (12 registros atualizados nas 3 lojas)**:
+      - 750g Tradicional: `Taça ou Caixa Açaí Sensação 750gr` (EN: `750gr Sensation Açaí (Bowl or Box)`, ES: `Açaí Sensación 750gr (Bol o Caja)`).
+      - 750g Somente Creme: `Taça ou Caixa Sensação 750gr (Somente Creme)`.
+      - 1kg Tradicional: `Taça ou Caixa Açaí Família 1kg` (EN: `1kg Family Açaí (Bowl or Box)`, ES: `Açaí Familia 1kg (Bol o Caja)`).
+      - 1kg Somente Creme: `Taça ou Caixa Família 1kg (Somente Creme)`.
+    - **Tabela `store_stories` (Destaques Promocionais sincronizados nas 3 lojas)**:
+      - O card anterior `Açaí 750g Família` foi corrigido para **`Açaí Sensação 750g`** com badge **`SENSAÇÃO`**, subtítulo `Camadas generosas de Frutas & Acompanhamentos` e preço 18,90€.
+      - Inserido/atualizado o destaque oficial **`Açaí Família 1kg`** com badge **`FAMÍLIA`**, subtítulo `O tamanho perfeito para partilhar com toda a família` e preço 25,90€.
+      - Replicado para a Matriz (Figueira da Foz), Filial 1 (Torres Novas) e Franquia (Aveiro).
+    - **Incremento de Versão**: `store_catalog_versions` atualizado em todas as lojas para propagação automática em tempo real.
+  - **Frontend & Integração**:
+    - `CustomerProductDetail.tsx` e `PDVView.tsx` atualizados para reconhecer os novos nomes canônicos e aplicar o sufixo dinâmico de embalagem escolhida (`Taça Açaí Sensação 750gr` vs `Caixa Açaí Sensação 750gr (Takeaway)` e `Taça Açaí Família 1kg` vs `Caixa Açaí Família 1kg (Takeaway)`).
+  - **Validação**: `npx tsc --noEmit` executado com **0 erros**.
 - **Opcionais com Múltiplas Escolhas (Steppers) & Seleção de Embalagem (Taça vs. Caixa 750g/1kg) [CONCLUÍDO]**:
   - **Causa Raiz Resolvida**: No `CustomerMenuHome.tsx`, recipientes de açaí que possuíam `optionGroups` estavam sendo desviados para `CustomerItemDetailModal` (modal de lanches/cafés com escolhas simples de `max 1`), em vez de abrir o customizador completo `CustomerProductDetail.tsx`.
   - **Escopo Exclusivo para Açaí**: Somente produtos da linha Açaí permitem repetição e steppers numéricos (`[-] [Qtd] [+]`) com cotas e adicionais (+0,50€ / +2,00€). Lanches, sumos e cafés continuam com escolhas unitárias objetivas.
