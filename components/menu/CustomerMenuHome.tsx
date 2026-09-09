@@ -190,16 +190,21 @@ export default function CustomerMenuHome({
       return
     }
 
-    // Se for ITEM unitário ou tiver modificadores/optionGroups configurados, abre o modal de detalhe
+    // Identifica se é recipiente de Açaí (sempre abre o customizador completo com bases, acompanhamentos e Taça/Caixa)
+    const isAcaiContainer = c.productType === 'CONTAINER' || (c.weightGrams !== null && c.weightGrams !== undefined && Number(c.weightGrams) > 0)
     const hasOptions = Array.isArray(c.optionGroups) && c.optionGroups.length > 0
-    if (c.productType === 'ITEM' || hasOptions) {
+
+    if (isAcaiContainer) {
+      // Abre o customizador oficial de Açaí (CustomerProductDetail)
+      onSelectContainer(c)
+    } else if (c.productType === 'ITEM' || hasOptions) {
+      // Abre o modal simplificado de opções para itens unitários (cafés, sumos, etc.)
       if (isCatalogOnly) {
         toast.info(getLocalizedField(c, 'name', language) || c.name)
         return
       }
       setActiveItemForDetail(c)
     } else {
-      // Abre o fluxo clássico de personalização de Açaí (Taça / Pote com bases e acompanhamentos)
       onSelectContainer(c)
     }
   }

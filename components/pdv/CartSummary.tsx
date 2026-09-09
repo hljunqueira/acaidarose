@@ -79,6 +79,11 @@ export default function CartSummary({
                           {qty}x
                         </span>
                       )}
+                      {item.packagingType && (
+                        <span className="text-[10px] bg-purple-200/70 text-purple-900 font-black px-1.5 py-0.5 rounded-md uppercase">
+                          {item.packagingType === 'CAIXA' ? 'Caixa' : 'Taça'}
+                        </span>
+                      )}
                     </div>
 
                     {!isSimple && (

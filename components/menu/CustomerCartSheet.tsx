@@ -26,6 +26,8 @@ interface CartItem {
   unitPrice: number
   lineTotal: number
   notes?: string
+  packagingType?: 'TACA' | 'CAIXA' | string
+  containerFormat?: 'TACA' | 'CAIXA' | string
 }
 
 interface CustomerCartSheetProps {
@@ -496,8 +498,13 @@ export default function CustomerCartSheet({
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <div className="font-bold text-xs text-slate-900 dark:text-white">
-                              {item.container?.name || item.containerName || 'Açaí Personalizado'}
+                            <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                              <span>{item.container?.name || item.containerName || 'Açaí Personalizado'}</span>
+                              {(item.packagingType || item.containerFormat) && (
+                                <span className="text-[9px] bg-purple-200/80 text-purple-900 dark:bg-purple-800/80 dark:text-purple-100 font-black px-1.5 py-0.5 rounded-md uppercase">
+                                  {(item.packagingType || item.containerFormat) === 'CAIXA' ? 'Caixa Takeaway' : 'Taça'}
+                                </span>
+                              )}
                             </div>
                             <div className="text-[10px] text-pink-600 dark:text-pink-300 font-mono font-bold mt-0.5">
                               {formatCurrency(item.unitPrice)} un.

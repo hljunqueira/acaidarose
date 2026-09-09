@@ -13,11 +13,14 @@ export interface CartDraftItem {
   container: ProductContainer | null
   bases: ProductBase[]
   toppings: ProductTopping[]
+  packagingType?: 'TACA' | 'CAIXA' | string
+  containerFormat?: 'TACA' | 'CAIXA' | string
 }
 
 export interface CartItem {
   id: string
   container: ProductContainer
+  containerName?: string
   bases: ProductBase[]
   toppings: OrderItemTopping[]
   lineTotal: number
@@ -27,6 +30,8 @@ export interface CartItem {
   unitPrice?: number
   selectedOptions?: any[]
   options?: any[]
+  packagingType?: 'TACA' | 'CAIXA' | string
+  containerFormat?: 'TACA' | 'CAIXA' | string
 }
 
 export interface Order {

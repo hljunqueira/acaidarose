@@ -1,6 +1,20 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Opcionais com Múltiplas Escolhas (Steppers) & Seleção de Embalagem (Taça vs. Caixa 750g/1kg) [CONCLUÍDO]**:
+  - **Causa Raiz Resolvida**: No `CustomerMenuHome.tsx`, recipientes de açaí que possuíam `optionGroups` estavam sendo desviados para `CustomerItemDetailModal` (modal de lanches/cafés com escolhas simples de `max 1`), em vez de abrir o customizador completo `CustomerProductDetail.tsx`.
+  - **Escopo Exclusivo para Açaí**: Somente produtos da linha Açaí permitem repetição e steppers numéricos (`[-] [Qtd] [+]`) com cotas e adicionais (+0,50€ / +2,00€). Lanches, sumos e cafés continuam com escolhas unitárias objetivas.
+  - **Migração PostgreSQL (`scripts/migrate_rename_and_enable_quantities.js`)**:
+    - Renomeados todos os recipientes de 750g e 1kg (tradicionais e Somente Creme) nas 3 lojas (`11111111-...`, `22222222-...`, `33333333-...`) para `Taça ou Caixa 750gr` e `Taça ou Caixa 1kg` nos 3 idiomas (PT, EN, ES).
+    - Habilitado `allowItemQuantity: true` nos grupos `model-frutas`, `model-toppings` e `model-caldas`.
+    - Atualizada a versão do catálogo em `store_catalog_versions` para propagação instantânea via WebSocket/polling.
+  - **Seleção Obrigatória de Embalagem (750g e 1kg - Opção B)**:
+    - **No Cardápio do Cliente (`CustomerProductDetail.tsx`)**: Seletor limpo no topo com `[ Taça (Consumo no Local) ]` vs `[ Caixa com Tampa (Takeaway) ]`. Validação obrigatória impedindo avanço sem escolha e sufixo dinâmico no nome final do item (`Taça 750gr` vs `Caixa 750gr (Takeaway)`).
+    - **No PDV Balcão (`PDVView.tsx`, `CartSummary.tsx`, `cartStore.ts`)**: Seletor instantâneo de embalagem no cabeçalho do draft para operadores, badge de identificação no resumo do carrinho e conversão automática no fechamento.
+    - **Na Cozinha Térmica 80mm (`KitchenOrderPrintModal.tsx`) & Recibos (`app/receipt/[id]/page.tsx`)**:
+      - Destaque em badge preto sólido `CAIXA TAKEAWAY` vs `TAÇA`.
+      - Agrupamento inteligente de acompanhamentos repetidos para clareza da copa (ex: `Morango (2x)` em vez de linhas duplicadas).
+  - **Validação Rigorosa**: `npx tsc --noEmit` executado com **0 erros** de TypeScript.
 - **Mesas Reais de Cada Loja no Histórico de Pedidos [CONCLUÍDO]**:
   - **Causa Raiz Resolvida**: No frontend `OrderHistoryAdminView.tsx`, a busca de mesas mapeava `t.tableNumber` em vez de `t.number` retornado pelo repositório PostgreSQL, caindo num mock fallback estático de 1 a 15/20.
   - **Mapeamento Canônico & Dinâmico**:

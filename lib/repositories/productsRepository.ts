@@ -41,6 +41,7 @@ export function buildDefaultOptionGroupsForContainer(
       maxQty: defaultFrutasMax,
       isRequired: false,
       active: true,
+      allowItemQuantity: true,
       options: toppingsList
         .filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f)))
         .map((f) => ({
@@ -61,6 +62,7 @@ export function buildDefaultOptionGroupsForContainer(
       maxQty: defaultToppingsMax,
       isRequired: false,
       active: true,
+      allowItemQuantity: true,
       options: toppingsList
         .filter((t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f)))
         .map((t) => ({
@@ -81,6 +83,7 @@ export function buildDefaultOptionGroupsForContainer(
       maxQty: 10,
       isRequired: false,
       active: true,
+      allowItemQuantity: true,
       options: toppingsList
         .filter((t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0))
         .map((c) => ({

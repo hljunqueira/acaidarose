@@ -123,22 +123,46 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           return (
             <div key={it.id || idx} className="mb-2">
               <div className="flex justify-between font-bold">
-                <span>{idx + 1}. {it.containerName || 'Taça'}</span>
+                <span>
+                  {idx + 1}. {it.containerName || 'Taça'}
+                  {((it.packagingType === 'CAIXA' || it.containerFormat === 'CAIXA') || (it.containerName || '').toLowerCase().includes('caixa')) && (
+                    <span className="ml-1 uppercase text-[10px] font-black">[Caixa Takeaway]</span>
+                  )}
+                </span>
                 <span>{formatCurrency(it.containerPrice || it.unitPrice || 0)}</span>
               </div>
               {it.bases?.length > 0 && (
                 <div className="text-[11px] pl-3">Bases: {it.bases.map((b: any) => b.name).join(', ')}</div>
               )}
-              {it.toppings?.length > 0 && (
-                <div className="text-[11px] pl-3">
-                  {it.toppings.map((t: any) => (
-                    <div key={t.id} className="flex justify-between">
-                      <span>+ {t.name}{t.isPremium ? ' (Premium)' : ''}</span>
-                      <span>{t.isPaid ? formatCurrency(t.precoCobrado) : 'Grátis'}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {it.toppings?.length > 0 && (() => {
+                const grouped: { id: string; name: string; isPremium: boolean; isPaid: boolean; precoCobrado: number; count: number }[] = []
+                for (const t of it.toppings) {
+                  const existing = grouped.find((g) => g.name?.toLowerCase() === (t.name || '').toLowerCase() && g.isPaid === t.isPaid)
+                  if (existing) {
+                    existing.count += (t.quantity || 1)
+                    existing.precoCobrado += (t.precoCobrado || 0)
+                  } else {
+                    grouped.push({
+                      id: t.id,
+                      name: t.name,
+                      isPremium: Boolean(t.isPremium),
+                      isPaid: Boolean(t.isPaid),
+                      precoCobrado: t.precoCobrado || 0,
+                      count: t.quantity || 1,
+                    })
+                  }
+                }
+                return (
+                  <div className="text-[11px] pl-3">
+                    {grouped.map((t, tIdx) => (
+                      <div key={t.id || tIdx} className="flex justify-between">
+                        <span>+ {t.name}{t.count > 1 ? ` (${t.count}x)` : ''}{t.isPremium ? ' (Premium)' : ''}</span>
+                        <span>{t.isPaid ? formatCurrency(t.precoCobrado) : 'Grátis'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
               {(it.selectedOptions?.length > 0 || it.options?.length > 0) && (
                 <div className="text-[11px] pl-3">
                   {(it.selectedOptions || it.options).map((opt: any, optIdx: number) => (

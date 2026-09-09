@@ -272,40 +272,74 @@ export default function KitchenOrderPrintModal({
                         <span className="bg-black text-white px-1 py-0.2 text-xs font-black rounded-xs">
                           {it.quantity || 1}X
                         </span>
-                        <span className="leading-snug">
+                        <span className="leading-snug flex-1">
                           {it.containerName || it.container?.name || 'Taça de Açaí'}
                         </span>
+                        {(it.packagingType === 'CAIXA' || it.containerFormat === 'CAIXA' || (it.containerName || it.container?.name || '').toLowerCase().includes('caixa')) && (
+                          <span className="bg-black text-white px-1.5 py-0.5 text-[11px] font-black rounded-xs whitespace-nowrap">
+                            CAIXA TAKEAWAY
+                          </span>
+                        )}
+                        {(it.packagingType === 'TACA' || it.containerFormat === 'TACA') && !(it.containerName || it.container?.name || '').toLowerCase().includes('caixa') && (
+                          <span className="bg-zinc-200 text-black px-1.5 py-0.5 text-[11px] font-black rounded-xs whitespace-nowrap border border-black">
+                            TAÇA
+                          </span>
+                        )}
                       </div>
 
                       {/* Bases e Cremes (Destaque Operacional) */}
-                      {bases.length > 0 && (
-                        <div className="pl-1 text-[11px] leading-tight text-black">
-                          <span className="font-black underline">BASES:</span>{' '}
-                          <span className="font-bold uppercase">
-                            {bases.map((b: any) => b.name).join(', ')}
-                          </span>
-                        </div>
-                      )}
+                      {bases.length > 0 && (() => {
+                        const groupedBases: { name: string; count: number }[] = []
+                        for (const b of bases) {
+                          const existing = groupedBases.find((gb) => gb.name?.toLowerCase() === (b.name || '').toLowerCase())
+                          if (existing) {
+                            existing.count += (b.quantity || 1)
+                          } else {
+                            groupedBases.push({ name: b.name, count: b.quantity || 1 })
+                          }
+                        }
+                        return (
+                          <div className="pl-1 text-[11px] leading-tight text-black">
+                            <span className="font-black underline">BASES:</span>{' '}
+                            <span className="font-bold uppercase">
+                              {groupedBases.map((b) => `${b.name}${b.count > 1 ? ` (${b.count}x)` : ''}`).join(', ')}
+                            </span>
+                          </div>
+                        )
+                      })()}
 
-                      {/* Acompanhamentos em Formato Checklist Grande e Nítido */}
-                      {toppings.length > 0 && (
-                        <div className="pl-1 pt-0.5 space-y-0.5 text-black">
-                          <div className="font-bold underline text-[9.5px] uppercase tracking-wide">
-                            ACOMPANHAMENTOS:
+                      {/* Acompanhamentos em Formato Checklist Grande e Nítido com Quantidades Agrupadas */}
+                      {toppings.length > 0 && (() => {
+                        const groupedToppings: { name: string; count: number }[] = []
+                        for (const t of toppings) {
+                          const existing = groupedToppings.find((gt) => gt.name?.toLowerCase() === (t.name || '').toLowerCase())
+                          if (existing) {
+                            existing.count += (t.quantity || 1)
+                          } else {
+                            groupedToppings.push({ name: t.name, count: t.quantity || 1 })
+                          }
+                        }
+                        return (
+                          <div className="pl-1 pt-0.5 space-y-0.5 text-black">
+                            <div className="font-bold underline text-[9.5px] uppercase tracking-wide">
+                              ACOMPANHAMENTOS:
+                            </div>
+                            <div className="grid grid-cols-1 gap-1 pl-1">
+                              {groupedToppings.map((gt, tIdx) => (
+                                <div
+                                  key={tIdx}
+                                  className="flex items-center gap-1.5 text-[11.5px] font-bold"
+                                >
+                                  <span className="font-mono font-black text-xs leading-none">[ ]</span>
+                                  <span className="leading-tight">
+                                    {gt.name} {gt.count > 1 ? `(${gt.count}x)` : ''}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-1 gap-1 pl-1">
-                            {toppings.map((t: any, tIdx: number) => (
-                              <div
-                                key={t.id || tIdx}
-                                className="flex items-center gap-1.5 text-[11.5px] font-bold"
-                              >
-                                <span className="font-mono font-black text-xs leading-none">[ ]</span>
-                                <span className="leading-tight">{t.name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                        )
+                      })()}
 
                       {/* Modificadores / Opções do Item (Leite, Textura, etc.) */}
                       {(it.selectedOptions?.length > 0 || it.options?.length > 0) && (

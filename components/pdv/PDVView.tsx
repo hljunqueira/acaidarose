@@ -60,6 +60,7 @@ export default function PDVView({
     items,
     draft,
     startDraft,
+    setDraftPackagingType,
     resetDraft,
     toggleBase,
     toggleTopping,
@@ -513,6 +514,39 @@ export default function PDVView({
                         Subtotal: <span className="text-pink-600 dark:text-pink-400 font-extrabold">{formatCurrency(currentDraftTotal)}</span>
                       </div>
                     </div>
+
+                    {/* Seletor de Embalagem para 750g e 1kg */}
+                    {draft.container && ((draft.container.weightGrams || 0) >= 750 || draft.container.name.toLowerCase().includes('taça ou caixa')) && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-100 dark:border-white/10">
+                        <span className="text-xs font-black uppercase text-purple-950 dark:text-purple-200">
+                          Embalagem:
+                        </span>
+                        <div className="inline-flex rounded-xl p-1 bg-purple-100/80 dark:bg-white/10 border border-purple-200/60 dark:border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => setDraftPackagingType('TACA')}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                              draft.packagingType !== 'CAIXA'
+                                ? 'bg-purple-700 text-white shadow-xs'
+                                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950'
+                            }`}
+                          >
+                            Taça (Consumo no Local)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDraftPackagingType('CAIXA')}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                              draft.packagingType === 'CAIXA'
+                                ? 'bg-purple-700 text-white shadow-xs'
+                                : 'text-purple-900 dark:text-purple-200 hover:text-purple-950'
+                            }`}
+                          >
+                            Caixa com Tampa (Takeaway)
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Tags de Extras Ativos na Taça */}
                     {draftBreakdown && (draftBreakdown.extraBases > 0 || draftBreakdown.extraFrutas > 0 || draftBreakdown.extraToppings > 0 || draftBreakdown.premiumsVal > 0) && (

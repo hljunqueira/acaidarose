@@ -119,6 +119,7 @@ interface CartState {
   items: CartItem[]
   draft: CartDraftItem | null
   startDraft: (container: ProductContainer) => void
+  setDraftPackagingType: (packagingType: 'TACA' | 'CAIXA') => void
   resetDraft: () => void
   toggleBase: (base: ProductBase) => void
   toggleTopping: (topping: ProductTopping) => void
@@ -137,7 +138,29 @@ export const useCartStore = create<CartState>()(
       draft: null,
 
       startDraft: (container: ProductContainer) =>
-        set({ draft: { id: genId(), container, bases: [], toppings: [] } }),
+        set({
+          draft: {
+            id: genId(),
+            container,
+            bases: [],
+            toppings: [],
+            packagingType: 'TACA',
+            containerFormat: 'TACA',
+          },
+        }),
+
+      setDraftPackagingType: (packagingType: 'TACA' | 'CAIXA') =>
+        set((s) =>
+          s.draft
+            ? {
+                draft: {
+                  ...s.draft,
+                  packagingType,
+                  containerFormat: packagingType,
+                },
+              }
+            : s
+        ),
 
       resetDraft: () => set({ draft: null }),
 
@@ -170,11 +193,27 @@ export const useCartStore = create<CartState>()(
           if (!s.draft || !s.draft.container || s.draft.bases.length === 0) return s
           const enrichedToppings = computeToppingBreakdown(s.draft)
           const lineTotal = computeItemLineTotal(s.draft)
+
+          let container = s.draft.container
+          const packaging = s.draft.packagingType || 'TACA'
+          if (container.name.toLowerCase().includes('taça ou caixa')) {
+            const isCaixa = packaging === 'CAIXA'
+            const replaceWord = isCaixa ? 'Caixa' : 'Taça'
+            let newName = container.name.replace(/Taça ou Caixa/i, replaceWord)
+            if (isCaixa && !newName.toLowerCase().includes('takeaway')) {
+              newName += ' (Takeaway)'
+            }
+            container = { ...container, name: newName }
+          }
+
           const item: CartItem = {
             id: s.draft.id,
-            container: s.draft.container,
+            container,
+            containerName: container.name,
             bases: s.draft.bases,
             toppings: enrichedToppings,
+            packagingType: packaging,
+            containerFormat: packaging,
             lineTotal,
             quantity: 1,
           }

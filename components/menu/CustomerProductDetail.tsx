@@ -90,6 +90,8 @@ export default function CustomerProductDetail({
   const quantity = 1
 
   const weight = container.weightGrams || 500
+  const isLargeContainer = weight === 750 || weight === 1000 || (container.name && (container.name.includes('750') || container.name.includes('1kg') || container.name.includes('1 kg')))
+  const [containerFormat, setContainerFormat] = useState<'TACA' | 'CAIXA' | null>(null)
   const isUnlimited = weight >= 500
   const maxFrutas = container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
   const maxToppingsGratis = container.limiteToppings || (isUnlimited ? 999 : weight === 350 ? 4 : 3)
@@ -198,8 +200,9 @@ export default function CustomerProductDetail({
       }
     }
 
+    const canHaveQty = group.allowItemQuantity !== false
     const newQty = Math.max(0, currentQty + delta)
-    if (!group.allowItemQuantity && newQty > 1) return
+    if (!canHaveQty && newQty > 1) return
 
     setCustomSelections((prev) => ({
       ...prev,
@@ -283,6 +286,25 @@ export default function CustomerProductDetail({
   }
 
   const handleConfirm = () => {
+    if (isLargeContainer && !containerFormat) {
+      toast.error('Por favor, selecione se deseja na Taça (Consumo no Local) ou na Caixa (Takeaway)')
+      return
+    }
+
+    let finalContainerName = container.name
+    if (isLargeContainer && containerFormat) {
+      if (containerFormat === 'CAIXA') {
+        finalContainerName = container.name.replace(/Taça ou Caixa/i, 'Caixa')
+        if (!finalContainerName.toLowerCase().includes('takeaway') && !finalContainerName.toLowerCase().includes('caixa')) {
+          finalContainerName = `Caixa ${container.name} (Takeaway)`
+        } else if (!finalContainerName.toLowerCase().includes('takeaway')) {
+          finalContainerName += ' (Takeaway)'
+        }
+      } else {
+        finalContainerName = container.name.replace(/Taça ou Caixa/i, 'Taça')
+      }
+    }
+
     if (hasDynamicGroups) {
       for (const group of (container.optionGroups || [])) {
         const selections = customSelections[group.id || group.name] || {}
@@ -321,9 +343,11 @@ export default function CustomerProductDetail({
       onAddToCart({
         id: `${container.id}-${Date.now()}`,
         containerId: container.id,
-        containerName: container.name,
+        containerName: finalContainerName,
         containerWeight: container.weightGrams,
-        container,
+        container: { ...container, name: finalContainerName },
+        packagingType: containerFormat || 'TACA',
+        containerFormat: containerFormat || 'TACA',
         bases: flatBases,
         toppings: flatToppings,
         customSelections,
@@ -334,7 +358,7 @@ export default function CustomerProductDetail({
         notes: notes.trim(),
       })
 
-      toast.success(`${container.name} adicionado ao pedido!`)
+      toast.success(`${finalContainerName} adicionado ao pedido!`)
       onClose()
       return
     }
@@ -347,9 +371,11 @@ export default function CustomerProductDetail({
     onAddToCart({
       id: `${container.id}-${Date.now()}`,
       containerId: container.id,
-      containerName: container.name,
+      containerName: finalContainerName,
       containerWeight: container.weightGrams,
-      container,
+      container: { ...container, name: finalContainerName },
+      packagingType: containerFormat || 'TACA',
+      containerFormat: containerFormat || 'TACA',
       bases: selectedBases,
       toppings: selectedToppings,
       extraBasesCount,
@@ -360,7 +386,7 @@ export default function CustomerProductDetail({
       notes: notes.trim(),
     })
 
-    toast.success(`${container.name} adicionado ao pedido!`)
+    toast.success(`${finalContainerName} adicionado ao pedido!`)
     onClose()
   }
 
@@ -463,6 +489,63 @@ export default function CustomerProductDetail({
 
           {/* Coluna Direita: Seleção */}
           <div className="md:col-span-8 space-y-5">
+            {/* Seletor Obrigatório de Recipiente para 750g e 1kg (Opção B) */}
+            {isLargeContainer && (
+              <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-white/5 border-2 border-purple-300 dark:border-purple-600/40 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span>Escolha o Tipo de Embalagem</span>
+                    <Badge className="bg-pink-600 text-white font-bold text-[9px] py-0 px-1.5">
+                      Obrigatório
+                    </Badge>
+                  </label>
+                  {containerFormat && (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      ✓ Selecionado: {containerFormat === 'TACA' ? 'Taça' : 'Caixa com Tampa'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setContainerFormat('TACA')}
+                    className={`p-3.5 rounded-2xl border-2 text-left transition flex flex-col justify-between cursor-pointer ${
+                      containerFormat === 'TACA'
+                        ? 'border-purple-600 bg-purple-600/15 dark:border-pink-500 dark:bg-purple-900/40 shadow-sm'
+                        : 'border-purple-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-sm text-slate-900 dark:text-white">Taça</span>
+                      {containerFormat === 'TACA' && <Check className="h-4 w-4 text-purple-700 dark:text-pink-400 stroke-[3]" />}
+                    </div>
+                    <span className="text-[11px] text-slate-600 dark:text-purple-200/80 mt-1">
+                      Para consumir no salão / local
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setContainerFormat('CAIXA')}
+                    className={`p-3.5 rounded-2xl border-2 text-left transition flex flex-col justify-between cursor-pointer ${
+                      containerFormat === 'CAIXA'
+                        ? 'border-purple-600 bg-purple-600/15 dark:border-pink-500 dark:bg-purple-900/40 shadow-sm'
+                        : 'border-purple-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-sm text-slate-900 dark:text-white">Caixa com Tampa</span>
+                      {containerFormat === 'CAIXA' && <Check className="h-4 w-4 text-purple-700 dark:text-pink-400 stroke-[3]" />}
+                    </div>
+                    <span className="text-[11px] text-slate-600 dark:text-purple-200/80 mt-1">
+                      Ideal para takeaway / levar para casa
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {hasDynamicGroups ? (
               container.optionGroups!.map((group, groupIdx) => {
                 const groupId = group.id || group.name
