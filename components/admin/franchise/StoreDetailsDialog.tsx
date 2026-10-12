@@ -140,7 +140,7 @@ export default function StoreDetailsDialog({
                     <div><b>Razão Social:</b> {tenant.companyName || 'Rose & Vavá Portugal Lda'}</div>
                     <div className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-purple-600 dark:text-pink-400 shrink-0" />
-                      <span>{tenant.address || 'Praça 5 de Outubro 12'}</span>
+                      <span>{tenant.address || 'Av Manoel de Figueiredo 12 RC Direito'}</span>
                     </div>
                     <div><b>Código Postal:</b> {tenant.postalCode || '2350-754'} {tenant.city || 'Torres Novas'}</div>
                   </div>

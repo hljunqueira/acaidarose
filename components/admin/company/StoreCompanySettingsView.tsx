@@ -175,7 +175,7 @@ export default function StoreCompanySettingsView({ tenantId }: StoreCompanySetti
                 <Input
                   value={form.address || ''}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  placeholder="Praça 5 de Outubro 12"
+                  placeholder="Av Manoel de Figueiredo 12 RC Direito"
                   className="h-9 text-xs rounded-xl bg-white dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
                 />
               </div>

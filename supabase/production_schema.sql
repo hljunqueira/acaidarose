@@ -366,7 +366,7 @@ CREATE INDEX IF NOT EXISTS idx_supply_tenant ON supply_orders(tenant_id, status)
 INSERT INTO tenants (id, name, slug, nif, address, is_headquarters, active)
 VALUES 
     ('11111111-1111-1111-1111-111111111111', 'Açaí da Rose — Sede Franqueadora & Matriz Aveiro', 'aveiro', '500123456', 'Aveiro, Portugal', TRUE, TRUE),
-    ('22222222-2222-2222-2222-222222222222', 'Açaí da Rose — Filial Torres Novas', 'torres-novas', '500789012', 'Torres Novas, Portugal', FALSE, TRUE)
+    ('22222222-2222-2222-2222-222222222222', 'Açaí da Rose — Filial Torres Novas', 'torres-novas', '517968223', 'Av Manoel de Figueiredo 12 RC Direito, Torres Novas', FALSE, TRUE)
 ON CONFLICT (slug) DO UPDATE 
 SET is_headquarters = EXCLUDED.is_headquarters, name = EXCLUDED.name;
 
