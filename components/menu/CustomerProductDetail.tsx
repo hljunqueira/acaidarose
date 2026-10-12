@@ -255,7 +255,7 @@ export default function CustomerProductDetail({
   const toggleBase = (base: ProductBase) => {
     if (selectedBases.some((b) => b.id === base.id)) {
       if (selectedBases.length === 1) {
-        toast.info('Selecione pelo menos 1 base para a sua taça')
+        toast.info('Selecione pelo menos 1 base para o seu pedido')
         return
       }
       setSelectedBases((prev) => prev.filter((b) => b.id !== base.id))
@@ -297,16 +297,16 @@ export default function CustomerProductDetail({
 
   const handleConfirm = () => {
     if (isLargeContainer && !containerFormat) {
-      toast.error('Por favor, selecione se deseja na Taça (Consumo no Local) ou na Caixa (Takeaway)')
+      toast.error('Por favor, selecione se deseja na Taça (Consumo no Local) ou na Caixinha Plástica (Takeaway)')
       return
     }
 
     let finalContainerName = container.name
     if (isLargeContainer && containerFormat) {
       if (containerFormat === 'CAIXA') {
-        finalContainerName = container.name.replace(/Taça ou Caixa/i, 'Caixa')
-        if (!finalContainerName.toLowerCase().includes('takeaway') && !finalContainerName.toLowerCase().includes('caixa')) {
-          finalContainerName = `Caixa ${container.name} (Takeaway)`
+        finalContainerName = container.name.replace(/Taça ou Caixa/i, 'Caixinha Plástica')
+        if (!finalContainerName.toLowerCase().includes('takeaway') && !finalContainerName.toLowerCase().includes('caixinha') && !finalContainerName.toLowerCase().includes('caixa')) {
+          finalContainerName = `Caixinha Plástica ${container.name} (Takeaway)`
         } else if (!finalContainerName.toLowerCase().includes('takeaway')) {
           finalContainerName += ' (Takeaway)'
         }
@@ -402,13 +402,32 @@ export default function CustomerProductDetail({
 
   const video = container.videoUrl || CUP_VIDEOS[weight]
 
+  const modalTitle = useMemo(() => {
+    if (viewOnly) return `Ingredientes: ${container.name}`
+    const nameLower = (container.name || '').toLowerCase()
+    if (nameLower.includes('copo')) {
+      return `Personalize o seu ${container.name}`
+    }
+    if (nameLower.includes('sensação') || nameLower.includes('sensacao')) {
+      if (containerFormat === 'CAIXA') return 'Personalize a sua Caixinha Plástica Sensação 750gr'
+      if (containerFormat === 'TACA') return 'Personalize a sua Taça Sensação 750gr'
+      return 'Personalize a sua Taça ou Caixa Sensação 750gr'
+    }
+    if (nameLower.includes('família') || nameLower.includes('familia')) {
+      if (containerFormat === 'CAIXA') return 'Personalize a sua Caixinha Plástica Família 1kg'
+      if (containerFormat === 'TACA') return 'Personalize a sua Taça Família 1kg'
+      return 'Personalize a sua Taça ou Caixa Família 1kg'
+    }
+    return `Personalize o seu ${container.name}`
+  }, [viewOnly, container.name, containerFormat])
+
   return (
     <Dialog open={Boolean(container)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={`w-[95vw] sm:w-full max-w-4xl max-h-[90vh] overflow-hidden p-0 rounded-3xl flex flex-col shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#150226] text-white border-white/20' : 'bg-white text-slate-900 border-purple-100'}`}>
         {/* Header */}
         <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-purple-100 dark:border-white/10 bg-purple-50 dark:bg-[#1e0333]/90 pr-14">
           <DialogTitle className="text-base font-black text-slate-900 dark:text-white">
-            {viewOnly ? `Ingredientes: ${container.name}` : `Personalize o seu ${container.name}`}
+            {modalTitle}
           </DialogTitle>
         </div>
 
@@ -511,7 +530,7 @@ export default function CustomerProductDetail({
                   </label>
                   {containerFormat && (
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      ✓ Selecionado: {containerFormat === 'TACA' ? 'Taça' : 'Caixa com Tampa'}
+                      ✓ Selecionado: {containerFormat === 'TACA' ? 'Taça' : 'Caixinha Plástica'}
                     </span>
                   )}
                 </div>
@@ -545,7 +564,7 @@ export default function CustomerProductDetail({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-sm text-slate-900 dark:text-white">Caixa com Tampa</span>
+                      <span className="font-black text-sm text-slate-900 dark:text-white">Caixinha Plástica</span>
                       {containerFormat === 'CAIXA' && <Check className="h-4 w-4 text-purple-700 dark:text-pink-400 stroke-[3]" />}
                     </div>
                     <span className="text-[11px] text-slate-600 dark:text-purple-200/80 mt-1">
@@ -592,7 +611,7 @@ export default function CustomerProductDetail({
                         <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold">
                           {group.priceType === 'Individual'
                             ? (group.additionalPrice && Number(group.additionalPrice) > 0 ? `+${formatCurrency(Number(group.additionalPrice))}/un.` : 'Valor por item')
-                            : (group.additionalPrice && Number(group.additionalPrice) > 0 ? `Até ${group.maxQty || 1} grátis (extra +${formatCurrency(Number(group.additionalPrice))})` : 'Incluso')}
+                            : (group.additionalPrice && Number(group.additionalPrice) > 0 ? `Até ${group.maxQty || 1} opções incluídas (extra +${formatCurrency(Number(group.additionalPrice))})` : 'Incluso')}
                         </span>
                       </div>
                     </div>

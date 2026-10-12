@@ -26,13 +26,13 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
   const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
 
   // 1. Cremes / Bases Extras (padrão € 2,00 ou configurado no modelo)
-  const maxBases = item.container.limiteCremes || item.container.limiteBases || 1
+  const maxBases = item.container.limiteCremes || item.container.limiteBases || 2
   const extraBasesCount = Math.max(0, (item.bases?.length || 0) - maxBases)
   const extraBasesPrice = extraBasesCount * additionalBasePrice
 
   // 2. Frutas & Toppings Tradicionais vs Premium
   const maxFrutas = item.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
-  const maxToppings = item.container.limiteToppings || (isUnlimited ? 999 : 3)
+  const maxToppings = item.container.limiteToppings || (isUnlimited ? 999 : weight === 250 ? 3 : 4)
 
   let frutasCount = 0
   let toppingsTradicionaisCount = 0
@@ -70,7 +70,7 @@ export function computeToppingBreakdown(item: CartDraftItem | CartItem): OrderIt
   const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
 
   const maxFrutas = item.container?.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
-  const maxToppings = item.container?.limiteToppings || (isUnlimited ? 999 : 3)
+  const maxToppings = item.container?.limiteToppings || (isUnlimited ? 999 : weight === 250 ? 3 : 4)
 
   let frutasVistas = 0
   let toppingsVistos = 0

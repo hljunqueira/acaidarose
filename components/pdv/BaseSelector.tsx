@@ -13,7 +13,7 @@ interface BaseSelectorProps {
 }
 
 export default function BaseSelector({ bases, container, selectedBases, onToggleBase }: BaseSelectorProps) {
-  const max = container.limiteCremes || container.limiteBases || 1
+  const max = container.limiteCremes || container.limiteBases || 2
   const count = selectedBases.length
   const extraCount = Math.max(0, count - max)
 
@@ -25,7 +25,7 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
             Cremes Gelados & Bases
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            <b>{max}</b> creme incluso na taça • Opções adicionais somam <b>+€ 2,00</b> cada
+            <b>{max}</b> opções inclusas no pedido • Opções adicionais somam <b>+€ 2,00</b> cada
           </p>
         </div>
         <div className="flex items-center gap-2">

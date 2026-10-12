@@ -153,7 +153,7 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
             {filteredContainers.length > 0 && (
               <div className="space-y-3">
                 <div className="text-xs font-bold text-fuchsia-600 dark:text-fuchsia-300 uppercase tracking-wider">
-                  Taças & Tamanhos de Açaí
+                  Copos & Tamanhos de Açaí
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {filteredContainers.map((c) => (
@@ -166,7 +166,7 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
                         <div className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-200">
                           {c.name}
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-purple-300/70">{c.description || 'Taça personalizável'}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-purple-300/70">{c.description || 'Opção personalizável'}</div>
                       </div>
                       <div className="text-right">
                         <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">

@@ -1,7 +1,53 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
-- **Nomenclatura Oficial dos Recipientes Grandes: Açaí Sensação (750g) & Açaí Família (1kg) [CONCLUÍDO]**:
+- **Servidor de E-mail Corporativo Híbrido (Poste.io + SMTP Relay) [CONCLUÍDO]**:
+  - **Decisão Arquitetural & Coexistência**:
+    - Adotado o **Poste.io** (`analogic/poste.io:latest`) em substituição ao Mailcow (que exigiria 6–8 GB de RAM e inviabilizaria a VPS compartilhada de 6 GB com PostgreSQL 16).
+    - O Poste.io opera em container único leve (~500 MB RAM) com limite rígido de 1.5 GB (`mem_limit: 1536m`) e ClamAV desativado, preservando mais de 4 GB para o PostgreSQL 16 e o Next.js.
+  - **Arquitetura de Envio & Recepção (Zero Spam)**:
+    - **Inbound (Recepção)**: Tráfego externo na porta 25 TCP chega direto ao Poste.io e é gravado no disco NVMe (`/root/acaidarose/data/mail_data`).
+    - **Outbound (Envio)**: Roteado obrigatoriamente via Smart Host / SMTP Relay autenticado (ex.: Brevo ou Amazon SES na porta 587 STARTTLS), contornando bloqueios de porta 25 da VPS e garantindo entregabilidade máxima na Caixa de Entrada do Gmail/Outlook.
+  - **Proxy Reverso, Autodiscover & SSL**:
+    - `Caddyfile` atualizado para gerenciar certificados SSL Let's Encrypt para `mail.acaidarose.pt`, `autoconfig.acaidarose.pt` e `autodiscover.acaidarose.pt`, com suporte a autoconfiguração com 1 clique no iOS e Thunderbird.
+  - **Governança de Armazenamento & Quotas**:
+    - Quotas canônicas: 5 GB para Franqueadora e 2 GB por loja (`figueiradafoz@...`, `torresnovas@...`, `aveiro@...`, `geral@...`).
+    - Rotação de logs Docker configurada para `max-size: 50m`, `max-file: 3`.
+  - **Backups & Runbook**:
+    - `backup.sh` atualizado para empacotar diariamente `mail_data_${TIMESTAMP}.tar.gz` junto ao dump do PostgreSQL às 03:00 AM com retenção de 30 dias.
+  - **Deploy em Produção & Testes ao Vivo (100% OK)**:
+    - Container `acaidarose-mail` online e saudável na VPS (`198.50.117.110`), consumindo apenas **310 MB de RAM** (com mais de 4.6 GB livres para o PostgreSQL 16).
+    - Portas testadas com sucesso: `25` (Inbound SMTP), `465` (SMTPS), `587` (Submission STARTTLS), `993` (IMAPS) e `443` (Webmail HTTPS).
+    - Certificado oficial Let's Encrypt emitido e ativo com auto-renovação configurada via Certbot hook.
+    - Webmail e painel de instalação respondendo em **`https://mail.acaidarose.pt/admin/install/server`** (HTTP 200 OK).
+  - **Correção de Anexos no Webmail (`mail.acaidarose.pt`) [CONCLUÍDO]**:
+    - **Diagnóstico da Causa Raiz**:
+      1. **Limite de Payload Descompassado**: O Roundcube informava `Tamanho máximo permitido: 75 MB`, porém o proxy Nginx da VPS estava fixado em `client_max_body_size 50M;`. Envios de notas fiscais/fotos acumuladas acima de 50MB retornavam erro HTTP 413, quebrando o parser JSON do Roundcube.
+      2. **Conflito de Cabeçalhos X-Frame-Options no Chrome/Android**: O Nginx interno do Poste.io e o PHP emitiam simultaneamente `X-Frame-Options`, resultando no cabeçalho corrompido `x-frame-options: sameorigin, SAMEORIGIN`. O Chrome no Android bloqueava o iframe oculto (`savetarget`), disparando o alerta genérico `Erro de conexão (Falha na comunicação com o servidor)!`.
+      3. **Revogação Síncrona de Permissão de Arquivo no Chrome/Android**: Em `/opt/www/webmail/program/include/rcmail_action.php`, o Roundcube executava síncronamente `this.value=null;` no evento `onchange` do input de anexo. No Android Chrome, zerar o input antes do stream do `FormData` revoga a permissão do `content://` URI da câmera/galeria, abortando a requisição no cliente com `status: 0`. Corrigido com `setTimeout(function(){ _inp.value=''; }, 2000)` para preservar o stream.
+      4. **Diferença de Visualização Mobile (iPhone vs Android)**:
+         - No iPhone (Safari), o viewport em retrato (< 480px) abre diretamente o layout `layout-phone` (1 coluna, cabeçalho limpo).
+         - No Android, ao deitar o aparelho na horizontal (paisagem) ou se a opção "Para computador" estiver marcada no menu do Chrome, a largura ultrapassa 768px e aciona o layout `layout-normal` (painel lateral e botões de desktop).
+         - Para o Valdair no celular, além do webmail corrigido, a melhor prática é configurar a conta no app Gmail nativo do Android via IMAP (`mail.acaidarose.pt:993`) e SMTP (`mail.acaidarose.pt:587`), dispensando uso do navegador.
+      5. **Timeouts Curtos para Redes Móveis 4G**: Falta de parâmetros de timeout para upload em redes com oscilação.
+    - **Ações Implementadas em Produção**:
+      - Atualizado `/etc/icontainer/apps/nginx/nginx/conf/conf.d/mail.acaidarose.pt.conf` na VPS e versionado em `config/nginx/mail.acaidarose.pt.conf`.
+      - Expandido `client_max_body_size` para `100m` (cobrindo os 75MB + margem MIME).
+      - Adicionado `proxy_hide_header X-Frame-Options;` e `add_header X-Frame-Options "SAMEORIGIN" always;` para sanitizar o cabeçalho único.
+      - Adicionado `proxy_connect_timeout 300s;`, `proxy_read_timeout 300s;`, `proxy_send_timeout 300s;` e `client_body_buffer_size 512k;`.
+      - Corrigido o manipulador de input de arquivos no Roundcube dentro do container `acaidarose-mail` para evitar o descarte imediato do arquivo no Android.
+      - Validação realizada via simulação completa (upload de 2MB, 10MB, 25MB e 52MB respondendo 200 OK em ~3s).
+    - **Arquivos & Guias Entregues**:
+    - [docker-compose.yml](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/docker-compose.yml) atualizado com o serviço `mailserver`.
+    - [config/caddy/Caddyfile](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/config/caddy/Caddyfile) atualizado com proxy reverso e autodiscover.
+    - [config/nginx/mail.acaidarose.pt.conf](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/config/nginx/mail.acaidarose.pt.conf) sincronizado com a configuração de produção da VPS.
+    - [docs/ARQUITETURA_INFRAESTRUTURA_E_DOMINIOS.md](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/docs/ARQUITETURA_INFRAESTRUTURA_E_DOMINIOS.md) e [docs/GUIA_DE_APONTAMENTOS_DNS_E_DOMINIOS.md](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/docs/GUIA_DE_APONTAMENTOS_DNS_E_DOMINIOS.md) atualizados com topologia e tabela de DNS.
+    - [docs/MANUAL_DE_MANUTENCAO_VPS_RUNBOOK_E_DISASTER_RECOVERY.md](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/docs/MANUAL_DE_MANUTENCAO_VPS_RUNBOOK_E_DISASTER_RECOVERY.md) atualizado com rotinas de backup e DR de correio.
+    - [docs/GUIA_CONFIGURACAO_POSTEIO_E_SMART_HOST.md](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/docs/GUIA_CONFIGURACAO_POSTEIO_E_SMART_HOST.md) criado com checklist operacional e teste de entregabilidade.
+    - [docs/ADR_AVALIACAO_COOLIFY_E_PAAS_SELF_HOSTED.md](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/docs/ADR_AVALIACAO_COOLIFY_E_PAAS_SELF_HOSTED.md) criado com avaliação técnica formal do Coolify vs Vercel e critérios de adoção futura.
+
+
+
   - **Identificação Comercial Oficial**:
     - O formato de **750g** foi padronizado oficialmente como **Açaí Sensação**, removendo qualquer referência a "Família".
     - O formato de **1kg (1000g)** foi consagrado como **Açaí Família** ("o tamanho perfeito para partilhar com toda a família").

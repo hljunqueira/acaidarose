@@ -484,12 +484,12 @@ export default function CustomerCartSheet({
                   </div>
                   <p className="text-xs text-slate-600 dark:text-purple-200/70">O seu pedido está vazio.</p>
                   <p className="text-[11px] text-slate-400 dark:text-purple-300/50">
-                    Escolha uma das nossas taças para personalizar o seu açaí.
+                    Escolha um dos nossos copos ou opções para personalizar o seu açaí.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Lista de Taças */}
+                  {/* Lista de Itens */}
                   <div className="space-y-2.5">
                     {cart.map((item, idx) => (
                       <div
@@ -502,7 +502,7 @@ export default function CustomerCartSheet({
                               <span>{item.container?.name || item.containerName || 'Açaí Personalizado'}</span>
                               {(item.packagingType || item.containerFormat) && (
                                 <span className="text-[9px] bg-purple-200/80 text-purple-900 dark:bg-purple-800/80 dark:text-purple-100 font-black px-1.5 py-0.5 rounded-md uppercase">
-                                  {(item.packagingType || item.containerFormat) === 'CAIXA' ? 'Caixa Takeaway' : 'Taça'}
+                                  {(item.packagingType || item.containerFormat) === 'CAIXA' ? 'Caixinha Plástica' : 'Taça'}
                                 </span>
                               )}
                             </div>

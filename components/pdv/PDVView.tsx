@@ -131,7 +131,7 @@ export default function PDVView({
     if (!draft?.container) return null
     const weight = Number(draft.container.weightGrams) || 500
     const isUnlimited = weight >= 500
-    const maxBases = draft.container.limiteCremes || draft.container.limiteBases || 1
+    const maxBases = draft.container.limiteCremes || draft.container.limiteBases || 2
     const basesModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme'))
     const toppingsModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
     const frutasModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta'))
@@ -144,7 +144,7 @@ export default function PDVView({
     const extraBasesVal = extraBases * additionalBasePrice
 
     const maxFrutas = draft.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
-    const maxToppings = draft.container.limiteToppings || (isUnlimited ? 999 : 3)
+    const maxToppings = draft.container.limiteToppings || (isUnlimited ? 999 : weight === 250 ? 3 : 4)
 
     let frutasCount = 0
     let toppingsCount = 0
@@ -240,7 +240,7 @@ export default function PDVView({
 
   const handleAddCurrentToCart = () => {
     if (!draft?.container) {
-      toast.error('Selecione uma taça')
+      toast.error('Selecione um tamanho')
       return
     }
 
@@ -255,7 +255,7 @@ export default function PDVView({
 
     addDraftToCart()
     setStep(1)
-    toast.success('Taça adicionada ao pedido!')
+    toast.success('Item adicionado ao pedido!')
   }
 
   const handleOptionsModalConfirm = (payload: {
@@ -469,7 +469,7 @@ export default function PDVView({
                       : 'bg-purple-50 dark:bg-white/5 text-slate-700 dark:text-purple-200 border border-purple-200/70 dark:border-white/10 hover:bg-purple-100 dark:hover:bg-white/10'
                   }`}
                 >
-                  {isAcaiMenu ? 'Todas as Taças' : 'Todas as Categorias'}
+                  {isAcaiMenu ? 'Todos os Tamanhos' : 'Todas as Categorias'}
                 </button>
 
                 {activeMenuCategories.map((cat) => (

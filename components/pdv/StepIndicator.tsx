@@ -8,8 +8,8 @@ interface StepIndicatorProps {
 }
 
 const STEPS = [
-  { id: 1, label: '1. Tamanho da Taça', desc: '250g a 1 Kg' },
-  { id: 2, label: '2. Cremes Gelados', desc: '1 opcional incluso' },
+  { id: 1, label: '1. Tamanho do Copo / Taça', desc: '250g a 1 Kg' },
+  { id: 2, label: '2. Cremes Gelados', desc: 'Até 2 opções inclusas' },
   { id: 3, label: '3. Frutas & Acompanhamentos', desc: 'Acompanhamentos & Extras' },
 ]
 

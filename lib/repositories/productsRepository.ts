@@ -9,9 +9,9 @@ export function buildDefaultOptionGroupsForContainer(
   basesList: ProductBase[],
   toppingsList: ProductTopping[]
 ) {
-  const defaultBasesMax = weight === 250 ? 1 : weight === 350 ? 2 : weight === 1000 ? 4 : 3
-  const defaultFrutasMax = weight === 250 ? 2 : weight === 350 ? 3 : 999
-  const defaultToppingsMax = weight === 250 ? 3 : weight === 350 ? 4 : 999
+  const defaultBasesMax = 2
+  const defaultFrutasMax = weight >= 500 ? 999 : weight === 250 ? 2 : 3
+  const defaultToppingsMax = weight >= 500 ? 999 : weight === 250 ? 3 : 4
 
   return [
     {
@@ -23,6 +23,7 @@ export function buildDefaultOptionGroupsForContainer(
       maxQty: defaultBasesMax,
       isRequired: true,
       active: true,
+      allowItemQuantity: true,
       options: basesList.map((b) => ({
         id: b.id,
         name: b.name,

@@ -18,7 +18,7 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
     <div className="space-y-4">
       <div>
         <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-          Escolha o Tamanho da Taça
+          Escolha o Tamanho do Copo ou Taça
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           Selecione o tamanho para aplicar as regras de frutas, acompanhamentos e valor
@@ -102,7 +102,7 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
                   )}
 
                   <div className="text-[10px] text-purple-700 font-semibold pt-1">
-                    + 1 creme gelado incluso
+                    + até 2 cremes gelados inclusos
                   </div>
                 </div>
               </div>
