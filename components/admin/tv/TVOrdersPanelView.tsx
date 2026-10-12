@@ -18,7 +18,7 @@ import {
   getStoredTVDisplayConfig,
   TVDisplayConfig,
 } from '@/lib/utils/tvBroadcast'
-import { announceTVCall } from '@/lib/utils/soundNotification'
+import { announceTVCall, playOrderNotificationSound } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
 import { Maximize, Minimize, Clock } from 'lucide-react'
 import { useFranchiseStore, resolveTenant, getDisplayStoreLocation } from '@/lib/stores/franchiseStore'
@@ -37,12 +37,45 @@ export default function TVOrdersPanelView({
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
   const [soundConfig, setSoundConfig] = useState<TVSoundConfig>({ enabled: true, gender: 'female' })
   const [displayConfig, setDisplayConfig] = useState<TVDisplayConfig>({ showCompletedOrders: true })
   const [lastCalled, setLastCalled] = useState<{ ticket: string; customerName?: string | null; isQRCode?: boolean; tableNumber?: string | number | null } | null>(null)
   const [calledHistory, setCalledHistory] = useState<Array<{ ticket: string; customerName?: string | null; isQRCode?: boolean; tableNumber?: string | number | null }>>([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [currentTime, setCurrentTime] = useState('')
+
+  // Listener global para destravar o áudio na primeira interação da Smart TV
+  useEffect(() => {
+    const unlock = () => {
+      setAudioUnlocked(true)
+      if (typeof window !== 'undefined') {
+        try {
+          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+          if (AudioContextClass) {
+            const ctx = new AudioContextClass()
+            ctx.resume().catch(() => {})
+          }
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.resume()
+          }
+        } catch {}
+      }
+      window.removeEventListener('click', unlock)
+      window.removeEventListener('keydown', unlock)
+      window.removeEventListener('touchstart', unlock)
+    }
+
+    window.addEventListener('click', unlock, { once: true })
+    window.addEventListener('keydown', unlock, { once: true })
+    window.addEventListener('touchstart', unlock, { once: true })
+
+    return () => {
+      window.removeEventListener('click', unlock)
+      window.removeEventListener('keydown', unlock)
+      window.removeEventListener('touchstart', unlock)
+    }
+  }, [])
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [marqueeConfig, setMarqueeConfig] = useState<TVMarqueeConfig>(DEFAULT_MARQUEE_CONFIG)
   const [storeVideos, setStoreVideos] = useState<TVVideoItem[]>([])
@@ -757,6 +790,20 @@ export default function TVOrdersPanelView({
           </footer>
         )
       })()}
+
+      {/* Botão de ativação rápida de som para Smart TVs e navegadores com política estrita de autoplay */}
+      {!audioUnlocked && (
+        <button
+          type="button"
+          onClick={() => {
+            setAudioUnlocked(true)
+            playOrderNotificationSound()
+          }}
+          className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 bg-pink-600 hover:bg-pink-700 text-white font-black text-xs sm:text-sm px-6 py-2.5 rounded-full shadow-2xl backdrop-blur-md border border-white/20 flex items-center gap-2 cursor-pointer animate-pulse"
+        >
+          <span>🔊 Clique ou toque para ativar o som da TV</span>
+        </button>
+      )}
     </div>
   )
 }

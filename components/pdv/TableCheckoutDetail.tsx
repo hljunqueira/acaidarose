@@ -12,6 +12,7 @@ import PaymentModal from './PaymentModal'
 import TableThermalReceiptDialog from './TableThermalReceiptDialog'
 import { ArrowLeft, Printer, Receipt, Trash2, Edit3, CheckCircle2 } from 'lucide-react'
 import { broadcastTVCall } from '@/lib/utils/tvBroadcast'
+import { announceTVCall, getTVSoundConfig } from '@/lib/utils/soundNotification'
 
 interface TableCheckoutDetailProps {
   table: RestaurantTable
@@ -130,6 +131,11 @@ export default function TableCheckoutDetail({
       status: 'READY',
     })
 
+    const soundConfig = getTVSoundConfig()
+    if (soundConfig.enabled !== false) {
+      announceTVCall(officialTicket, customerName, soundConfig.gender)
+    }
+
     // Sincroniza também via endpoint backend API para Smart TVs externas
     fetch('/api/tv/call', {
       method: 'POST',
@@ -158,6 +164,10 @@ export default function TableCheckoutDetail({
         tableNumber: String(table.number),
         status: 'READY',
       })
+      const soundConfig = getTVSoundConfig()
+      if (soundConfig.enabled !== false) {
+        announceTVCall(ticket, `Mesa ${table.number}`, soundConfig.gender)
+      }
       toast.success(`Mesa ${table.number} chamada no Painel TV!`)
     }
   }

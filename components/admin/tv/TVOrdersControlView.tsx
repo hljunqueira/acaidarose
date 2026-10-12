@@ -317,6 +317,10 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       tenantId
     )
 
+    if (soundConfig.enabled !== false) {
+      announceTVCall(ticket, order.customerName || client, soundConfig.gender)
+    }
+
     setCurrentTVCall({
       ticket,
       customerName: client,
@@ -341,6 +345,10 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       },
       tenantId
     )
+
+    if (soundConfig.enabled !== false) {
+      announceTVCall(ticket, order.customerName || client, soundConfig.gender)
+    }
 
     setCurrentTVCall({
       ticket,
@@ -372,6 +380,10 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       },
       tenantId
     )
+
+    if (soundConfig.enabled !== false) {
+      announceTVCall(ticketFormatted, clientFormatted, soundConfig.gender)
+    }
 
     setCurrentTVCall({
       ticket: ticketFormatted,

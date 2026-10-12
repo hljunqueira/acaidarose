@@ -35,7 +35,7 @@ import {
   ListOrdered,
 } from 'lucide-react'
 
-import { playOrderNotificationSound } from '@/lib/utils/soundNotification'
+import { playOrderNotificationSound, announceTVCall, getTVSoundConfig } from '@/lib/utils/soundNotification'
 import { broadcastTVCall, broadcastTVClearCall } from '@/lib/utils/tvBroadcast'
 import OrderHistoryAuditModal from './OrderHistoryAuditModal'
 import OrderEditDialog from './OrderEditDialog'
@@ -349,6 +349,11 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       order.tenantId
     )
 
+    const soundConfig = getTVSoundConfig()
+    if (soundConfig.enabled !== false) {
+      announceTVCall(ticketNum, order.customerName || clientName, soundConfig.gender)
+    }
+
     if (order.status === 'PREPARING') {
       await updateOrderStatus(order.id, 'READY')
       toast.success(`Senha ${ticketNum} (${clientName}) chamada na TV e movida para Pronto!`)
@@ -440,6 +445,10 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
           },
           order.tenantId
         )
+        const soundConfig = getTVSoundConfig()
+        if (soundConfig.enabled !== false) {
+          announceTVCall(ticketNum, clientName, soundConfig.gender)
+        }
       }
 
       const paymentStatus: 'PAID' | 'PENDING' =
