@@ -51,22 +51,34 @@ export async function createOrder(payload: any): Promise<Order> {
 
   const itemsJson = JSON.stringify(rawItems)
 
+  const isQRCode = Boolean(
+    payload.isQRCode === true ||
+    payload.channel === 'QR_CODE' ||
+    (payload.cashierName && (payload.cashierName.toLowerCase().includes('qr') || payload.cashierName.toLowerCase().includes('autoatendimento')))
+  )
+  const channel = isQRCode ? 'QR_CODE' : (payload.channel || 'POS')
+  const paymentStatus = payload.paymentStatus === 'PAID' || payload.status === 'PAID' || payload.status === 'COMPLETED' ? 'PAID' : 'PENDING'
+  const cashierName = isQRCode ? 'Autoatendimento QR Code' : (payload.cashierName || 'Caixa Balcão')
+  const cashierId = isQRCode ? null : (payload.cashierId || null)
+
   // Inserção na tabela principal orders
   const res = await query(
     `INSERT INTO orders (
       id, tenant_id, cashier_id, cashier_name, customer_name, customer_phone, customer_nif,
       order_number, subtotal, vat_total, total, status, payment_method,
-      payment_reference, is_table_order, table_number, items_json, created_at
+      payment_reference, is_table_order, table_number, items_json,
+      payment_status, is_qr_code, channel, created_at
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7,
       $8, $9, $10, $11, $12, $13,
-      $14, $15, $16, $17, timezone('utc'::text, now())
+      $14, $15, $16, $17,
+      $18, $19, $20, timezone('utc'::text, now())
     ) RETURNING *`,
     [
       orderId,
       tenantId,
-      payload.cashierId || null,
-      payload.cashierName || 'Autoatendimento QR Code',
+      cashierId,
+      cashierName,
       payload.customerName ? String(payload.customerName).trim() : null,
       payload.customerPhone ? String(payload.customerPhone).trim() : null,
       payload.customerNif ? String(payload.customerNif).trim() : null,
@@ -80,6 +92,9 @@ export async function createOrder(payload: any): Promise<Order> {
       payload.isTableOrder !== false,
       tableNum,
       itemsJson,
+      paymentStatus,
+      isQRCode,
+      channel,
     ]
   )
 
@@ -136,16 +151,19 @@ export async function createOrder(payload: any): Promise<Order> {
     id: row.id,
     tenantId: row.tenant_id,
     cashierId: row.cashier_id,
+    cashierName: row.cashier_name,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     orderNumber: row.order_number || orderNumber,
     subtotal: Number(row.subtotal) || total,
     total: Number(row.total) || total,
     status: row.status,
-    paymentStatus: row.status === 'PAID' || row.status === 'PREPARING' || row.status === 'READY' ? 'PAID' : 'PENDING',
+    paymentStatus: row.payment_status || paymentStatus,
     paymentMethod: row.payment_method,
     tableNumber: row.table_number,
     isTableOrder: row.is_table_order !== false,
+    isQRCode: Boolean(row.is_qr_code ?? isQRCode),
+    channel: row.channel || channel,
     consumptionType,
     isTakeaway,
     needBag,
@@ -182,20 +200,29 @@ export async function getOrderById(id: string): Promise<Order | null> {
       bagQuantity > 0
     const consumptionType = isTakeaway ? 'TAKEAWAY' : 'DINE_IN'
 
+    const isQR = Boolean(
+      o.is_qr_code === true ||
+      o.channel === 'QR_CODE' ||
+      (o.cashier_name && (o.cashier_name.toLowerCase().includes('qr') || o.cashier_name.toLowerCase().includes('autoatendimento')))
+    )
+
     return {
       id: o.id,
       tenantId: o.tenant_id,
       cashierId: o.cashier_id,
+      cashierName: o.cashier_name,
       customerName: o.customer_name,
       customerPhone: o.customer_phone,
       orderNumber: o.order_number,
       subtotal: Number(o.subtotal) || 0,
       total: Number(o.total) || 0,
       status: o.status,
-      paymentStatus: o.status === 'PAID' || o.status === 'PREPARING' || o.status === 'READY' ? 'PAID' : 'PENDING',
+      paymentStatus: o.payment_status || (o.status === 'PAID' || o.status === 'COMPLETED' ? 'PAID' : 'PENDING'),
       paymentMethod: o.payment_method,
       tableNumber: o.table_number,
       isTableOrder: o.is_table_order !== false,
+      isQRCode: isQR,
+      channel: o.channel || (isQR ? 'QR_CODE' : 'POS'),
       consumptionType,
       isTakeaway,
       needBag,

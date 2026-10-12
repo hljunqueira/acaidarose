@@ -43,6 +43,9 @@ export async function PUT(
 
     const itemsJson = body.items !== undefined ? JSON.stringify(body.items) : null
     const notesVal = body.notes !== undefined ? String(body.notes) : null
+    const paymentStatusVal = body.paymentStatus !== undefined
+      ? body.paymentStatus
+      : (body.status === 'PAID' || body.status === 'COMPLETED' ? 'PAID' : null)
 
     const res = await query(
       `UPDATE orders 
@@ -53,7 +56,8 @@ export async function PUT(
            table_number = COALESCE($6, table_number),
            total = COALESCE($7, total),
            items_json = CASE WHEN $8::text IS NOT NULL THEN $8::jsonb ELSE items_json END,
-           cancel_reason = COALESCE($9, cancel_reason)
+           cancel_reason = COALESCE($9, cancel_reason),
+           payment_status = COALESCE($10, payment_status)
        WHERE id::text = $1
        RETURNING *`,
       [
@@ -66,6 +70,7 @@ export async function PUT(
         totalVal !== undefined ? totalVal : null,
         itemsJson,
         notesVal,
+        paymentStatusVal,
       ]
     )
 

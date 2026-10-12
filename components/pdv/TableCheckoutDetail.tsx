@@ -422,7 +422,11 @@ export default function TableCheckoutDetail({
                   const isPreparing = order.status === 'NEW' || order.status === 'PREPARING'
                   const isReady = order.status === 'READY'
                   const ticketNumber = getOrderOfficialTicket(order, idx)
-                  const isQr = order.isQRCode || order.channel === 'QR_CODE'
+                  const isQr = Boolean(
+                    order.isQRCode ||
+                    order.channel === 'QR_CODE' ||
+                    (order.cashierName && (order.cashierName.toLowerCase().includes('qr') || order.cashierName.toLowerCase().includes('autoatendimento')))
+                  )
 
                   return (
                     <div
@@ -446,7 +450,7 @@ export default function TableCheckoutDetail({
                         <div className="flex items-center gap-1.5">
                           {paid ? (
                             <Badge className="bg-emerald-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-2xs">
-                              ✓ Pago {order.paymentMethod === 'CASH' ? 'Dinheiro' : order.paymentMethod === 'MULTIBANCO' ? 'Multibanco' : order.paymentMethod || 'Balcão'}
+                              ✓ Pago {order.paymentMethod === 'CASH' ? 'Dinheiro' : order.paymentMethod === 'MULTIBANCO' ? 'Multibanco' : order.paymentMethod === 'MBWAY' ? 'MB WAY' : (order.paymentMethod || 'Balcão')}
                             </Badge>
                           ) : (
                             <Badge className="bg-amber-500 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0">

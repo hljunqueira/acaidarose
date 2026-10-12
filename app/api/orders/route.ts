@@ -44,12 +44,10 @@ export async function GET(request: NextRequest) {
       )
 
       const isPaid = Boolean(
-        o.status === 'PAID' ||
-        o.status === 'PREPARING' ||
-        o.status === 'READY' ||
-        o.status === 'COMPLETED' ||
-        o.payment_status === 'PAID' ||
-        (!isQRCode && o.payment_method)
+        (o.payment_status === 'PAID' || o.status === 'PAID' || o.status === 'COMPLETED') &&
+        o.status !== 'AWAITING_PAYMENT' &&
+        o.status !== 'WAITING_PAYMENT' &&
+        o.payment_status !== 'PENDING'
       )
 
       const bagItem = items.find((it: any) => it.isBagItem || it.containerId === 'saco-transporte')
@@ -112,14 +110,22 @@ export async function POST(request: NextRequest) {
       if (t) tenantId = t.id
     }
 
-    const isCustomerQRCode = !user && (body.isQRCode !== false || body.channel === 'QR_CODE' || !body.cashierId)
+    const isCustomerQRCode = Boolean(
+      body.channel === 'QR_CODE' ||
+      body.isQRCode === true ||
+      (!user && !body.cashierId)
+    )
 
     const payload = {
       ...body,
       tenantId,
-      cashierId: user?.id || body.cashierId || null,
-      cashierName: user ? user.name : (body.cashierName || (isCustomerQRCode ? 'Autoatendimento QR Code' : 'Caixa Balcão')),
+      cashierId: isCustomerQRCode ? null : (user?.id || body.cashierId || null),
+      cashierName: isCustomerQRCode
+        ? (body.cashierName || 'Autoatendimento QR Code')
+        : (user ? user.name : (body.cashierName || 'Caixa Balcão')),
       isQRCode: isCustomerQRCode,
+      channel: isCustomerQRCode ? 'QR_CODE' : (body.channel || 'POS'),
+      paymentStatus: body.paymentStatus || (body.status === 'PAID' || body.status === 'COMPLETED' ? 'PAID' : 'PENDING'),
     }
 
     const order = await createOrder(payload)
