@@ -1,6 +1,35 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **Voz da Smart TV em Português de Portugal (pt-PT) & Streaming de Áudio Independente do SO [CONCLUÍDO]**:
+  - **Causa Raiz Identificada**: O sistema dependia unicamente do motor local `window.speechSynthesis` configurado com `lang: 'pt-PT'`. Em máquinas Windows sem o pacote de voz de Portugal instalado (apenas `Microsoft Maria pt-BR` ou `Microsoft Daniel pt-BR`), o Chromium abortava silenciosamente a fala por incompatibilidade de idioma e sofria com coleta de lixo (GC bug) do `SpeechSynthesisUtterance`.
+  - **Nova Rota de Streaming de Áudio (`/api/tv/voice`)**: Criada rota no servidor Next.js que sintetiza a fala em Português de Portugal europeu autêntico (`pt-PT`), retornando MP3 nativo para reprodução imediata em qualquer Smart TV (LG, Samsung, Android TV), telemóvel ou PC.
+  - **Chamada Completa de Senha + Nome**: Anuncia com clareza: *"Senha 001, Nathaly"* (ou nome da mesa/cliente).
+  - **Cadência Feminina e Masculina**: Suporte a voz feminina padrão e cadência masculina encorpada.
+  - **Fallback Inteligente de Alta Tolerância**: Se a rede oscilar, o sistema usa o sintetizador local com proteção de Garbage Collection (`activeUtterance`), destravamento de fila e seleção automática de voz sem erros de idioma.
+- **Impressão Automática Silenciosa com QZ Tray Multi-Tenant (Padrão Goomer) [DOCUMENTADO / PLANEJADO]**:
+  - **Especificação Técnica Completa**: Criado e atualizado [docs/ESPECIFICACAO_IMPRESSAO_AUTOMATICA_QZ_TRAY.md](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/docs/ESPECIFICACAO_IMPRESSAO_AUTOMATICA_QZ_TRAY.md) baseado no padrão da Goomer Go.
+  - **Regra de Zero Seeds Mockadas**: A tabela `store_printer_settings` nasce 100% vazia (sem seeds para Figueira, Torres Novas ou Aveiro). Cada loja cadastra seus hardwares verdadeiros via QZ Tray no primeiro acesso.
+  - **Isolamento 100% por Loja (`tenant_id`)**:
+    - Cada loja possui suas próprias impressoras cadastradas e seus próprios cabeçalhos fiscais legítimos.
+  - **Emissão de Senha para Pedidos no Balcão (Canhoto de Retirada)**:
+    - Quem pede no balcão não usa celular. Por isso, a impressora do caixa emite automaticamente um **Canhoto de Senha** com a **SENHA (#001)** em fonte gigante, o nome do cliente e a instrução clara para acompanhar o painel de TV até ser anunciado.
+  - **Página Dedicada (`/admin/impressoras`)**:
+    - Seletor de loja para Master; trava automática na loja logada para gerentes de filial.
+    - Indicador de status em tempo real (🟢 Conectado / 🔴 Desconectado).
+    - Guia de onboarding com download direto e configuração em 4 passos.
+    - Roteamento por setor físico (Impressora da Copa/Cozinha vs Impressora do Caixa/Balcão vs Impressora Única).
+    - Seleção de largura (80mm vs 58mm), vias, guilhotina mecânica (`GS V 0`) e abertura de gaveta (`ESC p`).
+    - Botão de teste físico e trigger automático por eventos de pagamento (`PAID`).
+  - **Reimpressão em 1 Clique (QR Code & Balcão) + Fallback em Caso de Falha do QZ Tray**:
+    - **Reimpressão Fácil**: Disponível no PDV, Histórico de Pedidos, Mesas, Kanban e TV/Staff com opções de re-imprimir via da Cozinha, Canhoto de Senha ou Talão Completo (com carimbo `*** 2ª VIA / REIMPRESSÃO ***`).
+    - **Fallback de Contingência Zero-Downtime**: Se o QZ Tray falhar, travar ou estiver desligado (timeout de 1.5s), o sistema exibe toast informativo e aciona automaticamente a impressão nativa do navegador (`window.print()`) sem travar a venda.
+- **Atualização Cadastral e Fiscal da Filial Torres Novas [CONCLUÍDO & DEPLOY REALIZADO]**:
+  - **NIF**: `517968223`
+  - **Morada**: `Av Manoel de Figueiredo 12 RC Direito`
+  - **Telefone / MB WAY**: `+351 911 050 264` (911050264)
+  - **Persistência**: Atualizado no PostgreSQL da VPS/Vercel (tabela `tenants`), no `franchiseStore.ts`, em `production_schema.sql` e nos diálogos administrativos.
+  - **Reflexo em Tempo Real**: O talão térmico (`/receipt/[id]`) lê dinamicamente do banco de dados, imprimindo os dados corrigidos instantaneamente.
 - **Servidor de E-mail Corporativo Híbrido (Poste.io + SMTP Relay) [CONCLUÍDO]**:
   - **Decisão Arquitetural & Coexistência**:
     - Adotado o **Poste.io** (`analogic/poste.io:latest`) em substituição ao Mailcow (que exigiria 6–8 GB de RAM e inviabilizaria a VPS compartilhada de 6 GB com PostgreSQL 16).

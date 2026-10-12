@@ -49,6 +49,48 @@ services:
     depends_on:
       - db
 
+  # 3. Servidor de E-mail Corporativo Poste.io (Híbrido)
+  mailserver:
+    image: analogic/poste.io:latest
+    container_name: acaidarose-mail
+    restart: always
+    environment:
+      - HTTPS=OFF
+      - DISABLE_CLAMAV=TRUE
+      - DISABLE_ROUNDCUBE=FALSE
+      - TZ=Europe/Lisbon
+      - LETSENCRYPT_EMAIL=admin@acaidarose.pt
+      - LETSENCRYPT_HOST=mail.acaidarose.pt
+    extra_hosts:
+      - "mail.acaidarose.pt:127.0.0.1"
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    volumes:
+      - ./data/mail_data:/data
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "25:25"               # SMTP Inbound (Recepção externa)
+      - "110:110"             # POP3
+      - "143:143"             # IMAP (STARTTLS)
+      - "465:465"             # SMTPS (Envio criptografado SSL direto)
+      - "587:587"             # Submission (Envio autenticado STARTTLS)
+      - "993:993"             # IMAPS (Acesso seguro a caixas de correio)
+      - "995:995"             # POP3S
+      - "4190:4190"           # Sieve Filters
+      - "127.0.0.1:8880:80"   # Interface Web / Webmail (Acesso interno via Caddy/Nginx)
+    networks:
+      - acaidarose-net
+    depends_on:
+      - db
+
+
 networks:
   acaidarose-net:
     name: acaidarose-net

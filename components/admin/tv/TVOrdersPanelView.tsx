@@ -219,7 +219,7 @@ export default function TVOrdersPanelView({
           return [newCall, ...filtered].slice(0, 10)
         })
 
-        if (soundConfig.enabled && audioEnabled) {
+        if (soundConfig.enabled !== false && audioEnabled !== false) {
           announceTVCall(event.ticket, event.customerName, soundConfig.gender)
         }
 

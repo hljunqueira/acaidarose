@@ -1509,7 +1509,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                 <span>Configurações de Áudio & Síntese de Voz na Smart TV</span>
               </div>
               <p className="text-xs text-purple-700/80 dark:text-purple-300/80 font-medium mt-0.5">
-                Defina se a TV deve emitir sinal sonoro ao chamar senhas e escolha a voz desejada (Feminina ou Masculina).
+                Voz oficial em Português de Portugal (pt-PT). Escolha entre voz Feminina ou Masculina para chamada de senhas e clientes.
               </p>
             </div>
 

@@ -26,8 +26,8 @@ export function saveTVSoundConfig(config: TVSoundConfig) {
 }
 
 /**
- * Sintetizador de alerta sonoro para novos pedidos QR Code
- * Utiliza a Web Audio API nativa do navegador (sem arquivos .mp3 externos)
+ * Sintetizador de alerta sonoro para novos pedidos e chamadas na TV
+ * Utiliza a Web Audio API nativa do navegador (sino de dois tons harmônicos)
  */
 export function playOrderNotificationSound() {
   if (typeof window === 'undefined') return
@@ -37,8 +37,11 @@ export function playOrderNotificationSound() {
     if (!AudioContextClass) return
 
     const ctx = new AudioContextClass()
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
+    }
 
-    // Primeiro tom (suave)
+    // Primeiro tom (suave D5)
     const osc1 = ctx.createOscillator()
     const gain1 = ctx.createGain()
 
@@ -53,7 +56,7 @@ export function playOrderNotificationSound() {
     osc1.start(ctx.currentTime)
     osc1.stop(ctx.currentTime + 0.3)
 
-    // Segundo tom harmônico (alegre)
+    // Segundo tom harmônico (alegre A5)
     const osc2 = ctx.createOscillator()
     const gain2 = ctx.createGain()
 
@@ -72,88 +75,178 @@ export function playOrderNotificationSound() {
   }
 }
 
+// Referência global persistente para evitar coleta de lixo (GC bug) do Chromium
+let activeUtterance: SpeechSynthesisUtterance | null = null
+let activeAudioElement: HTMLAudioElement | null = null
+
 /**
- * Anuncia a senha na TV com sino e sintetizador de voz (Feminina ou Masculina)
+ * Seleciona a melhor voz disponível no motor nativo do navegador
+ */
+function getBestBrowserVoice(gender: TVVoiceGender): { voice: SpeechSynthesisVoice | null; lang: string } {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    return { voice: null, lang: 'pt-PT' }
+  }
+
+  const voices = window.speechSynthesis.getVoices()
+  if (!voices || voices.length === 0) {
+    return { voice: null, lang: 'pt-PT' }
+  }
+
+  // 1. Filtrar vozes portuguesas (Prioridade absoluta para Portugal pt-PT)
+  const ptPTVoices = voices.filter((v) => v.lang === 'pt-PT' || v.lang === 'pt_PT')
+  const ptVoices = voices.filter((v) => v.lang.toLowerCase().startsWith('pt'))
+  const candidateVoices = ptPTVoices.length > 0 ? ptPTVoices : ptVoices
+
+  const femaleKeywords = [
+    'female', 'mulher', 'feminina', 'raquel', 'helia', 'hélia', 'joana', 
+    'catarina', 'francisca', 'inês', 'ines', 'victoria', 'maria', 'luciana', 'camila'
+  ]
+  const maleKeywords = [
+    'male', 'homem', 'masculino', 'duarte', 'cristiano', 'manuel', 
+    'jorge', 'ricardo', 'felipe', 'antónio', 'antonio', 'daniel'
+  ]
+
+  const keywords = gender === 'female' ? femaleKeywords : maleKeywords
+
+  // Tenta encontrar pelo nome nas vozes portuguesas
+  let chosen = candidateVoices.find((v) => {
+    const name = v.name.toLowerCase()
+    return keywords.some((k) => name.includes(k))
+  })
+
+  // Se não achou por nome específico, usa a primeira voz portuguesa disponível
+  if (!chosen && candidateVoices.length > 0) {
+    chosen = candidateVoices[0]
+  }
+
+  // Se não tem nenhuma voz portuguesa instalada no SO, busca qualquer voz que bata o gênero
+  if (!chosen) {
+    chosen = voices.find((v) => {
+      const name = v.name.toLowerCase()
+      return keywords.some((k) => name.includes(k))
+    }) || voices[0]
+  }
+
+  return {
+    voice: chosen || null,
+    // CRÍTICO: lang deve ser idêntico ao da voz escolhida para o Chromium não rejeitar
+    lang: chosen?.lang || 'pt-PT',
+  }
+}
+
+/**
+ * Fallback via Web Speech API nativa (quando áudio em streaming estiver indisponível)
+ */
+function speakWithBrowserTTS(textToSpeak: string, gender: TVVoiceGender) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+
+  try {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume()
+    }
+    window.speechSynthesis.cancel()
+
+    const { voice, lang } = getBestBrowserVoice(gender)
+    const utterance = new SpeechSynthesisUtterance(textToSpeak)
+
+    utterance.lang = lang
+    if (voice) {
+      utterance.voice = voice
+    }
+
+    utterance.rate = 0.92
+    utterance.volume = 1.0
+    utterance.pitch = gender === 'female' ? 1.08 : 0.88
+
+    // Mantém referência viva para evitar Garbage Collection prematuro
+    activeUtterance = utterance
+    utterance.onend = () => {
+      activeUtterance = null
+    }
+    utterance.onerror = (e) => {
+      console.warn('[TV TTS] Erro no SpeechSynthesis nativo:', e)
+      activeUtterance = null
+    }
+
+    // Pequeno tick para destravamento do motor de fala
+    setTimeout(() => {
+      window.speechSynthesis.resume()
+      window.speechSynthesis.speak(utterance)
+    }, 50)
+  } catch (err) {
+    console.error('[TV TTS] Falha no fallback do SpeechSynthesis:', err)
+  }
+}
+
+/**
+ * Anuncia a senha e o nome do cliente na TV com sino harmônico e voz em Português de Portugal (pt-PT).
+ * Utiliza streaming de áudio nativo em alta definição (independente do Windows) com fallback inteligente.
  */
 export function announceTVCall(ticket: string, customerName?: string, voiceGender?: TVVoiceGender) {
   if (typeof window === 'undefined') return
 
-  // 1. Toca o sino de alta fidelidade da Web Audio API
+  // 1. Toca o sino de chamada da Web Audio API
   playOrderNotificationSound()
 
-  // 2. Síntese de voz em português
-  try {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel() // cancela falas pendentes travadas
-      window.speechSynthesis.resume() // destrava motor de fala do Chrome
+  // 2. Formata a frase de chamada:
+  // Se houver nome legítimo do cliente: "Senha 001, Nathaly"
+  // Se for apenas senha: "Senha 001"
+  const cleanTicket = ticket.replace('#', '').trim()
+  const trimmedName = customerName?.trim()
 
-      const cleanTicket = ticket.replace('#', '')
-      const textToSpeak = customerName
-        ? `Senha ${cleanTicket}, ${customerName}`
-        : `Senha ${cleanTicket}`
+  const isGenericName = !trimmedName || 
+    trimmedName.toLowerCase() === 'balcão' || 
+    trimmedName.toLowerCase() === 'balcao' ||
+    trimmedName.toLowerCase() === 'local'
 
-      const utterance = new SpeechSynthesisUtterance(textToSpeak)
-      utterance.lang = 'pt-PT'
-      utterance.rate = 0.92
-      utterance.volume = 1.0
+  const textToSpeak = !isGenericName
+    ? `Senha ${cleanTicket}, ${trimmedName}`
+    : `Senha ${cleanTicket}`
 
-      const gender = voiceGender || getTVSoundConfig().gender || 'female'
-      const voices = window.speechSynthesis.getVoices()
-      const ptVoices = voices.filter((v) => v.lang.startsWith('pt'))
+  const gender = voiceGender || getTVSoundConfig().gender || 'female'
 
-      if (gender === 'female') {
-        utterance.pitch = 1.1
-        const femaleVoice = ptVoices.find((v) => {
-          const name = v.name.toLowerCase()
-          return (
-            name.includes('female') ||
-            name.includes('luciana') ||
-            name.includes('helena') ||
-            name.includes('joana') ||
-            name.includes('catarina') ||
-            name.includes('maria') ||
-            name.includes('francisca') ||
-            name.includes('victoria') ||
-            name.includes('raquel') ||
-            name.includes('inês')
-          )
-        })
-        if (femaleVoice) {
-          utterance.voice = femaleVoice
-        } else if (ptVoices.length > 0) {
-          utterance.voice = ptVoices[0]
-        }
-      } else {
-        // Voz Masculina
-        utterance.pitch = 0.85
-        const maleVoice = ptVoices.find((v) => {
-          const name = v.name.toLowerCase()
-          return (
-            name.includes('male') ||
-            name.includes('cristiano') ||
-            name.includes('duarte') ||
-            name.includes('manuel') ||
-            name.includes('jorge') ||
-            name.includes('ricardo') ||
-            name.includes('felipe') ||
-            name.includes('antónio')
-          )
-        })
-        if (maleVoice) {
-          utterance.voice = maleVoice
-        } else if (ptVoices.length > 0) {
-          utterance.voice = ptVoices[0]
-        }
+  // Aguarda 400ms para o sino soar limpo antes de iniciar a fala
+  setTimeout(() => {
+    try {
+      // Para qualquer áudio anterior em execução
+      if (activeAudioElement) {
+        activeAudioElement.pause()
+        activeAudioElement = null
       }
 
-      // Delay de 400ms para o sino soar com clareza antes da voz
-      setTimeout(() => {
-        window.speechSynthesis.speak(utterance)
-      }, 400)
+      // Endpoint de streaming de áudio PT-PT do servidor Next.js
+      const audioUrl = `/api/tv/voice?text=${encodeURIComponent(textToSpeak)}&lang=pt-PT&gender=${gender}`
+      const audio = new Audio(audioUrl)
+
+      // Ajuste fino de tom/pitch para masculino/feminino
+      if (gender === 'male') {
+        audio.playbackRate = 0.90 // cadência masculina mais encorpada
+      } else {
+        audio.playbackRate = 1.0 // cadência feminina padrão de Portugal
+      }
+
+      activeAudioElement = audio
+
+      const playPromise = audio.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((playError) => {
+          console.warn('[TV Voice] Falha na reprodução do áudio online, usando motor nativo:', playError)
+          // Se o navegador bloquear o elemento de áudio ou estiver offline, usa o SpeechSynthesis
+          speakWithBrowserTTS(textToSpeak, gender)
+        })
+      }
+
+      audio.onended = () => {
+        activeAudioElement = null
+      }
+      audio.onerror = () => {
+        console.warn('[TV Voice] Erro ao carregar streaming de voz, ativando fallback local')
+        activeAudioElement = null
+        speakWithBrowserTTS(textToSpeak, gender)
+      }
+    } catch {
+      // Fallback garantido para o motor do navegador
+      speakWithBrowserTTS(textToSpeak, gender)
     }
-  } catch {
-    // fallback silencioso
-  }
+  }, 400)
 }
-
-
