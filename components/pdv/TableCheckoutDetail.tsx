@@ -458,9 +458,9 @@ export default function TableCheckoutDetail({
                             </Badge>
                           )}
 
-                          {isPreparing && (
-                            <Badge variant="outline" className="text-[9px] font-bold border-amber-300 text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40">
-                              Em Preparação
+                          {paid && isPreparing && (
+                            <Badge variant="outline" className="text-[9px] font-bold border-purple-300 text-purple-700 dark:text-pink-300 bg-purple-50 dark:bg-purple-950/40">
+                              Em Montagem
                             </Badge>
                           )}
                           {isReady && (
@@ -475,7 +475,7 @@ export default function TableCheckoutDetail({
                       <div className="space-y-2">
                         {Array.isArray(order.items) &&
                           order.items.map((item: any, itemIdx: number) => {
-                            const containerName = item.containerName || item.container?.name || item.name || 'Taça de Açaí'
+                            const containerName = item.containerName || item.container?.name || item.name || 'Copo de Açaí'
                             const basesStr = item.bases?.map((b: any) => b.name || b).join(', ')
                             const toppingsStr = item.toppings?.map((t: any) => t.name || t).join(', ')
 
@@ -510,29 +510,43 @@ export default function TableCheckoutDetail({
                           })}
                       </div>
 
-                      {/* Ações do Pedido (Chamar na TV com Ticket Oficial, Editar se em preparo ou Cancelar) */}
+                      {/* Ações do Pedido (Chamar na TV se pago, ou Receber no Caixa se pendente) */}
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-100 dark:border-white/10 text-xs">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {/* Botão de Chamada Específica deste Pedido com sua Senha Oficial */}
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => handleCallOrderOnTV(order, idx)}
-                            className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-lg cursor-pointer"
-                          >
-                            <span>Chamar {ticketNumber} na TV</span>
-                          </Button>
+                          {/* Regra Pay-First: Só pode chamar na TV ou editar após confirmação de pagamento */}
+                          {paid ? (
+                            <>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleCallOrderOnTV(order, idx)}
+                                className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-lg cursor-pointer"
+                              >
+                                <span>Chamar {ticketNumber} na TV</span>
+                              </Button>
 
-                          {isPreparing && (
+                              {isPreparing && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleOpenEditOrder(order)}
+                                  className="h-7 px-2.5 text-[11px] font-bold border-purple-200 dark:border-white/15 text-purple-900 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-white/10 rounded-lg cursor-pointer"
+                                >
+                                  <Edit3 className="h-3 w-3 mr-1" />
+                                  <span>Editar Pedido (Em Montagem)</span>
+                                </Button>
+                              )}
+                            </>
+                          ) : (
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenEditOrder(order)}
-                              className="h-7 px-2.5 text-[11px] font-bold border-purple-200 dark:border-white/15 text-purple-900 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-white/10 rounded-lg cursor-pointer"
+                              onClick={() => setPaymentOpen(true)}
+                              className="h-7 px-3 text-[11px] font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-xs"
                             >
-                              <Edit3 className="h-3 w-3 mr-1" />
-                              <span>Editar Pedido (Em Preparo)</span>
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span>Receber no Caixa (Pagar Primeiro)</span>
                             </Button>
                           )}
 

@@ -390,14 +390,19 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     toast.success('Grade da Smart TV liberada com sucesso!')
   }
 
-  const preparingOrders = orders.filter(
-    (o) =>
+  // Regra Pay-First: apenas pedidos pagos entram em montagem / preparação
+  const preparingOrders = orders.filter((o) => {
+    const isPaid = o.paymentStatus === 'PAID' || (o.status as string) === 'PAID'
+    const isPrep =
       (o.status as string) === 'PREPARING' ||
       (o.status as string) === 'NEW' ||
-      (o.status as string) === 'OPEN' ||
+      (o.status as string) === 'OPEN'
+    const isWaiting =
+      (o.status as string) === 'AWAITING_PAYMENT' ||
       (o.status as string) === 'WAITING_PAYMENT' ||
-      (o.status as string) === 'AWAITING_PAYMENT'
-  )
+      o.paymentStatus === 'PENDING'
+    return isPrep && isPaid && !isWaiting
+  })
   const readyOrders = orders.filter((o) => o.status === 'READY')
 
   return (

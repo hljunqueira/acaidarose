@@ -293,15 +293,19 @@ export default function TVOrdersPanelView({
     }
   }
 
-  // Filtragem dos pedidos reais por status
-  const preparingOrders = orders.filter(
-    (o) =>
+  // Filtragem dos pedidos reais por status (regra Pay-First: apenas pedidos pagos entram em montagem na TV)
+  const preparingOrders = orders.filter((o) => {
+    const isPaid = o.paymentStatus === 'PAID' || (o.status as string) === 'PAID'
+    const isPrep =
       (o.status as string) === 'PREPARING' ||
       (o.status as string) === 'NEW' ||
+      (o.status as string) === 'OPEN'
+    const isWaiting =
       (o.status as string) === 'AWAITING_PAYMENT' ||
-      (o.status as string) === 'OPEN' ||
-      (o.status as string) === 'WAITING_PAYMENT'
-  )
+      (o.status as string) === 'WAITING_PAYMENT' ||
+      o.paymentStatus === 'PENDING'
+    return isPrep && isPaid && !isWaiting
+  })
   const readyOrders = orders.filter((o) => o.status === 'READY')
   const completedOrders = orders.filter((o) => (o.status as string) === 'COMPLETED' || (o.status as string) === 'PAID')
 

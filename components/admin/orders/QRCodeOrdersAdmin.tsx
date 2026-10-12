@@ -63,8 +63,8 @@ interface KanbanColumn {
 const KANBAN_COLUMNS: KanbanColumn[] = [
   {
     id: 'NEW',
-    title: 'Novos Pedidos',
-    subtitle: 'Aguardando aceitação / preparo',
+    title: 'Aguardando Pagamento / Novos',
+    subtitle: 'Caixa balcão ou novo pedido',
     color: 'text-amber-950 dark:text-white',
     bgLight: 'bg-amber-500/10 dark:bg-amber-950/25 backdrop-blur-md',
     borderLight: 'border-amber-300 dark:border-amber-500/40',
@@ -73,8 +73,8 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
   },
   {
     id: 'PREPARING',
-    title: 'Em Preparação',
-    subtitle: 'A ser montado na copa/cozinha',
+    title: 'Em Montagem (Pagos)',
+    subtitle: 'Bancada de montagem / cozinha',
     color: 'text-purple-950 dark:text-white',
     bgLight: 'bg-purple-500/10 dark:bg-purple-950/30 backdrop-blur-md',
     borderLight: 'border-purple-300 dark:border-purple-500/40',
@@ -420,6 +420,13 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
         return
       }
 
+      // Regra Pay-First Mandatória: O pedido deve ser pago primeiro antes de ir para a montagem
+      if ((targetStatus === 'PREPARING' || targetStatus === 'READY') && order.paymentStatus !== 'PAID') {
+        toast.error(`O pedido #${order.orderNumber || 100} precisa ser pago no caixa antes de ir para a montagem!`)
+        handleConfirmCounterPayment(order)
+        return
+      }
+
       // Se for movido para PRONTO (READY), dispara a chamada de voz na TV automaticamente
       if (targetStatus === 'READY') {
         const formattedNum = String(order.orderNumber || 1).padStart(3, '0')
@@ -460,10 +467,19 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     const matchCustomer = (o.customerName || '').toLowerCase().includes(q)
     return matchNumber || matchTable || matchCustomer
   })
-  // Agrupamento por coluna Kanban
+  // Agrupamento por coluna Kanban (Regra Pay-First)
   const getOrdersForColumn = (status: OrderStatus) => {
     return filteredOrders.filter((o) => {
-      if (status === 'NEW') return o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'AWAITING_PAYMENT' || o.status === 'PENDING' || o.status === 'OPEN'
+      const isPaid = o.paymentStatus === 'PAID' || o.status === 'PAID' || o.status === 'COMPLETED'
+      if (status === 'NEW') {
+        // Coluna 1: Novos pedidos e pedidos aguardando pagamento no caixa
+        return !isPaid || o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'AWAITING_PAYMENT' || o.status === 'PENDING' || o.status === 'OPEN'
+      }
+      if (status === 'PREPARING') {
+        // Coluna 2: Em Montagem (apenas pedidos PAGOS entram na bancada!)
+        return o.status === 'PREPARING' && isPaid
+      }
+      if (status === 'READY') return o.status === 'READY'
       if (status === 'PAID') return o.status === 'PAID' || o.status === 'COMPLETED'
       return o.status === status
     })
@@ -1054,8 +1070,8 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
                               <span>Ver Itens</span>
                             </Button>
 
-                            {/* Botão Chamar TV: Exibido em PREPARING e READY (mas não em Pendente/NEW ou Cancelado) */}
-                            {(order.status === 'PREPARING' || order.status === 'READY') && (
+                            {/* Botão Chamar TV: Exibido em PREPARING e READY apenas se o pedido estiver PAGO */}
+                            {(order.paymentStatus === 'PAID' && (order.status === 'PREPARING' || order.status === 'READY')) && (
                               <Button
                                 type="button"
                                 size="sm"
