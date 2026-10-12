@@ -7,3 +7,13 @@ scratch/
 .system_generated/
 backups/
 data/
+
+# Cache local de ferramentas e IA
+.codebase-memory/
+.agents/
+
+# Documentos e mídias brutas desnecessárias no runtime
+docs/
+fotos-acai/
+*.pdf
+*.tar.gz

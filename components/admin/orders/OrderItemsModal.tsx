@@ -48,7 +48,7 @@ export default function OrderItemsModal({
 
   const isTable = order.isTableOrder !== false && !!order.tableNumber
   const isPaid = order.paymentStatus === 'PAID'
-  const isWaitingPayment = !isPaid || order.status === 'WAITING_PAYMENT'
+  const isWaitingPayment = !isPaid || order.status === 'WAITING_PAYMENT' || (order.status as string) === 'AWAITING_PAYMENT' || (order.status as string) === 'PENDING'
 
   const orderTotal =
     typeof order.total === 'number' && !isNaN(order.total)

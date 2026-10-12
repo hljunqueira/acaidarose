@@ -76,3 +76,7 @@ wetransfer_site-acai-da-rose-pt_2026-08-28_2153/
 wp-config.php
 .htaccess
 
+# Agentes e caches locais
+.codebase-memory/
+.agents/
+

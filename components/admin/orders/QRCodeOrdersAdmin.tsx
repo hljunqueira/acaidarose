@@ -157,7 +157,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       if (data.orders) {
         const newOrders: Order[] = data.orders
         const newCount = newOrders.filter(
-          (o) => o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'OPEN'
+          (o) => o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'AWAITING_PAYMENT' || o.status === 'PENDING' || o.status === 'OPEN'
         ).length
         if (newCount > prevCount && prevCount > 0 && soundEnabled) {
           playOrderNotificationSound()
@@ -463,7 +463,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   // Agrupamento por coluna Kanban
   const getOrdersForColumn = (status: OrderStatus) => {
     return filteredOrders.filter((o) => {
-      if (status === 'NEW') return o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'OPEN'
+      if (status === 'NEW') return o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'AWAITING_PAYMENT' || o.status === 'PENDING' || o.status === 'OPEN'
       if (status === 'PAID') return o.status === 'PAID' || o.status === 'COMPLETED'
       return o.status === status
     })

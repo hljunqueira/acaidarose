@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
          SET table_number = $1
          WHERE tenant_id::text = $2 
            AND table_number = $3 
-           AND status IN ('NEW', 'OPEN', 'WAITING_PAYMENT', 'PREPARING', 'READY')
+           AND status IN ('NEW', 'OPEN', 'WAITING_PAYMENT', 'AWAITING_PAYMENT', 'PENDING', 'PREPARING', 'READY')
          RETURNING id, order_number, table_number`,
         [newNum, tenantId, oldNum]
       )
