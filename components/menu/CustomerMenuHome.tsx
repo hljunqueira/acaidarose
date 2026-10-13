@@ -20,22 +20,6 @@ interface CustomerMenuHomeProps {
   isCatalogOnly?: boolean
 }
 
-const CUP_IMAGES: Record<number, string> = {
-  250: '/images/official/acai_copo_250g.jpg',
-  350: '/images/official/acai_copo_350g.jpg',
-  500: '/images/official/acai_copo_500g.jpg',
-  750: '/images/official/acai_tigela_750g.jpg',
-  1000: '/images/official/acai_balde_1kg.jpg',
-}
-
-const CUP_VIDEOS: Record<number, string> = {
-  250: '/videos/hero_revealing_cup.mp4',
-  350: '/videos/hero_orbiting_cup.mp4',
-  500: '/videos/hero_cup_rotation.mp4',
-  750: '/videos/hero_gliding_texture.mp4',
-  1000: '/videos/hero_cup_rotation.mp4',
-}
-
 export function isProductTimeAvailable(availableHours: any): boolean {
   if (!availableHours) return true
   try {
@@ -319,10 +303,9 @@ export default function CustomerMenuHome({
               const isContainer = c.productType !== 'ITEM'
               const weight = c.weightGrams || null
 
-              const hasImage = Boolean(c.image)
-              const hasCupImage = weight && CUP_IMAGES[weight]
-              const hasVideo = Boolean(c.videoUrl || (weight && CUP_VIDEOS[weight]))
-              const videoSrc = c.videoUrl || (weight ? CUP_VIDEOS[weight] : undefined)
+              const hasVideo = Boolean(c.videoUrl)
+              const hasImage = Boolean(c.image || c.videoPoster)
+              const imageSrc = c.image || c.videoPoster || ''
 
               return (
                 <div
@@ -334,11 +317,11 @@ export default function CustomerMenuHome({
                 >
                   <div>
                     {/* Imagem / Vídeo ou Bloco Tipográfico Clean */}
-                    {hasVideo || hasImage || hasCupImage ? (
+                    {hasVideo || hasImage ? (
                       <div className="relative h-44 sm:h-40 md:h-44 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 mb-3 border border-purple-100 dark:border-white/10">
                         {hasVideo ? (
                           <video
-                            src={videoSrc}
+                            src={c.videoUrl!}
                             autoPlay
                             muted
                             loop
@@ -348,7 +331,7 @@ export default function CustomerMenuHome({
                           />
                         ) : (
                           <img
-                            src={c.image || (weight ? CUP_IMAGES[weight] : '')}
+                            src={imageSrc}
                             alt={displayName}
                             className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />

@@ -44,13 +44,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
+    const isMaster = user && hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])
+    if (!isMaster) {
+      return NextResponse.json(
+        { error: 'Franquias não podem criar destaques diretamente. Solicite ajuste à Franqueadora.' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const tenantId = body.tenantId || user?.tenantId || AVEIRO_HQ_ID
-
-    const isMaster = user && hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])
-    if (user && !isMaster && user.tenantId && user.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Sem permissão para criar nesta loja' }, { status: 403 })
-    }
 
     const created = await createHighlightItem(tenantId, body)
     return NextResponse.json(created, { status: 201 })
@@ -76,7 +79,20 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'ID do destaque é obrigatório' }, { status: 400 })
     }
 
-    const updated = await updateHighlightItem(id, body)
+    const isMaster = user && hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])
+    let payload = body
+    if (!isMaster) {
+      // Franquias só podem alterar a visibilidade (active)
+      if (body.active === undefined) {
+        return NextResponse.json(
+          { error: 'Franquias só podem alterar a visibilidade dos destaques.' },
+          { status: 403 }
+        )
+      }
+      payload = { id, active: body.active }
+    }
+
+    const updated = await updateHighlightItem(id, payload)
     return NextResponse.json(updated)
   } catch (err: any) {
     return NextResponse.json(
@@ -89,6 +105,14 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
+    const isMaster = user && hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])
+    if (!isMaster) {
+      return NextResponse.json(
+        { error: 'Franquias não podem excluir destaques. Solicite ajuste à Franqueadora.' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 

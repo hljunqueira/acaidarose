@@ -163,11 +163,17 @@ export function DuplicateItemDialog({ open, onOpenChange, product }: ActionDialo
 
           <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-lg flex items-center gap-4 text-left">
             <div className="h-16 w-16 rounded-md overflow-hidden bg-zinc-200 flex-shrink-0 border border-zinc-200">
-              <img
-                src={product.image || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600&auto=format&fit=crop&q=80'}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
+              {product.image || product.videoPoster ? (
+                <img
+                  src={product.image || product.videoPoster}
+                  alt={product.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-xs font-bold text-zinc-500">
+                  {product.name.slice(0, 2)}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -240,11 +246,17 @@ export function DeleteItemDialog({ open, onOpenChange, product, onSuccess }: Act
 
           <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-lg flex items-center gap-4 text-left">
             <div className="h-16 w-16 rounded-md overflow-hidden bg-zinc-200 flex-shrink-0 border border-zinc-200">
-              <img
-                src={product.image || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600&auto=format&fit=crop&q=80'}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
+              {product.image || product.videoPoster ? (
+                <img
+                  src={product.image || product.videoPoster}
+                  alt={product.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-xs font-bold text-zinc-500">
+                  {product.name.slice(0, 2)}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -402,11 +414,17 @@ export function PairingDialog({ open, onOpenChange, product }: ActionDialogProps
           {/* Card do Produto */}
           <div className="p-3 bg-zinc-50/70 border border-zinc-100 rounded-lg flex items-center gap-3.5 text-left">
             <div className="h-14 w-14 rounded-md overflow-hidden bg-zinc-200 flex-shrink-0 border border-zinc-200">
-              <img
-                src={product.image || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600&auto=format&fit=crop&q=80'}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
+              {product.image || product.videoPoster ? (
+                <img
+                  src={product.image || product.videoPoster}
+                  alt={product.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-xs font-bold text-zinc-500">
+                  {product.name.slice(0, 2)}
+                </div>
+              )}
             </div>
 
             <div className="space-y-0.5">

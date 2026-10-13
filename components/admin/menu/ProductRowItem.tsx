@@ -107,9 +107,11 @@ export default function ProductRowItem({
       {/* 1. TOPO (Mobile) / ESQUERDA (Desktop): GRIP + IMAGEM + TÍTULO/DESCRIÇÃO + PREÇO NO MOBILE */}
       <div className="flex items-start md:items-center justify-between gap-3 flex-1 min-w-0">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-          <div className="text-purple-400 dark:text-purple-300/40 hover:text-purple-700 dark:hover:text-pink-400 cursor-grab shrink-0">
-            <GripVertical className="h-4 w-4" />
-          </div>
+          {isFranchisor && (
+            <div className="text-purple-400 dark:text-purple-300/40 hover:text-purple-700 dark:hover:text-pink-400 cursor-grab shrink-0">
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
 
           <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden bg-purple-50 dark:bg-white/5 shrink-0 border border-purple-150 dark:border-white/10 relative">
             {product.videoUrl ? (
@@ -286,9 +288,9 @@ export default function ProductRowItem({
           </button>
         )}
 
-        {/* Caixa de Ícones de Ações */}
-        <div className="flex items-center border border-purple-200 dark:border-white/15 rounded-xl overflow-hidden divide-x divide-purple-200 dark:divide-white/15 bg-white dark:bg-white/5 shadow-xs shrink-0">
-          {isFranchisor && (
+        {/* Caixa de Ícones de Ações (Apenas Franqueadora Master) */}
+        {isFranchisor && (
+          <div className="flex items-center border border-purple-200 dark:border-white/15 rounded-xl overflow-hidden divide-x divide-purple-200 dark:divide-white/15 bg-white dark:bg-white/5 shadow-xs shrink-0">
             <button
               type="button"
               onClick={() => setReplicateOpen(true)}
@@ -297,24 +299,22 @@ export default function ProductRowItem({
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => onEdit(product)}
-            title={isFranchisor ? "Editar Produto & Toppings" : "Visualizar Detalhes"}
-            className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
-          >
-            <Edit2 className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setHoursOpen(true)}
-            title="Horários ativos do produto"
-            className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
-          >
-            <Clock className="h-3.5 w-3.5" />
-          </button>
-          {isFranchisor && (
+            <button
+              type="button"
+              onClick={() => onEdit(product)}
+              title="Editar Produto & Toppings"
+              className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setHoursOpen(true)}
+              title="Horários ativos do produto"
+              className="p-1.5 sm:p-2 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10 transition cursor-pointer"
+            >
+              <Clock className="h-3.5 w-3.5" />
+            </button>
             <button
               type="button"
               onClick={() => setDuplicateOpen(true)}
@@ -323,8 +323,6 @@ export default function ProductRowItem({
             >
               <Copy className="h-3.5 w-3.5" />
             </button>
-          )}
-          {isFranchisor && (
             <button
               type="button"
               onClick={() => setDeleteOpen(true)}
@@ -333,8 +331,8 @@ export default function ProductRowItem({
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Modais de Ação */}

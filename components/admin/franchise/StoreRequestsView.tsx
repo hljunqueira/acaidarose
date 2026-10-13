@@ -88,7 +88,7 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
     badgeLabel: 'PROMOÇÃO LOCAL',
     badgeColor: 'bg-pink-600',
     suggestedPrice: 9.90,
-    imageUrl: '/images/official/acai_copo_500g.jpg',
+    imageUrl: '',
     videoUrl: '',
     reason: '',
   })
@@ -220,7 +220,7 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
           badgeLabel: selectedRequest.badgeLabel || 'DESTAQUE APROVADO',
           badgeColor: selectedRequest.badgeColor || 'bg-pink-600',
           price: Number(selectedRequest.suggestedPrice) || 0,
-          imageUrl: selectedRequest.productImage || '/images/official/acai_copo_500g.jpg',
+          imageUrl: selectedRequest.productImage || '',
           videoUrl: selectedRequest.videoUrl,
           mediaType: selectedRequest.videoUrl ? 'VIDEO' : 'IMAGE',
           active: true,

@@ -5,8 +5,8 @@ import { reorderMenus } from '@/lib/repositories/categoriesRepository'
 export async function PUT(req: NextRequest) {
   try {
     const user = await getAuthUser(req)
-    if (user && !hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
-      return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+    if (user && !hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])) {
+      return NextResponse.json({ error: 'Apenas a Franqueadora pode reordenar cardápios.' }, { status: 403 })
     }
 
     const body = await req.json()

@@ -34,7 +34,7 @@ export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Pr
       badgeLabelEs: r.badge_text_es || null,
       badgeColor: r.badge_color || 'bg-pink-600',
       price: Number(r.price) || 0,
-      imageUrl: r.thumbnail_url || '/images/official/acai_copo_500g.jpg',
+      imageUrl: r.thumbnail_url || '',
       videoUrl: r.video_url || undefined,
       mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
       active: r.active !== false,
@@ -75,7 +75,7 @@ export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Pr
       badgeLabelEs: r.badge_text_es || null,
       badgeColor: r.badge_color || 'bg-pink-600',
       price: Number(r.price) || 0,
-      imageUrl: r.thumbnail_url || '/images/official/acai_copo_500g.jpg',
+      imageUrl: r.thumbnail_url || '',
       videoUrl: r.video_url || undefined,
       mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
       active: r.active !== false,
@@ -101,7 +101,7 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
   const badgeLabelEs = item.badgeLabelEs || null
   const badgeColor = item.badgeColor || 'bg-pink-600'
   const price = Number(item.price) || 0
-  const imageUrl = item.imageUrl || '/images/official/acai_copo_500g.jpg'
+  const imageUrl = item.imageUrl || null
   const videoUrl = item.videoUrl || null
   const displayOrder = Number(item.displayOrder) || 1
   const active = item.active !== false

@@ -1,11 +1,14 @@
 /**
  * Serviço de Integração com Gateway Ifthenpay (Portugal)
- * Documentação: https://www.ifthenpay.com/docs/en/
- * Suporte a MB WAY Instantâneo, checagem de status e simulador sandbox
+ * Documentação Oficial: https://api.ifthenpay.com/spg/payment/mbway
+ * Suporte a MB WAY Instantâneo (per-store multi-tenant), consulta de status e simulador sandbox
  */
+
+import { query } from '@/lib/db/postgres'
 
 export interface IfthenpayMbwayRequest {
   mbwayKey?: string
+  tenantId?: string
   orderId: string
   amount: number | string
   mobileNumber: string
@@ -31,10 +34,55 @@ export interface IfthenpayCallbackPayload {
   requestId?: string
 }
 
-// Chaves padrão / sandbox
+// Chave padrão de contingência / sandbox
 const DEFAULT_MBWAY_KEY = process.env.IFTHENPAY_MBWAY_KEY || 'MBW-SANDBOX-ROSE'
 const IFTHENPAY_MBWAY_ENDPOINT = 'https://api.ifthenpay.com/spg/payment/mbway'
 const IFTHENPAY_STATUS_ENDPOINT = 'https://api.ifthenpay.com/spg/payment/mbway/status'
+
+/**
+ * Normaliza o número de telemóvel no formato exigido pela Ifthenpay: [indicativo]#[número]
+ * Exemplo: 351#912345678
+ */
+export function formatIfthenpayMobileNumber(phone: string): { formatted: string; isValid: boolean } {
+  const trimmed = (phone || '').trim().replace(/\s+/g, '')
+
+  if (trimmed.includes('#')) {
+    const parts = trimmed.split('#')
+    return {
+      formatted: trimmed,
+      isValid: (parts[1] || '').length >= 9,
+    }
+  }
+
+  const digits = trimmed.replace(/\D/g, '')
+
+  if (digits.length === 9) {
+    return { formatted: `351#${digits}`, isValid: true }
+  }
+
+  if (digits.length === 12 && digits.startsWith('351')) {
+    return { formatted: `351#${digits.slice(3)}`, isValid: true }
+  }
+
+  if (digits.length > 9) {
+    const prefix = digits.slice(0, digits.length - 9)
+    const local = digits.slice(-9)
+    return { formatted: `${prefix}#${local}`, isValid: true }
+  }
+
+  return { formatted: `351#${digits}`, isValid: digits.length >= 9 }
+}
+
+/**
+ * Normaliza o ID do pedido para o limite estrito de 15 caracteres da Ifthenpay
+ */
+export function formatIfthenpayOrderId(orderId: string): string {
+  const clean = String(orderId || '').replace(/[^a-zA-Z0-9]/g, '')
+  if (clean.length > 15) {
+    return clean.slice(-15)
+  }
+  return clean || '1'
+}
 
 /**
  * Dispara uma solicitação de pagamento MB WAY para o telemóvel do cliente via Ifthenpay
@@ -42,12 +90,36 @@ const IFTHENPAY_STATUS_ENDPOINT = 'https://api.ifthenpay.com/spg/payment/mbway/s
 export async function requestMbwayPayment(
   params: IfthenpayMbwayRequest
 ): Promise<IfthenpayMbwayResponse> {
-  const mbwayKey = params.mbwayKey || DEFAULT_MBWAY_KEY
-  const cleanPhone = (params.mobileNumber || '').replace(/\D/g, '')
+  let mbwayKey = params.mbwayKey
+
+  // Resolução multi-tenant dinâmica da chave da loja via PostgreSQL
+  if (!mbwayKey && params.tenantId) {
+    try {
+      const res = await query(
+        `SELECT ifthenpay_mbway_key FROM store_qrcode_settings WHERE tenant_id::text = $1 LIMIT 1`,
+        [params.tenantId]
+      )
+      if (res.rows?.[0]?.ifthenpay_mbway_key) {
+        const customKey = String(res.rows[0].ifthenpay_mbway_key).trim()
+        if (customKey) {
+          mbwayKey = customKey
+        }
+      }
+    } catch (dbErr) {
+      console.warn('[Ifthenpay] Aviso ao consultar chave da loja:', dbErr)
+    }
+  }
+
+  if (!mbwayKey) {
+    mbwayKey = DEFAULT_MBWAY_KEY
+  }
+
+  const { formatted: formattedMobile, isValid } = formatIfthenpayMobileNumber(params.mobileNumber)
+  const formattedOrderId = formatIfthenpayOrderId(params.orderId)
   const formattedAmount = Number(params.amount).toFixed(2)
 
-  // Validação do telemóvel português (9 dígitos)
-  if (cleanPhone.length < 9) {
+  // Validação do telemóvel
+  if (!isValid) {
     return {
       success: false,
       status: '099',
@@ -59,10 +131,9 @@ export async function requestMbwayPayment(
 
   // Modo Sandbox / Ambiente de Demonstração
   if (
-    process.env.NODE_ENV !== 'production' ||
     mbwayKey.includes('SANDBOX') ||
-    cleanPhone.startsWith('911000') ||
-    cleanPhone.startsWith('911050')
+    formattedMobile.includes('911000') ||
+    formattedMobile.includes('911050')
   ) {
     const mockRequestId = `ift-req-${Date.now()}`
     return {
@@ -77,20 +148,23 @@ export async function requestMbwayPayment(
   }
 
   try {
+    const payload = {
+      mbWayKey: mbwayKey,
+      mbwayKey: mbwayKey,
+      orderId: formattedOrderId,
+      amount: formattedAmount,
+      mobileNumber: formattedMobile,
+      description: (params.description || `Açaí da Rose - Pedido #${formattedOrderId}`).slice(0, 50),
+      email: params.email || '',
+    }
+
     const response = await fetch(IFTHENPAY_MBWAY_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({
-        mbwayKey,
-        orderId: params.orderId,
-        amount: formattedAmount,
-        mobileNumber: cleanPhone,
-        description: params.description || `Açaí da Rose - Pedido #${params.orderId}`,
-        email: params.email || '',
-      }),
+      body: JSON.stringify(payload),
     })
 
     const data = await response.json()
@@ -100,7 +174,7 @@ export async function requestMbwayPayment(
         success: true,
         requestId: data.RequestId || data.requestId,
         status: '000',
-        message: data.Message || 'Notificação enviada com sucesso ao telemóvel.',
+        message: data.Message || data.message || 'Notificação enviada com sucesso ao telemóvel.',
         orderId: params.orderId,
         amount: Number(params.amount),
         isSandbox: false,
@@ -116,15 +190,14 @@ export async function requestMbwayPayment(
       }
     }
   } catch (error: any) {
-    // Fallback gracioso para teste
+    console.error('[Ifthenpay] Falha de comunicação com a API:', error)
     return {
-      success: true,
-      requestId: `ift-fallback-${Date.now()}`,
-      status: '000',
-      message: 'Notificação MB WAY simulada com sucesso.',
+      success: false,
+      status: '099',
+      message: error.message || 'Erro de ligação com os servidores da Ifthenpay.',
       orderId: params.orderId,
       amount: Number(params.amount),
-      isSandbox: true,
+      isSandbox: false,
     }
   }
 }
@@ -147,7 +220,7 @@ export async function checkMbwayPaymentStatus(
   }
 
   try {
-    const url = `${IFTHENPAY_STATUS_ENDPOINT}?mbwayKey=${encodeURIComponent(key)}&requestId=${encodeURIComponent(requestId)}`
+    const url = `${IFTHENPAY_STATUS_ENDPOINT}?mbWayKey=${encodeURIComponent(key)}&requestId=${encodeURIComponent(requestId)}`
     const res = await fetch(url, { headers: { Accept: 'application/json' } })
     const data = await res.json()
 
@@ -159,9 +232,9 @@ export async function checkMbwayPaymentStatus(
     }
   } catch {
     return {
-      paid: true,
-      status: '000',
-      message: 'Status confirmado.',
+      paid: false,
+      status: '099',
+      message: 'Aguardando confirmação no telemóvel...',
     }
   }
 }

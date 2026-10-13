@@ -41,7 +41,8 @@ interface MenuHierarchyViewProps {
 export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) {
   const { user, authFetch } = useAuthStore()
   const isSuperAdmin = canManageMasterCatalog(user, tenantId)
-  const { publish, isPublishing, markDirty } = usePublishStore()
+  const { publish, revert, isPublishing, markDirty, hasPendingChanges } = usePublishStore()
+  const [isReverting, setIsReverting] = useState(false)
 
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
   const [optionModels, setOptionModels] = useState<OptionModelData[]>([])
@@ -147,8 +148,25 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
     const res = await publish(tenantId, {}, authFetch)
     if (res.success) {
       toast.success(res.message || 'Todas as alterações de menus, produtos e horários foram publicadas com sucesso!')
+      setHasPendingPublish(false)
     } else {
       toast.error(res.message || 'Erro ao publicar alterações')
+    }
+  }
+
+  const handleRevertChanges = async () => {
+    setIsReverting(true)
+    try {
+      const res = await revert(tenantId, authFetch)
+      if (res.success) {
+        toast.success(res.message || 'Alterações pendentes revertidas com sucesso!')
+        setHasPendingPublish(false)
+        await fetchCatalog()
+      } else {
+        toast.error(res.message || 'Erro ao reverter alterações')
+      }
+    } finally {
+      setIsReverting(false)
     }
   }
 
@@ -317,6 +335,10 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   // Criação Rápida de Categoria
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isSuperAdmin) {
+      toast.error('Apenas a Franqueadora pode criar categorias.')
+      return
+    }
     if (!newCatName.trim()) {
       toast.error('Informe o nome da categoria')
       return
@@ -605,9 +627,22 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             </Button>
           )}
 
+          {(hasPendingPublish || hasPendingChanges) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRevertChanges}
+              disabled={isPublishing || isReverting}
+              className="border-red-300 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 h-8 px-2.5 text-xs rounded-xl font-bold cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
+            >
+              {isReverting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+              <span>{isReverting ? 'Revertendo...' : 'Reverter'}</span>
+            </Button>
+          )}
+
           <Button
             onClick={handlePublishChanges}
-            disabled={isPublishing}
+            disabled={isPublishing || isReverting}
             className="bg-purple-950 hover:bg-purple-900 text-white font-bold text-xs h-8 px-3 rounded-xl border border-purple-800/40 shadow-xs cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
           >
             {isPublishing && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
@@ -922,6 +957,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         item={editingItem}
         catalog={catalog}
         defaultCategoryId={selectedCategory !== 'all_cats' ? selectedCategory : (visibleCategories[0]?.id || undefined)}
+        tenantId={tenantId}
         onSave={handleSaveProduct}
       />
 
@@ -970,16 +1006,26 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       />
 
       {/* Barra Clean de Alterações Pendentes na Loja */}
-      {hasPendingPublish && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 dark:bg-[#1f0533]/95 text-white px-5 py-2.5 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-4 text-xs font-semibold backdrop-blur-md">
+      {(hasPendingPublish || hasPendingChanges) && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 dark:bg-[#1f0533]/95 text-white px-5 py-2.5 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3 text-xs font-semibold backdrop-blur-md">
           <span>Alterações pendentes no cardápio desta loja.</span>
           <button
             type="button"
-            onClick={handlePublishChanges}
-            disabled={isPublishing}
-            className="bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl transition cursor-pointer disabled:opacity-50"
+            onClick={handleRevertChanges}
+            disabled={isPublishing || isReverting}
+            className="bg-red-500/20 hover:bg-red-500/30 text-red-200 hover:text-white border border-red-400/30 font-bold text-xs px-3 py-1.5 rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center gap-1"
           >
-            {isPublishing ? 'A publicar...' : 'Publicar Alterações'}
+            {isReverting && <RefreshCw className="h-3 w-3 animate-spin" />}
+            <span>{isReverting ? 'Revertendo...' : 'Reverter'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePublishChanges}
+            disabled={isPublishing || isReverting}
+            className="bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center gap-1"
+          >
+            {isPublishing && <RefreshCw className="h-3 w-3 animate-spin" />}
+            <span>{isPublishing ? 'Publicando...' : 'Publicar Alterações'}</span>
           </button>
         </div>
       )}

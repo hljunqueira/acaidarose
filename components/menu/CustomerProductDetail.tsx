@@ -19,23 +19,7 @@ interface CustomerProductDetailProps {
   viewOnly?: boolean
 }
 
-const CUP_IMAGES: Record<number, string> = {
-  250: '/images/official/acai_copo_250g.jpg',
-  350: '/images/official/acai_copo_350g.jpg',
-  500: '/images/official/acai_copo_500g.jpg',
-  750: '/images/official/acai_tigela_750g.jpg',
-  1000: '/images/official/acai_balde_1kg.jpg',
-}
-
 import { isProductTimeAvailable } from './CustomerMenuHome'
-
-const CUP_VIDEOS: Record<number, string> = {
-  250: '/videos/hero_revealing_cup.mp4',
-  350: '/videos/hero_orbiting_cup.mp4',
-  500: '/videos/hero_cup_rotation.mp4',
-  750: '/videos/hero_gliding_texture.mp4',
-  1000: '/videos/hero_cup_rotation.mp4',
-}
 
 function getToppingItemPrice(topping: ProductTopping, weightGrams?: number): number {
   const nameLower = (topping.name || '').toLowerCase()
@@ -400,7 +384,8 @@ export default function CustomerProductDetail({
     onClose()
   }
 
-  const video = container.videoUrl || CUP_VIDEOS[weight]
+  const video = container.videoUrl || null
+  const imageSrc = container.image || container.videoPoster || null
 
   const modalTitle = useMemo(() => {
     if (viewOnly) return `Ingredientes: ${container.name}`
@@ -435,25 +420,27 @@ export default function CustomerProductDetail({
         <div className="overflow-y-auto p-4 sm:p-5 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 text-slate-900 dark:text-white">
           {/* Coluna Esquerda */}
           <div className="md:col-span-4 space-y-4">
-            <div className="rounded-3xl overflow-hidden border border-purple-100 dark:border-white/15 bg-purple-50 dark:bg-purple-950/40 shadow-sm">
-              {video ? (
-                <video
-                  src={video}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="auto"
-                  className="w-full h-36 sm:h-44 object-cover"
-                />
-              ) : (
-                <img
-                  src={CUP_IMAGES[weight] || container.image || '/images/official/acai_copo_500g.jpg'}
-                  alt={container.name}
-                  className="w-full h-36 sm:h-44 object-cover"
-                />
-              )}
-            </div>
+            {(video || imageSrc) && (
+              <div className="rounded-3xl overflow-hidden border border-purple-100 dark:border-white/15 bg-purple-50 dark:bg-purple-950/40 shadow-sm">
+                {video ? (
+                  <video
+                    src={video}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                    className="w-full h-36 sm:h-44 object-cover"
+                  />
+                ) : (
+                  <img
+                    src={imageSrc!}
+                    alt={container.name}
+                    className="w-full h-36 sm:h-44 object-cover"
+                  />
+                )}
+              </div>
+            )}
 
             <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50/80 border border-purple-100 dark:bg-white/5 dark:border-white/10 space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
@@ -625,7 +612,7 @@ export default function CustomerProductDetail({
                           return (
                             <div
                               key={opt.id}
-                              className={`p-3 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                              className={`p-3 min-h-[58px] rounded-2xl border transition flex items-center justify-between gap-3 ${
                                 isSelected
                                   ? 'bg-purple-700/10 border-purple-600 dark:bg-purple-600/20 dark:border-pink-500'
                                   : 'bg-white dark:bg-white/5 border-purple-150 dark:border-white/10 hover:border-purple-300'
@@ -635,12 +622,12 @@ export default function CustomerProductDetail({
                                 {opt.image ? (
                                   <img src={opt.image} alt={opt.name} className="h-10 w-10 rounded-xl object-cover flex-shrink-0" />
                                 ) : null}
-                                <div className="min-w-0">
-                                  <div className="font-bold text-xs text-purple-950 dark:text-white truncate">
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-bold text-[11px] sm:text-xs text-purple-950 dark:text-white line-clamp-2 leading-tight break-words">
                                     {opt.name}
                                   </div>
                                   {group.priceType === 'Individual' && Number(opt.price) > 0 && (
-                                    <div className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                    <div className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
                                       +{formatCurrency(Number(opt.price))}
                                     </div>
                                   )}
@@ -696,16 +683,18 @@ export default function CustomerProductDetail({
                             <div
                               key={opt.id}
                               onClick={() => !group.allowItemQuantity && toggleDynamicOptionSingle(groupId, opt.id, group)}
-                              className={`p-2.5 rounded-xl border transition flex items-center justify-between gap-1.5 cursor-pointer select-none ${
+                              className={`p-2 sm:p-2.5 min-h-[58px] sm:min-h-[56px] rounded-xl border transition flex items-center justify-between gap-1.5 cursor-pointer select-none ${
                                 isSelected
                                   ? 'bg-purple-700 border-purple-700 text-white shadow-sm dark:bg-purple-700 dark:border-fuchsia-400'
                                   : 'bg-white dark:bg-white/5 border-purple-150 dark:border-white/10 hover:border-purple-300 dark:hover:border-white/20 text-slate-800 dark:text-purple-200'
                               }`}
                             >
-                              <div className="truncate flex-1">
-                                <div className="text-xs font-semibold truncate">{opt.name}</div>
+                              <div className="flex-1 min-w-0 pr-1 text-left">
+                                <div className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-2 break-words">
+                                  {opt.name}
+                                </div>
                                 {group.priceType === 'Individual' && Number(opt.price) > 0 && (
-                                  <div className={`text-[10px] font-mono font-bold ${isSelected ? 'text-pink-200' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                  <div className={`text-[10px] font-mono font-bold leading-none mt-0.5 ${isSelected ? 'text-pink-200' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                     +{formatCurrency(Number(opt.price))}
                                   </div>
                                 )}
@@ -720,8 +709,8 @@ export default function CustomerProductDetail({
                                     type="button"
                                     disabled={currentQty <= 0}
                                     onClick={() => updateDynamicOptionQty(groupId, opt.id, -1, group)}
-                                    className={`h-5 w-5 rounded flex items-center justify-center cursor-pointer ${
-                                      isSelected ? 'text-white hover:bg-white/20' : 'text-purple-700 dark:text-purple-300 hover:bg-purple-100'
+                                    className={`h-6 w-6 rounded-md flex items-center justify-center cursor-pointer transition-colors ${
+                                      isSelected ? 'text-white hover:bg-white/20' : 'text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-white/10'
                                     } disabled:opacity-20`}
                                   >
                                     <Minus className="h-3 w-3" />
@@ -732,8 +721,8 @@ export default function CustomerProductDetail({
                                   <button
                                     type="button"
                                     onClick={() => updateDynamicOptionQty(groupId, opt.id, 1, group)}
-                                    className={`h-5 w-5 rounded flex items-center justify-center cursor-pointer ${
-                                      isSelected ? 'bg-white text-purple-900' : 'bg-purple-700 text-white'
+                                    className={`h-6 w-6 rounded-md flex items-center justify-center cursor-pointer transition-colors ${
+                                      isSelected ? 'bg-white text-purple-900 shadow-xs' : 'bg-purple-700 text-white hover:bg-purple-800'
                                     }`}
                                   >
                                     <Plus className="h-3 w-3" />
@@ -773,7 +762,7 @@ export default function CustomerProductDetail({
                           type="button"
                           disabled={!isAvailable}
                           onClick={() => isAvailable && toggleBase(base)}
-                          className={`p-2.5 rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
+                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
                             !isAvailable
                               ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                               : isSelected
@@ -781,7 +770,7 @@ export default function CustomerProductDetail({
                               : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                           }`}
                         >
-                          <span className="truncate">{base.name}</span>
+                          <span className="line-clamp-2 leading-tight flex-1 pr-1 text-[11px] sm:text-xs break-words">{base.name}</span>
                           {isSelected ? (
                             <Check className="h-3.5 w-3.5 text-white dark:text-fuchsia-300 flex-shrink-0 ml-1" />
                           ) : !isAvailable ? (
@@ -817,7 +806,7 @@ export default function CustomerProductDetail({
                           type="button"
                           disabled={!isAvailable}
                           onClick={() => isAvailable && toggleFruta(fruta)}
-                          className={`p-2.5 rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
+                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
                             !isAvailable
                               ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                               : isSelected
@@ -825,7 +814,7 @@ export default function CustomerProductDetail({
                               : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                           }`}
                         >
-                          <span className="truncate">{fruta.name}</span>
+                          <span className="line-clamp-2 leading-tight flex-1 pr-1 text-[11px] sm:text-xs break-words">{fruta.name}</span>
                           {isSelected ? (
                             <Check className="h-3.5 w-3.5 text-white dark:text-emerald-400 flex-shrink-0 ml-1" />
                           ) : !isAvailable ? (
@@ -861,7 +850,7 @@ export default function CustomerProductDetail({
                           type="button"
                           disabled={!isAvailable}
                           onClick={() => isAvailable && toggleTopping(top)}
-                          className={`p-2 rounded-2xl text-left text-[11px] font-semibold transition flex items-center justify-between border cursor-pointer ${
+                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-[11px] font-semibold transition flex items-center justify-between border cursor-pointer ${
                             !isAvailable
                               ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                               : isSelected
@@ -869,7 +858,7 @@ export default function CustomerProductDetail({
                               : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                           }`}
                         >
-                          <span className="truncate">{top.name}</span>
+                          <span className="line-clamp-2 leading-tight flex-1 pr-1 text-[11px] sm:text-xs break-words">{top.name}</span>
                           {isSelected ? (
                             <Check className="h-3 w-3 text-white dark:text-emerald-400 flex-shrink-0 ml-1" />
                           ) : !isAvailable ? (
@@ -906,7 +895,7 @@ export default function CustomerProductDetail({
                           type="button"
                           disabled={!isAvailable}
                           onClick={() => isAvailable && togglePremium(add)}
-                          className={`p-3 rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
+                          className={`p-2.5 sm:p-3 min-h-[58px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
                             !isAvailable
                               ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400'
                               : isSelected
@@ -914,8 +903,8 @@ export default function CustomerProductDetail({
                               : 'bg-amber-50/70 border-amber-200/80 text-slate-900 hover:bg-amber-100 hover:border-amber-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                           }`}
                         >
-                          <div>
-                            <div className="truncate font-bold">{add.name}</div>
+                          <div className="flex-1 min-w-0 pr-1">
+                            <div className="line-clamp-2 leading-tight font-bold text-[11px] sm:text-xs break-words">{add.name}</div>
                             <div className={`text-[10px] font-mono font-bold mt-0.5 ${isSelected ? 'text-amber-300' : 'text-amber-800 dark:text-amber-300'}`}>
                               +{formatCurrency(dynamicPrice)}
                             </div>

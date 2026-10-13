@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/i18n/formatters'
-import { Plus, Minus, Trash2, CheckCircle2, ShoppingBag, Smartphone, CreditCard, Clock, AlertCircle } from 'lucide-react'
+import { Plus, Minus, Trash2, CheckCircle2, ShoppingBag, Smartphone, CreditCard, Clock, AlertCircle, Gift } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 import { useLanguageStore } from '@/lib/stores/languageStore'
@@ -63,10 +63,11 @@ export default function CustomerCartSheet({
   const isEn = language === 'en'
   const { isDark: isCustomerDark } = useCustomerTheme()
   const allowMbway = qrConfig?.allowMbwayPayment !== false
+  const allowPoints = qrConfig?.allowPointsPayment !== false
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerNif, setCustomerNif] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'MBWAY' | 'BALCAO'>('MBWAY')
+  const [paymentMethod, setPaymentMethod] = useState<'MBWAY' | 'BALCAO' | 'POINTS'>('MBWAY')
   const [consumptionType, setConsumptionType] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN')
   const [needCutlery, setNeedCutlery] = useState(true)
   const [bagQuantity, setBagQuantity] = useState(0)
@@ -88,9 +89,9 @@ export default function CustomerCartSheet({
   // Sincroniza forma de pagamento com a configuração do QR Code
   useEffect(() => {
     if (!allowMbway && paymentMethod === 'MBWAY') {
-      setPaymentMethod('BALCAO')
+      setPaymentMethod(allowPoints ? 'POINTS' : 'BALCAO')
     }
-  }, [allowMbway, paymentMethod])
+  }, [allowMbway, allowPoints, paymentMethod])
 
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const activeOrderIdRef = useRef<string | null>(null)
@@ -145,8 +146,9 @@ export default function CustomerCartSheet({
   const isNameRequired = qrConfig?.customerNameRule !== 'OPTIONAL'
   const isPhoneRequired = qrConfig?.customerPhoneRule === 'REQUIRED'
   const showPhoneField = qrConfig?.customerPhoneRule !== 'NONE' || paymentMethod === 'MBWAY'
-  const isNifRequired = qrConfig?.customerNifRule === 'REQUIRED'
-  const showNifField = qrConfig?.customerNifRule !== 'NONE'
+  const isPointsPayment = paymentMethod === 'POINTS'
+  const isNifRequired = isPointsPayment || qrConfig?.customerNifRule === 'REQUIRED'
+  const showNifField = isPointsPayment || qrConfig?.customerNifRule !== 'NONE'
   const isViewOnly = qrConfig?.mode === 'VIEW_ONLY'
 
   const handleCheckout = async () => {
@@ -176,7 +178,13 @@ export default function CustomerCartSheet({
       return
     }
 
-    if (isNifRequired && !customerNif.trim()) {
+    if (isPointsPayment) {
+      const cleanNif = customerNif.replace(/\D/g, '')
+      if (cleanNif.length !== 9) {
+        toast.error('O NIF é obrigatório para resgatar com pontos. Informe os 9 dígitos cadastrados no seu App Cashback.')
+        return
+      }
+    } else if (isNifRequired && !customerNif.trim()) {
       toast.error('Por favor, informe o NIF para a fatura')
       return
     }
@@ -207,6 +215,12 @@ export default function CustomerCartSheet({
             : `Levar para Casa (Talheres: ${needCutlery ? 'Sim' : 'Não'}, Sacos: ${bagQuantity})`)
         : (isEn ? 'Dine-in' : 'Consumir no Local')
 
+      const paymentLabel = paymentMethod === 'MBWAY'
+        ? 'MB WAY'
+        : paymentMethod === 'POINTS'
+        ? `PONTOS CASHBACK (NIF: ${customerNif.trim()})`
+        : (isEn ? 'Pay at Counter' : 'Pagar no Balcão')
+
       const payload = {
         tenantId: tenantId || '11111111-1111-1111-1111-111111111111',
         customerName: customerName.trim(),
@@ -231,8 +245,8 @@ export default function CustomerCartSheet({
         bagQuantity,
         bagFee,
         notes: isTable
-          ? `Mesa ${tableNumber} · ${takeawayLabel} · ${paymentMethod === 'MBWAY' ? 'MB WAY' : (isEn ? 'Pay at Counter' : 'Pagar no Balcão')}`
-          : `Balcão · ${takeawayLabel} · ${paymentMethod === 'MBWAY' ? 'MB WAY' : (isEn ? 'Pay at Counter' : 'Pagar no Balcão')}`,
+          ? `Mesa ${tableNumber} · ${takeawayLabel} · ${paymentLabel}`
+          : `Balcão · ${takeawayLabel} · ${paymentLabel}`,
       }
 
       const res = await fetch('/api/orders', {
@@ -270,6 +284,11 @@ export default function CustomerCartSheet({
 
         setCountdown(240)
         setCheckoutStep('MBWAY_WAITING')
+      } else if (paymentMethod === 'POINTS') {
+        // Pagamento com Pontos (App Cashback)
+        onClearCart()
+        setCheckoutStep('SUCCESS_COUNTER')
+        toast.success('Pedido registado com Pontos! Apresente o aplicativo ou seu NIF no balcão para validar.')
       } else {
         // Pagar no Balcão
         onClearCart()
@@ -440,9 +459,19 @@ export default function CustomerCartSheet({
               </div>
 
               <div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Pré-Pedido Registado!</h3>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {paymentMethod === 'POINTS' ? 'Pedido com Pontos Registado!' : 'Pré-Pedido Registado!'}
+                </h3>
                 <p className="text-xs text-slate-600 dark:text-purple-200/80 mt-1 max-w-sm mx-auto">
-                  Dirija-se ao caixa para efetuar o pagamento de <strong>{formatCurrency(cartTotal)}</strong>.
+                  {paymentMethod === 'POINTS' ? (
+                    <>
+                      Apresente o seu NIF <strong>{customerNif}</strong> ou a app Açaí da Rose Cashback no caixa para validar o resgate de pontos.
+                    </>
+                  ) : (
+                    <>
+                      Dirija-se ao caixa para efetuar o pagamento de <strong>{formatCurrency(cartTotal)}</strong>.
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -456,10 +485,18 @@ export default function CustomerCartSheet({
                     Mesa {tableNumber} · {customerName}
                   </div>
                 )}
+                {paymentMethod === 'POINTS' && (
+                  <div className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 py-1 px-2 rounded-lg">
+                    Pagamento: Resgate de Pontos (App)
+                  </div>
+                )}
               </div>
 
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-200 text-left max-w-sm mx-auto">
-                <strong>Atenção:</strong> A preparação do açaí na copa terá início logo após a validação do pagamento no caixa da loja.
+                <strong>Atenção:</strong>{' '}
+                {paymentMethod === 'POINTS'
+                  ? 'A preparação do seu açaí na copa terá início logo após o operador validar o seu saldo de pontos no caixa da loja.'
+                  : 'A preparação do açaí na copa terá início logo após a validação do pagamento no caixa da loja.'}
               </div>
 
               <div className="pt-2">
@@ -705,40 +742,50 @@ export default function CustomerCartSheet({
                       <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
                         Forma de Pagamento:
                       </label>
-                      {allowMbway ? (
-                        <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        {allowMbway && (
                           <button
                             type="button"
                             onClick={() => setPaymentMethod('MBWAY')}
-                            className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            className={`p-2.5 rounded-xl border text-[11px] font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 cursor-pointer ${
                               paymentMethod === 'MBWAY'
-                                ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm'
+                                ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm ring-1 ring-fuchsia-400'
                                 : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
                             }`}
                           >
-                            <Smartphone className="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                            <Smartphone className="h-4 w-4 text-pink-600 dark:text-pink-400 shrink-0" />
                             <span>MB WAY</span>
                           </button>
+                        )}
 
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('BALCAO')}
+                          className={`p-2.5 rounded-xl border text-[11px] font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 cursor-pointer ${
+                            paymentMethod === 'BALCAO'
+                              ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm ring-1 ring-fuchsia-400'
+                              : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
+                          }`}
+                        >
+                          <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span>No Balcão</span>
+                        </button>
+
+                        {allowPoints && (
                           <button
                             type="button"
-                            onClick={() => setPaymentMethod('BALCAO')}
-                            className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                              paymentMethod === 'BALCAO'
-                                ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm'
+                            onClick={() => setPaymentMethod('POINTS')}
+                            className={`p-2.5 rounded-xl border text-[11px] font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 cursor-pointer ${
+                              paymentMethod === 'POINTS'
+                                ? 'bg-purple-100 border-purple-500 text-purple-950 dark:bg-purple-600/40 dark:border-purple-400 dark:text-white shadow-sm ring-1 ring-purple-400'
                                 : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
                             }`}
                           >
-                            <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                            <span>No Balcão</span>
+                            <Gift className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                            <span>Pontos</span>
                           </button>
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30 text-[11px] text-amber-900 dark:text-amber-200 font-bold flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-amber-600 shrink-0" />
-                          <span>Pagamento efetuado diretamente no balcão / caixa</span>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
 
                     {/* Campo Telemóvel */}
@@ -763,17 +810,38 @@ export default function CustomerCartSheet({
 
                     {/* Campo NIF */}
                     {showNifField && (
-                      <div className="space-y-1 pt-1">
-                        <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
-                          {isNifRequired ? 'NIF na Fatura (Obrigatório):' : 'NIF na Fatura (Opcional):'}
-                        </label>
+                      <div className="space-y-1 pt-1 animate-in fade-in duration-150">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
+                            {paymentMethod === 'POINTS'
+                              ? 'NIF na App Cashback (Obrigatório):'
+                              : isNifRequired
+                              ? 'NIF na Fatura (Obrigatório):'
+                              : 'NIF na Fatura (Opcional):'}
+                          </label>
+                          {paymentMethod === 'POINTS' && (
+                            <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded-md">
+                              Identificador no App
+                            </span>
+                          )}
+                        </div>
                         <input
                           type="text"
                           value={customerNif}
                           onChange={(e) => setCustomerNif(e.target.value)}
-                          placeholder="Ex: 123456789"
-                          className="w-full h-11 px-3.5 rounded-xl bg-white border border-purple-200 dark:bg-white/5 dark:border-white/15 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono"
+                          placeholder={paymentMethod === 'POINTS' ? 'NIF registado no app (9 dígitos)' : 'Ex: 123456789'}
+                          maxLength={9}
+                          className={`w-full h-11 px-3.5 rounded-xl bg-white border text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono ${
+                            paymentMethod === 'POINTS'
+                              ? 'border-purple-400 dark:border-purple-500 bg-purple-50/40 dark:bg-purple-950/20'
+                              : 'border-purple-200 dark:bg-white/5 dark:border-white/15'
+                          }`}
                         />
+                        {paymentMethod === 'POINTS' && (
+                          <p className="text-[10.5px] text-purple-800 dark:text-purple-300/90 leading-tight">
+                            O resgate de pontos é validado no aplicativo Açaí da Rose Cashback utilizando o seu NIF.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -828,6 +896,8 @@ export default function CustomerCartSheet({
                     ? 'A processar...'
                     : paymentMethod === 'MBWAY'
                     ? 'Pagar com MB WAY'
+                    : paymentMethod === 'POINTS'
+                    ? 'Concluir com Pontos'
                     : 'Concluir no Balcão'}
                 </Button>
               </div>

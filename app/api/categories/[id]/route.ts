@@ -13,6 +13,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const body = await req.json()
     const { tenantId } = body
 
+    const isMaster = user && hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])
+    if (!isMaster) {
+      if (body.active === undefined) {
+        return NextResponse.json(
+          { error: 'Franquias só podem alterar a visibilidade/ativação da categoria.' },
+          { status: 403 }
+        )
+      }
+      const updated = await updateCategory(id, {
+        active: body.active,
+        tenantId: tenantId || user?.tenantId,
+      })
+      if (!updated) {
+        return NextResponse.json({ error: 'Categoria não encontrada' }, { status: 404 })
+      }
+      return NextResponse.json({ category: updated })
+    }
+
     const updated = await updateCategory(id, {
       ...body,
       tenantId: tenantId || user?.tenantId,

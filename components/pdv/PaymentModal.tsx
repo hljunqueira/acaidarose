@@ -41,6 +41,7 @@ const METHODS: Array<{ code: PaymentMethodCode; label: string; hint: string }> =
   { code: 'NUMERARIO', label: 'Numerário (Dinheiro)', hint: 'Com cálculo de troco' },
   { code: 'MULTIBANCO', label: 'Multibanco (TPA)', hint: 'Cartão de débito/crédito' },
   { code: 'MB_WAY', label: 'MB Way', hint: 'QR Code / Telemóvel' },
+  { code: 'POINTS', label: 'Pontos (App Cashback)', hint: 'Resgate via NIF do cliente' },
   { code: 'PLATAFORMA', label: 'Takeaway / App', hint: 'Uber Eats / Glovo' },
 ]
 

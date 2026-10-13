@@ -24,6 +24,10 @@ interface PublishState {
     options?: { replicateAll?: boolean; note?: string },
     customFetch?: (url: string, init?: RequestInit) => Promise<Response>
   ) => Promise<{ success: boolean; version?: number; message?: string }>
+  revert: (
+    tenantId: string,
+    customFetch?: (url: string, init?: RequestInit) => Promise<Response>
+  ) => Promise<{ success: boolean; message?: string }>
 }
 
 export const usePublishStore = create<PublishState>((set, get) => ({
@@ -126,6 +130,49 @@ export const usePublishStore = create<PublishState>((set, get) => ({
     } catch (err: any) {
       set({ isPublishing: false })
       return { success: false, message: err?.message || 'Erro de conexão ao publicar' }
+    }
+  },
+
+  revert: async (tenantId: string, customFetch) => {
+    if (!tenantId) return { success: false, message: 'ID da loja obrigatório' }
+    set({ isPublishing: true })
+
+    try {
+      const fetcher = customFetch || fetch
+      const res = await fetcher('/api/catalog/revert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        set({
+          hasPendingChanges: false,
+          pendingCount: 0,
+          pendingSummary: [],
+          isPublishing: false,
+        })
+
+        // Emite evento para todos os clientes locais sincronizarem
+        emitCatalogSync({
+          tenantId,
+          entity: 'catalog',
+          action: 'update',
+        })
+
+        return {
+          success: true,
+          message: data.message || 'Alterações pendentes revertidas com sucesso!',
+        }
+      }
+
+      set({ isPublishing: false })
+      return { success: false, message: data.error || 'Falha ao reverter alterações' }
+    } catch (err: any) {
+      set({ isPublishing: false })
+      return { success: false, message: err?.message || 'Erro de conexão ao reverter' }
     }
   },
 }))

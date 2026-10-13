@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       amount,
       mobileNumber,
       description,
+      tenantId,
     })
 
     return NextResponse.json(response)

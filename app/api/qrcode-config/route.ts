@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
     const config = {
       mode: saved?.mode || 'ORDER_EMISSION',
       allowMbwayPayment: saved?.allow_mbway_payment ?? true,
+      allowPointsPayment: saved?.allow_points_payment ?? true,
       pickupModel: saved?.pickup_model || 'TV_CALL',
       tableMode: 'FIXED_QR',
       allowTableTransfer: saved?.allow_table_transfer ?? true,
@@ -61,6 +62,8 @@ export async function GET(req: NextRequest) {
       customerPhoneRule: saved?.customer_phone_rule || 'REQUIRED',
       customerNifRule: saved?.customer_nif_rule || 'OPTIONAL',
       allowInternationalPhone: saved?.allow_international_phone ?? true,
+      ifthenpayMbwayKey: saved?.ifthenpay_mbway_key || '',
+      ifthenpayAntiPhishingKey: saved?.ifthenpay_anti_phishing_key || '',
       bannerUrl: '',
       tenantId,
       storeNumber: tenantId.startsWith('11111111') ? 1 : 2,
@@ -89,27 +92,34 @@ export async function PUT(req: NextRequest) {
     const pickupModel = config.pickupModel === 'TABLE_SERVICE' ? 'TABLE_SERVICE' : 'TV_CALL'
     const allowTableTransfer = Boolean(config.allowTableTransfer !== false)
     const allowMbwayPayment = Boolean(config.allowMbwayPayment !== false)
+    const allowPointsPayment = Boolean(config.allowPointsPayment !== false)
     const allowInternationalPhone = Boolean(config.allowInternationalPhone !== false)
     const customerNameRule = config.customerNameRule === 'OPTIONAL' ? 'OPTIONAL' : 'REQUIRED'
     const customerPhoneRule = config.customerPhoneRule || 'REQUIRED'
     const customerNifRule = config.customerNifRule || 'OPTIONAL'
+    const ifthenpayMbwayKey = config.ifthenpayMbwayKey ? String(config.ifthenpayMbwayKey).trim() : null
+    const ifthenpayAntiPhishingKey = config.ifthenpayAntiPhishingKey ? String(config.ifthenpayAntiPhishingKey).trim() : null
 
     await query(
       `INSERT INTO store_qrcode_settings (
         tenant_id, mode, pickup_model, allow_table_transfer,
-        allow_mbway_payment, allow_international_phone,
+        allow_mbway_payment, allow_points_payment, allow_international_phone,
         customer_name_rule, customer_phone_rule, customer_nif_rule,
+        ifthenpay_mbway_key, ifthenpay_anti_phishing_key,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
       ON CONFLICT (tenant_id) DO UPDATE SET
         mode = EXCLUDED.mode,
         pickup_model = EXCLUDED.pickup_model,
         allow_table_transfer = EXCLUDED.allow_table_transfer,
         allow_mbway_payment = EXCLUDED.allow_mbway_payment,
+        allow_points_payment = EXCLUDED.allow_points_payment,
         allow_international_phone = EXCLUDED.allow_international_phone,
         customer_name_rule = EXCLUDED.customer_name_rule,
         customer_phone_rule = EXCLUDED.customer_phone_rule,
         customer_nif_rule = EXCLUDED.customer_nif_rule,
+        ifthenpay_mbway_key = EXCLUDED.ifthenpay_mbway_key,
+        ifthenpay_anti_phishing_key = EXCLUDED.ifthenpay_anti_phishing_key,
         updated_at = NOW()`,
       [
         tenantId,
@@ -117,10 +127,13 @@ export async function PUT(req: NextRequest) {
         pickupModel,
         allowTableTransfer,
         allowMbwayPayment,
+        allowPointsPayment,
         allowInternationalPhone,
         customerNameRule,
         customerPhoneRule,
         customerNifRule,
+        ifthenpayMbwayKey,
+        ifthenpayAntiPhishingKey,
       ]
     )
 

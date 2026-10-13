@@ -300,7 +300,7 @@ function MenuContent() {
         {activeTab === 'menu' && (
           <CustomerMenuHome
             catalog={catalog}
-            tenantId={tenant?.id}
+            tenantId={tenant?.id || activeLoja}
             onSelectContainer={handleSelectContainer}
             onAddToCart={(item) => {
               setCart((prev) => [...prev, item])

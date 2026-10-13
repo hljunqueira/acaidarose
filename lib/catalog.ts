@@ -7,11 +7,11 @@ export const TENANT = {
 }
 
 export const CONTAINERS: ProductContainer[] = [
-  { id: 'cnt-250', name: 'Açaí 250g', weightGrams: 250, precoBase: 6.50, limiteFrutas: 2, limiteToppings: 3, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 3, emoji: '🍧', image: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600&auto=format&fit=crop&q=80', active: true },
-  { id: 'cnt-350', name: 'Açaí 350g', weightGrams: 350, precoBase: 9.00, limiteFrutas: 3, limiteToppings: 4, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 4, emoji: '🍧', image: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80', active: true },
-  { id: 'cnt-500', name: 'Açaí 500g', weightGrams: 500, precoBase: 12.90, limiteFrutas: 999, limiteToppings: 999, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 999, emoji: '🍨', image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=600&auto=format&fit=crop&q=80', active: true },
-  { id: 'cnt-750', name: 'Açaí 750g', weightGrams: 750, precoBase: 18.90, limiteFrutas: 999, limiteToppings: 999, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 999, emoji: '🍨', image: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=600&auto=format&fit=crop&q=80', active: true },
-  { id: 'cnt-1000', name: 'Açaí 1 Kg', weightGrams: 1000, precoBase: 25.90, limiteFrutas: 999, limiteToppings: 999, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 999, emoji: '🥣', image: 'https://images.unsplash.com/photo-1589733955941-5eeaf752f6dd?w=600&auto=format&fit=crop&q=80', active: true },
+  { id: 'cnt-250', name: 'Açaí 250g', weightGrams: 250, precoBase: 6.50, limiteFrutas: 2, limiteToppings: 3, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 3, emoji: '🍧', image: '', active: true },
+  { id: 'cnt-350', name: 'Açaí 350g', weightGrams: 350, precoBase: 9.00, limiteFrutas: 3, limiteToppings: 4, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 4, emoji: '🍧', image: '', active: true },
+  { id: 'cnt-500', name: 'Açaí 500g', weightGrams: 500, precoBase: 12.90, limiteFrutas: 999, limiteToppings: 999, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 999, emoji: '🍨', image: '', active: true },
+  { id: 'cnt-750', name: 'Açaí 750g', weightGrams: 750, precoBase: 18.90, limiteFrutas: 999, limiteToppings: 999, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 999, emoji: '🍨', image: '', active: true },
+  { id: 'cnt-1000', name: 'Açaí 1 Kg', weightGrams: 1000, precoBase: 25.90, limiteFrutas: 999, limiteToppings: 999, limiteCremes: 1, limiteBases: 1, limiteComplementosGratis: 999, emoji: '🥣', image: '', active: true },
 ]
 
 export const BASES: ProductBase[] = [
@@ -59,4 +59,5 @@ export const PAYMENT_METHODS: Array<{ code: PaymentMethodCode; label: string; em
   { code: 'NUMERARIO', label: 'Numerário', emoji: '💶', hint: 'Dinheiro' },
   { code: 'MULTIBANCO', label: 'Multibanco', emoji: '💳', hint: 'Cartão TPA' },
   { code: 'MB_WAY', label: 'MB Way', emoji: '📱', hint: 'Telemóvel' },
+  { code: 'POINTS', label: 'Pontos Cashback', emoji: '🎁', hint: 'App Açaí da Rose' },
 ]

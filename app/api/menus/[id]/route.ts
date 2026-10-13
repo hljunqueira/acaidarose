@@ -13,6 +13,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const body = await req.json()
     const { tenantId } = body
 
+    const isMaster = user && hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])
+    if (!isMaster) {
+      if (body.active === undefined) {
+        return NextResponse.json(
+          { error: 'Franquias só podem alterar a ativação do cardápio.' },
+          { status: 403 }
+        )
+      }
+      const updated = await updateMenu(id, {
+        active: body.active,
+        tenantId: tenantId || user?.tenantId,
+      })
+      if (!updated) {
+        return NextResponse.json({ error: 'Menu não encontrado' }, { status: 404 })
+      }
+      return NextResponse.json({ menu: updated })
+    }
+
     const updated = await updateMenu(id, {
       ...body,
       tenantId: tenantId || user?.tenantId,

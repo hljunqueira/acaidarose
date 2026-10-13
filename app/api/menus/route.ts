@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req)
-    if (user && !hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
-      return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+    if (user && !hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])) {
+      return NextResponse.json({ error: 'Apenas a Franqueadora pode criar novos cardápios/menus.' }, { status: 403 })
     }
 
     const body = await req.json()

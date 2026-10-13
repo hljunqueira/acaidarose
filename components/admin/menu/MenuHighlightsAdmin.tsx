@@ -20,12 +20,15 @@ import {
   Play,
   Search,
   Check,
+  Send,
 } from 'lucide-react'
 import SafeDeleteDialog from '@/components/admin/common/SafeDeleteDialog'
+import FranchiseRequestDialog from '@/components/admin/menu/FranchiseRequestDialog'
 import type { HighlightItem } from '@/types/highlights'
 import type { ProductContainer } from '@/types'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { usePublishStore } from '@/lib/stores/publishStore'
+import { canManageMasterCatalog } from '@/lib/utils/permissions'
 
 interface MenuHighlightsAdminProps {
   tenantId: string
@@ -42,12 +45,15 @@ const DAYS_OF_WEEK = [
 ]
 
 export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminProps) {
-  const { authFetch } = useAuthStore()
+  const { user, authFetch } = useAuthStore()
+  const isFranchisor = canManageMasterCatalog(user, tenantId)
   const markDirty = usePublishStore((s) => s.markDirty)
   const [highlights, setHighlights] = useState<HighlightItem[]>([])
   const [products, setProducts] = useState<ProductContainer[]>([])
   const [loading, setLoading] = useState(true)
   const [replicatingId, setReplicatingId] = useState<string | null>(null)
+  const [franchiseRequestOpen, setFranchiseRequestOpen] = useState(false)
+  const [selectedHighlightForRequest, setSelectedHighlightForRequest] = useState<any>(null)
 
   // Filtros
   const [showFilter, setShowFilter] = useState(false)
@@ -124,6 +130,11 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
 
   // Abrir Modal de Novo Destaque
   const handleOpenNew = () => {
+    if (!isFranchisor) {
+      setSelectedHighlightForRequest(null)
+      setFranchiseRequestOpen(true)
+      return
+    }
     setEditingItem(null)
     setUploadFileName('')
     setFormData({
@@ -133,7 +144,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       badgeLabel: 'DESTAQUE',
       badgeColor: 'bg-pink-600',
       price: 0,
-      imageUrl: '/images/official/acai_copo_500g.jpg',
+      imageUrl: '',
       videoUrl: '',
       active: true,
       displayOrder: highlights.length + 1,
@@ -144,6 +155,11 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
 
   // Abrir Modal de Edição (layout "Editar Destaque" da imagem)
   const handleOpenEdit = (item: HighlightItem) => {
+    if (!isFranchisor) {
+      setSelectedHighlightForRequest(item)
+      setFranchiseRequestOpen(true)
+      return
+    }
     setEditingItem(item)
     setUploadFileName('')
     setFormData({
@@ -172,7 +188,8 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         title: prev.title.trim() ? prev.title : p.name,
         subtitle: prev.subtitle.trim() ? prev.subtitle : (p.description || ''),
         price: prev.price > 0 ? prev.price : (p.price || 0),
-        imageUrl: prev.imageUrl ? prev.imageUrl : (p.image || '/images/official/acai_copo_500g.jpg'),
+        imageUrl: p.image || p.videoPoster || '',
+        videoUrl: p.videoUrl || '',
       }))
     } else {
       setFormData((prev) => ({ ...prev, linkedProductId: '' }))
@@ -204,6 +221,10 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
   // Salvar Destaque (Novo ou Editado)
   const handleSaveHighlight = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isFranchisor) {
+      toast.error('Franquias não alteram destaques diretamente. Utilize o botão "Pedir Ajuste".')
+      return
+    }
     if (!formData.title.trim()) {
       toast.error('Informe o título do destaque')
       return
@@ -218,7 +239,7 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         badgeLabel: formData.badgeLabel || 'DESTAQUE',
         badgeColor: formData.badgeColor || 'bg-pink-600',
         price: Number(formData.price) || 0,
-        imageUrl: formData.imageUrl || '/images/official/acai_copo_500g.jpg',
+        imageUrl: formData.imageUrl || null,
         videoUrl: formData.videoUrl || null,
         active: formData.active,
         displayOrder: formData.displayOrder,
@@ -325,6 +346,10 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
 
   // Replicar Destaque para Filial (Ação ⟳)
   const handleReplicateSingle = async (item: HighlightItem) => {
+    if (!isFranchisor) {
+      toast.error('Apenas a Franqueadora pode replicar destaques.')
+      return
+    }
     setReplicatingId(item.id)
     try {
       const res = await fetch('/api/highlights/sync-all', {
@@ -345,6 +370,10 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
 
   // Excluir Destaque
   const handleConfirmDelete = async () => {
+    if (!isFranchisor) {
+      toast.error('Franquias não possuem permissão para excluir destaques.')
+      return
+    }
     if (!deletingItem) return
     setDeletingLoading(true)
     try {
@@ -386,15 +415,30 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         </h1>
 
         <div className="flex items-center gap-2.5">
-          {/* Botão Verde: + Adicionar Novo Destaque */}
-          <button
-            type="button"
-            onClick={handleOpenNew}
-            className="h-9 px-4 rounded-md bg-[#059669] hover:bg-[#047857] text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Adicionar Novo Destaque</span>
-          </button>
+          {/* Botão Franqueadora: + Adicionar Novo Destaque | Franquia: Pedir Ajuste */}
+          {isFranchisor ? (
+            <button
+              type="button"
+              onClick={handleOpenNew}
+              className="h-9 px-4 rounded-md bg-[#059669] hover:bg-[#047857] text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Adicionar Novo Destaque</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedHighlightForRequest(null)
+                setFranchiseRequestOpen(true)
+              }}
+              className="h-9 px-3.5 rounded-md bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              title="Solicitar Ajuste ou Novo Destaque à Franqueadora"
+            >
+              <Send className="h-3.5 w-3.5" />
+              <span>Pedir Ajuste de Destaque</span>
+            </button>
+          )}
 
           {/* Botão Filtro */}
           <button
@@ -465,10 +509,12 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
               >
                 {/* Esquerda: Drag Handle + Imagem + Título */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  {/* Drag Handle */}
-                  <div className="text-slate-400 hover:text-slate-600 cursor-grab shrink-0">
-                    <GripVertical className="h-5 w-5" />
-                  </div>
+                  {/* Drag Handle (Apenas Franqueadora Master) */}
+                  {isFranchisor && (
+                    <div className="text-slate-400 hover:text-slate-600 cursor-grab shrink-0">
+                      <GripVertical className="h-5 w-5" />
+                    </div>
+                  )}
 
                   {/* Thumbnail do Banner */}
                   <div className="relative w-28 sm:w-36 h-18 sm:h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 shrink-0 border border-slate-200 dark:border-white/10">
@@ -481,12 +527,16 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
                         playsInline
                         className="w-full h-full object-cover"
                       />
-                    ) : (
+                    ) : item.imageUrl ? (
                       <img
-                        src={item.imageUrl || '/images/official/acai_copo_500g.jpg'}
+                        src={item.imageUrl}
                         alt={item.title}
                         className="w-full h-full object-cover"
                       />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-purple-900/20 text-[10px] font-bold text-purple-400">
+                        Sem Foto
+                      </div>
                     )}
                     {item.videoUrl && (
                       <div className="absolute bottom-1 right-1 bg-black/60 p-1 rounded-full text-white">
@@ -522,9 +572,9 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
                   </span>
                 </div>
 
-                {/* Direita: Status Badge + Grupo de 4 Ações */}
+                {/* Direita: Status Badge + Grupo de Ações */}
                 <div className="flex items-center justify-end gap-3 shrink-0">
-                  {/* Status Badge Verde (Visível / Oculto) */}
+                  {/* Status Badge Verde (Visível / Oculto) - Franqueadora e Franquia podem alternar visibilidade */}
                   <button
                     type="button"
                     onClick={() => handleToggleActive(item)}
@@ -538,86 +588,102 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
                     {item.active ? 'Visível' : 'Oculto'}
                   </button>
 
-                  {/* Grupo Segmentado de Botões de Ação (Conforme Imagens 3, 4 e 5) */}
-                  <div className="inline-flex rounded-md border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 shadow-xs overflow-hidden divide-x divide-slate-300 dark:divide-white/15">
-                    {/* Botão 1: Replicar Filial (⟳) */}
-                    <div className="relative group/tooltip">
-                      <button
-                        type="button"
-                        onClick={() => handleReplicateSingle(item)}
-                        disabled={replicatingId === item.id}
-                        className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition"
-                        aria-label="Replicar filial"
-                      >
-                        <RefreshCw className={`h-4 w-4 ${replicatingId === item.id ? 'animate-spin' : ''}`} />
-                      </button>
-                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
-                        <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
-                          Replicar filial
-                        </span>
-                        <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                  {/* Franqueadora Master: 4 Ações (Replicar, Editar, Horários, Excluir) */}
+                  {isFranchisor ? (
+                    <div className="inline-flex rounded-md border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 shadow-xs overflow-hidden divide-x divide-slate-300 dark:divide-white/15">
+                      {/* Botão 1: Replicar Filial (⟳) */}
+                      <div className="relative group/tooltip">
+                        <button
+                          type="button"
+                          onClick={() => handleReplicateSingle(item)}
+                          disabled={replicatingId === item.id}
+                          className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition"
+                          aria-label="Replicar filial"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${replicatingId === item.id ? 'animate-spin' : ''}`} />
+                        </button>
+                        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
+                          <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
+                            Replicar filial
+                          </span>
+                          <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Botão 2: Editar (✎) */}
-                    <div className="relative group/tooltip">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(item)}
-                        className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition"
-                        aria-label="Editar"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
-                        <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
-                          Editar
-                        </span>
-                        <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                      {/* Botão 2: Editar (✎) */}
+                      <div className="relative group/tooltip">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(item)}
+                          className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition"
+                          aria-label="Editar"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
+                          <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
+                            Editar
+                          </span>
+                          <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Botão 3: Horários Ativos do Destaque (🕒) */}
-                    <div className="relative group/tooltip">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenSchedule(item)}
-                        className={`p-2 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition ${
-                          hasHours ? 'text-[#059669]' : 'text-slate-600 dark:text-slate-300'
-                        }`}
-                        aria-label="Horários ativos do destaque"
-                      >
-                        <Clock className="h-4 w-4" />
-                      </button>
-                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
-                        <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
-                          Horários ativos do destaque
-                        </span>
-                        <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                      {/* Botão 3: Horários Ativos do Destaque (🕒) */}
+                      <div className="relative group/tooltip">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSchedule(item)}
+                          className={`p-2 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition ${
+                            hasHours ? 'text-[#059669]' : 'text-slate-600 dark:text-slate-300'
+                          }`}
+                          aria-label="Horários ativos do destaque"
+                        >
+                          <Clock className="h-4 w-4" />
+                        </button>
+                        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
+                          <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
+                            Horários ativos do destaque
+                          </span>
+                          <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Botão 4: Excluir (🗑) */}
-                    <div className="relative group/tooltip">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeletingItem(item)
-                          setDeleteOpen(true)
-                        }}
-                        className="p-2 text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer transition"
-                        aria-label="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
-                        <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
-                          Excluir
-                        </span>
-                        <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                      {/* Botão 4: Excluir (🗑) */}
+                      <div className="relative group/tooltip">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeletingItem(item)
+                            setDeleteOpen(true)
+                          }}
+                          className="p-2 text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer transition"
+                          aria-label="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:flex flex-col items-center z-30">
+                          <span className="whitespace-nowrap rounded bg-slate-800 text-white text-[11px] font-medium px-2.5 py-1 shadow-md">
+                            Excluir
+                          </span>
+                          <span className="border-solid border-t-slate-800 border-t-4 border-x-transparent border-x-4 border-b-0" />
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* Franquias: Não alteram diretamente, apenas pedem ajuste */
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedHighlightForRequest(item)
+                        setFranchiseRequestOpen(true)
+                      }}
+                      className="px-2.5 py-1 rounded-xl bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/40 dark:hover:bg-pink-900/60 border border-pink-200 dark:border-pink-500/30 text-pink-700 dark:text-pink-300 font-bold text-[11px] flex items-center gap-1.5 transition cursor-pointer shrink-0 shadow-xs"
+                      title="Pedir Ajuste deste Destaque à Franqueadora"
+                    >
+                      <Send className="h-3 w-3" />
+                      <span>Pedir Ajuste</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -655,8 +721,12 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
                   >
                     {formData.videoUrl ? (
                       <video src={formData.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                    ) : formData.imageUrl ? (
+                      <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
-                      <img src={formData.imageUrl || '/images/official/acai_copo_500g.jpg'} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="w-full h-full flex items-center justify-center bg-purple-900/20 text-[10px] font-bold text-purple-400">
+                        Sem Foto
+                      </div>
                     )}
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[11px] font-semibold transition-opacity">
                       Trocar foto
@@ -896,6 +966,20 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         itemName={deletingItem?.title}
         onConfirm={handleConfirmDelete}
         loading={deletingLoading}
+      />
+
+      {/* 6. DIALOG: PEDIDO DE AJUSTE À FRANQUEADORA (FRANQUIAS) */}
+      <FranchiseRequestDialog
+        open={franchiseRequestOpen}
+        onOpenChange={setFranchiseRequestOpen}
+        tenantId={tenantId}
+        initialItem={selectedHighlightForRequest ? {
+          id: selectedHighlightForRequest.id,
+          name: selectedHighlightForRequest.title,
+          price: selectedHighlightForRequest.price || 0,
+          category: 'Destaques & Stories',
+        } : undefined}
+        initialType="PRICE_CHANGE"
       />
     </div>
   )

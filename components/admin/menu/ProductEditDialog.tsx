@@ -31,6 +31,7 @@ interface ProductEditDialogProps {
   item: any
   catalog?: any
   defaultCategoryId?: string
+  tenantId?: string
   onSave: (collection: string, item: any) => Promise<void>
 }
 
@@ -135,11 +136,13 @@ export default function ProductEditDialog({
   item,
   catalog,
   defaultCategoryId,
+  tenantId,
   onSave,
 }: ProductEditDialogProps) {
   const { user } = useAuthStore()
-  const isSuperAdmin = canManageMasterCatalog(user, item?.tenantId)
-  const isPriceEditable = canEditProductPrices(user, item?.tenantId)
+  const effectiveTenant = tenantId || item?.tenantId || user?.tenantId
+  const isSuperAdmin = canManageMasterCatalog(user, effectiveTenant)
+  const isPriceEditable = canEditProductPrices(user, effectiveTenant)
   const { categories: storeCategories } = useMenuConfigStore()
 
   // Categorias canônicas dinâmicas direto do catálogo / banco de dados (sem mocks/seeds)
@@ -337,6 +340,10 @@ export default function ProductEditDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isSuperAdmin) {
+      toast.error('Franquias não alteram cadastros de produtos diretamente. Solicite à Franqueadora.')
+      return
+    }
     setSaving(true)
     try {
       const isTopping = collection === 'toppings'
@@ -485,7 +492,7 @@ export default function ProductEditDialog({
           <div className="px-6 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/60 dark:border-amber-500/20 flex items-center gap-2 text-xs text-amber-900 dark:text-amber-200">
             <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <span>
-              <strong>Edição de Filial:</strong> Você pode personalizar a foto, descrição e visibilidade de cada opcional. Nome e preço de tabela são padronizados pela Franqueadora.
+              <strong>Modo Franquia:</strong> Esta unidade pode apenas alternar a visibilidade (ativo/pausado) dos opcionais e acompanhamentos. Estrutura, mídias, nomes, descrições e preços são padronizados pela Franqueadora.
             </span>
           </div>
         )}
@@ -521,22 +528,28 @@ export default function ProductEditDialog({
 
                 {/* Dropzone de Upload Sóbrio (Sem ícones) */}
                 <div
-                  onClick={triggerFileSelect}
-                  className="h-20 flex-1 border border-dashed border-purple-200 dark:border-white/20 rounded-xl flex flex-col items-center justify-center text-center p-2 transition bg-purple-50/20 dark:bg-white/5 hover:bg-purple-50/40 dark:hover:bg-white/10 cursor-pointer"
+                  onClick={isSuperAdmin ? triggerFileSelect : undefined}
+                  className={`h-20 flex-1 border border-dashed border-purple-200 dark:border-white/20 rounded-xl flex flex-col items-center justify-center text-center p-2 transition ${
+                    isSuperAdmin
+                      ? 'bg-purple-50/20 dark:bg-white/5 hover:bg-purple-50/40 dark:hover:bg-white/10 cursor-pointer'
+                      : 'bg-zinc-100/50 dark:bg-white/5 cursor-not-allowed opacity-60'
+                  }`}
                 >
                   <span className="text-[10px] font-black text-purple-950 dark:text-white uppercase tracking-wider">
-                    Carregar Ficheiro
+                    {isSuperAdmin ? 'Carregar Ficheiro' : 'Mídia Padronizada Master'}
                   </span>
                   <span className="text-[8px] text-purple-700/80 dark:text-purple-300/70 mt-0.5 leading-tight">
-                    Selecione um vídeo ou imagem da sua galeria
+                    {isSuperAdmin ? 'Selecione um vídeo ou imagem da sua galeria' : 'Definido pela Franqueadora'}
                   </span>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="video/*,image/*"
-                    className="hidden"
-                  />
+                  {isSuperAdmin && (
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="video/*,image/*"
+                      className="hidden"
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -567,11 +580,16 @@ export default function ProductEditDialog({
             <div className="space-y-1">
               <Label className="text-xs font-bold text-purple-950 dark:text-white">Descrição Oficial:</Label>
               <textarea
+                readOnly={!isSuperAdmin}
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) => isSuperAdmin && setForm({ ...form, description: e.target.value })}
                 rows={2}
                 placeholder="Descrição dos ingredientes e regras..."
-                className="w-full p-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg focus:outline-none bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500"
+                className={`w-full p-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg focus:outline-none ${
+                  isSuperAdmin
+                    ? 'bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500'
+                    : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed'
+                }`}
               />
             </div>
 
@@ -579,8 +597,10 @@ export default function ProductEditDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria do Cardápio:</Label>
                 <select
+                  disabled={!isSuperAdmin}
                   value={form.categoryId || ''}
                   onChange={(e) => {
+                    if (!isSuperAdmin) return
                     const selectedId = e.target.value
                     const found = allCategories.find((c: any) => c.id === selectedId)
                     setForm((prev: any) => ({
@@ -591,7 +611,11 @@ export default function ProductEditDialog({
                       price: prev.price || (found?.defaultPrice ? String(found.defaultPrice) : prev.price),
                     }))
                   }}
-                  className="w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold bg-white dark:bg-[#160228] text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500 cursor-pointer"
+                  className={`w-full h-9 px-2.5 text-xs border border-purple-200 dark:border-white/15 rounded-lg font-bold ${
+                    isSuperAdmin
+                      ? 'bg-white dark:bg-[#160228] text-purple-950 dark:text-white focus:ring-1 focus:ring-purple-500 cursor-pointer'
+                      : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 cursor-not-allowed'
+                  }`}
                 >
                   {allCategories.map((c: any) => {
                     const menuName = menuByIdMap.get(c.menuId)
@@ -845,7 +869,7 @@ export default function ProductEditDialog({
       <FranchiseRequestDialog
         open={franchiseRequestOpen}
         onOpenChange={setFranchiseRequestOpen}
-        tenantId={item?.tenantId || user?.tenantId || ''}
+        tenantId={effectiveTenant || user?.tenantId || ''}
         catalog={catalog}
         initialItem={item}
         initialType="PRICE_CHANGE"

@@ -14,7 +14,7 @@ interface CustomerPromoCarouselProps {
 }
 
 export default function CustomerPromoCarousel({
-  tenantId = '11111111-1111-1111-1111-111111111111',
+  tenantId,
   onSelectPromo,
 }: CustomerPromoCarouselProps) {
   const [highlights, setHighlights] = useState<HighlightItem[]>([])
@@ -22,6 +22,7 @@ export default function CustomerPromoCarousel({
   const language = useLanguageStore((s) => s.language)
 
   useEffect(() => {
+    if (!tenantId) return
     let alive = true
     fetch(`/api/highlights?loja=${encodeURIComponent(tenantId)}`)
       .then((r) => r.json())
@@ -118,25 +119,27 @@ export default function CustomerPromoCarousel({
         </div>
 
         {/* Coluna Vídeo / Imagem Oficial em Loop Contínuo */}
-        <div className="relative z-10 flex-shrink-0 w-40 h-40 sm:w-52 sm:h-52 md:w-64 md:h-64 lg:w-72 lg:h-72 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border border-white/20 bg-purple-950/50">
-          {videoSrc ? (
-            <video
-              src={videoSrc}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          ) : (
-            <img
-              src={banner.imageUrl}
-              alt={banner.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          )}
-        </div>
+        {(videoSrc || banner.imageUrl) && (
+          <div className="relative z-10 flex-shrink-0 w-40 h-40 sm:w-52 sm:h-52 md:w-64 md:h-64 lg:w-72 lg:h-72 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border border-white/20 bg-purple-950/50">
+            {videoSrc ? (
+              <video
+                src={videoSrc}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : banner.imageUrl ? (
+              <img
+                src={banner.imageUrl}
+                alt={banner.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : null}
+          </div>
+        )}
 
         {/* Botões Laterais de Navegação (Desktop) */}
         {activeHighlights.length > 1 && (

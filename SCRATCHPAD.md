@@ -1,6 +1,57 @@
 # SCRATCHPAD - Açaí da Rose
 
-## Status Atual
+- **Eliminação de Mocks/Seeds/Defaults de Mídia & Reflexo Fiel de Fotos de Itens (`/menu` e Admin) [CONCLUÍDO & VALIDADO]**:
+  - **Causa Raiz Resolvida**:
+    - Dicionários estáticos hardcoded (`CUP_IMAGES` e `CUP_VIDEOS`) em `CustomerMenuHome.tsx` e `CustomerProductDetail.tsx` forçavam o vídeo de stock `/videos/hero_gliding_texture.mp4` e fotos padrão sobre os produtos do banco de dados (ex: recipiente de 750g), ignorando a ausência de vídeo e sobrepondo a foto cadastrada.
+    - Em `MenuHighlightsAdmin.tsx`, a criação e seleção de item (`handleProductSelect`) forçava como fallback padrão a imagem `/images/official/acai_copo_500g.jpg`, fazendo com que todos os destaques de copos (250g, 350g, 500g, 750g, 1kg) herdassem a mesma foto do copo de 500g.
+    - Em `CustomerPromoCarousel.tsx`, o `tenantId` caía por omissão em Matriz (`11111111-1111-1111-1111-111111111111`) antes do carregamento da loja ativa, causando inconsistência no primeiro paint.
+    - Em `ActionDialogs.tsx`, fallbacks estáticos de fotos do Unsplash foram eliminados em diálogos de duplicação, exclusão e harmonização.
+  - **Correções Aplicadas**:
+    - `CustomerMenuHome.tsx`: removidos mapas `CUP_IMAGES` e `CUP_VIDEOS`; renderiza `<video>` apenas se `c.videoUrl` existir no banco; renderiza `<img>` com `c.image || c.videoPoster` sem inventar mídias inexistentes.
+    - `CustomerProductDetail.tsx`: removido `CUP_IMAGES[weight]` e `CUP_VIDEOS[weight]`; renderiza exclusivamente `container.videoUrl` ou `container.image || container.videoPoster`.
+    - `CustomerPromoCarousel.tsx` e `app/menu/page.tsx`: repasse de `tenantId={tenant?.id || activeLoja}`, sem fallback cego para Matriz.
+    - `MenuHighlightsAdmin.tsx`: ao selecionar um item no dropdown, herda `p.image` e `p.videoUrl` reais do produto; na ausência de foto, exibe estado limpo sem forçar o copo de 500g.
+    - `highlightsRepository.ts`: removido fallback `/images/official/acai_copo_500g.jpg` em `imageUrl`.
+    - `store_stories` (PostgreSQL): atualizados os 5 destaques de Torres Novas para apontarem para as suas fotos específicas reais (`acai_copo_250g.jpg`, `acai_copo_350g.jpg`, `acai_copo_500g.jpg`, `acai_tigela_750g.jpg`, `acai_balde_1kg.jpg`).
+    - Validação fresca de TypeScript executada com sucesso (`npx tsc --noEmit` -> Código 0).
+
+- **Regras Estritas de Franquias (Visibilidade & Solicitação) + Reverter Alterações de Catálogo [CONCLUÍDO & VALIDADO]**:
+  - **Destaques & Stories (`MenuHighlightsAdmin.tsx`)**:
+    - Franquias **não alteram**, criam, reordenam ou excluem destaques.
+    - O botão `+ Adicionar Novo Destaque` foi substituído por `Pedir Ajuste de Destaque` (abre `FranchiseRequestDialog`).
+    - Nos cards de destaques de franquias, as ações de exclusão, edição, horários e replicação foram substituídas por um único botão limpo `Pedir Ajuste`.
+    - Pílula de status `Visível / Oculto` mantida ativa para controle de exibição na loja.
+    - Endpoints de backend (`/api/highlights`): `POST` e `DELETE` bloqueados para franquias (HTTP 403); `PUT`/`PATCH` permite estritamente a atualização do campo `active` (visibilidade).
+  - **Menus, Categorias, Produtos e Opcionais (`MenuHierarchyView`, `ProductRowItem`, `MenuCategoriesAdmin`, `MenuSectionsAdmin`)**:
+    - Franquias possuem controle exclusivo sobre **Visível / Invisível** (e Disponível / Indisponível em estoque).
+    - Criar categorias, menus ou produtos mestre é bloqueado no frontend e no backend (`/api/products/[category]`, `/api/categories`, `/api/menus`).
+    - Reordenação (drag & drop) bloqueada para franquias nas rotas `/reorder` e ícones de arrastar ocultos.
+    - Edição de itens (`ProductRowItem.tsx`): ícones de edição de horários, replicação e exclusão ocultos para franquias; botão `Solicitar Ajuste` mantido para pedir alterações à Franqueadora.
+  - **Opção de Reverter Alterações de Catálogo**:
+    - Criada a rota de backend `POST /api/catalog/revert` para descartar modificações pendentes não publicadas (`store_product_overrides` onde `updated_at >= published_at`) e zerar pendências em `store_catalog_versions`.
+    - Adicionada a ação `revert` no store Zustand `publishStore.ts`.
+    - Botão `[ Reverter Alterações ]` adicionado no banner do topo (`PublishChangesBanner.tsx`), no modal de detalhes com diálogo de confirmação seguro (`confirmRevertOpen`), na barra de ferramentas e na barra flutuante inferior de `MenuHierarchyView.tsx`.
+    - Validação de tipos TypeScript executada com sucesso (`npx tsc --noEmit` -> Código 0).
+
+- **Pagamento com Pontos (App Cashback Açaí da Rose) & MB WAY Multi-Loja (Ifthenpay) [CONCLUÍDO & VALIDADO]**:
+  - **Pesquisa & Análise do App de Cashback**:
+    - O aplicativo oficial do Açaí da Rose (`com.s2cashback.acaidarose.s2cashback` no Google Play e iOS) é operado na plataforma S2 Cashback / Agência Save.
+    - O cadastro e login do cliente são estritamente indexados pelo **NIF de Portugal** (9 dígitos).
+  - **Botão de Pagamento com Pontos no Autoatendimento (`CustomerCartSheet.tsx`)**:
+    - Grid de 3 opções de pagamento: `[ MB WAY ]`, `[ No Balcão ]`, `[ Pontos ]`.
+    - Ao selecionar **Pontos**, o campo de **NIF torna-se estritamente obrigatório** (validação de 9 dígitos numéricos).
+    - Exibe badge explicativo *"Identificador no App"* e instrução clara: *"O resgate de pontos é validado no aplicativo Açaí da Rose Cashback utilizando o seu NIF."*
+    - Botão de envio contextual: *"Concluir com Pontos"*.
+    - Ao finalizar, o pedido é registrado com `paymentMethod: 'POINTS'` e notas `PONTOS CASHBACK (NIF: XXXXXXXXX)`. A tela de sucesso orienta o cliente a apresentar o app ou NIF no balcão para validação e abatimento dos pontos.
+  - **Integração Ifthenpay MB WAY Multi-Loja (Documentação Oficial SPG REST)**:
+    - Normalização do telemóvel para o formato oficial da Ifthenpay: `351#912345678`.
+    - Truncamento do `orderId` para no máximo 15 caracteres alfanuméricos (`formatIfthenpayOrderId`), contornando a rejeição de UUIDs de 36 caracteres.
+    - Suporte dinâmico multi-tenant: chave MB WAY da loja consultada no PostgreSQL (`store_qrcode_settings.ifthenpay_mbway_key`), com fallback para a chave da rede.
+    - Webhook oficial (`/api/webhooks/ifthenpay`) compatível com GET e POST, busca flexível por UUID completo, UUID truncado (últimos 15 caracteres) e `order_number`, e validação de chave anti-phishing.
+  - **Banco de Dados PostgreSQL em Produção**:
+    - Adicionadas as colunas em `store_qrcode_settings`: `allow_points_payment` (BOOLEAN DEFAULT TRUE), `ifthenpay_mbway_key` (VARCHAR 100) e `ifthenpay_anti_phishing_key` (VARCHAR 100).
+    - Painel administrativo (`QRCodeConfigView.tsx`) atualizado com switches e campos de configuração por loja.
+
 - **API Gateway JSON para `api.acaidarose.pt` [CONCLUÍDO]**:
   - **Causa Raiz Resolvida**: O subdomínio `api.acaidarose.pt` roteava diretamente para o Next.js na Vercel, renderizando o `app/page.tsx` (Landing Page) ao ser acessado na raiz `/`.
   - **Middleware Implementado (`middleware.ts`)**: Intercepta requisições direcionadas a `api.acaidarose.pt` (ou prefixo `api.*`). Se a requisição não for de rota de backend (`/api/*`), responde diretamente com o payload JSON canônico do Gateway de API com status HTTP 200 e headers sem cache (`Cache-Control: no-store, max-age=0`):

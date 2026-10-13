@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { RefreshCw, ListChecks, CheckCircle2, Globe, AlertCircle } from 'lucide-react'
+import { RefreshCw, ListChecks, CheckCircle2, Globe, AlertCircle, RotateCcw } from 'lucide-react'
 
 interface PublishChangesBannerProps {
   tenantId: string
@@ -24,9 +24,12 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
     isPublishing,
     checkPending,
     publish,
+    revert,
   } = usePublishStore()
 
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+  const [confirmRevertOpen, setConfirmRevertOpen] = useState(false)
+  const [isReverting, setIsReverting] = useState(false)
   const [replicateAll, setReplicateAll] = useState(false)
 
   const isSuperOrFranchisor = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN'
@@ -50,6 +53,25 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
       setReplicateAll(false)
     } else {
       toast.error(res.message || 'Erro ao publicar alterações')
+    }
+  }
+
+  const handleRevertNow = async () => {
+    setIsReverting(true)
+    try {
+      const res = await revert(tenantId, authFetch)
+      if (res.success) {
+        toast.success(res.message || 'Alterações revertidas com sucesso!')
+        setConfirmRevertOpen(false)
+        setDetailsModalOpen(false)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('catalog_sync', { detail: { tenantId } }))
+        }
+      } else {
+        toast.error(res.message || 'Erro ao reverter alterações')
+      }
+    } finally {
+      setIsReverting(false)
     }
   }
 
@@ -87,8 +109,21 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
 
             <Button
               type="button"
+              variant="outline"
               size="sm"
-              disabled={isPublishing}
+              disabled={isPublishing || isReverting}
+              onClick={() => setConfirmRevertOpen(true)}
+              className="h-8 px-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 border-red-400/30 text-red-100 hover:text-white font-bold text-xs cursor-pointer shadow-xs transition flex items-center gap-1.5"
+              title="Descartar modificações pendentes e voltar ao publicado"
+            >
+              {isReverting ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-white" /> : <RotateCcw className="h-3.5 w-3.5" />}
+              <span>{isReverting ? 'Revertendo...' : 'Reverter Alterações'}</span>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              disabled={isPublishing || isReverting}
               onClick={() => handlePublishNow(false)}
               className="h-8 px-3.5 rounded-xl bg-white text-purple-950 hover:bg-purple-50 font-black text-xs shadow-md cursor-pointer transition flex items-center gap-1.5"
             >
@@ -164,13 +199,64 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
 
             <Button
               type="button"
+              variant="outline"
               size="sm"
-              disabled={isPublishing}
+              disabled={isPublishing || isReverting}
+              onClick={() => setConfirmRevertOpen(true)}
+              className="rounded-xl border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 hover:bg-red-100 font-bold text-xs"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1" />
+              <span>Reverter Alterações</span>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              disabled={isPublishing || isReverting}
               onClick={() => handlePublishNow(replicateAll)}
               className="rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-800/50 text-white font-bold text-xs"
             >
               {isPublishing && <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
               <span>{isPublishing ? 'Publicando...' : replicateAll ? 'Publicar na Rede Toda' : 'Publicar Agora'}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE CONFIRMAÇÃO PARA REVERTER / DESCARTAR ALTERAÇÕES */}
+      <Dialog open={confirmRevertOpen} onOpenChange={setConfirmRevertOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-[#160228] text-foreground border-red-200 dark:border-red-900/50 rounded-3xl p-6 shadow-2xl">
+          <DialogTitle className="text-base sm:text-lg font-black text-red-700 dark:text-red-400 flex items-center gap-2">
+            <RotateCcw className="h-5 w-5" />
+            <span>Descartar e Reverter Alterações</span>
+          </DialogTitle>
+          <div className="space-y-2.5 my-3 text-xs text-muted-foreground">
+            <p>
+              Deseja descartar as <strong className="text-foreground">{pendingCount} alteraç{pendingCount === 1 ? 'ão pendente' : 'ões pendentes'}</strong> em <strong className="text-foreground">{storeName}</strong>?
+            </p>
+            <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-900 dark:text-red-200">
+              As modificações ainda não publicadas serão canceladas e o cardápio da loja voltará à versão publicada oficial.
+            </div>
+          </div>
+          <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-purple-100 dark:border-white/10">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmRevertOpen(false)}
+              className="rounded-xl text-xs font-bold"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isReverting}
+              onClick={handleRevertNow}
+              className="rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+            >
+              {isReverting && <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              <span>{isReverting ? 'Revertendo...' : 'Sim, Reverter Alterações'}</span>
             </Button>
           </DialogFooter>
         </DialogContent>

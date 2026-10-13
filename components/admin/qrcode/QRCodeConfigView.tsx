@@ -23,6 +23,9 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
   const [pickupModel, setPickupModel] = useState<'TV_CALL' | 'TABLE_SERVICE'>('TV_CALL')
   const [allowTableTransfer, setAllowTableTransfer] = useState(true)
   const [allowMbwayPayment, setAllowMbwayPayment] = useState(true)
+  const [allowPointsPayment, setAllowPointsPayment] = useState(true)
+  const [ifthenpayMbwayKey, setIfthenpayMbwayKey] = useState('')
+  const [ifthenpayAntiPhishingKey, setIfthenpayAntiPhishingKey] = useState('')
   const [allowInternationalPhone, setAllowInternationalPhone] = useState(true)
   const [customerNameRule, setCustomerNameRule] = useState<'REQUIRED' | 'OPTIONAL'>('REQUIRED')
   const [customerPhoneRule, setCustomerPhoneRule] = useState<'REQUIRED' | 'OPTIONAL' | 'NONE'>('REQUIRED')
@@ -46,6 +49,9 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
         setPickupModel(c.pickupModel || 'TV_CALL')
         setAllowTableTransfer(c.allowTableTransfer ?? true)
         setAllowMbwayPayment(c.allowMbwayPayment ?? true)
+        setAllowPointsPayment(c.allowPointsPayment ?? true)
+        setIfthenpayMbwayKey(c.ifthenpayMbwayKey || '')
+        setIfthenpayAntiPhishingKey(c.ifthenpayAntiPhishingKey || '')
         setAllowInternationalPhone(c.allowInternationalPhone ?? true)
         setCustomerNameRule(c.customerNameRule === 'OPTIONAL' ? 'OPTIONAL' : 'REQUIRED')
         setCustomerPhoneRule(c.customerPhoneRule || 'REQUIRED')
@@ -78,10 +84,13 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
             pickupModel,
             allowTableTransfer,
             allowMbwayPayment,
+            allowPointsPayment,
             allowInternationalPhone,
             customerNameRule,
             customerPhoneRule,
             customerNifRule,
+            ifthenpayMbwayKey,
+            ifthenpayAntiPhishingKey,
           },
         }),
       })
@@ -220,13 +229,25 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
 
         {/* Coluna 2: Pagamento & Dados do Cliente (6 Colunas) */}
         <div className="lg:col-span-6 space-y-5">
-          {/* Card: Pagamento MB WAY */}
+          {/* Card: Pagamento & Fidelização (App Cashback) */}
           <div className="p-5 rounded-2xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/10 shadow-xs space-y-4">
             <h2 className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
-              Pagamento no Telemóvel
+              Pagamentos & Cashback
             </h2>
 
             <div className="space-y-3">
+              {/* Pagamento com Pontos (App Cashback) */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
+                <div>
+                  <div className="text-xs font-bold text-purple-950 dark:text-white">Pagamento com Pontos (App Cashback)</div>
+                  <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
+                    Permite ao cliente pagar com pontos do App Açaí da Rose informando obrigatoriamente o NIF
+                  </div>
+                </div>
+                <Switch checked={allowPointsPayment} onCheckedChange={setAllowPointsPayment} />
+              </div>
+
+              {/* Pagamento MB WAY */}
               <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
                 <div>
                   <div className="text-xs font-bold text-purple-950 dark:text-white">Pagamento MB WAY Instantâneo</div>
@@ -235,6 +256,42 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
                 <Switch checked={allowMbwayPayment} onCheckedChange={setAllowMbwayPayment} />
               </div>
 
+              {/* Credenciais Ifthenpay da Loja */}
+              {allowMbwayPayment && (
+                <div className="p-3.5 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
+                  <div>
+                    <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                      Chave MB WAY da Loja (Ifthenpay)
+                    </Label>
+                    <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70 mb-1.5">
+                      Chave de canal fornecida pela Ifthenpay para recebimento direto nesta unidade (vazio = chave padrão da rede)
+                    </p>
+                    <Input
+                      value={ifthenpayMbwayKey}
+                      onChange={(e) => setIfthenpayMbwayKey(e.target.value)}
+                      placeholder="ex: MBW-12345-XXXX ou vazio para padrão"
+                      className="h-8 text-xs font-mono bg-white dark:bg-white/5 border-purple-200 dark:border-white/10"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                      Chave Anti-Phishing (Callback Webhook)
+                    </Label>
+                    <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70 mb-1.5">
+                      Chave de segurança anti-phishing para autenticação mútua dos callbacks da Ifthenpay
+                    </p>
+                    <Input
+                      value={ifthenpayAntiPhishingKey}
+                      onChange={(e) => setIfthenpayAntiPhishingKey(e.target.value)}
+                      placeholder="ex: chave secreta configurada na Ifthenpay"
+                      className="h-8 text-xs font-mono bg-white dark:bg-white/5 border-purple-200 dark:border-white/10"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Telemóveis Internacionais */}
               <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
                 <div>
                   <div className="text-xs font-bold text-purple-950 dark:text-white">Telemóveis Internacionais</div>

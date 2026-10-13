@@ -8,8 +8,8 @@ export async function POST(
   { params }: { params: Promise<{ category: string }> }
 ) {
   const user = await getAuthUser(request)
-  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
-    return errorResponse('Sem permissão', 403)
+  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])) {
+    return errorResponse('Apenas a Franqueadora pode criar novos produtos e itens no cardápio.', 403)
   }
 
   const { category } = await params
