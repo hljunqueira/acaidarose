@@ -505,6 +505,17 @@ export interface TVVideoItem {
 
 export const DEFAULT_OFFICIAL_VIDEOS: TVVideoItem[] = [
   {
+    id: 'v-institucional',
+    title: 'Vídeo Institucional Açaí da Rose',
+    url: '/videos/video-institucional.mp4',
+    active: true,
+    isOfficial: true,
+    tagLeft: 'Açaí da Rose',
+    tagRight: 'acaidarose.pt',
+    tagPosition: 'BOTTOM',
+    showTags: true,
+  },
+  {
     id: 'v1',
     title: 'Açaí Puro Artesanal (Rotação)',
     url: '/videos/hero_cup_rotation.mp4',

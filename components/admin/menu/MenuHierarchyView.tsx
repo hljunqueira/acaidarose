@@ -32,6 +32,7 @@ import { emitCatalogSync, subscribeCatalogSync } from '@/lib/utils/catalogSync'
 import { usePublishStore } from '@/lib/stores/publishStore'
 
 import { canManageMasterCatalog } from '@/lib/utils/permissions'
+import { useFranchiseStore, resolveTenant } from '@/lib/stores/franchiseStore'
 
 interface MenuHierarchyViewProps {
   tenantId: string
@@ -41,6 +42,9 @@ interface MenuHierarchyViewProps {
 export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) {
   const { user, authFetch } = useAuthStore()
   const isSuperAdmin = canManageMasterCatalog(user, tenantId)
+  const { tenants, getTenant, currentTenant } = useFranchiseStore()
+  const storeInfo = resolveTenant(tenantId, tenants) || getTenant(tenantId) || currentTenant
+  const storeBadgeName = isSuperAdmin ? 'Franqueadora Master' : (storeInfo?.name || 'Filial')
   const { publish, revert, isPublishing, markDirty, hasPendingChanges } = usePublishStore()
   const [isReverting, setIsReverting] = useState(false)
 
@@ -547,7 +551,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           <h1 className="text-xl font-black text-purple-950 dark:text-white tracking-tight flex items-center gap-2">
             <span>Itens do cardápio</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-pink-950/50 text-purple-900 dark:text-pink-300 font-bold border border-purple-200 dark:border-pink-500/20">
-              {isSuperAdmin ? 'Franqueadora Master' : 'Filial Aveiro'}
+              {storeBadgeName}
             </span>
           </h1>
         </div>

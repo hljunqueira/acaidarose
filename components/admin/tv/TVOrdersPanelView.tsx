@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   subscribeToTVCalls,
@@ -20,7 +20,7 @@ import {
 } from '@/lib/utils/tvBroadcast'
 import { announceTVCall, playOrderNotificationSound } from '@/lib/utils/soundNotification'
 import { Order } from '@/types'
-import { Maximize, Minimize, Clock } from 'lucide-react'
+import { Maximize, Minimize, Volume2, VolumeX } from 'lucide-react'
 import { useFranchiseStore, resolveTenant, getDisplayStoreLocation } from '@/lib/stores/franchiseStore'
 import { CrownGoldIcon } from '@/components/ui/CrownGoldIcon'
 
@@ -38,29 +38,44 @@ export default function TVOrdersPanelView({
   const [loading, setLoading] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [audioUnlocked, setAudioUnlocked] = useState(false)
+  const [isVideoMuted, setIsVideoMuted] = useState(false)
   const [soundConfig, setSoundConfig] = useState<TVSoundConfig>({ enabled: true, gender: 'female' })
   const [displayConfig, setDisplayConfig] = useState<TVDisplayConfig>({ showCompletedOrders: true })
   const [lastCalled, setLastCalled] = useState<{ ticket: string; customerName?: string | null; isQRCode?: boolean; tableNumber?: string | number | null } | null>(null)
   const [calledHistory, setCalledHistory] = useState<Array<{ ticket: string; customerName?: string | null; isQRCode?: boolean; tableNumber?: string | number | null }>>([])
+  const [storeVideos, setStoreVideos] = useState<TVVideoItem[]>([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
-  const [currentTime, setCurrentTime] = useState('')
 
-  // Listener global para destravar o áudio na primeira interação da Smart TV
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // Desmuta áudio completo da Smart TV (TTS + Vídeo Institucional)
+  const unmuteAllAudio = useCallback(() => {
+    setAudioUnlocked(true)
+    if (typeof window !== 'undefined') {
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+        if (AudioContextClass) {
+          const ctx = new AudioContextClass()
+          ctx.resume().catch(() => {})
+        }
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.resume()
+        }
+      } catch {}
+    }
+    if (videoRef.current) {
+      videoRef.current.muted = false
+      videoRef.current.volume = 1.0
+      setIsVideoMuted(false)
+      videoRef.current.play().catch(() => {})
+    }
+  }, [])
+
+  // Listener global para destravar áudio na primeira interação da Smart TV
   useEffect(() => {
     const unlock = () => {
-      setAudioUnlocked(true)
-      if (typeof window !== 'undefined') {
-        try {
-          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-          if (AudioContextClass) {
-            const ctx = new AudioContextClass()
-            ctx.resume().catch(() => {})
-          }
-          if ('speechSynthesis' in window) {
-            window.speechSynthesis.resume()
-          }
-        } catch {}
-      }
+      unmuteAllAudio()
       window.removeEventListener('click', unlock)
       window.removeEventListener('keydown', unlock)
       window.removeEventListener('touchstart', unlock)
@@ -75,13 +90,9 @@ export default function TVOrdersPanelView({
       window.removeEventListener('keydown', unlock)
       window.removeEventListener('touchstart', unlock)
     }
-  }, [])
+  }, [unmuteAllAudio])
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [marqueeConfig, setMarqueeConfig] = useState<TVMarqueeConfig>(DEFAULT_MARQUEE_CONFIG)
-  const [storeVideos, setStoreVideos] = useState<TVVideoItem[]>([])
-
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
 
   const storeInfo = resolveTenant(lojaSlug || tenantId, tenants) || getTenant(tenantId) || currentTenant
   const actualTenantId = storeInfo?.id || tenantId
@@ -92,26 +103,6 @@ export default function TVOrdersPanelView({
   useEffect(() => {
     fetchTenants()
   }, [fetchTenants])
-
-  // Relógio com Fuso Horário Obrigatório de Portugal (Europe/Lisbon)
-  useEffect(() => {
-    const updateTime = () => {
-      try {
-        const lisbonTime = new Date().toLocaleTimeString('pt-PT', {
-          timeZone: 'Europe/Lisbon',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-        setCurrentTime(lisbonTime)
-      } catch {
-        setCurrentTime(new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
-      }
-    }
-    updateTime()
-    const timer = setInterval(updateTime, 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   const lastProcessedCallTimestampRef = useRef<number>(0)
   const isInitialMountRef = useRef<boolean>(true)
@@ -197,7 +188,7 @@ export default function TVOrdersPanelView({
               ...settingsData.marqueeConfig,
             }))
           }
-          if (Array.isArray(settingsData.videosPlaylist) && settingsData.videosPlaylist.length > 0) {
+          if (Array.isArray(settingsData.videosPlaylist)) {
             setStoreVideos(settingsData.videosPlaylist)
           }
           if (settingsData.soundConfig) {
@@ -286,16 +277,7 @@ export default function TVOrdersPanelView({
     return () => unsubscribeMarquee()
   }, [actualTenantId])
 
-  // Ouvinte de configuração de exibição da TV (exibir/ocultar últimos finalizados)
-  useEffect(() => {
-    setDisplayConfig(getStoredTVDisplayConfig())
-    const unsubscribeDisplay = subscribeToTVDisplayConfig((cfg) => {
-      setDisplayConfig(cfg)
-    })
-    return () => unsubscribeDisplay()
-  }, [])
-
-  // Ouvinte e Carregamento de Vídeos da Playlist da Loja em tempo real
+  // Ouvinte de Vídeos da Loja configurados pela Franqueadora em tempo real
   useEffect(() => {
     setStoreVideos(getStoreTVVideos(actualTenantId))
     const unsubscribeVideos = subscribeToTVVideos((videos) => {
@@ -304,16 +286,51 @@ export default function TVOrdersPanelView({
     return () => unsubscribeVideos()
   }, [actualTenantId])
 
-  // Filtra estritamente os vídeos ativos na playlist da loja
-  const activeVideos = storeVideos.filter((v) => v.active)
-  const currentVideo = activeVideos.length > 0 ? activeVideos[currentVideoIndex % activeVideos.length] : null
+  // Resolve os vídeos ativos configurados no PostgreSQL para esta loja
+  const activeVideos = useMemo(() => {
+    const list = (storeVideos || []).filter((v) => v.active && Boolean(v.url?.trim()))
+    if (list.length > 0) return list
+    return [
+      {
+        id: 'v-institucional',
+        title: 'Vídeo Institucional Açaí da Rose',
+        url: '/videos/video-institucional.mp4',
+        active: true,
+      },
+    ]
+  }, [storeVideos])
 
-  // 3. Rotação contínua de vídeos em loop
+  const currentVideo = activeVideos[currentVideoIndex % activeVideos.length] || activeVideos[0]
+  const currentVideoSrc = currentVideo.url
+
+  // Rotação de vídeos da loja (se houver mais de 1 cadastrado pela Franqueadora)
   const handleVideoEnded = () => {
-    if (activeVideos.length > 0) {
+    if (activeVideos.length > 1) {
       setCurrentVideoIndex((prev) => (prev + 1) % activeVideos.length)
     }
   }
+
+  // Reprodução automática do vídeo ativo com som e resiliência a restrições de autoplay
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    video.volume = 1.0
+    video.muted = isVideoMuted
+    const playPromise = video.play()
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          if (!isVideoMuted) setIsVideoMuted(false)
+        })
+        .catch(() => {
+          // Bloqueio do navegador antes de interação prévia: muta para iniciar reprodução imediata
+          video.muted = true
+          setIsVideoMuted(true)
+          video.play().catch(() => {})
+        })
+    }
+  }, [currentVideoSrc, isVideoMuted])
 
   // Alternar tela cheia
   const toggleFullscreen = () => {
@@ -506,152 +523,133 @@ export default function TVOrdersPanelView({
   return (
     <div
       ref={panelRef}
-      onClick={handleUnlockAudio}
-      className="min-h-screen w-full bg-[#180424] text-white p-3 sm:p-5 flex flex-col justify-between select-none overflow-hidden font-sans cursor-pointer"
+      onClick={unmuteAllAudio}
+      className="h-screen max-h-screen w-screen bg-[#180424] text-white p-2.5 sm:p-3 flex flex-col justify-between select-none overflow-hidden font-sans cursor-pointer"
     >
-      {/* 1. TOPO: TÍTULO "PEDIDOS PRONTOS" À ESQUERDA + RELÓGIO DE LISBOA & ECRÃ INTEIRO À DIREITA */}
-      <header className="relative w-full pb-3 border-b border-white/15">
-        <div className="w-full flex items-center justify-between">
-          {/* Título Principal PEDIDOS PRONTOS */}
-          <div className="flex items-center justify-start">
-            <h2 className="font-cursive text-5xl sm:text-6xl lg:text-7xl font-bold text-white tracking-wide drop-shadow-md leading-none">
-              Pedidos Prontos
-            </h2>
-          </div>
-
-          {/* Widgets no Canto Superior Direito: Relógio Oficial de Lisboa & Botão Ecrã Inteiro */}
-          <div className="flex items-center gap-3 shrink-0">
-            {/* Relógio Travado em Portugal (Europe/Lisbon) */}
-            <div className="flex items-center gap-2.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-black/80 border-2 border-white/20 text-sm sm:text-base font-mono font-black text-white shadow-xl">
-              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-pink-400 shrink-0" />
-              <span>{currentTime || '00:00:00'}</span>
-              <span className="text-[11px] text-purple-300 font-sans uppercase font-extrabold">Lisboa</span>
+      {/* CORPO PRINCIPAL: 50% PEDIDOS E 50% VÍDEO EXPANDIDO EM ALTURA MÁXIMA */}
+      <main className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch overflow-hidden mb-2">
+        {/* ========================================================================= */}
+        {/* COLUNA ESQUERDA (50%): CARD BRANCO DOS PEDIDOS PRONTOS */}
+        {/* ========================================================================= */}
+        <section className="w-full lg:w-1/2 h-full min-h-0 flex flex-col">
+          {/* Card Branco Completo dos Pedidos (Alinhado 100% no topo e base com o vídeo) */}
+          <div className="w-full h-full min-h-0 rounded-3xl bg-white border-2 border-white/30 text-slate-900 py-4 sm:py-5 px-4 sm:px-6 flex flex-col justify-between items-center text-center shadow-2xl relative overflow-hidden">
+            {/* Título Principal PEDIDOS PRONTOS no Topo do Card Branco em Preto */}
+            <div className="w-full flex items-center justify-center shrink-0 pt-1 pb-2">
+              <h2 className="font-cursive text-5xl sm:text-6xl lg:text-7xl font-bold text-[#180424] tracking-wide drop-shadow-xs leading-none">
+                Pedidos Prontos
+              </h2>
             </div>
 
-            {/* Ecrã Inteiro */}
-            <Button
-              type="button"
-              onClick={toggleFullscreen}
-              variant="outline"
-              size="sm"
-              className="h-11 w-11 sm:h-12 sm:w-12 p-0 rounded-2xl border-2 border-white/20 bg-white/10 hover:bg-white/20 text-white cursor-pointer shadow-xl"
-              title="Ecrã Inteiro"
-            >
-              {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* 2. GRID PRINCIPAL (Corpo da TV em 7x5 colunas) */}
-      <main className="grid grid-cols-12 gap-4 my-2 flex-1 items-stretch">
-        {/* ========================================================================= */}
-        {/* COLUNA ESQUERDA (7 COLUNAS): "PEDIDOS PRONTOS" COM LOGO E LOJA DENTRO */}
-        {/* ========================================================================= */}
-        <section className="lg:col-span-7 flex flex-col justify-between h-full">
-          
-          {/* Caixa Rosa Pastel Principal em Altura Total (Hero de Pedidos Prontos com Logo, Nome Gigante, Mesa e Ticket) */}
-          <div className="w-full h-full min-h-[460px] sm:min-h-[520px] rounded-3xl bg-[#FFF2F6] border-2 border-[#FFE4EC] text-slate-900 py-6 px-6 sm:px-8 flex flex-col items-center justify-center text-center shadow-2xl relative">
-            {heroOrder ? (
-              <div className="flex flex-col items-center justify-center space-y-2 sm:space-y-3 animate-in fade-in zoom-in-95 duration-200 w-full my-auto">
-                
-                {/* Identificação Superior da Loja Dentro do Quadro */}
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <img src="/logo-oficial-1.png" alt="Açaí da Rose" className="h-10 sm:h-12 w-auto object-contain drop-shadow-xs" />
-                  <span className="text-pink-600 font-black text-sm sm:text-base lg:text-lg uppercase tracking-wider ml-1">
-                    · {displayLocation}
-                  </span>
-                </div>
-
-                {/* 1º: Nome do Cliente com a Imagem da Coroa Oficial na 1ª Letra (Tamanho Gigante Sem Corte) */}
-                <div className="font-sans font-black text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-2">
-                  <span className="max-w-full inline-block">
-                    {renderCrownName(getHeroCustomerName(heroOrder.customerName, heroOrder.tableNumber))}
-                  </span>
-                </div>
-
-                {/* 2º: Identificação da Mesa Abaixo do Nome */}
-                {getHeroTableSubtitle(heroOrder.customerName, heroOrder.tableNumber) && (
-                  <div className="font-sans font-black text-2xl sm:text-3xl lg:text-4xl text-pink-600 uppercase tracking-wider">
-                    {getHeroTableSubtitle(heroOrder.customerName, heroOrder.tableNumber)}
+            {/* Conteúdo Central: Pedido Chamado ou Logo Idle */}
+            <div className="w-full flex-1 min-h-0 flex flex-col items-center justify-center my-auto">
+              {heroOrder ? (
+                <div className="flex flex-col items-center justify-center space-y-1.5 sm:space-y-2 animate-in fade-in zoom-in-95 duration-200 w-full my-auto">
+                  {/* Identificação Superior da Loja Dentro do Quadro */}
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <img src="/logo-oficial-1.png" alt="Açaí da Rose" className="h-8 sm:h-9 w-auto object-contain drop-shadow-xs" />
+                    <span className="text-pink-600 font-black text-xs sm:text-sm lg:text-base uppercase tracking-wider ml-1">
+                      · {displayLocation}
+                    </span>
                   </div>
-                )}
 
-                {/* 3º: Número do Ticket / Senha Gigante Monospace */}
-                <div className="font-mono font-black text-8xl sm:text-9xl lg:text-[10rem] text-[#180424] tracking-tight leading-none my-1 drop-shadow-sm">
-                  {heroOrder.ticket || `#${String(heroOrder.orderNumber || 1).padStart(3, '0')}`}
-                </div>
+                  {/* 1º: Nome do Cliente com a Imagem da Coroa Oficial na 1ª Letra */}
+                  <div className="font-sans font-black text-4xl sm:text-5xl lg:text-6xl xl:text-7xl text-[#180424] flex items-center justify-center uppercase tracking-tight leading-tight max-w-full px-2 pt-1">
+                    <span className="max-w-full inline-block">
+                      {renderCrownName(getHeroCustomerName(heroOrder.customerName, heroOrder.tableNumber))}
+                    </span>
+                  </div>
 
-                {/* 4º: Instrução Oficial em Glossário PT-PT Mandatório */}
-                <div className="text-xs sm:text-sm lg:text-base font-black tracking-widest text-pink-600 uppercase pt-2">
-                  POR FAVOR, DIRIJA-SE AO BALCÃO DE LEVANTAMENTO
+                  {/* 2º: Identificação da Mesa Abaixo do Nome */}
+                  {getHeroTableSubtitle(heroOrder.customerName, heroOrder.tableNumber) && (
+                    <div className="font-sans font-black text-xl sm:text-2xl lg:text-3xl text-pink-600 uppercase tracking-wider">
+                      {getHeroTableSubtitle(heroOrder.customerName, heroOrder.tableNumber)}
+                    </div>
+                  )}
+
+                  {/* 3º: Número do Ticket / Senha Gigante Monospace */}
+                  <div className="font-mono font-black text-7xl sm:text-8xl lg:text-9xl text-[#180424] tracking-tight leading-none my-1 drop-shadow-sm">
+                    {heroOrder.ticket || `#${String(heroOrder.orderNumber || 1).padStart(3, '0')}`}
+                  </div>
+
+                  {/* 4º: Instrução Oficial em Glossário PT-PT Mandatório */}
+                  <div className="text-[11px] sm:text-xs lg:text-sm font-black tracking-widest text-pink-600 uppercase pt-1">
+                    POR FAVOR, DIRIJA-SE AO BALCÃO DE LEVANTAMENTO
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-center my-auto w-full">
-                <img
-                  src="/logo-oficial-1.png"
-                  alt="Açaí da Rose"
-                  className="h-44 sm:h-52 lg:h-64 xl:h-72 w-auto max-w-[85%] object-contain drop-shadow-2xl mb-4 animate-in fade-in zoom-in duration-300"
-                />
-                <div className="text-pink-600 font-black text-2xl sm:text-3xl lg:text-4xl uppercase tracking-widest mt-1">
-                  {displayLocation}
+              ) : (
+                <div className="flex flex-col items-center justify-center py-2 text-center my-auto w-full">
+                  <img
+                    src="/logo-oficial-1.png"
+                    alt="Açaí da Rose"
+                    className="max-h-[35vh] sm:max-h-[40vh] w-auto max-w-[85%] object-contain drop-shadow-2xl mb-3 animate-in fade-in zoom-in duration-300"
+                  />
+                  <div className="text-pink-600 font-black text-xl sm:text-2xl lg:text-3xl uppercase tracking-widest mt-1">
+                    {displayLocation}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </section>
 
         {/* ========================================================================= */}
-        {/* COLUNA DIREITA (5 COLUNAS): "VÍDEO DA TAÇA AMPLIADO EM ALTURA TOTAL" */}
+        {/* COLUNA DIREITA (50%): VÍDEO INSTITUCIONAL NA ALTURA COMPLETA DA TELA */}
         {/* ========================================================================= */}
-        <section className="lg:col-span-5 flex flex-col justify-between h-full">
-          
-          {/* Player de Vídeo Expandido na Altura Completa da TV */}
-          <div className="h-full min-h-[460px] sm:min-h-[520px] rounded-3xl overflow-hidden bg-black border-2 border-white/20 shadow-2xl relative flex flex-col items-center justify-center">
-            {activeVideos.length > 0 && currentVideo ? (
-              <video
-                ref={videoRef}
-                key={currentVideo.url}
-                src={currentVideo.url}
-                autoPlay
-                muted
-                playsInline
-                onEnded={handleVideoEnded}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#2a0845] to-[#160228] p-6 text-center">
-                <img src="/logo-oficial-1.png" alt="Açaí da Rose" className="h-16 w-auto object-contain mb-3" />
-                <span className="font-cursive text-3xl font-bold text-white uppercase tracking-wider">Açaí da Rose</span>
-                <span className="font-cursive text-2xl text-pink-400 font-bold mt-1">O Verdadeiro Açaí Artesanal</span>
-              </div>
-            )}
+        <section className="w-full lg:w-1/2 h-full min-h-0 flex flex-col">
+          <div className="w-full h-full min-h-0 rounded-3xl overflow-hidden bg-black border-2 border-white/20 shadow-2xl relative flex flex-col items-center justify-center">
+            <video
+              ref={videoRef}
+              key={currentVideoSrc}
+              src={currentVideoSrc}
+              autoPlay
+              loop={activeVideos.length <= 1}
+              muted={isVideoMuted}
+              playsInline
+              preload="auto"
+              onEnded={handleVideoEnded}
+              className="w-full h-full object-cover"
+            />
 
-            {/* Renderização Dinâmica das Tags nas Extremidades do Vídeo (Nunca no meio) */}
-            {(currentVideo?.showTags ?? true) && (
-              <>
-                <div
-                  className={`absolute z-10 px-4 py-2 rounded-2xl bg-black/70 backdrop-blur-md border border-white/20 text-white font-bold text-xs shadow-lg transition-all ${
-                    currentVideo?.tagPosition === 'TOP'
-                      ? 'top-4 left-4'
-                      : 'bottom-4 left-4'
-                  }`}
-                >
-                  {currentVideo?.title || 'Açaí Puro Artesanal'}
-                </div>
+            {/* Botões Minimalistas no Canto Inferior Direito */}
+            <div className="absolute z-10 bottom-3 right-3 flex items-center gap-1.5 sm:gap-2">
+              {/* Botão Minimalista de Som */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (videoRef.current) {
+                    if (isVideoMuted) {
+                      unmuteAllAudio()
+                    } else {
+                      videoRef.current.muted = true
+                      setIsVideoMuted(true)
+                    }
+                  }
+                }}
+                className={`h-7 w-7 sm:h-8 sm:w-8 rounded-xl border flex items-center justify-center cursor-pointer shadow-lg backdrop-blur-md transition ${
+                  isVideoMuted
+                    ? 'bg-pink-600/70 border-pink-400 text-pink-100 animate-pulse'
+                    : 'bg-black/60 hover:bg-black/80 border-white/20 text-white/90 hover:text-white'
+                }`}
+                title={isVideoMuted ? 'Ativar som' : 'Silenciar'}
+              >
+                {isVideoMuted ? <VolumeX className="h-3.5 w-3.5 text-pink-300" /> : <Volume2 className="h-3.5 w-3.5 text-emerald-400" />}
+              </button>
 
-                <div
-                  className={`absolute z-10 px-3.5 py-1.5 rounded-xl bg-pink-950/80 backdrop-blur-md border border-pink-500/30 text-pink-300 font-bold text-[11px] shadow-lg transition-all ${
-                    currentVideo?.tagPosition === 'TOP'
-                      ? 'top-4 right-4'
-                      : 'bottom-4 right-4'
-                  }`}
-                >
-                  acaidarose.pt
-                </div>
-              </>
-            )}
+              {/* Botão Minimalista de Ecrã Inteiro */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleFullscreen()
+                }}
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-black/60 hover:bg-black/80 border border-white/20 text-white/90 hover:text-white flex items-center justify-center cursor-pointer shadow-lg backdrop-blur-md transition"
+                title="Ecrã Inteiro"
+              >
+                {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+              </button>
+            </div>
           </div>
         </section>
       </main>
@@ -697,8 +695,8 @@ export default function TVOrdersPanelView({
         const pulseColor = hasPromo ? 'bg-purple-400' : isPreparingEnabled ? 'bg-amber-400' : 'bg-pink-400'
 
         return (
-          <footer className="pt-2.5 border-t border-white/15 w-full">
-            <div className="w-full flex items-center gap-4 bg-black/85 rounded-3xl px-6 py-4 sm:py-5 border-2 border-white/15 shadow-2xl overflow-hidden">
+          <footer className="pt-2 border-t border-white/15 w-full shrink-0">
+            <div className="w-full flex items-center gap-4 bg-black/85 rounded-3xl px-6 py-3.5 sm:py-4 border-2 border-white/15 shadow-2xl overflow-hidden">
               {/* Badge Fixa do Marquee */}
               <div className={`flex items-center gap-2.5 shrink-0 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider border ${badgeColor}`}>
                 <span className={`h-3 w-3 rounded-full animate-pulse ${pulseColor}`} />
@@ -791,16 +789,17 @@ export default function TVOrdersPanelView({
         )
       })()}
 
-      {/* Botão de ativação rápida de som para Smart TVs e navegadores com política estrita de autoplay */}
-      {!audioUnlocked && (
+      {/* Botão de ativação rápida de som caso esteja silenciado */}
+      {isVideoMuted && (
         <button
           type="button"
-          onClick={() => {
-            setAudioUnlocked(true)
-            playOrderNotificationSound()
+          onClick={(e) => {
+            e.stopPropagation()
+            unmuteAllAudio()
           }}
-          className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 bg-pink-600 hover:bg-pink-700 text-white font-black text-xs sm:text-sm px-6 py-2.5 rounded-full shadow-2xl backdrop-blur-md border border-white/20 flex items-center gap-2 cursor-pointer animate-pulse"
+          className="fixed bottom-14 left-1/2 -translate-x-1/2 z-50 bg-pink-600 hover:bg-pink-700 text-white font-black text-xs sm:text-sm px-6 py-2.5 rounded-full shadow-2xl backdrop-blur-md border border-white/20 flex items-center gap-2 cursor-pointer animate-pulse"
         >
+          <Volume2 className="h-4 w-4" />
           <span>🔊 Clique ou toque para ativar o som da TV</span>
         </button>
       )}
