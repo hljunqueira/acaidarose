@@ -1,6 +1,12 @@
 # SCRATCHPAD - Açaí da Rose
 
 ## Status Atual
+- **API Gateway JSON para `api.acaidarose.pt` [CONCLUÍDO]**:
+  - **Causa Raiz Resolvida**: O subdomínio `api.acaidarose.pt` roteava diretamente para o Next.js na Vercel, renderizando o `app/page.tsx` (Landing Page) ao ser acessado na raiz `/`.
+  - **Middleware Implementado (`middleware.ts`)**: Intercepta requisições direcionadas a `api.acaidarose.pt` (ou prefixo `api.*`). Se a requisição não for de rota de backend (`/api/*`), responde diretamente com o payload JSON canônico do Gateway de API com status HTTP 200 e headers sem cache (`Cache-Control: no-store, max-age=0`):
+    `{ "service": "Açaí da Rose API Gateway", "status": "online", "version": "1.0.0", "docs": "https://acaidarose.pt", "message": "Açaí da Rose REST API Gateway. Endpoints disponíveis em /api/*", "timestamp": "..." }`.
+  - **Isolamento Total**: Endpoints `/api/*` e requisições para o domínio principal (`acaidarose.pt`, `acaidarose.vercel.app`, `localhost`) passam normalmente sem qualquer interferência.
+
 - **Voz da Smart TV em Português de Portugal (pt-PT) & Streaming de Áudio Independente do SO [CONCLUÍDO]**:
   - **Causa Raiz Identificada**: O sistema dependia unicamente do motor local `window.speechSynthesis` configurado com `lang: 'pt-PT'`. Em máquinas Windows sem o pacote de voz de Portugal instalado (apenas `Microsoft Maria pt-BR` ou `Microsoft Daniel pt-BR`), o Chromium abortava silenciosamente a fala por incompatibilidade de idioma e sofria com coleta de lixo (GC bug) do `SpeechSynthesisUtterance`.
   - **Nova Rota de Streaming de Áudio (`/api/tv/voice`)**: Criada rota no servidor Next.js que sintetiza a fala em Português de Portugal europeu autêntico (`pt-PT`), retornando MP3 nativo para reprodução imediata em qualquer Smart TV (LG, Samsung, Android TV), telemóvel ou PC.
