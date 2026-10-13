@@ -107,6 +107,27 @@ export default function TVOrdersPanelView({
   const lastProcessedCallTimestampRef = useRef<number>(0)
   const isInitialMountRef = useRef<boolean>(true)
 
+  // Dispara o anúncio de voz na Smart TV, pausando o vídeo enquanto fala e retomando após a conclusão
+  const handleAnnounceCall = useCallback((ticket: string, customerName?: string | null) => {
+    if (soundConfig.enabled === false || !audioEnabled) return
+
+    // Pausa o vídeo durante a chamada de voz
+    if (videoRef.current && !videoRef.current.paused) {
+      try {
+        videoRef.current.pause()
+      } catch {}
+    }
+
+    announceTVCall(ticket, customerName, soundConfig.gender, () => {
+      // Retoma a reprodução do vídeo assim que o anúncio terminar
+      if (videoRef.current) {
+        try {
+          videoRef.current.play().catch(() => {})
+        } catch {}
+      }
+    })
+  }, [soundConfig.enabled, soundConfig.gender, audioEnabled])
+
   // 1. Carregamento de pedidos reais da loja ativa e sincronização de chamadas via API (para Smart TVs em outros dispositivos/rede)
   const fetchLiveOrders = useCallback(async () => {
     try {
@@ -164,10 +185,8 @@ export default function TVOrdersPanelView({
               return [newCall, ...filtered].slice(0, 10)
             })
 
-            // Toca o áudio TTS exclusivamente na Smart TV
-            if (soundConfig.enabled !== false && audioEnabled) {
-              announceTVCall(remoteCall.ticket, remoteCall.customerName, soundConfig.gender)
-            }
+            // Toca o áudio TTS na Smart TV e pausa o vídeo temporariamente durante o anúncio
+            handleAnnounceCall(remoteCall.ticket, remoteCall.customerName)
           }
         }
       }
@@ -243,9 +262,8 @@ export default function TVOrdersPanelView({
           return [newCall, ...filtered].slice(0, 10)
         })
 
-        if (soundConfig.enabled !== false && audioEnabled !== false) {
-          announceTVCall(event.ticket, event.customerName, soundConfig.gender)
-        }
+        // Toca o áudio TTS na Smart TV e pausa o vídeo temporariamente durante o anúncio
+        handleAnnounceCall(event.ticket, event.customerName)
 
         fetchLiveOrders()
       },
@@ -611,8 +629,8 @@ export default function TVOrdersPanelView({
               className="w-full h-full object-cover"
             />
 
-            {/* Botões Minimalistas no Canto Inferior Direito */}
-            <div className="absolute z-10 bottom-3 right-3 flex items-center gap-1.5 sm:gap-2">
+            {/* Botões Minimalistas no Canto Inferior Esquerdo (Início) */}
+            <div className="absolute z-10 bottom-3 left-3 flex items-center gap-1.5 sm:gap-2">
               {/* Botão Minimalista de Som */}
               <button
                 type="button"

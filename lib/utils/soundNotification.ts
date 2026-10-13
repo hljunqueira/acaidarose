@@ -162,8 +162,11 @@ function getBestBrowserVoice(gender: TVVoiceGender): { voice: SpeechSynthesisVoi
 /**
  * Executa a síntese de fala local no navegador via Web Speech API
  */
-export function speakWithBrowserTTS(textToSpeak: string, gender: TVVoiceGender) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+export function speakWithBrowserTTS(textToSpeak: string, gender: TVVoiceGender, onEnded?: () => void) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    onEnded?.()
+    return
+  }
 
   try {
     if (window.speechSynthesis.paused) {
@@ -186,10 +189,12 @@ export function speakWithBrowserTTS(textToSpeak: string, gender: TVVoiceGender) 
     activeUtterance = utterance
     utterance.onend = () => {
       activeUtterance = null
+      onEnded?.()
     }
     utterance.onerror = (e) => {
       console.warn('[TV TTS] Erro no SpeechSynthesis nativo:', e)
       activeUtterance = null
+      onEnded?.()
     }
 
     // Pequeno atraso para dar tempo ao Chromium de limpar cancelamentos anteriores
@@ -199,19 +204,43 @@ export function speakWithBrowserTTS(textToSpeak: string, gender: TVVoiceGender) 
         window.speechSynthesis.speak(utterance)
       } catch (err) {
         console.warn('[TV TTS] Erro ao disparar speak:', err)
+        onEnded?.()
       }
     }, 60)
   } catch (err) {
     console.error('[TV TTS] Falha no SpeechSynthesis:', err)
+    onEnded?.()
   }
 }
 
 /**
  * Anuncia a senha e o nome do cliente na TV com sino e fala.
  * Prioriza streaming de áudio PT-PT de alta fidelidade e ativa fallback imediato caso bloqueado.
+ * Notifica onEnded quando a reprodução do áudio terminar.
  */
-export function announceTVCall(ticket: string, customerName?: string, voiceGender?: TVVoiceGender) {
-  if (typeof window === 'undefined') return
+export function announceTVCall(
+  ticket: string,
+  customerName?: string | null,
+  voiceGender?: TVVoiceGender,
+  onEnded?: () => void
+) {
+  if (typeof window === 'undefined') {
+    onEnded?.()
+    return
+  }
+
+  let endedCalled = false
+  const handleEnded = () => {
+    if (endedCalled) return
+    endedCalled = true
+    if (safetyTimer) clearTimeout(safetyTimer)
+    onEnded?.()
+  }
+
+  // Timer de segurança de 7 segundos para garantir que onEnded é sempre chamado mesmo se o áudio travar
+  const safetyTimer = setTimeout(() => {
+    handleEnded()
+  }, 7000)
 
   // 1. Toca o sino de chamada da Web Audio API
   playOrderNotificationSound()
@@ -266,7 +295,7 @@ export function announceTVCall(ticket: string, customerName?: string, voiceGende
     const triggerNativeTTS = () => {
       if (speechTriggered) return
       speechTriggered = true
-      speakWithBrowserTTS(textToSpeak, gender)
+      speakWithBrowserTTS(textToSpeak, gender, handleEnded)
     }
 
     // Inicia a reprodução com ligeiro atraso para sincronizar com o sino harmônico
@@ -287,6 +316,7 @@ export function announceTVCall(ticket: string, customerName?: string, voiceGende
 
     audio.onended = () => {
       activeAudioElement = null
+      handleEnded()
     }
 
     audio.onerror = () => {
@@ -305,6 +335,6 @@ export function announceTVCall(ticket: string, customerName?: string, voiceGende
 
   } catch (err) {
     console.warn('[TV Voice] Falha ao inicializar áudio, usando motor nativo:', err)
-    speakWithBrowserTTS(textToSpeak, gender)
+    speakWithBrowserTTS(textToSpeak, gender, handleEnded)
   }
 }
