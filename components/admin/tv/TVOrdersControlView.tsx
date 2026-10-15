@@ -18,7 +18,6 @@ import {
   getStoreTVVideos,
   broadcastTVVideos,
   TVVideoItem,
-  DEFAULT_OFFICIAL_VIDEOS,
   TVCallEvent,
   broadcastTVSoundConfig,
   getStoredTVSoundConfig,
@@ -39,7 +38,7 @@ interface TVOrdersControlViewProps {
 type TVControlTab = 'CALL' | 'VIDEOS' | 'MARQUEE' | 'AUDIO' | 'NONE'
 
 export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewProps) {
-  const { authFetch } = useAuthStore()
+  const { authFetch, user } = useAuthStore()
   const { getTenant, currentTenant } = useFranchiseStore()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +64,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const [videoUrlInput, setVideoUrlInput] = useState('')
   const [videoTitleInput, setVideoTitleInput] = useState('')
   const [editingVideo, setEditingVideo] = useState<TVVideoItem | null>(null)
+  const [replicating, setReplicating] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Estado para chamada manual
@@ -76,17 +76,52 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
   const storeTitle = storeInfo?.name || 'Loja 1 - Figueira da Foz (Matriz)'
   const markDirty = usePublishStore((s) => s.markDirty)
 
-  const syncTVSettings = useCallback(async (payload: any) => {
+  // Identificação de autoridade: Somente a Matriz Franqueadora pode cadastrar e replicar
+  const isMatriz = Boolean(
+    storeInfo?.isHeadquarters ||
+    tenantId === '11111111-1111-1111-1111-111111111111' ||
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'FRANCHISOR_ADMIN'
+  )
+
+  const syncTVSettings = useCallback(async (payload: any): Promise<boolean> => {
     try {
-      await (authFetch || fetch)('/api/tv/settings', {
+      const res = await (authFetch || fetch)('/api/tv/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId, ...payload }),
       })
+      const data = await res.json()
+      if (!res.ok || data.success === false) {
+        toast.error(data.error || 'Erro ao salvar configurações de TV')
+        return false
+      }
+      return true
     } catch (e) {
       console.error('Erro ao salvar configurações da TV no PostgreSQL:', e)
+      toast.error('Erro de conexão ao salvar na TV')
+      return false
     }
   }, [tenantId, authFetch])
+
+  const handleReplicatePlaylist = async () => {
+    if (!isMatriz) {
+      toast.error('Apenas a Matriz Franqueadora pode replicar a playlist para as lojas.')
+      return
+    }
+    setReplicating(true)
+    try {
+      const ok = await syncTVSettings({
+        videosPlaylist: storeVideos,
+        replicateToAllStores: true,
+      })
+      if (ok) {
+        toast.success('Playlist oficial da TV replicada com sucesso para todas as lojas da rede!')
+      }
+    } finally {
+      setReplicating(false)
+    }
+  }
 
   useEffect(() => {
     const config = getStoredTVMarqueeConfig(tenantId)
@@ -105,8 +140,11 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
           if (data.marqueeConfig && Object.keys(data.marqueeConfig).length > 0) {
             setMarqueeConfig(data.marqueeConfig)
           }
-          if (Array.isArray(data.videosPlaylist) && data.videosPlaylist.length > 0) {
+          if (Array.isArray(data.videosPlaylist)) {
             setStoreVideos(data.videosPlaylist)
+            try {
+              localStorage.setItem(`acai_tv_store_videos_${tenantId || 'default'}`, JSON.stringify(data.videosPlaylist))
+            } catch {}
           }
           if (data.soundConfig) {
             setSoundConfig(data.soundConfig)
@@ -213,6 +251,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       url: fileUrl,
       active: true,
       isOfficial: false,
+      showBadge: false,
+      badgeText: '',
       tagPosition: 'BOTTOM',
       showTags: true,
     }
@@ -239,6 +279,8 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
       url: videoUrlInput.trim(),
       active: true,
       isOfficial: false,
+      showBadge: false,
+      badgeText: '',
       tagPosition: 'BOTTOM',
       showTags: true,
     }
@@ -251,14 +293,6 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
     setVideoUrlInput('')
     setVideoTitleInput('')
     toast.success('Vídeo adicionado por link e ativado na Smart TV!')
-  }
-
-  const handleRestoreOfficialVideos = async () => {
-    setStoreVideos(DEFAULT_OFFICIAL_VIDEOS)
-    broadcastTVVideos(DEFAULT_OFFICIAL_VIDEOS, tenantId)
-    await syncTVSettings({ videosPlaylist: DEFAULT_OFFICIAL_VIDEOS })
-    await markDirty(tenantId, 'Playlist da Smart TV restaurada para oficiais', authFetch)
-    toast.success('Playlist restaurada com os 4 vídeos oficiais da Franqueadora!')
   }
 
   const fetchLiveOrders = useCallback(async () => {
@@ -745,102 +779,100 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Ação exclusiva da Matriz Franqueadora: Replicar Playlist */}
+            {isMatriz && (
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                onClick={handleRestoreOfficialVideos}
-                className="h-8 px-3 text-[11px] font-bold rounded-xl border-purple-200 dark:border-white/15 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer gap-1"
-                title="Restaurar os vídeos oficiais da franqueadora"
+                disabled={replicating}
+                onClick={handleReplicatePlaylist}
+                className="h-8 px-3.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black rounded-xl cursor-pointer shadow-xs transition-all shrink-0 gap-1.5"
               >
-                <RotateCcw className="h-3 w-3" />
-                <span>Restaurar Oficiais</span>
+                <Save className="h-3.5 w-3.5" />
+                <span>{replicating ? 'Replicando...' : 'Replicar Playlist para Todas as Lojas'}</span>
               </Button>
-            </div>
-          </div>
-
-          {/* Orientações Técnicas com Badges Claras */}
-          <div className="p-3 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-1.5 text-purple-950 dark:text-white font-bold">
-              <AlertCircle className="h-4 w-4 text-pink-600 shrink-0" />
-              <span>Orientações de Resolução & Tamanho:</span>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap text-[11px]">
-              <span className="px-2.5 py-0.5 rounded-lg bg-white dark:bg-white/10 text-purple-900 dark:text-purple-200 font-bold border border-purple-200/60 dark:border-white/10">
-                📐 16:9 Widescreen (1920x1080 Full HD)
-              </span>
-              <span className="px-2.5 py-0.5 rounded-lg bg-white dark:bg-white/10 text-purple-900 dark:text-purple-200 font-bold border border-purple-200/60 dark:border-white/10">
-                📦 Máx: 50 MB por vídeo
-              </span>
-              <span className="px-2.5 py-0.5 rounded-lg bg-white dark:bg-white/10 text-purple-900 dark:text-purple-200 font-bold border border-purple-200/60 dark:border-white/10">
-                🎬 Formatos: MP4, WebM, MOV
-              </span>
-            </div>
-          </div>
-
-          {/* Área de Inserção: Dropzone Principal com Alternador de URL */}
-          <div className="p-4 rounded-2xl bg-purple-50/30 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
-                Adicionar Novo Vídeo
-              </span>
-              <button
-                type="button"
-                onClick={() => setVideoInputMode(videoInputMode === 'FILE' ? 'URL' : 'FILE')}
-                className="text-xs text-pink-600 hover:text-pink-700 dark:text-pink-400 font-bold underline cursor-pointer"
-              >
-                {videoInputMode === 'FILE' ? '🔗 Ou inserir por link/URL externa' : '📤 Ou carregar arquivo local (Upload)'}
-              </button>
-            </div>
-
-            {videoInputMode === 'FILE' ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-purple-200 dark:border-white/20 hover:border-pink-500 dark:hover:border-pink-500 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-white dark:bg-white/5 hover:bg-purple-50/60 group"
-              >
-                <div className="p-3 rounded-2xl bg-purple-100 dark:bg-white/10 text-purple-700 dark:text-pink-400 group-hover:scale-110 transition-transform mb-2">
-                  <Upload className="h-6 w-6" />
-                </div>
-                <span className="text-sm font-black text-purple-950 dark:text-white">
-                  Clique aqui para carregar o arquivo de vídeo
-                </span>
-                <span className="text-xs text-purple-700/70 dark:text-purple-300/70 mt-1">
-                  Selecione um clipe MP4 ou WebM do seu computador/telemóvel (Até 50MB)
-                </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/mp4,video/webm,video/quicktime"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row items-center gap-2">
-                <Input
-                  value={videoTitleInput}
-                  onChange={(e) => setVideoTitleInput(e.target.value)}
-                  placeholder="Título (ex: Promoção Taça Especial 500ml)"
-                  className="h-10 text-xs w-full sm:w-1/3 bg-white dark:bg-white/5 border-purple-200 dark:border-white/15"
-                />
-                <Input
-                  value={videoUrlInput}
-                  onChange={(e) => setVideoUrlInput(e.target.value)}
-                  placeholder="https://exemplo.com/video-promocional.mp4"
-                  className="h-10 text-xs flex-1 bg-white dark:bg-white/5 border-purple-200 dark:border-white/15"
-                />
-                <Button
-                  type="button"
-                  onClick={handleAddVideoByUrl}
-                  className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer shrink-0 gap-1.5"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Adicionar</span>
-                </Button>
-              </div>
             )}
           </div>
+
+          {/* Área de Inserção: Exclusiva da Matriz Franqueadora */}
+          {isMatriz ? (
+            <div className="p-4 rounded-2xl bg-purple-50/30 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                  Adicionar Novo Vídeo
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setVideoInputMode(videoInputMode === 'FILE' ? 'URL' : 'FILE')}
+                  className="text-xs text-pink-600 hover:text-pink-700 dark:text-pink-400 font-bold underline cursor-pointer"
+                >
+                  {videoInputMode === 'FILE' ? 'Inserir por link / URL' : 'Carregar arquivo local'}
+                </button>
+              </div>
+
+              {videoInputMode === 'FILE' ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-purple-200 dark:border-white/20 hover:border-pink-500 dark:hover:border-pink-500 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-white dark:bg-white/5 hover:bg-purple-50/60 group"
+                >
+                  <div className="p-3 rounded-2xl bg-purple-100 dark:bg-white/10 text-purple-700 dark:text-pink-400 group-hover:scale-110 transition-transform mb-2">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <span className="text-sm font-black text-purple-950 dark:text-white">
+                    Clique aqui para carregar o arquivo de vídeo
+                  </span>
+                  <span className="text-xs text-purple-700/70 dark:text-purple-300/70 mt-1">
+                    Selecione um clipe MP4 ou WebM (Até 50MB)
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <Input
+                    value={videoTitleInput}
+                    onChange={(e) => setVideoTitleInput(e.target.value)}
+                    placeholder="Título (ex: Promoção Taça Especial 500ml)"
+                    className="h-10 text-xs w-full sm:w-1/3 bg-white dark:bg-white/5 border-purple-200 dark:border-white/15"
+                  />
+                  <Input
+                    value={videoUrlInput}
+                    onChange={(e) => setVideoUrlInput(e.target.value)}
+                    placeholder="https://exemplo.com/video-promocional.mp4"
+                    className="h-10 text-xs flex-1 bg-white dark:bg-white/5 border-purple-200 dark:border-white/15"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddVideoByUrl}
+                    className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl cursor-pointer shrink-0 gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Adicionar</span>
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-200 dark:border-white/10 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase text-purple-950 dark:text-white tracking-wider">
+                  Playlist Oficial Franqueadora
+                </span>
+                <Badge variant="outline" className="text-[10px] font-bold text-purple-700 dark:text-purple-300 border-purple-300 dark:border-white/20">
+                  Gestão da Matriz
+                </Badge>
+              </div>
+              <p className="text-xs text-purple-700/80 dark:text-purple-300/80">
+                Os vídeos promocionais são padronizados e transmitidos pela Matriz Franqueadora.
+                Nesta unidade, pode ativar ou pausar a exibição de cada vídeo na sua Smart TV.
+              </p>
+            </div>
+          )}
 
           {/* Galeria de Vídeos da Playlist da Loja */}
           <div className="space-y-2 pt-1">
@@ -851,100 +883,116 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {storeVideos.map((video) => (
-                <div
-                  key={video.id}
-                  className={`p-3 rounded-2xl border transition-all flex flex-col justify-between space-y-2 ${
-                    video.active
-                      ? 'bg-purple-50/40 dark:bg-[#1f0338] border-purple-200 dark:border-white/20 shadow-xs'
-                      : 'bg-stone-50 dark:bg-white/5 border-stone-200 dark:border-white/10 opacity-60'
-                  }`}
-                >
-                  {/* Player de Pré-visualização em Miniatura */}
-                  <div className="h-28 rounded-xl overflow-hidden bg-black relative border border-black/20">
-                    <video
-                      src={video.url}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-1.5 right-1.5">
-                      <Badge
-                        className={`text-[9px] font-black uppercase ${
-                          video.active ? 'bg-emerald-600 text-white' : 'bg-zinc-700 text-zinc-300'
+            {storeVideos.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-purple-50/20 dark:bg-white/5 border border-dashed border-purple-200 dark:border-white/15 text-center flex flex-col items-center justify-center space-y-2">
+                <Film className="h-8 w-8 text-purple-300 dark:text-purple-500" />
+                <span className="text-sm font-bold text-purple-950 dark:text-white">
+                  Nenhum vídeo cadastrado na Smart TV desta unidade
+                </span>
+                <p className="text-xs text-purple-700/70 dark:text-purple-300/70 max-w-md">
+                  Adicione vídeos institucionais ou gastronômicos através do upload de arquivos ou inserindo um link no formulário acima.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {storeVideos.map((video) => (
+                  <div
+                    key={video.id}
+                    className={`p-3 rounded-2xl border transition-all flex flex-col justify-between space-y-2 ${
+                      video.active
+                        ? 'bg-purple-50/40 dark:bg-[#1f0338] border-purple-200 dark:border-white/20 shadow-xs'
+                        : 'bg-stone-50 dark:bg-white/5 border-stone-200 dark:border-white/10 opacity-60'
+                    }`}
+                  >
+                    {/* Player de Pré-visualização em Miniatura */}
+                    <div className="h-28 rounded-xl overflow-hidden bg-black relative border border-black/20">
+                      <video
+                        src={video.url}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-1.5 right-1.5">
+                        <Badge
+                          className={`text-[9px] font-black uppercase ${
+                            video.active ? 'bg-emerald-600 text-white' : 'bg-zinc-700 text-zinc-300'
+                          }`}
+                        >
+                          {video.active ? 'Ativo na TV' : 'Inativo'}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Detalhes e Selo/Badge Customizado */}
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-purple-950 dark:text-white truncate" title={video.title}>
+                        {video.title}
+                      </h4>
+                      {video.showBadge && video.badgeText?.trim() ? (
+                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-500/30">
+                          {video.badgeText.trim()}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-purple-100 dark:border-white/10 gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleToggleVideoActive(video.id)}
+                        className={`h-7 px-2 text-[10px] font-black uppercase rounded-lg cursor-pointer transition ${
+                          video.active
+                            ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                         }`}
                       >
-                        {video.active ? 'Ativo na TV' : 'Inativo'}
-                      </Badge>
+                        {video.active ? 'Pausar' : 'Ativar'}
+                      </Button>
+
+                      {isMatriz && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingVideo(video)}
+                            className="h-7 px-2 text-[10px] font-bold rounded-lg border-purple-200 dark:border-white/15 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer"
+                            title="Personalizar selo, tags e posicionamento"
+                          >
+                            <span>Tags & Badge</span>
+                          </Button>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteVideo(video.id)}
+                            className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer ml-auto"
+                            title="Excluir vídeo da lista"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
-
-                  {/* Detalhes e Ações */}
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-black text-purple-950 dark:text-white truncate" title={video.title}>
-                      {video.title}
-                    </h4>
-                    {video.isOfficial && (
-                      <span className="text-[10px] text-pink-600 font-bold uppercase tracking-wider block">
-                        Oficial Franqueadora
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 border-t border-purple-100 dark:border-white/10 gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => handleToggleVideoActive(video.id)}
-                      className={`h-7 px-2 text-[10px] font-black uppercase rounded-lg cursor-pointer transition ${
-                        video.active
-                          ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      }`}
-                    >
-                      {video.active ? 'Pausar' : 'Ativar'}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setEditingVideo(video)}
-                      className="h-7 px-2 text-[10px] font-bold rounded-lg border-purple-200 dark:border-white/15 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer"
-                      title="Personalizar tags e posição nas extremidades"
-                    >
-                      <span>🏷️ Tags</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDeleteVideo(video.id)}
-                      className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg cursor-pointer ml-auto"
-                      title="Excluir vídeo da lista"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* MODAL DE EDIÇÃO DE TAGS COM LIVE PREVIEW EM TEMPO REAL */}
+      {/* MODAL DE EDIÇÃO DE TAGS E BADGE COM LIVE PREVIEW EM TEMPO REAL */}
       {editingVideo && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-xl bg-white dark:bg-[#160228] border border-purple-200 dark:border-white/15 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-purple-100 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <span className="text-base font-black text-purple-950 dark:text-white uppercase tracking-tight">
-                  🏷️ Personalizar Tags do Vídeo
+                  Personalizar Tags & Selo do Vídeo
                 </span>
               </div>
               <Button
@@ -958,7 +1006,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               </Button>
             </div>
 
-            {/* LIVE PREVIEW DO VÍDEO COM AS TAGS NAS EXTREMIDADES */}
+            {/* LIVE PREVIEW DO VÍDEO COM BADGE E TAGS */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-black uppercase text-purple-900 dark:text-purple-300 tracking-wider">
                 Live Preview na Smart TV:
@@ -973,14 +1021,23 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
                   className="w-full h-full object-cover"
                 />
 
-                {/* Renderização das Tags no Live Preview conforme a Posição das Extremidades */}
+                {/* Badge/Selo no Preview */}
+                {editingVideo.showBadge && editingVideo.badgeText?.trim() && (
+                  <div className="absolute top-2.5 left-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[11px] font-black uppercase tracking-wider text-pink-300 border border-pink-500/40 shadow-md">
+                    {editingVideo.badgeText.trim()}
+                  </div>
+                )}
+
+                {/* Renderização das Tags no Live Preview conforme a Posição */}
                 {(editingVideo.showTags ?? true) && (
                   <>
                     {/* Tag Esquerda (Principal) */}
                     <div
                       className={`absolute px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-xs text-xs font-black text-white shadow-md transition-all ${
                         editingVideo.tagPosition === 'TOP' || editingVideo.tagPosition === 'SPLIT'
-                          ? 'top-2.5 left-3'
+                          ? editingVideo.showBadge && editingVideo.badgeText?.trim()
+                            ? 'top-10 left-3'
+                            : 'top-2.5 left-3'
                           : 'bottom-2.5 left-3'
                       }`}
                     >
@@ -1003,98 +1060,160 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             </div>
 
             {/* FORMULÁRIO DE CONFIGURAÇÃO */}
-            <div className="space-y-3 pt-1">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-purple-950 dark:text-white">
-                  Tag Principal (Canto Esquerdo):
-                </label>
-                <Input
-                  value={editingVideo.tagLeft || ''}
-                  onChange={(e) => setEditingVideo({ ...editingVideo, tagLeft: e.target.value })}
-                  placeholder="Ex: Açaí Puro Artesanal ou Promoção 500ml"
-                  className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/15"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-purple-950 dark:text-white">
-                  Tag Secundária (Canto Direito):
-                </label>
-                <Input
-                  value={editingVideo.tagRight || ''}
-                  onChange={(e) => setEditingVideo({ ...editingVideo, tagRight: e.target.value })}
-                  placeholder="Ex: acaidarose.pt ou Peça na Mesa"
-                  className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/15"
-                />
-              </div>
-
-              {/* Seletor de Posição nas Extremidades (Nunca no meio) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-purple-950 dark:text-white">
-                  Posição das Tags nas Extremidades:
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
+            <div className="space-y-4 pt-1">
+              {/* SEÇÃO 1: BADGE / SELO DO VÍDEO (OPCIONAL) */}
+              <div className="p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-purple-950 dark:text-white block">
+                      Exibir Selo / Badge no Vídeo
+                    </span>
+                    <span className="text-[11px] text-purple-700/70 dark:text-purple-300/70">
+                      Escolha se deseja colocar um selo em destaque neste vídeo ou deixá-lo sem badge.
+                    </span>
+                  </div>
+                  <Button
                     type="button"
-                    onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'BOTTOM' })}
-                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
-                      (editingVideo.tagPosition || 'BOTTOM') === 'BOTTOM'
-                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
-                        : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setEditingVideo({
+                        ...editingVideo,
+                        showBadge: !editingVideo.showBadge,
+                      })
+                    }
+                    className={`h-7 px-3 text-xs font-bold rounded-xl cursor-pointer ${
+                      editingVideo.showBadge
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-stone-200 text-stone-700 dark:bg-white/10 dark:text-stone-300'
                     }`}
                   >
-                    ⬇️ Inferior (Base)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'TOP' })}
-                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
-                      editingVideo.tagPosition === 'TOP'
-                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
-                        : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
-                    }`}
-                  >
-                    ⬆️ Superior (Topo)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'SPLIT' })}
-                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
-                      editingVideo.tagPosition === 'SPLIT'
-                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
-                        : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
-                    }`}
-                  >
-                    ↗️ Misto (Diagonal)
-                  </button>
+                    {editingVideo.showBadge ? 'Ativado' : 'Desativado'}
+                  </Button>
                 </div>
+
+                {editingVideo.showBadge && (
+                  <div className="space-y-2 pt-2 border-t border-purple-100 dark:border-white/10">
+                    <label className="text-xs font-bold text-purple-950 dark:text-white">
+                      Texto do Selo / Badge:
+                    </label>
+                    <Input
+                      value={editingVideo.badgeText || ''}
+                      onChange={(e) => setEditingVideo({ ...editingVideo, badgeText: e.target.value })}
+                      placeholder="Ex: Oficial Franqueadora, Destaque, Promoção..."
+                      className="h-9 text-xs bg-white dark:bg-white/10 border-purple-200 dark:border-white/15"
+                    />
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold">Opções rápidas:</span>
+                      {['Oficial Franqueadora', 'Destaque', 'Promoção', 'Novidade', 'Exclusivo'].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setEditingVideo({ ...editingVideo, badgeText: preset, showBadge: true })}
+                          className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-900 dark:text-purple-200 hover:bg-pink-50 hover:border-pink-300 cursor-pointer transition"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Toggle de Ativar/Desativar Tags Sobrepostas */}
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10">
-                <span className="text-xs font-bold text-purple-950 dark:text-white">
-                  Exibir tags sobrepostas neste vídeo
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setEditingVideo({
-                      ...editingVideo,
-                      showTags: editingVideo.showTags === false ? true : false,
-                    })
-                  }
-                  className={`h-7 px-3 text-xs font-bold rounded-xl cursor-pointer ${
-                    (editingVideo.showTags ?? true)
-                      ? 'bg-emerald-600 text-white border-emerald-600'
-                      : 'bg-stone-200 text-stone-700'
-                  }`}
-                >
-                  {(editingVideo.showTags ?? true) ? 'Ativado' : 'Oculto'}
-                </Button>
+              {/* SEÇÃO 2: TAGS DE EXTREMIDADE */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-purple-950 dark:text-white">
+                    Tag Principal (Canto Esquerdo):
+                  </label>
+                  <Input
+                    value={editingVideo.tagLeft || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, tagLeft: e.target.value })}
+                    placeholder="Ex: Açaí Puro Artesanal ou Promoção 500ml"
+                    className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/15"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-purple-950 dark:text-white">
+                    Tag Secundária (Canto Direito):
+                  </label>
+                  <Input
+                    value={editingVideo.tagRight || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, tagRight: e.target.value })}
+                    placeholder="Ex: acaidarose.pt ou Peça na Mesa"
+                    className="h-10 text-xs bg-purple-50/30 dark:bg-white/5 border-purple-200 dark:border-white/15"
+                  />
+                </div>
+
+                {/* Seletor de Posição nas Extremidades (Sem emojis decorativos) */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-purple-950 dark:text-white">
+                    Posição das Tags nas Extremidades:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'BOTTOM' })}
+                      className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                        (editingVideo.tagPosition || 'BOTTOM') === 'BOTTOM'
+                          ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                          : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                      }`}
+                    >
+                      Inferior (Base)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'TOP' })}
+                      className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                        editingVideo.tagPosition === 'TOP'
+                          ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                          : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                      }`}
+                    >
+                      Superior (Topo)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditingVideo({ ...editingVideo, tagPosition: 'SPLIT' })}
+                      className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer text-center ${
+                        editingVideo.tagPosition === 'SPLIT'
+                          ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                          : 'bg-purple-50/40 dark:bg-white/5 text-purple-950 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                      }`}
+                    >
+                      Misto (Diagonal)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Toggle de Ativar/Desativar Tags Sobrepostas */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-150 dark:border-white/10">
+                  <span className="text-xs font-bold text-purple-950 dark:text-white">
+                    Exibir tags sobrepostas neste vídeo
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setEditingVideo({
+                        ...editingVideo,
+                        showTags: editingVideo.showTags === false ? true : false,
+                      })
+                    }
+                    className={`h-7 px-3 text-xs font-bold rounded-xl cursor-pointer ${
+                      (editingVideo.showTags ?? true)
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-stone-200 text-stone-700 dark:bg-white/10 dark:text-stone-300'
+                    }`}
+                  >
+                    {(editingVideo.showTags ?? true) ? 'Ativado' : 'Oculto'}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1110,14 +1229,16 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
               </Button>
               <Button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const updated = storeVideos.map((v) =>
                     v.id === editingVideo.id ? editingVideo : v
                   )
                   setStoreVideos(updated)
                   broadcastTVVideos(updated, tenantId)
+                  await syncTVSettings({ videosPlaylist: updated })
+                  await markDirty(tenantId, `Configurações do vídeo "${editingVideo.title}" atualizadas`, authFetch)
                   setEditingVideo(null)
-                  toast.success('Tags e posicionamento do vídeo atualizados com sucesso!')
+                  toast.success('Tags, selo e posicionamento do vídeo atualizados com sucesso!')
                 }}
                 className="h-10 px-6 bg-purple-700 hover:bg-purple-800 text-white text-xs font-black rounded-xl cursor-pointer shadow-md"
               >

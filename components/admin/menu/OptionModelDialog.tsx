@@ -525,13 +525,17 @@ export default function OptionModelDialog({
 
               {/* Simulação visual dos itens */}
               <div className="pt-1">
-                {showDetailed ? (
+                {options.length === 0 ? (
+                  <p className="text-xs text-slate-400 dark:text-zinc-500 italic py-2">
+                    Nenhum item adicionado a este grupo ainda. Adicione itens abaixo para visualizar a prévia.
+                  </p>
+                ) : showDetailed ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {(options.length > 0 ? options.slice(0, 2) : [{ id: 'mock1', name: 'Opção 1', price: 0 }]).map((opt: any, idx: number) => (
+                    {options.slice(0, 2).map((opt: any, idx: number) => (
                       <div key={opt.id || idx} className="p-2 rounded-xl border border-purple-150 dark:border-white/10 bg-purple-50/40 dark:bg-white/5 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="h-7 w-7 rounded-lg bg-purple-200/50 dark:bg-white/10 flex items-center justify-center text-purple-500 text-[10px] flex-shrink-0">
-                            📷
+                          <div className="h-7 w-7 rounded-lg bg-purple-200/50 dark:bg-white/10 flex items-center justify-center text-purple-500 flex-shrink-0">
+                            <Camera className="h-3.5 w-3.5" />
                           </div>
                           <div className="min-w-0">
                             <div className="text-xs font-bold text-purple-950 dark:text-white truncate">
@@ -560,7 +564,7 @@ export default function OptionModelDialog({
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                    {(options.length > 0 ? options.slice(0, 3) : [{ id: 'mock1', name: 'Opção 1' }, { id: 'mock2', name: 'Opção 2' }]).map((opt: any, idx: number) => (
+                    {options.slice(0, 3).map((opt: any, idx: number) => (
                       <div key={opt.id || idx} className="p-2 rounded-lg border border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 flex items-center justify-between text-xs">
                         <span className="truncate font-semibold text-slate-800 dark:text-purple-200">
                           {opt.name || `Opção ${idx + 1}`}

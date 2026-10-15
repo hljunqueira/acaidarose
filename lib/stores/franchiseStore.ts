@@ -4,68 +4,22 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Tenant } from '@/types'
 
+export const FIGUEIRA_HQ_ID = '11111111-1111-1111-1111-111111111111'
+
+// Objeto base mínimo para fallback antes do primeiro fetch ou em SSR
 export const DEFAULT_FIGUEIRA_TENANT: Tenant = {
-  id: '11111111-1111-1111-1111-111111111111',
+  id: FIGUEIRA_HQ_ID,
   name: 'Loja 1 - Figueira da Foz (Matriz)',
   slug: 'figueira-da-foz',
-  nif: '500123456',
-  address: 'Avenida 25 de Abril, Edifício Claridade',
-  city: 'Figueira da Foz',
-  postalCode: '3080-001',
-  phone: '+351 913 550 770',
-  mbwayPhone: '+351 913 550 770',
   currency: 'EUR',
   isHeadquarters: true,
   active: true,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
 }
 
-export const DEFAULT_TORRES_NOVAS_TENANT: Tenant = {
-  id: '22222222-2222-2222-2222-222222222222',
-  name: 'Loja 2 - Torres Novas (Filial 1)',
-  slug: 'torres-novas',
-  nif: '517968223',
-  address: 'Av Manoel de Figueiredo 12 RC Direito',
-  city: 'Torres Novas',
-  postalCode: '2350-001',
-  phone: '+351 911 050 264',
-  mbwayPhone: '+351 911 050 264',
-  currency: 'EUR',
-  isHeadquarters: false,
-  active: true,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-}
 
-export const DEFAULT_AVEIRO_FRANCHISE_TENANT: Tenant = {
-  id: '33333333-3333-3333-3333-333333333333',
-  name: 'Loja 3 - Aveiro (Franquia)',
-  slug: 'aveiro',
-  nif: '500333222',
-  address: 'Avenida Dr. Lourenço Peixinho 85',
-  city: 'Aveiro',
-  postalCode: '3800-164',
-  phone: '+351 913 300 400',
-  mbwayPhone: '+351 913 300 400',
-  currency: 'EUR',
-  isHeadquarters: false,
-  active: true,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-}
-
-// Retrocompatibilidade
-export const DEFAULT_AVEIRO_TENANT = DEFAULT_FIGUEIRA_TENANT
-
-export const INITIAL_TENANTS: Tenant[] = [
-  DEFAULT_FIGUEIRA_TENANT,
-  DEFAULT_TORRES_NOVAS_TENANT,
-  DEFAULT_AVEIRO_FRANCHISE_TENANT,
-]
 
 export function resolveTenant(idOrSlug?: string | null, tenantsList?: Tenant[]): Tenant {
-  const list = tenantsList && tenantsList.length > 0 ? tenantsList : INITIAL_TENANTS
+  const list = tenantsList && tenantsList.length > 0 ? tenantsList : [DEFAULT_FIGUEIRA_TENANT]
   if (!idOrSlug) return list[0] || DEFAULT_FIGUEIRA_TENANT
 
   const clean = String(idOrSlug).trim().toLowerCase()
@@ -78,31 +32,11 @@ export function resolveTenant(idOrSlug?: string | null, tenantsList?: Tenant[]):
   const bySlug = list.find((t) => t.slug.toLowerCase() === clean)
   if (bySlug) return bySlug
 
-  // 3. Busca inteligente por identificadores canônicos
-  if (clean === '3' || clean === 'loja-3' || clean === 'loja 3' || clean.includes('aveiro')) {
-    const aveiro = list.find(
-      (t) => t.id.startsWith('3333') || t.slug.includes('aveiro') || t.name.toLowerCase().includes('aveiro')
-    )
-    if (aveiro) return aveiro
-  }
-
-  if (clean === '2' || clean === 'loja-2' || clean === 'loja 2' || clean.includes('torres')) {
-    const torres = list.find(
-      (t) => t.id.startsWith('2222') || t.slug.includes('torres') || t.name.toLowerCase().includes('torres')
-    )
-    if (torres) return torres
-  }
-
-  if (clean === '1' || clean === 'loja-1' || clean === 'loja 1' || clean.includes('figueira') || clean === 'matriz') {
-    const figueira = list.find(
-      (t) => t.id.startsWith('1111') || t.slug.includes('figueira') || t.name.toLowerCase().includes('figueira')
-    )
-    if (figueira) return figueira
-  }
-
-  // 4. Busca parcial no slug ou nome
-  const partial = list.find((t) => t.slug.toLowerCase().includes(clean) || t.name.toLowerCase().includes(clean))
-  if (partial) return partial
+  // 3. Busca inteligente por correspondência no nome ou slug
+  const matched = list.find(
+    (t) => t.slug.toLowerCase().includes(clean) || t.name.toLowerCase().includes(clean)
+  )
+  if (matched) return matched
 
   return list[0] || DEFAULT_FIGUEIRA_TENANT
 }
@@ -152,11 +86,13 @@ interface FranchiseState {
   getTenant: (idOrSlug?: string | null) => Tenant | undefined
 }
 
+export const INITIAL_TENANTS: Tenant[] = [DEFAULT_FIGUEIRA_TENANT]
+
 export const useFranchiseStore = create<FranchiseState>()(
   persist(
     (set, get) => ({
       currentTenant: DEFAULT_FIGUEIRA_TENANT,
-      tenants: INITIAL_TENANTS,
+      tenants: [DEFAULT_FIGUEIRA_TENANT],
       setCurrentTenant: (tenant: Tenant) => {
         set({ currentTenant: tenant })
       },

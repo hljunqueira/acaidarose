@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { query } from '@/lib/db/postgres'
+import { normalizeTenantId } from '@/lib/repositories/tenantsRepository'
+
+export const dynamic = 'force-dynamic'
 
 export interface TVMarqueeConfig {
   promoText: string
@@ -10,25 +14,26 @@ export interface TVMarqueeConfig {
   speedSeconds: number
 }
 
-const DEFAULT_CONFIG: TVMarqueeConfig = {
-  promoText: '',
-  idleText: '',
-  showPreparingOrders: true,
-  textColor: '#E9D5FF',
-  fontFamily: 'sans',
-  fontSize: 'text-xl',
-  speedSeconds: 25,
-}
-
-// Armazenamento em memória por tenant
-const marqueeConfigsByTenant: Record<string, TVMarqueeConfig> = {}
-
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const tenantId = searchParams.get('tenantId') || 'default'
+    const rawTenant = searchParams.get('tenantId') || searchParams.get('loja') || ''
+    const tenantId = normalizeTenantId(rawTenant)
 
-    const config = marqueeConfigsByTenant[tenantId] || marqueeConfigsByTenant['default'] || DEFAULT_CONFIG
+    const res = await query(
+      `SELECT marquee_config FROM store_tv_configs WHERE tenant_id = $1`,
+      [tenantId]
+    )
+
+    const config: TVMarqueeConfig = res.rows[0]?.marquee_config || {
+      promoText: '',
+      idleText: '',
+      showPreparingOrders: true,
+      textColor: '#E9D5FF',
+      fontFamily: 'sans',
+      fontSize: 'text-xl',
+      speedSeconds: 25,
+    }
 
     return NextResponse.json({
       success: true,
@@ -42,27 +47,29 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { config, tenantId } = body
+    const { config, tenantId: rawTenant } = body
 
     if (!config) {
       return NextResponse.json({ success: false, error: 'Configuração é obrigatória' }, { status: 400 })
     }
 
-    const merged: TVMarqueeConfig = {
-      ...DEFAULT_CONFIG,
-      ...config,
-    }
+    const tenantId = normalizeTenantId(rawTenant)
 
-    if (tenantId) {
-      marqueeConfigsByTenant[tenantId] = merged
-    }
-    marqueeConfigsByTenant['default'] = merged
+    await query(
+      `INSERT INTO store_tv_configs (tenant_id, marquee_config, updated_at)
+       VALUES ($1, $2::jsonb, NOW())
+       ON CONFLICT (tenant_id) DO UPDATE
+       SET marquee_config = EXCLUDED.marquee_config,
+           updated_at = NOW()`,
+      [tenantId, JSON.stringify(config)]
+    )
 
     return NextResponse.json({
       success: true,
-      config: merged,
+      config,
     })
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }
+

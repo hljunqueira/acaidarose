@@ -1,5 +1,59 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Eliminação Total de Mocks, Arrays Default e Ternários Hardcoded + Governança de Vídeos da TV Franqueadora [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Conectar 100% dos dados a tabelas reais do PostgreSQL (`tenants`, `store_tv_configs`, `store_qrcode_settings`, `audit_logs`, `tables`), eliminar todos os arrays e objetos default (`DEFAULT_TORRES_NOVAS_TENANT`, `DEFAULT_AVEIRO_FRANCHISE_TENANT`, `INITIAL_TENANTS`, `tenantQrConfigCache`, `marqueeConfigsByTenant`, `mock1/mock2`), proibir ternários fixos de IDs/slugs e implementar governança estrita na Smart TV (apenas a Matriz cadastra vídeos e replica para todas as lojas da rede; filiais apenas ativam/pausam localmente).
+  - **Alterações Realizadas**:
+    1. **Multi-Tenant Dinâmico & Lojas**:
+       - `lib/stores/franchiseStore.ts`: Removidos `DEFAULT_TORRES_NOVAS_TENANT`, `DEFAULT_AVEIRO_FRANCHISE_TENANT`, `INITIAL_TENANTS` e o alias `DEFAULT_AVEIRO_TENANT`. Stores carregam dinamicamente da API `/api/tenants` conectada ao PostgreSQL.
+       - `app/page.tsx`: Removidas referências a `DEFAULT_AVEIRO_TENANT`.
+    2. **Governança de TV & Replicação Oficial da Franqueadora**:
+       - `app/api/tv/settings/route.ts`: Implementada checagem de Matriz Franqueadora (`isHeadquarters` ou ID Figueira da Foz).
+       - Replicação oficial ativada via `replicateToAllStores: true`: Matriz Franqueadora propaga a lista de vídeos para todas as lojas em `store_tv_configs`.
+       - Filiais/Franquias bloqueadas de adicionar ou excluir vídeos da playlist (HTTP 403). Podem apenas alterar `active: true/false`.
+       - `components/admin/tv/TVOrdersControlView.tsx`:
+         - Adicionado botão **"Replicar Playlist para Todas as Lojas"** exclusivo da Matriz com confirmação e feedback em toast.
+         - Dropzone e formulário de novo vídeo renderizados exclusivamente para a Matriz; filiais recebem cartão informativo padronizado.
+         - Botões de "Tags & Badge" e exclusão de vídeos restritos à Matriz. Filiais possuem exclusivamente o botão `Pausar / Ativar`.
+    3. **Letreiro Digital de TV (`marquee`) no PostgreSQL**:
+       - `app/api/tv/marquee/route.ts`: Eliminado objeto em memória `marqueeConfigsByTenant` e `DEFAULT_CONFIG`. Conexão direta com a coluna `marquee_config` na tabela `store_tv_configs` do PostgreSQL.
+    4. **QR Code, Mesas e Cardápio Sem Ternários Hardcoded**:
+       - `app/api/qrcode-config/route.ts`: Eliminado cache em memória `tenantQrConfigCache`. Removidos ternários `startsWith('11111111') ? 'aveiro' : 'torres-novas'`, utilizando os campos reais `t.slug` e `t.name`.
+       - `app/api/tables/token/[token]/route.ts`: Removidos ternários hardcoded de lojas; consulta direta da mesa e do tenant no banco.
+       - `app/api/products/route.ts`: Retorna dinamicamente `tenantSlug` e `tenantNif`.
+       - `app/menu/page.tsx`: Eliminados ternários fixos de nomes de loja e slugs em `setTenant`, consumindo os dados reais retornados pela API.
+    5. **Auditoria, Agendamento e Diálogos de Opção**:
+       - `lib/repositories/auditRepository.ts`: Eliminado ternário de IDs na resolução de nomes de loja.
+       - `components/admin/menu/MenuSchedulesAdmin.tsx`: Removida checagem estática `|| tenantId === 'aveiro'`; usa verificação dinâmica de `currentTenant?.isHeadquarters`.
+       - `components/admin/menu/OptionModelDialog.tsx`: Removidos mocks `mock1` e `mock2` e emoji `📷`. Utiliza `<Camera className="h-3.5 w-3.5" />` e exibe estado vazio limpo quando não há itens.
+    6. **Validação**:
+       - Compilação completa via `npx tsc --noEmit` executada com **código de saída 0** (zero erros).
+
+
+- **Eliminação de Arrays Default & Badges Totalmente Customizáveis pelo Usuário (`TVOrdersControlView`, `TVOrdersPanelView`, `tvBroadcast`, `ContainerAssemblyRulesDialog`) [CONCLUÍDO & VALIDADO]**:
+  - **Causa Raiz Resolvida**:
+    - O array `DEFAULT_OFFICIAL_VIDEOS` injetava 5 vídeos mockados de demonstração toda vez que o banco não continha vídeos ou quando o botão "Restaurar Oficiais" era clicado.
+    - O player da Smart TV em `TVOrdersPanelView` possuía fallback estático para `v-institucional` em vez de renderizar um estado limpo institucional quando a loja não possuía vídeos configurados.
+    - As mídias tinham selos e badges forçados (`isOfficial` forçava "OFICIAL FRANQUEADORA"), sem dar ao operador a escolha de ter ou não badge no vídeo.
+    - Havia um banner com emojis decorativos (`📐 📦 🎬`) com orientações de resolução que violava as diretrizes de design clean corporativo do projeto.
+    - Em `ContainerAssemblyRulesDialog`, havia uma lista mockada `DEFAULT_CONTAINER_RULES` com nomes desatualizados (ex.: "Barca"), desconectada do banco.
+  - **Correções Aplicadas**:
+    - `lib/utils/tvBroadcast.ts`: interface `TVVideoItem` atualizada com `showBadge?: boolean` e `badgeText?: string`. `DEFAULT_OFFICIAL_VIDEOS` zerado e `getStoreTVVideos()` ajustado para retornar exclusivamente registros reais ou array vazio `[]`, limpando caches legados com IDs mockados.
+    - `components/admin/tv/TVOrdersControlView.tsx`:
+      - Botão "Restaurar Oficiais" removido.
+      - Banner de resolução e emojis (`📐 📦 🎬`) removido.
+      - Estado vazio de alta fidelidade implementado quando a lista de vídeos da loja está vazia.
+      - Badges nos cards dos vídeos agora são 100% opcionais e customizáveis: só aparecem se `video.showBadge && video.badgeText`.
+      - Modal de edição expandido com seção dedicada "Selo / Badge do Vídeo (Opcional)": toggle Ativar/Desativar, input de texto livre e chips de opções rápidas ("Oficial Franqueadora", "Destaque", "Promoção", "Novidade", "Exclusivo").
+      - Persistência imediata de edições no PostgreSQL via `syncTVSettings({ videosPlaylist: updated })`.
+    - `components/admin/tv/TVOrdersPanelView.tsx`:
+      - Fallback mockado removido; resolução segura de `currentVideo`.
+      - Se houver vídeo com badge ativada, renderiza o selo flutuante elegante na Smart TV.
+      - Se a loja não tiver vídeos ativos cadastrados, renderiza tela institucional limpa com logo oficial e nome da loja.
+    - `components/admin/menu/ContainerAssemblyRulesDialog.tsx`:
+      - Array estático `DEFAULT_CONTAINER_RULES` eliminado.
+      - Conexão direta com `/api/catalog?tenantId=...`, carregando os recipientes e copos reais do banco de dados e persistindo alterações via `/api/products`.
+    - Validação de compilação TypeScript executada com sucesso (`npx tsc --noEmit` -> Código 0).
+
 - **Eliminação de Mocks/Seeds/Defaults de Mídia & Reflexo Fiel de Fotos de Itens (`/menu` e Admin) [CONCLUÍDO & VALIDADO]**:
   - **Causa Raiz Resolvida**:
     - Dicionários estáticos hardcoded (`CUP_IMAGES` e `CUP_VIDEOS`) em `CustomerMenuHome.tsx` e `CustomerProductDetail.tsx` forçavam o vídeo de stock `/videos/hero_gliding_texture.mp4` e fotos padrão sobre os produtos do banco de dados (ex: recipiente de 750g), ignorando a ausência de vídeo e sobrepondo a foto cadastrada.

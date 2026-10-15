@@ -4,30 +4,6 @@ import { getTenantByIdOrSlug } from '@/lib/repositories/tenantsRepository'
 
 export const dynamic = 'force-dynamic'
 
-// Cache em memória / persistência rápida por tenant
-const tenantQrConfigCache: Record<string, any> = {
-  '11111111-1111-1111-1111-111111111111': {
-    mode: 'ORDER_EMISSION',
-    pickupModel: 'TV_CALL',
-    allowTableTransfer: true,
-    allowMbwayPayment: true,
-    allowInternationalPhone: true,
-    customerNameRule: 'OPTIONAL',
-    customerPhoneRule: 'OPTIONAL',
-    customerNifRule: 'OPTIONAL',
-  },
-  '22222222-2222-2222-2222-222222222222': {
-    mode: 'ORDER_EMISSION',
-    pickupModel: 'TV_CALL',
-    allowTableTransfer: true,
-    allowMbwayPayment: true,
-    allowInternationalPhone: true,
-    customerNameRule: 'OPTIONAL',
-    customerPhoneRule: 'OPTIONAL',
-    customerNifRule: 'OPTIONAL',
-  },
-}
-
 export async function GET(req: NextRequest) {
   try {
     const rawTenant =
@@ -66,8 +42,8 @@ export async function GET(req: NextRequest) {
       ifthenpayAntiPhishingKey: saved?.ifthenpay_anti_phishing_key || '',
       bannerUrl: '',
       tenantId,
-      storeNumber: tenantId.startsWith('11111111') ? 1 : 2,
-      storeSlug: tenantId.startsWith('11111111') ? 'aveiro' : 'torres-novas',
+      storeSlug: t?.slug || 'loja',
+      storeName: t?.name || 'Loja',
     }
 
     return NextResponse.json({ config })

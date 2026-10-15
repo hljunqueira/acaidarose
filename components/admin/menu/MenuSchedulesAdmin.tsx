@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
+import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import { Clock, Calendar, Check, Lock, Send, Sparkles, Building2 } from 'lucide-react'
 import FranchiseRequestDialog from './FranchiseRequestDialog'
 
@@ -27,7 +28,13 @@ const DAYS_OF_WEEK = [
 
 export default function MenuSchedulesAdmin({ tenantId }: MenuSchedulesAdminProps) {
   const { user } = useAuthStore()
-  const isFranchisor = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN' || tenantId?.startsWith('11111111') || tenantId === 'aveiro'
+  const { currentTenant } = useFranchiseStore()
+  const isFranchisor =
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'FRANCHISOR_ADMIN' ||
+    currentTenant?.isHeadquarters === true ||
+    tenantId?.startsWith('11111111') ||
+    tenantId === 'figueira-da-foz'
 
   const [requestOpen, setRequestOpen] = useState(false)
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6])

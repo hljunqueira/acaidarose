@@ -162,12 +162,11 @@ function MenuContent() {
       .then((r) => r.json())
       .then((data) => {
         setCatalog(data)
-        const storeName = data.tenantName || (activeLoja === '2' || activeLoja.includes('torres') ? 'Loja 2 - Torres Novas' : activeLoja === '3' || activeLoja.includes('aveiro') ? 'Loja 3 - Aveiro' : 'Loja 1 - Figueira da Foz (Matriz)')
         setTenant({
           id: data.tenantId || '11111111-1111-1111-1111-111111111111',
-          name: storeName,
-          slug: data.tenantSlug || (data.tenantId?.startsWith('22222222') ? 'torres-novas' : data.tenantId?.startsWith('33333333') ? 'aveiro' : 'figueira-da-foz'),
-          nif: '500123456',
+          name: data.tenantName || 'Açaí da Rose',
+          slug: data.tenantSlug || 'loja',
+          nif: data.tenantNif || '500123456',
           currency: 'EUR',
           openingHours: data.tenantOpeningHours || null,
           active: true,

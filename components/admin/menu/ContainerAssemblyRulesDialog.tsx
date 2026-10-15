@@ -27,14 +27,6 @@ interface ContainerRuleItem {
   limiteComplementosGratis: number
 }
 
-const DEFAULT_CONTAINER_RULES: ContainerRuleItem[] = [
-  { id: 'cnt-250', name: 'Açaí 250g', weightGrams: 250, precoBase: 6.50, limiteBases: 1, limiteFrutas: 2, limiteToppings: 3, limiteComplementosGratis: 3 },
-  { id: 'cnt-350', name: 'Açaí 350g', weightGrams: 350, precoBase: 9.00, limiteBases: 1, limiteFrutas: 3, limiteToppings: 4, limiteComplementosGratis: 4 },
-  { id: 'cnt-500', name: 'Açaí 500g', weightGrams: 500, precoBase: 12.90, limiteBases: 2, limiteFrutas: 999, limiteToppings: 999, limiteComplementosGratis: 999 },
-  { id: 'cnt-750', name: 'Açaí 750g', weightGrams: 750, precoBase: 18.90, limiteBases: 2, limiteFrutas: 999, limiteToppings: 999, limiteComplementosGratis: 999 },
-  { id: 'cnt-1000', name: 'Açaí 1 Kg (Barca)', weightGrams: 1000, precoBase: 25.90, limiteBases: 3, limiteFrutas: 999, limiteToppings: 999, limiteComplementosGratis: 999 },
-]
-
 interface ContainerAssemblyRulesDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -48,8 +40,62 @@ export default function ContainerAssemblyRulesDialog({
   tenantId,
   onSaved,
 }: ContainerAssemblyRulesDialogProps) {
-  const [rules, setRules] = useState<ContainerRuleItem[]>(DEFAULT_CONTAINER_RULES)
+  const [rules, setRules] = useState<ContainerRuleItem[]>([])
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const fetchContainers = async () => {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/catalog?tenantId=${encodeURIComponent(tenantId)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data.containers)) {
+            const mapped: ContainerRuleItem[] = data.containers.map((c: any) => {
+              const weight = Number(c.weightGrams) || 0
+              const frutasGroup = c.optionGroups?.find(
+                (g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta')
+              )
+              const toppingsGroup = c.optionGroups?.find(
+                (g: any) =>
+                  g.id === 'model-toppings' ||
+                  g.name?.toLowerCase().includes('acompanhamento') ||
+                  g.name?.toLowerCase().includes('topping')
+              )
+
+              const limiteBases = Number(c.limiteBases) || 2
+              const limiteFrutas = frutasGroup
+                ? Number(frutasGroup.maxQty) || (weight >= 500 ? 999 : weight === 250 ? 2 : 3)
+                : weight >= 500 ? 999 : weight === 250 ? 2 : 3
+              const limiteToppings = toppingsGroup
+                ? Number(toppingsGroup.maxQty) || (weight >= 500 ? 999 : weight === 250 ? 3 : 4)
+                : weight >= 500 ? 999 : weight === 250 ? 3 : 4
+
+              return {
+                id: c.id,
+                name: c.name,
+                weightGrams: weight,
+                precoBase: Number(c.precoBase) || 0,
+                limiteBases,
+                limiteFrutas,
+                limiteToppings,
+                limiteComplementosGratis:
+                  Number(c.limiteComplementosGratis) || (weight >= 500 ? 999 : 3),
+              }
+            })
+            setRules(mapped)
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao carregar copos reais:', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchContainers()
+  }, [open, tenantId])
 
   const handleUpdateField = (id: string, field: keyof ContainerRuleItem, value: any) => {
     setRules((prev) =>
@@ -60,10 +106,24 @@ export default function ContainerAssemblyRulesDialog({
   const handleSave = async () => {
     setSaving(true)
     try {
-      // Salvar regras
-      toast.success('Regras de montagem do açaí configuradas e ativas no PDV e QR Code!')
+      for (const rule of rules) {
+        await fetch('/api/products', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category: 'containers',
+            id: rule.id,
+            tenantId,
+            limiteBases: rule.limiteBases,
+            limiteComplementosGratis: rule.limiteComplementosGratis,
+          }),
+        })
+      }
+      toast.success('Regras de montagem do açaí configuradas e salvas no banco de dados!')
       if (onSaved) onSaved()
       onOpenChange(false)
+    } catch {
+      toast.error('Erro ao salvar algumas regras de montagem.')
     } finally {
       setSaving(false)
     }
@@ -89,7 +149,16 @@ export default function ContainerAssemblyRulesDialog({
         </DialogHeader>
 
         <div className="space-y-4 my-3 max-h-[60vh] overflow-y-auto pr-1">
-          {rules.map((rule) => {
+          {loading ? (
+            <div className="py-8 text-center text-xs text-purple-700/70 dark:text-purple-300/70">
+              Carregando recipientes e copos cadastrados no banco de dados...
+            </div>
+          ) : rules.length === 0 ? (
+            <div className="py-8 text-center text-xs text-purple-700/70 dark:text-purple-300/70">
+              Nenhum recipiente ou copo de açaí cadastrado no catálogo.
+            </div>
+          ) : (
+            rules.map((rule) => {
             const isFrutasLivres = rule.limiteFrutas >= 999
             const isToppingsLivres = rule.limiteToppings >= 999
 
@@ -183,7 +252,7 @@ export default function ContainerAssemblyRulesDialog({
                 </div>
               </div>
             )
-          })}
+          }))}
         </div>
 
         <DialogFooter className="gap-2 pt-2 border-t border-purple-100 dark:border-white/10">

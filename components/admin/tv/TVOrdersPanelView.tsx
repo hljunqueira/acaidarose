@@ -304,22 +304,13 @@ export default function TVOrdersPanelView({
     return () => unsubscribeVideos()
   }, [actualTenantId])
 
-  // Resolve os vídeos ativos configurados no PostgreSQL para esta loja
+  // Resolve os vídeos ativos configurados no PostgreSQL para esta loja (sem mocks ou arrays default)
   const activeVideos = useMemo(() => {
-    const list = (storeVideos || []).filter((v) => v.active && Boolean(v.url?.trim()))
-    if (list.length > 0) return list
-    return [
-      {
-        id: 'v-institucional',
-        title: 'Vídeo Institucional Açaí da Rose',
-        url: '/videos/video-institucional.mp4',
-        active: true,
-      },
-    ]
+    return (storeVideos || []).filter((v) => v.active && Boolean(v.url?.trim()))
   }, [storeVideos])
 
-  const currentVideo = activeVideos[currentVideoIndex % activeVideos.length] || activeVideos[0]
-  const currentVideoSrc = currentVideo.url
+  const currentVideo = activeVideos.length > 0 ? (activeVideos[currentVideoIndex % activeVideos.length] || activeVideos[0]) : null
+  const currentVideoSrc = currentVideo?.url || ''
 
   // Rotação de vídeos da loja (se houver mais de 1 cadastrado pela Franqueadora)
   const handleVideoEnded = () => {
@@ -616,58 +607,126 @@ export default function TVOrdersPanelView({
         {/* ========================================================================= */}
         <section className="w-full lg:w-1/2 h-full min-h-0 flex flex-col">
           <div className="w-full h-full min-h-0 rounded-3xl overflow-hidden bg-black border-2 border-white/20 shadow-2xl relative flex flex-col items-center justify-center">
-            <video
-              ref={videoRef}
-              key={currentVideoSrc}
-              src={currentVideoSrc}
-              autoPlay
-              loop={activeVideos.length <= 1}
-              muted={isVideoMuted}
-              playsInline
-              preload="auto"
-              onEnded={handleVideoEnded}
-              className="w-full h-full object-cover"
-            />
+            {currentVideoSrc ? (
+              <>
+                <video
+                  ref={videoRef}
+                  key={currentVideoSrc}
+                  src={currentVideoSrc}
+                  autoPlay
+                  loop={activeVideos.length <= 1}
+                  muted={isVideoMuted}
+                  playsInline
+                  preload="auto"
+                  onEnded={handleVideoEnded}
+                  className="w-full h-full object-cover"
+                />
 
-            {/* Botões Minimalistas no Canto Inferior Esquerdo (Início) */}
-            <div className="absolute z-10 bottom-3 left-3 flex items-center gap-1.5 sm:gap-2">
-              {/* Botão Minimalista de Som */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (videoRef.current) {
-                    if (isVideoMuted) {
-                      unmuteAllAudio()
-                    } else {
-                      videoRef.current.muted = true
-                      setIsVideoMuted(true)
-                    }
-                  }
-                }}
-                className={`h-7 w-7 sm:h-8 sm:w-8 rounded-xl border flex items-center justify-center cursor-pointer shadow-lg backdrop-blur-md transition ${
-                  isVideoMuted
-                    ? 'bg-pink-600/70 border-pink-400 text-pink-100 animate-pulse'
-                    : 'bg-black/60 hover:bg-black/80 border-white/20 text-white/90 hover:text-white'
-                }`}
-                title={isVideoMuted ? 'Ativar som' : 'Silenciar'}
-              >
-                {isVideoMuted ? <VolumeX className="h-3.5 w-3.5 text-pink-300" /> : <Volume2 className="h-3.5 w-3.5 text-emerald-400" />}
-              </button>
+                {/* Selo / Badge do Vídeo (se configurado pelo operador) */}
+                {currentVideo?.showBadge && currentVideo?.badgeText?.trim() && (
+                  <div className="absolute top-4 left-4 z-10 px-3.5 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-pink-500/50 text-pink-300 text-xs sm:text-sm font-black uppercase tracking-wider shadow-xl animate-in fade-in">
+                    {currentVideo.badgeText.trim()}
+                  </div>
+                )}
 
-              {/* Botão Minimalista de Ecrã Inteiro */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleFullscreen()
-                }}
-                className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-black/60 hover:bg-black/80 border border-white/20 text-white/90 hover:text-white flex items-center justify-center cursor-pointer shadow-lg backdrop-blur-md transition"
-                title="Ecrã Inteiro"
-              >
-                {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
-              </button>
-            </div>
+                {/* Tags Sobrepostas nas Extremidades */}
+                {(currentVideo?.showTags ?? true) && (currentVideo?.tagLeft || currentVideo?.tagRight) && (
+                  <div
+                    className={`absolute z-10 pointer-events-none px-4 w-full flex items-center justify-between ${
+                      currentVideo.tagPosition === 'TOP'
+                        ? currentVideo.showBadge && currentVideo.badgeText?.trim()
+                          ? 'top-14'
+                          : 'top-4'
+                        : currentVideo.tagPosition === 'SPLIT'
+                        ? 'top-4'
+                        : 'bottom-4'
+                    }`}
+                  >
+                    {currentVideo.tagLeft ? (
+                      <div className="px-3 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs sm:text-sm font-black shadow-lg">
+                        {currentVideo.tagLeft}
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+                    {currentVideo.tagRight && (
+                      <div className="px-3 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-pink-500/30 text-pink-300 text-xs sm:text-sm font-black shadow-lg ml-auto">
+                        {currentVideo.tagRight}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Botões Minimalistas no Canto Inferior Esquerdo */}
+                <div className="absolute z-10 bottom-3 left-3 flex items-center gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (videoRef.current) {
+                        if (isVideoMuted) {
+                          unmuteAllAudio()
+                        } else {
+                          videoRef.current.muted = true
+                          setIsVideoMuted(true)
+                        }
+                      }
+                    }}
+                    className={`h-7 w-7 sm:h-8 sm:w-8 rounded-xl border flex items-center justify-center cursor-pointer shadow-lg backdrop-blur-md transition ${
+                      isVideoMuted
+                        ? 'bg-pink-600/70 border-pink-400 text-pink-100 animate-pulse'
+                        : 'bg-black/60 hover:bg-black/80 border-white/20 text-white/90 hover:text-white'
+                    }`}
+                    title={isVideoMuted ? 'Ativar som' : 'Silenciar'}
+                  >
+                    {isVideoMuted ? <VolumeX className="h-3.5 w-3.5 text-pink-300" /> : <Volume2 className="h-3.5 w-3.5 text-emerald-400" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleFullscreen()
+                    }}
+                    className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-black/60 hover:bg-black/80 border border-white/20 text-white/90 hover:text-white flex items-center justify-center cursor-pointer shadow-lg backdrop-blur-md transition"
+                    title="Ecrã Inteiro"
+                  >
+                    {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-[#12011f] via-[#1a032c] to-[#0a0012]">
+                <img
+                  src="/logo-oficial-1.png"
+                  alt="Açaí da Rose"
+                  className="max-h-[30vh] sm:max-h-[35vh] w-auto max-w-[80%] object-contain drop-shadow-2xl mb-3"
+                />
+                <h3 className="font-cursive text-3xl sm:text-4xl text-pink-500 font-bold mb-1">
+                  Açaí da Rose
+                </h3>
+                <p className="text-white/80 font-bold text-sm sm:text-base uppercase tracking-wider">
+                  {displayLocation}
+                </p>
+                <p className="text-purple-300/60 text-xs mt-1">
+                  Saboreie o Verdadeiro Açaí Artesanal
+                </p>
+
+                <div className="absolute z-10 bottom-3 right-3">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleFullscreen()
+                    }}
+                    className="h-8 w-8 rounded-xl bg-black/60 hover:bg-black/80 border border-white/20 text-white flex items-center justify-center cursor-pointer shadow-lg backdrop-blur-md transition"
+                    title="Ecrã Inteiro"
+                  >
+                    {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </main>
