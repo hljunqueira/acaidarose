@@ -27,11 +27,13 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
     publish,
     publishAllPending,
     revert,
+    revertItem,
   } = usePublishStore()
 
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [confirmRevertOpen, setConfirmRevertOpen] = useState(false)
   const [isReverting, setIsReverting] = useState(false)
+  const [revertingItemId, setRevertingItemId] = useState<string | null>(null)
   const [replicateAll, setReplicateAll] = useState(false)
 
   const isSuperOrFranchisor = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN'
@@ -84,6 +86,27 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
       }
     } finally {
       setIsReverting(false)
+    }
+  }
+
+  const handleDiscardSingleChange = async (item: any) => {
+    if (!item.id) {
+      toast.error('Identificador da alteração não encontrado')
+      return
+    }
+    setRevertingItemId(item.id)
+    try {
+      const res = await revertItem(item.tenantId || tenantId, item.id, authFetch)
+      if (res.success) {
+        toast.success(res.message || `Alteração "${item.reason}" desfeita com sucesso!`)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('catalog_sync', { detail: { tenantId } }))
+        }
+      } else {
+        toast.error(res.message || 'Erro ao desfazer alteração')
+      }
+    } finally {
+      setRevertingItemId(null)
     }
   }
 
@@ -199,19 +222,49 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
               </p>
             </div>
 
-            <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
               {pendingSummary.map((item, idx) => (
                 <div
-                  key={idx}
-                  className="p-2.5 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-xs flex items-start gap-2"
+                  key={item.id || idx}
+                  className="p-2.5 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-xs flex items-center justify-between gap-2.5"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5 text-pink-600 shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-bold text-foreground">{item.reason}</div>
-                    <div className="text-[10px] text-muted-foreground font-mono">
-                      {new Date(item.timestamp).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  <div className="flex items-start gap-2 min-w-0">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-pink-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="font-bold text-foreground truncate">{item.reason}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 mt-0.5">
+                        <span>{new Date(item.timestamp).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                        {item.scope === 'NETWORK' ? (
+                          <Badge className="bg-pink-100 text-pink-800 dark:bg-pink-950/60 dark:text-pink-300 text-[9px] font-bold py-0 px-1.5 border-0">
+                            Toda a Rede
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 text-[9px] font-bold py-0 px-1.5 border-0">
+                            Loja Atual
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {item.id && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPublishing || isReverting || revertingItemId === item.id}
+                      onClick={() => handleDiscardSingleChange(item)}
+                      className="h-7 px-2 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer shrink-0 transition flex items-center gap-1"
+                      title="Descartar apenas esta alteração indevida"
+                    >
+                      {revertingItemId === item.id ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3 w-3" />
+                      )}
+                      <span>Desfazer</span>
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

@@ -4,8 +4,28 @@ import { create } from 'zustand'
 import { emitCatalogSync } from '@/lib/utils/catalogSync'
 
 export interface PendingChangeItem {
+  id?: string
   reason: string
   timestamp: string
+  entity?: string
+  entityId?: string
+  productName?: string
+  field?: string
+  previousValue?: any
+  newValue?: any
+  scope?: 'NETWORK' | 'STORE'
+  tenantId?: string
+}
+
+export interface MarkDirtyOptions {
+  id?: string
+  entity?: string
+  entityId?: string
+  productName?: string
+  field?: string
+  previousValue?: any
+  newValue?: any
+  applyToAll?: boolean
 }
 
 export interface PendingStoreItem {
@@ -26,7 +46,12 @@ interface PublishState {
   lastCheckedTenantId: string | null
 
   checkPending: (tenantId: string, customFetch?: (url: string, init?: RequestInit) => Promise<Response>) => Promise<void>
-  markDirty: (tenantId: string, reason: string, customFetch?: (url: string, init?: RequestInit) => Promise<Response>) => Promise<void>
+  markDirty: (
+    tenantId: string,
+    reason: string,
+    optionsOrFetch?: MarkDirtyOptions | ((url: string, init?: RequestInit) => Promise<Response>),
+    customFetch?: (url: string, init?: RequestInit) => Promise<Response>
+  ) => Promise<void>
   publish: (
     tenantId: string,
     options?: { replicateAll?: boolean; note?: string },
@@ -35,6 +60,11 @@ interface PublishState {
   publishAllPending: (customFetch?: (url: string, init?: RequestInit) => Promise<Response>) => Promise<{ success: boolean; message?: string }>
   revert: (
     tenantId: string,
+    customFetch?: (url: string, init?: RequestInit) => Promise<Response>
+  ) => Promise<{ success: boolean; message?: string }>
+  revertItem: (
+    tenantId: string,
+    changeId: string,
     customFetch?: (url: string, init?: RequestInit) => Promise<Response>
   ) => Promise<{ success: boolean; message?: string }>
 }
@@ -72,22 +102,43 @@ export const usePublishStore = create<PublishState>((set, get) => ({
     }
   },
 
-  markDirty: async (tenantId: string, reason: string, customFetch) => {
+  markDirty: async (tenantId: string, reason: string, optionsOrFetch, customFetch) => {
     if (!tenantId) return
+    const options: MarkDirtyOptions = typeof optionsOrFetch === 'object' && optionsOrFetch !== null ? optionsOrFetch : {}
+    const fetcher = typeof optionsOrFetch === 'function' ? optionsOrFetch : (customFetch || fetch)
+    const changeId = options.id || `chg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+
     // Atualização otimista imediata na UI
-    const newItem: PendingChangeItem = { reason, timestamp: new Date().toISOString() }
+    const newItem: PendingChangeItem = {
+      id: changeId,
+      reason,
+      timestamp: new Date().toISOString(),
+      entity: options.entity || 'product',
+      entityId: options.entityId,
+      productName: options.productName,
+      field: options.field,
+      previousValue: options.previousValue,
+      newValue: options.newValue,
+      scope: options.applyToAll ? 'NETWORK' : 'STORE',
+      tenantId,
+    }
+
     set((state) => ({
       hasPendingChanges: true,
       pendingCount: state.pendingCount + 1,
-      pendingSummary: [newItem, ...state.pendingSummary].slice(0, 20),
+      pendingSummary: [newItem, ...state.pendingSummary].slice(0, 30),
     }))
 
     try {
-      const fetcher = customFetch || fetch
       await fetcher('/api/catalog/mark-dirty', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, reason }),
+        body: JSON.stringify({
+          tenantId,
+          reason,
+          id: changeId,
+          ...options,
+        }),
       })
     } catch (err) {
       console.error('Erro ao marcar alteração pendente no backend:', err)
@@ -213,6 +264,48 @@ export const usePublishStore = create<PublishState>((set, get) => ({
     } catch (err: any) {
       set({ isPublishing: false })
       return { success: false, message: err?.message || 'Erro de conexão ao reverter' }
+    }
+  },
+
+  revertItem: async (tenantId: string, changeId: string, customFetch) => {
+    if (!tenantId || !changeId) return { success: false, message: 'Parâmetros incompletos' }
+    set({ isPublishing: true })
+
+    try {
+      const fetcher = customFetch || fetch
+      const res = await fetcher('/api/catalog/revert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, changeId }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        set({
+          hasPendingChanges: Boolean(data.hasPendingChanges),
+          pendingCount: Number(data.pendingCount) || 0,
+          pendingSummary: Array.isArray(data.pendingSummary) ? data.pendingSummary : [],
+          isPublishing: false,
+        })
+
+        emitCatalogSync({
+          tenantId,
+          entity: 'catalog',
+          action: 'update',
+        })
+
+        return {
+          success: true,
+          message: data.message || 'Alteração indevida desfeita com sucesso!',
+        }
+      }
+
+      set({ isPublishing: false })
+      return { success: false, message: data.error || 'Falha ao desfazer alteração' }
+    } catch (err: any) {
+      set({ isPublishing: false })
+      return { success: false, message: err?.message || 'Erro de conexão ao desfazer alteração' }
     }
   },
 }))

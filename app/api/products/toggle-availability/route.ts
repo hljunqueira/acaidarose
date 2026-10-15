@@ -28,11 +28,13 @@ export async function POST(request: NextRequest) {
 
     // Franqueadora (SUPER_ADMIN / FRANCHISOR_ADMIN) pode alterar qualquer loja; franqueados apenas a sua
     const isMaster = user.role === 'SUPER_ADMIN' || user.role === 'FRANCHISOR_ADMIN'
+    const applyToAll = isMaster && Boolean(body.applyToAll)
+
     if (!isMaster && user.tenantId && user.tenantId !== tenantId) {
       return NextResponse.json({ error: 'Sem permissão para alterar outra loja' }, { status: 403 })
     }
 
-    const result = await toggleStoreItemStatus(tenantId, productId, updates)
+    const result = await toggleStoreItemStatus(tenantId, productId, updates, applyToAll)
     return NextResponse.json(result)
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Erro ao alterar status' }, { status: 500 })

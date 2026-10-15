@@ -126,13 +126,16 @@ function MenuContent() {
 
   // Validação dinâmica se a mesa realmente existe no salão da loja ativa
   useEffect(() => {
+    // Se o cliente acessou por token de QR Code validado pelo banco, não precisa revalidar
+    if (paramToken) return
+
     if (currentTableNum && activeLoja) {
       fetch(`/api/tables?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, { cache: 'no-store' })
         .then((r) => r.json())
         .then((data) => {
           if (data && Array.isArray(data.tables)) {
             const num = Number(currentTableNum)
-            const exists = data.tables.some((t: any) => Number(t.number) === num)
+            const exists = data.tables.some((t: any) => Number(t.number) === num || Number(t.tableNumber) === num)
             if (!exists) {
               console.warn(`[Menu] Mesa ${currentTableNum} não registada na loja ${activeLoja}. Redirecionando para Catálogo Digital.`)
               setCurrentTableNum('')
@@ -141,7 +144,7 @@ function MenuContent() {
         })
         .catch(() => {})
     }
-  }, [currentTableNum, activeLoja])
+  }, [currentTableNum, activeLoja, paramToken])
 
   // Configurações do QR Code da loja
   const [qrConfig, setQrConfig] = useState<any>({ mode: 'ORDER_EMISSION', allowTableTransfer: true })

@@ -352,8 +352,19 @@ export const setStoreProductPrice = setStorePriceOverride
 export async function toggleStoreItemStatus(
   tenantId: string,
   productId: string,
-  updates: { isAvailable?: boolean; isVisible?: boolean }
-): Promise<{ success: boolean; tenantId: string; productId: string; isAvailable?: boolean; isVisible?: boolean }> {
+  updates: { isAvailable?: boolean; isVisible?: boolean },
+  applyToAll = false
+): Promise<{
+  success: boolean
+  tenantId: string
+  productId: string
+  productName?: string
+  isAvailable?: boolean
+  isVisible?: boolean
+  previousAvailable?: boolean
+  previousVisible?: boolean
+  applyToAll?: boolean
+}> {
   try {
     const existingRes = await query(
       `SELECT is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1 AND product_id = $2`,
@@ -365,27 +376,62 @@ export async function toggleStoreItemStatus(
     const newAvailable = updates.isAvailable !== undefined ? updates.isAvailable : currentAvailable
     const newVisible = updates.isVisible !== undefined ? updates.isVisible : currentVisible
 
-    await query(
-      `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
-       VALUES ($1, $2, $3, $4, timezone('utc'::text, now()))
-       ON CONFLICT (tenant_id, product_id) 
-       DO UPDATE SET is_available = EXCLUDED.is_available, is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
-      [tenantId, productId, newAvailable, newVisible]
+    // Nome do produto para registrar pendência legível
+    const nameRes = await query(
+      `SELECT name FROM product_containers WHERE id::text = $1
+       UNION ALL
+       SELECT name FROM product_bases WHERE id::text = $1
+       UNION ALL
+       SELECT name FROM product_toppings WHERE id::text = $1
+       LIMIT 1`,
+      [productId]
     )
+    const productName = nameRes.rows?.[0]?.name || 'Item do cardápio'
+
+    if (applyToAll) {
+      const tenantsRes = await query(`SELECT id FROM tenants WHERE deleted_at IS NULL`)
+      for (const t of tenantsRes.rows) {
+        await query(
+          `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+           VALUES ($1, $2, $3, $4, timezone('utc'::text, now()))
+           ON CONFLICT (tenant_id, product_id) 
+           DO UPDATE SET is_available = EXCLUDED.is_available, is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+          [t.id, productId, newAvailable, newVisible]
+        )
+      }
+    } else {
+      await query(
+        `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+         VALUES ($1, $2, $3, $4, timezone('utc'::text, now()))
+         ON CONFLICT (tenant_id, product_id) 
+         DO UPDATE SET is_available = EXCLUDED.is_available, is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+        [tenantId, productId, newAvailable, newVisible]
+      )
+    }
 
     await recordAuditLog({
       tenantId,
       action: 'PRODUCT_STATUS_OVERRIDE_UPDATED',
       entity: 'store_product_overrides',
       entityId: productId,
-      message: `Status atualizado na loja (${productId}): visível=${newVisible}, disponível=${newAvailable}`,
-      metadata: { productId, isAvailable: newAvailable, isVisible: newVisible },
+      message: `Status atualizado (${productName}) [${applyToAll ? 'Toda a Rede' : 'Loja Atual'}]: visível=${newVisible}, disponível=${newAvailable}`,
+      metadata: { productId, productName, isAvailable: newAvailable, isVisible: newVisible, applyToAll },
     })
 
-    return { success: true, tenantId, productId, isAvailable: newAvailable, isVisible: newVisible }
+    return {
+      success: true,
+      tenantId,
+      productId,
+      productName,
+      isAvailable: newAvailable,
+      isVisible: newVisible,
+      previousAvailable: currentAvailable,
+      previousVisible: currentVisible,
+      applyToAll,
+    }
   } catch (err) {
     console.error('Erro ao atualizar status override do produto:', err)
-    return { success: false, tenantId, productId, ...updates }
+    return { success: false, tenantId, productId, ...updates, applyToAll }
   }
 }
 

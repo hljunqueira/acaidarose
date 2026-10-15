@@ -18,6 +18,9 @@ import {
   FolderPlus,
   Clock,
   ChevronDown,
+  RotateCcw,
+  ListChecks,
+  CheckCircle2,
 } from 'lucide-react'
 import StoreQuickHoursModal from './StoreQuickHoursModal'
 import ProductRowItem from './ProductRowItem'
@@ -28,6 +31,7 @@ import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 import OptionModelsManagerDialog from './OptionModelsManagerDialog'
 import MenuFilterDialog, { MenuFilterOptions } from './MenuFilterDialog'
 import ReplicateCatalogModal from './ReplicateCatalogModal'
+import ApplyScopeModal from './ApplyScopeModal'
 import { emitCatalogSync, subscribeCatalogSync } from '@/lib/utils/catalogSync'
 import { usePublishStore } from '@/lib/stores/publishStore'
 
@@ -45,9 +49,30 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const { tenants, getTenant, currentTenant } = useFranchiseStore()
   const storeInfo = resolveTenant(tenantId, tenants) || getTenant(tenantId) || currentTenant
   const storeBadgeName = isSuperAdmin ? 'Franqueadora Master' : (storeInfo?.name || 'Filial')
-  const { publish, publishAllPending, revert, isPublishing, markDirty, hasPendingChanges, pendingStores } = usePublishStore()
+  const {
+    publish,
+    publishAllPending,
+    revert,
+    revertItem,
+    isPublishing,
+    markDirty,
+    hasPendingChanges,
+    pendingCount,
+    pendingSummary,
+    pendingStores,
+  } = usePublishStore()
   const [isReverting, setIsReverting] = useState(false)
+  const [revertingItemId, setRevertingItemId] = useState<string | null>(null)
   const [publishOptionsOpen, setPublishOptionsOpen] = useState(false)
+  const [scopeModalOpen, setScopeModalOpen] = useState(false)
+  const [pendingChangesModalOpen, setPendingChangesModalOpen] = useState(false)
+  const [pendingToggleData, setPendingToggleData] = useState<{
+    item: any
+    field?: 'visibility' | 'availability'
+    targetValue?: boolean
+    itemName: string
+    actionLabel: string
+  } | null>(null)
 
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
   const [optionModels, setOptionModels] = useState<OptionModelData[]>([])
@@ -283,25 +308,33 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
     setEditOpen(true)
   }
 
-  const handleToggleStatus = async (item: any, field?: 'visibility' | 'availability', targetValue?: boolean) => {
+  const executeToggleStatus = async (
+    item: any,
+    field?: 'visibility' | 'availability',
+    targetValue?: boolean,
+    applyToAll: boolean = false
+  ) => {
     try {
       const categoryType = item.categoryId !== undefined || item.productType !== undefined || item.weightGrams !== undefined ? 'containers' : item.description !== undefined ? 'bases' : 'toppings'
       
+      const isVis = field === 'visibility'
+      const nextVal = targetValue !== undefined 
+        ? targetValue 
+        : isVis 
+          ? !(item.active !== false) 
+          : !(item.isAvailableInStore !== false)
+
       const payload: any = {
         tenantId,
         productId: item.id,
         category: categoryType,
+        applyToAll,
       }
 
-      if (field === 'visibility') {
-        const nextVisible = targetValue !== undefined ? targetValue : !(item.active !== false)
-        payload.visible = nextVisible
-      } else if (field === 'availability') {
-        const nextAvailable = targetValue !== undefined ? targetValue : !(item.isAvailableInStore !== false)
-        payload.available = nextAvailable
+      if (isVis) {
+        payload.visible = nextVal
       } else {
-        const next = targetValue !== undefined ? targetValue : !(item.isAvailableInStore !== false)
-        payload.available = next
+        payload.available = nextVal
       }
 
       const res = await authFetch(`/api/products/toggle-availability`, {
@@ -312,11 +345,77 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       if (!res.ok) throw new Error('Falha ao atualizar status')
 
-      await markDirty(tenantId, 'Visibilidade ou disponibilidade de item alterada', authFetch)
+      const fieldName = isVis ? 'visibilidade' : 'disponibilidade'
+      const actionName = nextVal ? 'ativada' : 'pausada'
+      const scopeLabel = applyToAll ? 'em toda a rede' : 'nesta loja'
+      const reason = `"${item.name}" teve ${fieldName} ${actionName} ${scopeLabel}`
+
+      await markDirty(
+        tenantId,
+        reason,
+        {
+          applyToAll,
+          entity: 'product',
+          entityId: item.id,
+          productName: item.name,
+          field: isVis ? 'visibility' : 'availability',
+          previousValue: isVis ? (item.active !== false) : (item.isAvailableInStore !== false),
+          newValue: nextVal,
+        },
+        authFetch
+      )
+
       setHasPendingPublish(true)
       fetchCatalog()
+      toast.success(applyToAll ? 'Alteração propagada para toda a rede!' : 'Alteração aplicada nesta loja!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao alterar status')
+    }
+  }
+
+  const handleToggleStatus = async (item: any, field?: 'visibility' | 'availability', targetValue?: boolean) => {
+    const isVis = field === 'visibility'
+    const nextVal = targetValue !== undefined 
+      ? targetValue 
+      : isVis 
+        ? !(item.active !== false) 
+        : !(item.isAvailableInStore !== false)
+
+    const actionLabel = isVis
+      ? (nextVal ? 'Tornar visível no cardápio' : 'Ocultar do cardápio')
+      : (nextVal ? 'Marcar como disponível para venda' : 'Pausar disponibilidade para venda')
+
+    if (isSuperAdmin) {
+      setPendingToggleData({
+        item,
+        field,
+        targetValue,
+        itemName: item.name || 'Produto',
+        actionLabel,
+      })
+      setScopeModalOpen(true)
+      return
+    }
+
+    await executeToggleStatus(item, field, targetValue, false)
+  }
+
+  const handleDiscardSingleChange = async (change: any) => {
+    if (!change.id) {
+      toast.error('Identificador da alteração não encontrado')
+      return
+    }
+    setRevertingItemId(change.id)
+    try {
+      const res = await revertItem(change.tenantId || tenantId, change.id, authFetch)
+      if (res.success) {
+        toast.success(res.message || 'Alteração desfeita com sucesso!')
+        await fetchCatalog()
+      } else {
+        toast.error(res.message || 'Erro ao desfazer alteração')
+      }
+    } finally {
+      setRevertingItemId(null)
     }
   }
 
@@ -659,16 +758,30 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           )}
 
           {(hasPendingPublish || hasPendingChanges) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRevertChanges}
-              disabled={isPublishing || isReverting}
-              className="border-red-300 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 h-8 px-2.5 text-xs rounded-xl font-bold cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
-            >
-              {isReverting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-              <span>{isReverting ? 'Revertendo...' : 'Reverter'}</span>
-            </Button>
+            <>
+              {pendingSummary.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPendingChangesModalOpen(true)}
+                  className="border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 h-8 px-2.5 text-xs rounded-xl font-bold cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                >
+                  <ListChecks className="h-3.5 w-3.5 text-pink-600" />
+                  <span>Ver Alterações ({pendingCount})</span>
+                </Button>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRevertChanges}
+                disabled={isPublishing || isReverting}
+                className="border-red-300 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 h-8 px-2.5 text-xs rounded-xl font-bold cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
+              >
+                {isReverting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                <span>{isReverting ? 'Revertendo...' : 'Reverter'}</span>
+              </Button>
+            </>
           )}
 
           <Button
@@ -1085,10 +1198,136 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Escopo para Franqueadora (Rede vs Loja Atual) */}
+      <ApplyScopeModal
+        open={scopeModalOpen}
+        onOpenChange={setScopeModalOpen}
+        itemName={pendingToggleData?.itemName || ''}
+        actionLabel={pendingToggleData?.actionLabel || ''}
+        currentStoreName={storeBadgeName}
+        storesCount={tenants.length || 3}
+        onConfirm={(applyToAll) => {
+          if (pendingToggleData) {
+            executeToggleStatus(
+              pendingToggleData.item,
+              pendingToggleData.field,
+              pendingToggleData.targetValue,
+              applyToAll
+            )
+          }
+        }}
+      />
+
+      {/* Modal com Lista Detalhada de Alterações e Descarte Individual */}
+      <Dialog open={pendingChangesModalOpen} onOpenChange={setPendingChangesModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-[#160228] text-foreground border-purple-100 dark:border-white/10 rounded-3xl p-6 shadow-2xl">
+          <DialogTitle className="text-base sm:text-lg font-black text-purple-950 dark:text-white flex items-center gap-2">
+            <ListChecks className="h-5 w-5 text-pink-600" />
+            <span>Alterações Pendentes de Publicação</span>
+          </DialogTitle>
+
+          <div className="space-y-3 my-3">
+            <p className="text-xs text-muted-foreground">
+              Revise as alterações salvas antes de publicar. Você pode desfazer qualquer alteração indevida individualmente:
+            </p>
+
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+              {pendingSummary.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  className="p-2.5 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-xs flex items-center justify-between gap-2.5"
+                >
+                  <div className="flex items-start gap-2 min-w-0">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-pink-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="font-bold text-foreground truncate">{item.reason}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 mt-0.5">
+                        <span>{new Date(item.timestamp).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                        {item.scope === 'NETWORK' ? (
+                          <Badge className="bg-pink-100 text-pink-800 dark:bg-pink-950/60 dark:text-pink-300 text-[9px] font-bold py-0 px-1.5 border-0">
+                            Toda a Rede
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 text-[9px] font-bold py-0 px-1.5 border-0">
+                            Loja Atual
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {item.id && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPublishing || isReverting || revertingItemId === item.id}
+                      onClick={() => handleDiscardSingleChange(item)}
+                      className="h-7 px-2 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer shrink-0 transition flex items-center gap-1"
+                      title="Descartar apenas esta alteração indevida"
+                    >
+                      {revertingItemId === item.id ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3 w-3" />
+                      )}
+                      <span>Desfazer</span>
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter className="flex items-center justify-between gap-2 pt-2 border-t border-purple-100 dark:border-white/10">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPendingChangesModalOpen(false)}
+              className="rounded-xl text-xs font-bold"
+            >
+              Fechar
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isPublishing || isReverting}
+                onClick={handleRevertChanges}
+                className="rounded-xl border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 hover:bg-red-100 font-bold text-xs"
+              >
+                <span>Reverter Todas</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={isPublishing || isReverting}
+                onClick={handlePublishChanges}
+                className="rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs"
+              >
+                <span>Publicar Agora</span>
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Barra Clean de Alterações Pendentes na Loja */}
       {(hasPendingPublish || hasPendingChanges) && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 dark:bg-[#1f0533]/95 text-white px-5 py-2.5 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3 text-xs font-semibold backdrop-blur-md">
-          <span>Alterações pendentes no cardápio desta loja.</span>
+          <span>Alterações pendentes no cardápio {pendingCount > 0 ? `(${pendingCount})` : ''}.</span>
+          {pendingSummary.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setPendingChangesModalOpen(true)}
+              className="bg-white/10 hover:bg-white/20 text-white font-bold text-xs px-2.5 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1"
+            >
+              <ListChecks className="h-3 w-3 text-pink-400" />
+              <span>Ver Alterações</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={handleRevertChanges}
