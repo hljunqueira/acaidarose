@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
-import { normalizeTenantId } from '@/lib/repositories/tenantsRepository'
+import { resolveTenantId } from '@/lib/repositories/tenantsRepository'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const rawTenant = body.tenantId || ''
-    const tenantId = normalizeTenantId(rawTenant)
+    const tenantId = await resolveTenantId(rawTenant)
     const reason = (body.reason || 'Alteração de catálogo').trim()
     const applyToAll = Boolean(body.applyToAll)
     const changeId = body.id || `chg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`

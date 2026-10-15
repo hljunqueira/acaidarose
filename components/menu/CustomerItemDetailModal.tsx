@@ -13,13 +13,15 @@ import { toast } from 'sonner'
 interface CustomerItemDetailModalProps {
   product: ProductContainer | null
   onClose: () => void
-  onAddToCart: (item: any) => void
+  onAddToCart?: (item: any) => void
+  viewOnly?: boolean
 }
 
 export default function CustomerItemDetailModal({
   product,
   onClose,
   onAddToCart,
+  viewOnly = false,
 }: CustomerItemDetailModalProps) {
   const { language } = useLanguageStore()
   const [quantity, setQuantity] = useState(1)
@@ -143,20 +145,22 @@ export default function CustomerItemDetailModal({
       }
     }
 
-    onAddToCart({
-      containerId: product.id,
-      containerName: displayName,
-      unitPrice: effectiveUnitPrice,
-      baseUnitPrice: unitPrice,
-      quantity,
-      lineTotal: +totalPrice.toFixed(2),
-      selectedBases: [],
-      selectedFruits: [],
-      selectedToppings: [],
-      selectedOptions: selectedOptionsList,
-      options: selectedOptionsList,
-      observations: notes.trim(),
-    })
+    if (onAddToCart) {
+      onAddToCart({
+        containerId: product.id,
+        containerName: displayName,
+        unitPrice: effectiveUnitPrice,
+        baseUnitPrice: unitPrice,
+        quantity,
+        lineTotal: +totalPrice.toFixed(2),
+        selectedBases: [],
+        selectedFruits: [],
+        selectedToppings: [],
+        selectedOptions: selectedOptionsList,
+        options: selectedOptionsList,
+        observations: notes.trim(),
+      })
+    }
     onClose()
   }
 
@@ -191,10 +195,10 @@ export default function CustomerItemDetailModal({
                 className="h-full w-full object-cover"
               />
             </div>
-          ) : product.image ? (
+          ) : (product.image || product.videoPoster) ? (
             <div className="relative h-44 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10">
               <img
-                src={product.image}
+                src={product.image || product.videoPoster || ''}
                 alt={displayName}
                 className="h-full w-full object-cover"
               />
@@ -294,73 +298,89 @@ export default function CustomerItemDetailModal({
             </span>
           </div>
 
-          {/* Seletor de Quantidade */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10">
-            <span className="text-xs font-bold text-slate-700 dark:text-purple-200">
-              {isEn ? 'Quantity' : isEs ? 'Cantidad' : 'Quantidade'}
-            </span>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
-                className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-white/10 text-purple-900 dark:text-white flex items-center justify-center font-bold disabled:opacity-40 transition hover:bg-purple-200 dark:hover:bg-white/20 cursor-pointer disabled:cursor-not-allowed"
-                aria-label="Diminuir quantidade"
-              >
-                <Minus className="h-3.5 w-3.5" />
-              </button>
-              <span className="font-bold text-base w-6 text-center text-slate-900 dark:text-white font-mono">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => q + 1)}
-                className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-white/10 text-purple-900 dark:text-white flex items-center justify-center font-bold transition hover:bg-purple-200 dark:hover:bg-white/20 cursor-pointer"
-                aria-label="Aumentar quantidade"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
+          {!viewOnly && (
+            <>
+              {/* Seletor de Quantidade */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-100 dark:border-white/10">
+                <span className="text-xs font-bold text-slate-700 dark:text-purple-200">
+                  {isEn ? 'Quantity' : isEs ? 'Cantidad' : 'Quantidade'}
+                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                    className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-white/10 text-purple-900 dark:text-white flex items-center justify-center font-bold disabled:opacity-40 transition hover:bg-purple-200 dark:hover:bg-white/20 cursor-pointer disabled:cursor-not-allowed"
+                    aria-label="Diminuir quantidade"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="font-bold text-base w-6 text-center text-slate-900 dark:text-white font-mono">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-white/10 text-purple-900 dark:text-white flex items-center justify-center font-bold transition hover:bg-purple-200 dark:hover:bg-white/20 cursor-pointer"
+                    aria-label="Aumentar quantidade"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
 
-          {/* Observações */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-purple-200">
-              {isEn ? 'Notes / Special Requests' : isEs ? 'Instrucciones especiales' : 'Observações'}
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder={
-                isEn
-                  ? 'e.g. without sugar, extra cold...'
-                  : isEs
-                  ? 'ej: sin azúcar, bien frío...'
-                  : 'Ex: sem açúcar, bem gelado...'
-              }
-              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-black/30 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-              maxLength={120}
-            />
-          </div>
+              {/* Observações */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-purple-200">
+                  {isEn ? 'Notes / Special Requests' : isEs ? 'Instrucciones especiales' : 'Observações'}
+                </label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={
+                    isEn
+                      ? 'e.g. without sugar, extra cold...'
+                      : isEs
+                      ? 'ej: sin azúcar, bien frío...'
+                      : 'Ex: sem açúcar, bem gelado...'
+                  }
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-black/30 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                  maxLength={120}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter className="pt-2 flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="flex-1 rounded-xl text-xs font-bold h-11 border-purple-200 dark:border-white/15 text-slate-700 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 cursor-pointer"
-          >
-            {isEn ? 'Cancel' : isEs ? 'Cancelar' : 'Cancelar'}
-          </Button>
-          <Button
-            type="button"
-            onClick={handleConfirm}
-            className="flex-2 rounded-xl text-xs font-bold h-11 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white shadow-md shadow-pink-600/20 cursor-pointer"
-          >
-            {isEn ? 'Add to Order' : isEs ? 'Añadir al Pedido' : 'Adicionar ao Pedido'} • {formatCurrency(totalPrice)}
-          </Button>
+          {viewOnly ? (
+            <Button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-xl text-xs font-bold h-11 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white shadow-md shadow-pink-600/20 cursor-pointer"
+            >
+              {isEn ? 'Close' : isEs ? 'Cerrar' : 'Fechar'}
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1 rounded-xl text-xs font-bold h-11 border-purple-200 dark:border-white/15 text-slate-700 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 cursor-pointer"
+              >
+                {isEn ? 'Cancel' : isEs ? 'Cancelar' : 'Cancelar'}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirm}
+                className="flex-2 rounded-xl text-xs font-bold h-11 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white shadow-md shadow-pink-600/20 cursor-pointer"
+              >
+                {isEn ? 'Add to Order' : isEs ? 'Añadir al Pedido' : 'Adicionar ao Pedido'} • {formatCurrency(totalPrice)}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

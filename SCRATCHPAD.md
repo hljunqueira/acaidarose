@@ -1,5 +1,33 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Suporte 100% Dinâmico a Novas Lojas / Franquias (Zero Código) [ANALISADO & VALIDADO]**:
+  - **Pergunta do Usuário**: "E quando for loja nova, vai ter que adicionar via código e não pelas configurações da matriz? Responda somente após análise."
+  - **Resultado da Análise Técnica**:
+    1. **Zero Código Necessário**: O cadastro de novas unidades é feito 100% pelas configurações da Matriz no painel administrativo (`FranchiseCorporateView` / `FranchiseAdmin` -> `POST /api/tenants`).
+    2. **Herança Automática do Cardápio Mestre**: Ao salvar a nova loja, a função `createTenant` invoca automaticamente `syncAllStoresCatalog`, clonando instantaneamente os 79 containers, 11 bases, 26 toppings, mídias e regras da Matriz com versão 1 publicada. A loja já nasce pronta para vender.
+    3. **Resolução Dinâmica Completa (Sem Dicionários Fixos)**:
+       - Todas as rotas de TV (`/api/tv/settings`, `/api/tv/marquee`), Mesas (`/api/tables`), Versões (`/api/catalog/version`), Publicação (`/api/catalog/publish`) e Cardápio (`/api/products`) foram atualizadas para usar `resolveTenantId` assíncrono.
+       - A nova unidade funciona de imediato com seu slug (`/menu?loja=coimbra`, `/chamada?loja=coimbra`) ou UUID.
+       - Usuários/caixas, impressoras térmicas e configurações fiscais/horários são configurados diretamente pela interface da Matriz.
+  - **Validação**: `npx tsc --noEmit` código 0; `npm run build` gerou todas as 40 rotas com sucesso (código 0).
+
+- **Publicação Acumulada em Rede, Escopo da Franqueadora & Descarte Individual de Alterações [CONCLUÍDO & VALIDADO]**:
+  - **Problema Reportado**: A Franqueadora alterava vários itens e precisava entrar de loja em loja para publicar; não acumulava para publicar todas de uma vez nem permitia descartar/remover uma alteração indevida sem ter que resetar tudo. Além disso, nas mesas com QR code de Torres Novas, a página não identificava a mesa.
+  - **Causa Raiz & Soluções**:
+    1. *Identificação de Mesas (`/api/tables`, `tablesRepository.ts`, `app/menu/page.tsx`)*:
+       - O endpoint recebia slug (`torres-novas`) e comparava diretamente com `tenant_id::text` (UUID), retornando 0 mesas. Corrigido com `normalizeTenantId()`.
+       - No cardápio (`app/menu/page.tsx`), mesas com token validado no banco não sofrem reset por checagem assíncrona local.
+    2. *Escopo de Alterações na Franqueadora (`ApplyScopeModal.tsx`, `MenuHierarchyView.tsx`, `/api/products/toggle-availability`)*:
+       - Criado modal limpo (sem emojis) que permite ao Master escolher: `[ Apenas na Loja Atual ]` ou `[ Para TODA A REDE (N lojas) ]`.
+       - O backend replica o status para todas as lojas quando `applyToAll: true` e marca dirty em todas as unidades.
+    3. *Descarte Individual de Alteração Indevida (`/api/catalog/revert`, `publishStore.ts`, `PublishChangesBanner.tsx`, `MenuHierarchyView.tsx`)*:
+       - No modal de resumo de alterações, cada item exibe badge (`Toda a Rede` / `Loja Atual`), data/hora e o botão individual `[ Desfazer ]` (`revertItem`).
+       - O backend restaura cirurgicamente o valor anterior do override no banco e remove apenas aquela alteração do resumo pendente.
+    4. *Publicação em Lote em 1 Clique*:
+       - Quando há pendências em mais de uma unidade, o sistema oferece `[ Publicar em Todas as Lojas (N) ]` (`publishAllPending`), publicando a rede inteira em 1 único clique.
+  - **Validação**: `npx tsc --noEmit` código 0, `npm run build` gerou todas as 40 rotas com sucesso, commit `a1429cdb` e deploy em produção na Vercel (`READY` em https://acaidarose.vercel.app).
+
+
 - **Responsividade & Acessibilidade do Checkout Mobile com Teclado Virtual (`CustomerCartSheet.tsx`) [CONCLUÍDO & VALIDADO]**:
   - **Problema Reportado**: Ao tocar no campo de NIF ou em qualquer input no celular na hora de pagar, o teclado virtual do iOS/Android subia e cobria o campo de digitação, enquanto o modal (centralizado com `translate-y-[-50%]`) ficava espremido contra o rodapé fixo, impedindo a visualização do NIF e dados digitados.
   - **Causa Raiz Identificada**:

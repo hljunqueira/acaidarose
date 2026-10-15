@@ -1,8 +1,34 @@
 import { CatalogData, ProductContainer, ProductBase, ProductTopping } from '@/types'
 import { query } from '@/lib/db/postgres'
-import { AVEIRO_HQ_ID } from '@/lib/repositories/tenantsRepository'
+import { AVEIRO_HQ_ID, FIGUEIRA_HQ_ID } from '@/lib/repositories/tenantsRepository'
 import { recordAuditLog } from '@/lib/repositories/auditRepository'
 import { v4 as uuidv4 } from 'uuid'
+
+export const isHqTenant = (tenantId?: string | null): boolean => {
+  if (!tenantId) return true
+  return tenantId === FIGUEIRA_HQ_ID || tenantId === AVEIRO_HQ_ID
+}
+
+export async function bumpStoreCatalogVersion(targetTenantIds?: string[]): Promise<void> {
+  try {
+    if (targetTenantIds && targetTenantIds.length > 0) {
+      await query(
+        `UPDATE store_catalog_versions
+         SET version = version + 1, updated_at = timezone('utc'::text, now())
+         WHERE tenant_id = ANY($1::uuid[])`,
+        [targetTenantIds]
+      )
+    } else {
+      await query(
+        `UPDATE store_catalog_versions
+         SET version = version + 1, updated_at = timezone('utc'::text, now())`
+      )
+    }
+  } catch (err) {
+    console.warn('Erro ao atualizar store_catalog_versions:', err)
+  }
+}
+
 
 export function buildDefaultOptionGroupsForContainer(
   weight: number,
@@ -482,51 +508,166 @@ export async function syncAllStoresCatalog(payload?: {
 
     // 2. Carregar catálogo canônico da Matriz (Loja 1)
     const [sourceContainersRes, sourceBasesRes, sourceToppingsRes] = await Promise.all([
-      query(`SELECT name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
-      query(`SELECT name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
-      query(`SELECT name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+      query(`SELECT id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type, code FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+      query(`SELECT id, name, description, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
+      query(`SELECT id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL`, [sourceTenantId]),
     ])
 
     const containers = sourceContainersRes.rows || []
     const bases = sourceBasesRes.rows || []
     const toppings = sourceToppingsRes.rows || []
 
+    const activeContainerCodes = containers.map((c) => c.code).filter(Boolean)
+    const activeContainerNames = containers.map((c) => c.name.trim())
+    const activeBaseNames = bases.map((b) => b.name.trim())
+    const activeToppingNames = toppings.map((t) => t.name.trim())
+
     // 3. Replicar para cada loja de destino
     for (const targetId of targetIds) {
-      // Containers (Taças e Itens)
+      // --- A. Containers (Taças, Copos e Itens) ---
       for (const c of containers) {
-        const customPrice = payload?.prices?.[c.weight_grams] ?? payload?.prices?.[`weight-${c.weight_grams}`] ?? c.preco_base
-        const check = await query(`SELECT id FROM product_containers WHERE tenant_id = $1 AND name = $2 AND deleted_at IS NULL`, [targetId, c.name])
+        const customPrice =
+          payload?.prices?.[c.id] ??
+          (c.code ? payload?.prices?.[c.code] : undefined) ??
+          (c.weight_grams ? payload?.prices?.[c.weight_grams] : undefined) ??
+          (c.weight_grams ? payload?.prices?.[`weight-${c.weight_grams}`] : undefined) ??
+          c.preco_base
+
+        const check = await query(
+          `SELECT id FROM product_containers
+           WHERE tenant_id = $1
+             AND deleted_at IS NULL
+             AND (
+               ($2::text IS NOT NULL AND code = $2::text)
+               OR TRIM(name) = TRIM($3)
+             )
+           ORDER BY (code IS NOT NULL AND code = $2) DESC, created_at ASC`,
+          [targetId, c.code || null, c.name]
+        )
+
         if (check.rows && check.rows.length > 0) {
+          const primaryId = check.rows[0].id
           await query(
             `UPDATE product_containers
-             SET description = $1, preco_base = $2, limite_bases = $3, limite_complementos_gratis = $4,
-                 image_url = $5, video_url = $6, video_poster = $7, available_hours = $8,
-                 display_order = $9, active = $10, option_groups = $11::jsonb, category_id = $12,
-                 product_type = $13, weight_grams = $14, updated_at = timezone('utc'::text, now())
-             WHERE tenant_id = $15 AND name = $16 AND deleted_at IS NULL`,
-            [c.description || null, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active, JSON.stringify(c.option_groups || []), c.category_id, c.product_type, c.weight_grams, targetId, c.name]
+             SET name = $1, description = $2, preco_base = $3, limite_bases = $4, limite_complementos_gratis = $5,
+                 image_url = $6, video_url = $7, video_poster = $8, available_hours = $9,
+                 display_order = $10, active = $11, option_groups = $12::jsonb, category_id = $13,
+                 product_type = $14, weight_grams = $15, code = $16, updated_at = timezone('utc'::text, now())
+             WHERE id = $17`,
+            [
+              c.name,
+              c.description || null,
+              customPrice,
+              c.limite_bases,
+              c.limite_complementos_gratis,
+              c.image_url,
+              c.video_url,
+              c.video_poster,
+              c.available_hours ? JSON.stringify(c.available_hours) : null,
+              c.display_order,
+              c.active,
+              JSON.stringify(c.option_groups || []),
+              c.category_id,
+              c.product_type,
+              c.weight_grams,
+              c.code || null,
+              primaryId,
+            ]
           )
+
+          // Soft-deletar registros duplicados na filial se houver mais de um com o mesmo code ou nome
+          if (check.rows.length > 1) {
+            const duplicateIds = check.rows.slice(1).map((r: any) => r.id)
+            await query(
+              `UPDATE product_containers
+               SET deleted_at = timezone('utc'::text, now()), active = false
+               WHERE id = ANY($1::uuid[])`,
+              [duplicateIds]
+            )
+          }
         } else {
           await query(
-            `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17)`,
-            [uuidv4(), targetId, c.name, c.description || null, c.weight_grams, customPrice, c.limite_bases, c.limite_complementos_gratis, c.image_url, c.video_url, c.video_poster, c.available_hours ? JSON.stringify(c.available_hours) : null, c.display_order, c.active, JSON.stringify(c.option_groups || []), c.category_id, c.product_type]
+            `INSERT INTO product_containers (
+               id, tenant_id, name, description, weight_grams, preco_base, limite_bases,
+               limite_complementos_gratis, image_url, video_url, video_poster, available_hours,
+               display_order, active, option_groups, category_id, product_type, code
+             )
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17, $18)`,
+            [
+              uuidv4(),
+              targetId,
+              c.name,
+              c.description || null,
+              c.weight_grams,
+              customPrice,
+              c.limite_bases,
+              c.limite_complementos_gratis,
+              c.image_url,
+              c.video_url,
+              c.video_poster,
+              c.available_hours ? JSON.stringify(c.available_hours) : null,
+              c.display_order,
+              c.active,
+              JSON.stringify(c.option_groups || []),
+              c.category_id,
+              c.product_type,
+              c.code || null,
+            ]
           )
         }
       }
 
-      // Bases (Cremes)
+      // Soft-deletar containers órfãos na filial que não existem mais ativos na Matriz
+      if (activeContainerNames.length > 0) {
+        await query(
+          `UPDATE product_containers
+           SET deleted_at = timezone('utc'::text, now()), active = false
+           WHERE tenant_id = $1
+             AND deleted_at IS NULL
+             AND TRIM(name) != ALL($2::text[])
+             AND (code IS NULL OR code != ALL($3::text[]))`,
+          [targetId, activeContainerNames, activeContainerCodes]
+        )
+      }
+
+      // --- B. Bases (Cremes) ---
       for (const b of bases) {
-        const check = await query(`SELECT id FROM product_bases WHERE tenant_id = $1 AND name = $2 AND deleted_at IS NULL`, [targetId, b.name])
+        const check = await query(
+          `SELECT id FROM product_bases
+           WHERE tenant_id = $1 AND deleted_at IS NULL AND TRIM(name) = TRIM($2)
+           ORDER BY created_at ASC`,
+          [targetId, b.name]
+        )
+
         if (check.rows && check.rows.length > 0) {
+          const primaryId = check.rows[0].id
           await query(
             `UPDATE product_bases
-             SET description = $1, image_url = $2, video_url = $3, video_poster = $4,
-                 available_hours = $5, display_order = $6, active = $7, updated_at = timezone('utc'::text, now())
-             WHERE tenant_id = $8 AND name = $9 AND deleted_at IS NULL`,
-            [b.description, b.image_url, b.video_url, b.video_poster, b.available_hours ? JSON.stringify(b.available_hours) : null, b.display_order, b.active, targetId, b.name]
+             SET name = $1, description = $2, image_url = $3, video_url = $4, video_poster = $5,
+                 available_hours = $6, display_order = $7, active = $8, updated_at = timezone('utc'::text, now())
+             WHERE id = $9`,
+            [
+              b.name,
+              b.description,
+              b.image_url,
+              b.video_url,
+              b.video_poster,
+              b.available_hours ? JSON.stringify(b.available_hours) : null,
+              b.display_order,
+              b.active,
+              primaryId,
+            ]
           )
+
+          if (check.rows.length > 1) {
+            const duplicateIds = check.rows.slice(1).map((r: any) => r.id)
+            await query(
+              `UPDATE product_bases
+               SET deleted_at = timezone('utc'::text, now()), active = false
+               WHERE id = ANY($1::uuid[])`,
+              [duplicateIds]
+            )
+          }
         } else {
           await query(
             `INSERT INTO product_bases (id, tenant_id, name, description, image_url, video_url, video_poster, available_hours, display_order, active)
@@ -536,18 +677,60 @@ export async function syncAllStoresCatalog(payload?: {
         }
       }
 
-      // Toppings
+      // Soft-deletar bases órfãs na filial
+      if (activeBaseNames.length > 0) {
+        await query(
+          `UPDATE product_bases
+           SET deleted_at = timezone('utc'::text, now()), active = false
+           WHERE tenant_id = $1
+             AND deleted_at IS NULL
+             AND TRIM(name) != ALL($2::text[])`,
+          [targetId, activeBaseNames]
+        )
+      }
+
+      // --- C. Toppings (Acompanhamentos) ---
       for (const t of toppings) {
-        const check = await query(`SELECT id FROM product_toppings WHERE tenant_id = $1 AND name = $2 AND deleted_at IS NULL`, [targetId, t.name])
+        const check = await query(
+          `SELECT id FROM product_toppings
+           WHERE tenant_id = $1 AND deleted_at IS NULL AND TRIM(name) = TRIM($2)
+           ORDER BY created_at ASC`,
+          [targetId, t.name]
+        )
+
         if (check.rows && check.rows.length > 0) {
+          const primaryId = check.rows[0].id
           await query(
             `UPDATE product_toppings
-             SET description = $1, category = $2, is_premium = $3, preco_extra = $4, image_url = $5,
-                 video_url = $6, video_poster = $7, available_hours = $8, display_order = $9,
-                 active = $10, updated_at = timezone('utc'::text, now())
-             WHERE tenant_id = $11 AND name = $12 AND deleted_at IS NULL`,
-            [t.description || null, t.category, t.is_premium, t.preco_extra, t.image_url, t.video_url, t.video_poster, t.available_hours ? JSON.stringify(t.available_hours) : null, t.display_order, t.active, targetId, t.name]
+             SET name = $1, description = $2, category = $3, is_premium = $4, preco_extra = $5, image_url = $6,
+                 video_url = $7, video_poster = $8, available_hours = $9, display_order = $10,
+                 active = $11, updated_at = timezone('utc'::text, now())
+             WHERE id = $12`,
+            [
+              t.name,
+              t.description || null,
+              t.category,
+              t.is_premium,
+              t.preco_extra,
+              t.image_url,
+              t.video_url,
+              t.video_poster,
+              t.available_hours ? JSON.stringify(t.available_hours) : null,
+              t.display_order,
+              t.active,
+              primaryId,
+            ]
           )
+
+          if (check.rows.length > 1) {
+            const duplicateIds = check.rows.slice(1).map((r: any) => r.id)
+            await query(
+              `UPDATE product_toppings
+               SET deleted_at = timezone('utc'::text, now()), active = false
+               WHERE id = ANY($1::uuid[])`,
+              [duplicateIds]
+            )
+          }
         } else {
           await query(
             `INSERT INTO product_toppings (id, tenant_id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
@@ -557,8 +740,39 @@ export async function syncAllStoresCatalog(payload?: {
         }
       }
 
+      // Soft-deletar toppings órfãos na filial
+      if (activeToppingNames.length > 0) {
+        await query(
+          `UPDATE product_toppings
+           SET deleted_at = timezone('utc'::text, now()), active = false
+           WHERE tenant_id = $1
+             AND deleted_at IS NULL
+             AND TRIM(name) != ALL($2::text[])`,
+          [targetId, activeToppingNames]
+        )
+      }
+
       // Limpa overrides de preços antigos da filial para que assumam os valores canônicos replicados
       await query(`DELETE FROM store_price_overrides WHERE tenant_id = $1`, [targetId])
+
+      // Atualiza e publica store_catalog_versions da filial em tempo real
+      const publishedBy = (payload as any)?.userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test((payload as any).userId)
+        ? (payload as any).userId
+        : null
+
+      await query(
+        `INSERT INTO store_catalog_versions (tenant_id, version, published_at, has_pending_changes, pending_changes_count, pending_changes_summary, last_published_by)
+         VALUES ($1, 1, timezone('utc'::text, now()), false, 0, '[]'::jsonb, $2)
+         ON CONFLICT (tenant_id)
+         DO UPDATE SET
+           version = store_catalog_versions.version + 1,
+           published_at = timezone('utc'::text, now()),
+           has_pending_changes = false,
+           pending_changes_count = 0,
+           pending_changes_summary = '[]'::jsonb,
+           last_published_by = EXCLUDED.last_published_by`,
+        [targetId, publishedBy]
+      )
     }
 
     // 4. Registro no log de auditoria para o TI
@@ -615,8 +829,8 @@ export async function createProductItem(category: string, item: any): Promise<an
       const productType = item.productType || item.product_type || (item.weightGrams ? 'CONTAINER' : 'ITEM')
 
       const res = await query(
-        `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17)
+        `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type, code)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17, $18)
          RETURNING *`,
         [
           id,
@@ -635,10 +849,49 @@ export async function createProductItem(category: string, item: any): Promise<an
           true,
           item.optionGroups ? JSON.stringify(item.optionGroups) : '[]',
           categoryId,
-          productType
+          productType,
+          item.code || null,
         ]
       )
       const created = res.rows[0]
+
+      // Se criado na Matriz/Franqueadora, replica para todas as filiais
+      if (isHqTenant(tenantId)) {
+        try {
+          const otherTenants = await query(`SELECT id FROM tenants WHERE id NOT IN ($1, $2) AND deleted_at IS NULL`, [FIGUEIRA_HQ_ID, AVEIRO_HQ_ID])
+          for (const t of (otherTenants.rows || [])) {
+            await query(
+              `INSERT INTO product_containers (id, tenant_id, name, description, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type, code)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17, $18)
+               ON CONFLICT DO NOTHING`,
+              [
+                uuidv4(),
+                t.id,
+                item.name,
+                item.description || null,
+                item.weightGrams ? Number(item.weightGrams) : null,
+                Number(item.precoBase || item.price) || 0,
+                Number(item.limiteBases || item.limiteCremes) || 0,
+                Number(item.limiteToppings || item.limiteComplementosGratis) || 0,
+                item.image || item.imageUrl || null,
+                item.videoUrl || null,
+                item.videoPoster || null,
+                item.availableHours ? JSON.stringify(item.availableHours) : null,
+                Number(item.displayOrder) || 0,
+                true,
+                item.optionGroups ? JSON.stringify(item.optionGroups) : '[]',
+                categoryId,
+                productType,
+                item.code || null,
+              ]
+            )
+          }
+          await bumpStoreCatalogVersion((otherTenants.rows || []).map((t: any) => t.id))
+        } catch (repErr) {
+          console.error('Erro ao replicar container criado para filiais:', repErr)
+        }
+      }
+
       await recordAuditLog({
         tenantId,
         action: 'PRODUCT_CONTAINER_CREATED',
@@ -674,7 +927,34 @@ export async function createProductItem(category: string, item: any): Promise<an
           true
         ]
       )
-      return res.rows[0]
+      const created = res.rows[0]
+
+      if (isHqTenant(tenantId)) {
+        try {
+          const otherTenants = await query(`SELECT id FROM tenants WHERE id NOT IN ($1, $2) AND deleted_at IS NULL`, [FIGUEIRA_HQ_ID, AVEIRO_HQ_ID])
+          for (const t of (otherTenants.rows || [])) {
+            await query(
+              `INSERT INTO product_bases (id, tenant_id, name, description, image_url, video_url, video_poster, available_hours, display_order, active)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               ON CONFLICT DO NOTHING`,
+              [uuidv4(), t.id, item.name, item.description || null, item.image || item.imageUrl || null, item.videoUrl || null, item.videoPoster || null, item.availableHours ? JSON.stringify(item.availableHours) : null, Number(item.displayOrder) || 0, true]
+            )
+          }
+          await bumpStoreCatalogVersion((otherTenants.rows || []).map((t: any) => t.id))
+        } catch (repErr) {
+          console.error('Erro ao replicar base criada para filiais:', repErr)
+        }
+      }
+
+      await recordAuditLog({
+        tenantId,
+        action: 'PRODUCT_CREATED',
+        entity: tableName,
+        entityId: id,
+        message: `Nova base cadastrada: "${item.name}"`,
+        metadata: { category, item: created },
+      })
+      return created
     } else {
       const res = await query(
         `INSERT INTO product_toppings (id, tenant_id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
@@ -697,21 +977,19 @@ export async function createProductItem(category: string, item: any): Promise<an
         ]
       )
       const created = res.rows[0]
-      if (!item.tenantId || item.tenantId === AVEIRO_HQ_ID || item.tenantId === '11111111-1111-1111-1111-111111111111') {
+      if (isHqTenant(tenantId)) {
         try {
-          const otherTenants = await query(
-            `SELECT id FROM tenants WHERE id != $1 AND deleted_at IS NULL`,
-            [AVEIRO_HQ_ID]
-          )
+          const otherTenants = await query(`SELECT id FROM tenants WHERE id NOT IN ($1, $2) AND deleted_at IS NULL`, [FIGUEIRA_HQ_ID, AVEIRO_HQ_ID])
           for (const t of (otherTenants.rows || [])) {
             const replicaId = uuidv4()
             await query(
-              `INSERT INTO product_toppings (id, tenant_id, name, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+              `INSERT INTO product_toppings (id, tenant_id, name, description, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)
                ON CONFLICT DO NOTHING`,
-              [replicaId, t.id, item.name, item.category || 'Toppings', !!item.isPremium, Number(item.precoExtra || item.price) || 0, item.image || item.imageUrl || null, item.videoUrl || null, item.videoPoster || null, item.availableHours ? JSON.stringify(item.availableHours) : null, Number(item.displayOrder) || 0]
+              [replicaId, t.id, item.name, item.description || null, item.category || 'Toppings', !!item.isPremium, Number(item.precoExtra || item.price) || 0, item.image || item.imageUrl || null, item.videoUrl || null, item.videoPoster || null, item.availableHours ? JSON.stringify(item.availableHours) : null, Number(item.displayOrder) || 0]
             )
           }
+          await bumpStoreCatalogVersion((otherTenants.rows || []).map((t: any) => t.id))
         } catch (repErr) {
           console.error('Erro ao replicar produto criado para demais lojas:', repErr)
         }
@@ -867,90 +1145,137 @@ export async function updateProductItem(category: string, id: string, item: any)
       updated = res.rows[0] || item
     }
 
-    // Se o item atualizado for da Franqueadora/Matriz Aveiro, propaga alterações mestres para as demais lojas
-    if (updated && (updated.tenant_id === AVEIRO_HQ_ID || !item.tenantId || item.tenantId === AVEIRO_HQ_ID)) {
+    // Se o item atualizado for da Franqueadora/Matriz, propaga alterações mestres para as demais lojas
+    if (updated && isHqTenant(updated.tenant_id || item.tenantId)) {
       try {
-        if (category === 'containers' && updated.weight_grams) {
-          await query(
-            `UPDATE product_containers
-             SET name = COALESCE($1, name),
-                 description = CASE WHEN $2 = true THEN $3 ELSE description END,
-                 limite_bases = COALESCE($4, limite_bases),
-                 limite_complementos_gratis = COALESCE($5, limite_complementos_gratis),
-                 image_url = COALESCE($6, image_url),
-                 video_url = COALESCE($7, video_url),
-                 video_poster = COALESCE($8, video_poster),
-                 available_hours = COALESCE($9, available_hours),
-                 display_order = COALESCE($10, display_order),
-                 updated_at = timezone('utc'::text, now())
-             WHERE weight_grams = $11 AND tenant_id != $12`,
-            [
-              item.name || null,
-              item.description !== undefined,
-              item.description || null,
-              item.limiteBases !== undefined ? Number(item.limiteBases) : null,
-              item.limiteToppings !== undefined ? Number(item.limiteToppings) : null,
-              item.image || item.imageUrl || null,
-              item.videoUrl || null,
-              item.videoPoster || null,
-              item.availableHours ? JSON.stringify(item.availableHours) : null,
-              item.displayOrder !== undefined ? Number(item.displayOrder) : null,
-              Number(updated.weight_grams),
-              AVEIRO_HQ_ID,
-            ]
-          )
-        } else if (category === 'bases' && updated.name) {
-          await query(
-            `UPDATE product_bases
-             SET description = CASE WHEN $1 = true THEN $2 ELSE description END,
-                 image_url = COALESCE($3, image_url),
-                 video_url = COALESCE($4, video_url),
-                 video_poster = COALESCE($5, video_poster),
-                 available_hours = COALESCE($6, available_hours),
-                 display_order = COALESCE($7, display_order),
-                 updated_at = timezone('utc'::text, now())
-             WHERE name = $8 AND tenant_id != $9`,
-            [
-              item.description !== undefined,
-              item.description || null,
-              item.image || item.imageUrl || null,
-              item.videoUrl || null,
-              item.videoPoster || null,
-              item.availableHours ? JSON.stringify(item.availableHours) : null,
-              item.displayOrder !== undefined ? Number(item.displayOrder) : null,
-              updated.name,
-              AVEIRO_HQ_ID,
-            ]
-          )
-        } else if (category === 'toppings' && updated.name) {
-          await query(
-            `UPDATE product_toppings
-             SET description = CASE WHEN $1 = true THEN $2 ELSE description END,
-                 category = COALESCE($3, category),
-                 is_premium = COALESCE($4, is_premium),
-                 preco_extra = COALESCE($5, preco_extra),
-                 image_url = COALESCE($6, image_url),
-                 video_url = COALESCE($7, video_url),
-                 video_poster = COALESCE($8, video_poster),
-                 available_hours = COALESCE($9, available_hours),
-                 display_order = COALESCE($10, display_order),
-                 updated_at = timezone('utc'::text, now())
-             WHERE name = $11 AND tenant_id != $12`,
-            [
-              item.description !== undefined,
-              item.description || null,
-              item.category || null,
-              item.isPremium !== undefined ? !!item.isPremium : null,
-              item.precoExtra !== undefined ? Number(item.precoExtra) : null,
-              item.image || item.imageUrl || null,
-              item.videoUrl || null,
-              item.videoPoster || null,
-              item.availableHours ? JSON.stringify(item.availableHours) : null,
-              item.displayOrder !== undefined ? Number(item.displayOrder) : null,
-              updated.name,
-              AVEIRO_HQ_ID,
-            ]
-          )
+        const otherTenants = await query(
+          `SELECT id FROM tenants WHERE id NOT IN ($1, $2) AND deleted_at IS NULL`,
+          [FIGUEIRA_HQ_ID, AVEIRO_HQ_ID]
+        )
+        const otherTenantIds = (otherTenants.rows || []).map((t: any) => t.id)
+
+        if (otherTenantIds.length > 0) {
+          if (category === 'containers') {
+            const matchCode = updated.code || item.code || null
+            const matchName = (item.prevName || item.originalName || updated.name || '').trim()
+            const hasOptionGroups = item.optionGroups !== undefined
+            const targetCategoryId = item.categoryId !== undefined ? item.categoryId : item.category_id !== undefined ? item.category_id : updated.category_id
+            const targetProductType = item.productType || item.product_type || updated.product_type || (item.weightGrams ? 'CONTAINER' : 'ITEM')
+
+            await query(
+              `UPDATE product_containers
+               SET name = COALESCE($1, name),
+                   description = CASE WHEN $2 = true THEN $3 ELSE description END,
+                   weight_grams = CASE WHEN $4 = true THEN $5 ELSE weight_grams END,
+                   preco_base = COALESCE($6, preco_base),
+                   limite_bases = COALESCE($7, limite_bases),
+                   limite_complementos_gratis = COALESCE($8, limite_complementos_gratis),
+                   image_url = COALESCE($9, image_url),
+                   video_url = COALESCE($10, video_url),
+                   video_poster = COALESCE($11, video_poster),
+                   available_hours = COALESCE($12, available_hours),
+                   display_order = COALESCE($13, display_order),
+                   option_groups = CASE WHEN $14 = true THEN $15::jsonb ELSE option_groups END,
+                   category_id = COALESCE($16, category_id),
+                   product_type = COALESCE($17, product_type),
+                   code = COALESCE($18, code),
+                   updated_at = timezone('utc'::text, now())
+               WHERE tenant_id = ANY($19::uuid[])
+                 AND deleted_at IS NULL
+                 AND (
+                   ($18::text IS NOT NULL AND code = $18::text)
+                   OR TRIM(name) = $20
+                   OR TRIM(name) = TRIM($1)
+                 )`,
+              [
+                item.name || null,
+                item.description !== undefined,
+                item.description || null,
+                item.weightGrams !== undefined,
+                item.weightGrams ? Number(item.weightGrams) : null,
+                item.precoBase !== undefined ? Number(item.precoBase) : (item.price !== undefined ? Number(item.price) : null),
+                item.limiteBases !== undefined ? Number(item.limiteBases) : null,
+                item.limiteToppings !== undefined ? Number(item.limiteToppings) : null,
+                item.image || item.imageUrl || null,
+                item.videoUrl || null,
+                item.videoPoster || null,
+                item.availableHours ? JSON.stringify(item.availableHours) : null,
+                item.displayOrder !== undefined ? Number(item.displayOrder) : null,
+                hasOptionGroups,
+                hasOptionGroups ? JSON.stringify(item.optionGroups || []) : '[]',
+                targetCategoryId || null,
+                targetProductType || null,
+                matchCode,
+                otherTenantIds,
+                matchName
+              ]
+            )
+          } else if (category === 'bases') {
+            const matchName = (item.prevName || item.originalName || updated.name || '').trim()
+            await query(
+              `UPDATE product_bases
+               SET name = COALESCE($1, name),
+                   description = CASE WHEN $2 = true THEN $3 ELSE description END,
+                   image_url = COALESCE($4, image_url),
+                   video_url = COALESCE($5, video_url),
+                   video_poster = COALESCE($6, video_poster),
+                   available_hours = COALESCE($7, available_hours),
+                   display_order = COALESCE($8, display_order),
+                   updated_at = timezone('utc'::text, now())
+               WHERE tenant_id = ANY($9::uuid[])
+                 AND deleted_at IS NULL
+                 AND (TRIM(name) = $10 OR TRIM(name) = TRIM($1))`,
+              [
+                item.name || null,
+                item.description !== undefined,
+                item.description || null,
+                item.image || item.imageUrl || null,
+                item.videoUrl || null,
+                item.videoPoster || null,
+                item.availableHours ? JSON.stringify(item.availableHours) : null,
+                item.displayOrder !== undefined ? Number(item.displayOrder) : null,
+                otherTenantIds,
+                matchName
+              ]
+            )
+          } else if (category === 'toppings') {
+            const matchName = (item.prevName || item.originalName || updated.name || '').trim()
+            await query(
+              `UPDATE product_toppings
+               SET name = COALESCE($1, name),
+                   description = CASE WHEN $2 = true THEN $3 ELSE description END,
+                   category = COALESCE($4, category),
+                   is_premium = COALESCE($5, is_premium),
+                   preco_extra = COALESCE($6, preco_extra),
+                   image_url = COALESCE($7, image_url),
+                   video_url = COALESCE($8, video_url),
+                   video_poster = COALESCE($9, video_poster),
+                   available_hours = COALESCE($10, available_hours),
+                   display_order = COALESCE($11, display_order),
+                   updated_at = timezone('utc'::text, now())
+               WHERE tenant_id = ANY($12::uuid[])
+                 AND deleted_at IS NULL
+                 AND (TRIM(name) = $13 OR TRIM(name) = TRIM($1))`,
+              [
+                item.name || null,
+                item.description !== undefined,
+                item.description || null,
+                item.category || null,
+                item.isPremium !== undefined ? !!item.isPremium : null,
+                item.precoExtra !== undefined ? Number(item.precoExtra) : null,
+                item.image || item.imageUrl || null,
+                item.videoUrl || null,
+                item.videoPoster || null,
+                item.availableHours ? JSON.stringify(item.availableHours) : null,
+                item.displayOrder !== undefined ? Number(item.displayOrder) : null,
+                otherTenantIds,
+                matchName
+              ]
+            )
+          }
+
+          // Atualiza versão do catálogo para as filiais
+          await bumpStoreCatalogVersion(otherTenantIds)
         }
       } catch (repErr) {
         console.error('Erro ao propagar atualizações para filiais:', repErr)
@@ -976,7 +1301,7 @@ export async function updateProductItem(category: string, id: string, item: any)
 export async function deleteProductItem(category: string, id: string): Promise<boolean> {
   const tableName = getTableName(category)
   try {
-    const itemRes = await query(`SELECT name, tenant_id FROM ${tableName} WHERE id::text = $1`, [id])
+    const itemRes = await query(`SELECT name, code, tenant_id FROM ${tableName} WHERE id::text = $1`, [id])
     const item = itemRes.rows?.[0]
 
     await query(
@@ -987,13 +1312,21 @@ export async function deleteProductItem(category: string, id: string): Promise<b
     )
 
     // Se deletado na Matriz/Franqueadora, propaga soft-delete em toda a rede
-    if (item && (item.tenant_id === AVEIRO_HQ_ID || !item.tenant_id)) {
+    if (item && isHqTenant(item.tenant_id)) {
+      const matchCode = item.code || null
       await query(
         `UPDATE ${tableName} 
          SET deleted_at = timezone('utc'::text, now()), active = false 
-         WHERE name = $1 AND tenant_id != $2`,
-        [item.name, AVEIRO_HQ_ID]
+         WHERE tenant_id NOT IN ($1, $2)
+           AND deleted_at IS NULL
+           AND (
+             ($3::text IS NOT NULL AND code = $3::text)
+             OR TRIM(name) = TRIM($4)
+           )`,
+        [FIGUEIRA_HQ_ID, AVEIRO_HQ_ID, matchCode, item.name]
       )
+
+      await bumpStoreCatalogVersion()
     }
 
     await recordAuditLog({
@@ -1028,6 +1361,28 @@ export async function reorderProducts(
          WHERE id::text = $1`,
         [item.id, item.displayOrder]
       )
+    }
+
+    // Se a reordenação for na Matriz, propaga para toda a rede
+    if (isHqTenant(tenantId)) {
+      for (const item of items) {
+        const itemInfo = await query(`SELECT code, name FROM ${tableName} WHERE id::text = $1`, [item.id])
+        const row = itemInfo.rows?.[0]
+        if (row) {
+          await query(
+            `UPDATE ${tableName}
+             SET display_order = $1
+             WHERE tenant_id NOT IN ($2, $3)
+               AND deleted_at IS NULL
+               AND (
+                 ($4::text IS NOT NULL AND code = $4::text)
+                 OR TRIM(name) = TRIM($5)
+               )`,
+            [item.displayOrder, FIGUEIRA_HQ_ID, AVEIRO_HQ_ID, row.code || null, row.name]
+          )
+        }
+      }
+      await bumpStoreCatalogVersion()
     }
 
     await recordAuditLog({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
-import { normalizeTenantId } from '@/lib/repositories/tenantsRepository'
+import { resolveTenantId } from '@/lib/repositories/tenantsRepository'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const rawTenant = searchParams.get('tenantId') || searchParams.get('loja') || ''
-    const tenantId = normalizeTenantId(rawTenant)
+    const tenantId = await resolveTenantId(rawTenant)
 
     const res = await query(
       `SELECT marquee_config FROM store_tv_configs WHERE tenant_id = $1`,
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Configuração é obrigatória' }, { status: 400 })
     }
 
-    const tenantId = normalizeTenantId(rawTenant)
+    const tenantId = await resolveTenantId(rawTenant)
 
     await query(
       `INSERT INTO store_tv_configs (tenant_id, marquee_config, updated_at)

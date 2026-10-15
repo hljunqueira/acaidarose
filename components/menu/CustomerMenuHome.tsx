@@ -182,11 +182,7 @@ export default function CustomerMenuHome({
       // Abre o customizador oficial de Açaí (CustomerProductDetail)
       onSelectContainer(c)
     } else if (c.productType === 'ITEM' || hasOptions) {
-      // Abre o modal simplificado de opções para itens unitários (cafés, sumos, etc.)
-      if (isCatalogOnly) {
-        toast.info(getLocalizedField(c, 'name', language) || c.name)
-        return
-      }
+      // Abre o modal de opções/detalhes para itens unitários (milk shakes, cafés, sumos, lanches, etc.)
       setActiveItemForDetail(c)
     } else {
       onSelectContainer(c)
@@ -430,7 +426,9 @@ export default function CustomerMenuHome({
         <CustomerItemDetailModal
           product={activeItemForDetail}
           onClose={() => setActiveItemForDetail(null)}
+          viewOnly={isCatalogOnly}
           onAddToCart={(item) => {
+            if (isCatalogOnly) return
             if (onAddToCart) {
               onAddToCart(item)
             }

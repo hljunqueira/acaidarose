@@ -359,13 +359,15 @@ function MenuContent() {
         onCallWaiter={() => setWaiterModalOpen(true)}
       />
 
-      {/* 4. Modal Customizador de Taça (Apenas em Modo Pedido) */}
-      {!isCatalogOnly && selectedContainer && (
+      {/* 4. Modal Customizador / Detalhes de Recipiente de Açaí */}
+      {selectedContainer && (
         <CustomerProductDetail
           container={selectedContainer}
           catalog={catalog}
+          viewOnly={isCatalogOnly}
           onClose={() => setSelectedContainer(null)}
           onAddToCart={(item) => {
+            if (isCatalogOnly) return
             setCart((prev) => [...prev, item])
             setSelectedContainer(null)
             toast.success(`${item.containerName} adicionado ao pedido!`)
@@ -373,7 +375,7 @@ function MenuContent() {
         />
       )}
 
-      {/* 5. Modal Informativo de Detalhes (Em Modo Catálogo Vitrine) */}
+      {/* 5. Modal Informativo de Detalhes (Fallback / Pesquisa) */}
       {infoModalProduct && (
         <Dialog open={Boolean(infoModalProduct)} onOpenChange={() => setInfoModalProduct(null)}>
           <DialogContent className={`border rounded-3xl max-w-md p-6 shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#18022B] text-white border-white/15' : 'bg-white text-slate-900 border-purple-100'}`}>
@@ -383,6 +385,28 @@ function MenuContent() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2 text-xs text-slate-600 dark:text-purple-200">
+              {infoModalProduct.videoUrl ? (
+                <div className="relative h-48 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10">
+                  <video
+                    src={infoModalProduct.videoUrl}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : (infoModalProduct.image || infoModalProduct.videoPoster) ? (
+                <div className="relative h-44 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10">
+                  <img
+                    src={infoModalProduct.image || infoModalProduct.videoPoster || ''}
+                    alt={infoModalProduct.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : null}
+
               <p className="leading-relaxed font-medium">
                 {infoModalProduct.description || 'Delicioso açaí artesanal preparado na hora com os melhores ingredientes selecionados.'}
               </p>

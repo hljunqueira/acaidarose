@@ -170,7 +170,7 @@ export default function CustomerMenuSearch({ catalog, onSelectContainer }: Custo
                       </div>
                       <div className="text-right">
                         <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
-                          {formatCurrency(c.precoBase || 6.50)}
+                          {formatCurrency(c.precoBase ?? 0)}
                         </span>
                         <div className="text-[10px] text-fuchsia-600 dark:text-purple-400 font-medium">Montar →</div>
                       </div>

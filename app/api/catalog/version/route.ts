@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
-import { normalizeTenantId } from '@/lib/repositories/tenantsRepository'
+import { resolveTenantId } from '@/lib/repositories/tenantsRepository'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const rawTenant = searchParams.get('tenantId') || searchParams.get('loja') || ''
-    const tenantId = normalizeTenantId(rawTenant)
+    const tenantId = await resolveTenantId(rawTenant)
 
     const res = await query(
       `SELECT version, published_at, has_pending_changes, pending_changes_count, pending_changes_summary, updated_at

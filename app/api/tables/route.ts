@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTablesByTenant, createTable, createBatchTables, deleteAllTablesByTenant } from '@/lib/repositories/tablesRepository'
-import { normalizeTenantId } from '@/lib/repositories/tenantsRepository'
+import { resolveTenantId } from '@/lib/repositories/tenantsRepository'
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const rawTenant = searchParams.get('tenantId') || searchParams.get('loja')
     const isAll = !rawTenant || rawTenant === 'all' || rawTenant === 'ALL'
-    const tenantId = isAll ? 'ALL' : normalizeTenantId(rawTenant)
+    const tenantId = isAll ? 'ALL' : await resolveTenantId(rawTenant)
     const tables = await getTablesByTenant(tenantId)
     return NextResponse.json({ tables })
   } catch (err: any) {

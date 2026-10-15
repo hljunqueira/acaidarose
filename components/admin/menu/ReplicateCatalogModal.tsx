@@ -74,10 +74,6 @@ export default function ReplicateCatalogModal({
       const price = Number(c.precoBase || c.price || 0)
       if (price > 0) {
         prices[c.id] = price
-        if (c.weightGrams) {
-          prices[`weight-${c.weightGrams}`] = price
-          prices[`${c.weightGrams}g`] = price
-        }
       }
     })
     return prices

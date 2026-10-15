@@ -1,7 +1,7 @@
 import { RestaurantTable, TableStatus, TableOrderItem } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
-import { normalizeTenantId } from '@/lib/repositories/tenantsRepository'
+import { resolveTenantId } from '@/lib/repositories/tenantsRepository'
 
 let hasEnsuredTable = false
 export async function ensureTablesTable() {
@@ -40,7 +40,7 @@ export async function getTablesByTenant(tenantId: string): Promise<RestaurantTab
   await ensureTablesTable()
   try {
     const isAll = !tenantId || tenantId === 'all' || tenantId === 'ALL'
-    const effectiveTenantId = isAll ? 'ALL' : normalizeTenantId(tenantId)
+    const effectiveTenantId = isAll ? 'ALL' : await resolveTenantId(tenantId)
     const sql = isAll
       ? `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
                 total_amount, last_activity, activated_at, created_at, updated_at

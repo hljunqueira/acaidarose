@@ -26,6 +26,18 @@ export function normalizeTenantId(tenantId?: string | null): string {
   return clean
 }
 
+export async function resolveTenantId(identifier?: string | null): Promise<string> {
+  if (!identifier) return FIGUEIRA_HQ_ID
+  try {
+    const tenant = await getTenantByIdOrSlug(identifier)
+    if (tenant?.id) return tenant.id
+  } catch {
+    // fallback para normalizador síncrono
+  }
+  return normalizeTenantId(identifier)
+}
+
+
 export async function getTenants(): Promise<Tenant[]> {
   const res = await query(
     `SELECT id, name, slug, nif, address, city, postal_code, phone, mbway_phone, 
@@ -222,6 +234,21 @@ export async function createTenant(payload: Partial<Tenant>): Promise<Tenant> {
   )
 
   const t = res.rows[0]
+
+  // Se for uma nova filial/franquia, inicializa o cardápio oficial herdando da Matriz automaticamente
+  if (!payload.isHeadquarters && id !== FIGUEIRA_HQ_ID) {
+    try {
+      const { syncAllStoresCatalog } = await import('@/lib/repositories/productsRepository')
+      await syncAllStoresCatalog({
+        targetTenantIds: [id],
+        tenantId: FIGUEIRA_HQ_ID,
+        userEmail: 'Cadastro Automático de Nova Loja',
+      })
+    } catch (syncErr) {
+      console.error('Erro ao inicializar cardápio da nova loja:', syncErr)
+    }
+  }
+
   return {
     id: t.id,
     name: t.name,

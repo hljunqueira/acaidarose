@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
 import { getAuthUser } from '@/lib/api/authGuard'
-import { normalizeTenantId } from '@/lib/repositories/tenantsRepository'
+import { resolveTenantId } from '@/lib/repositories/tenantsRepository'
 import { recordAuditLog } from '@/lib/repositories/auditRepository'
 
 export const dynamic = 'force-dynamic'
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const user = await getAuthUser(request)
     const body = await request.json().catch(() => ({}))
     const rawTenant = body.tenantId || ''
-    const targetTenantId = normalizeTenantId(rawTenant)
+    const targetTenantId = await resolveTenantId(rawTenant)
 
     const authorName = user?.name || 'Operador da Loja'
     const authorRole = user?.role || 'TENANT_ADMIN'

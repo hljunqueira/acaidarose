@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
-import { normalizeTenantId } from '@/lib/repositories/tenantsRepository'
+import { resolveTenantId } from '@/lib/repositories/tenantsRepository'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const rawTenant = searchParams.get('tenantId') || searchParams.get('loja') || ''
-    const tenantId = normalizeTenantId(rawTenant)
+    const tenantId = await resolveTenantId(rawTenant)
 
     const res = await query(
       `SELECT marquee_config, videos_playlist, sound_config, display_config, updated_at
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const rawTenant = body.tenantId || ''
-    const tenantId = normalizeTenantId(rawTenant)
+    const tenantId = await resolveTenantId(rawTenant)
 
     // Consulta se o tenant é a Matriz Franqueadora
     const tenantRes = await query(
