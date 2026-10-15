@@ -42,6 +42,7 @@ import StoreRequestsView from '@/components/admin/franchise/StoreRequestsView'
 import FranchiseRequestsView from '@/components/admin/franchise/FranchiseRequestsView'
 import StoreCompanySettingsView from '@/components/admin/company/StoreCompanySettingsView'
 import UsersAdmin from '@/components/admin/users/UsersAdmin'
+import PrinterSettingsView from '@/components/admin/printers/PrinterSettingsView'
 
 // Novos Módulos Especializados
 import DevMasterView from '@/components/admin/dev/DevMasterView'
@@ -363,6 +364,7 @@ export default function HomePage() {
           {/* 8. CONFIGURAÇÕES DA UNIDADE */}
           {view === 'company' && isAdmin && <StoreCompanySettingsView tenantId={activeTenantId} />}
           {view === 'qrcode_config' && isAdmin && <QRCodeConfigView tenantId={activeTenantId} />}
+          {view === 'printers' && isAdmin && <PrinterSettingsView tenantId={activeTenantId} />}
           {view === 'users' && isAdmin && <UsersAdmin tenantId={activeTenantId} currentUser={loggedUser} />}
           {view === 'reports' && <ReportsModuleView tenantId={activeTenantId} currentUser={loggedUser} />}
         </main>

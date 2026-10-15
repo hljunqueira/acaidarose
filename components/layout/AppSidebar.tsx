@@ -24,6 +24,7 @@ import {
   Globe,
   TrendingUp,
   BarChart3,
+  Printer,
 } from 'lucide-react'
 
 export type AppViewId =
@@ -53,6 +54,7 @@ export type AppViewId =
   | 'menu_languages'
   | 'company'
   | 'qrcode_config'
+  | 'printers'
   | 'users'
   | 'reports'
   | 'customer_feedback'
@@ -284,6 +286,7 @@ export default function AppSidebar({
           { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
           { id: 'tv_panel', label: 'Configuração Painel de Senha', subtitle: 'Vídeos & Mensagens TV', show: true },
           { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
+          { id: 'printers', label: 'Impressoras & QZ Tray', subtitle: 'Copa, Balcão & Guilhotina', show: true },
           { id: 'users', label: 'Utilizadores & Permissões', subtitle: 'Gerentes, Caixas & Acessos', show: true },
           { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
         ],
@@ -389,6 +392,7 @@ export default function AppSidebar({
           { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
           { id: 'tv_panel', label: 'Configuração Painel de Senha', subtitle: 'Vídeos & Mensagens TV', show: true },
           { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
+          { id: 'printers', label: 'Impressoras & QZ Tray', subtitle: 'Copa, Balcão & Guilhotina', show: true },
           { id: 'users', label: 'Utilizadores & Permissões', subtitle: 'Gerentes, Caixas & Acessos', show: true },
           { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
         ],
@@ -466,6 +470,7 @@ export default function AppSidebar({
           { id: 'company', label: 'Dados da Loja', subtitle: 'NIF, Morada & Horários', show: true },
           { id: 'tv_panel', label: 'Configuração Painel de Senha', subtitle: 'Vídeos & Mensagens TV', show: true },
           { id: 'qrcode_config', label: 'Configurações QR Code', subtitle: 'Mesas & Identidade Visual', show: true },
+          { id: 'printers', label: 'Impressoras & QZ Tray', subtitle: 'Copa, Balcão & Guilhotina', show: true },
           { id: 'users', label: 'Operadores de Caixa', subtitle: 'Equipa Local', show: true },
           { id: 'reports', label: 'Relatórios & Fecho de Caixa', subtitle: 'Auditoria Diária de Vendas', show: true },
         ],

@@ -1,5 +1,54 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Página de Impressoras & Integração QZ Tray em "CONFIGURAÇÕES DA UNIDADE" [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Implementar a Central de Impressoras multi-impressoras 1-para-N no grupo "CONFIGURAÇÕES DA UNIDADE" da sidebar com link oficial para download do QZ Tray, detecção de status em tempo real, suporte ESC/POS e corte com guilhotina.
+  - **Entregas Realizadas**:
+    1. *Sidebar & Roteamento*:
+       - `components/layout/AppSidebar.tsx`: Adicionado item `{ id: 'printers', label: 'Impressoras & QZ Tray', subtitle: 'Copa, Balcão & Guilhotina', show: true }` no grupo "CONFIGURAÇÕES DA UNIDADE" para todos os papéis administrativos (`SUPER_ADMIN`, `FRANCHISOR_ADMIN`, `TENANT_ADMIN`).
+       - `app/page.tsx`: Importado e roteado `<PrinterSettingsView tenantId={activeTenantId} />` sob `view === 'printers'`.
+    2. *Central de Impressoras (`components/admin/printers/PrinterSettingsView.tsx`)*:
+       - Card informativo com link oficial de download do QZ Tray (`https://qz.io/download/`) e instalador direto do Windows.
+       - Guia visual em 3 passos para o operador.
+       - Badge de status de conexão em tempo real com o serviço local (`wss://localhost:8182`), detecção de versão e botão "Verificar QZ Tray".
+       - Detecção automática de impressoras instaladas no Windows via `qz.printers.find()`.
+       - Listagem 100% dinâmica por loja (`store_printer_settings`), sem seeds/defaults (inicia `[]` vazio com EmptyState corporativo e botão de criação).
+       - Modal de cadastro/edição com seleção de driver, protocolo ESC/POS, 1 ou 2 vias, status, backup e checkboxes de categorias reais.
+       - Ação rápida "Testar Corte" com envio de recibo ESC/POS binário e comando de guilhotina (`GS V 0`).
+    3. *Banco de Dados & Repositório*:
+       - `store_printer_settings` criada no PostgreSQL da VPS via script `scripts/migrate_store_printer_settings.js` com índice em `tenant_id`.
+       - `lib/repositories/printersRepository.ts`: CRUD completo tipado sem mocks.
+    4. *APIs & Assinatura Digital PKI*:
+       - `/api/tenants/[id]/printers`: Endpoints GET (listar) e POST (cadastrar).
+       - `/api/tenants/[id]/printers/[printerId]`: Endpoints PUT (editar) e DELETE (remover).
+       - `/api/qz/cert` e `/api/qz/sign`: Endpoints para assinatura RSA SHA-512 que silenciam os popups de permissão do QZ Tray.
+    5. *Cliente QZ Tray & ESC/POS*:
+       - `lib/printers/qzClient.ts`: Conexão WSS resiliente, busca de drivers e envio raw.
+       - `lib/printers/escposBuilder.ts`: Formatação de comandas com corte total de papel (`\x1dV\x00`), número de ticket expandido e suporte a acentuação PT-PT.
+       - `types/qz-tray.d.ts`: Declaração de tipos para compilação estrita.
+    6. *Validação*: `npx tsc --noEmit` compilado com código de saída 0 (zero erros).
+
+- **Auditoria Multi-Ângulos & Correção de Inconsistências (Regra: Sem Initial & Sem Array Default) [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Cruzar o plano arquitetural com o código já desenvolvido no repositório (`types/order.ts`, `CustomerCartSheet.tsx`, `QRCodeOrdersAdmin.tsx`, `TVOrdersPanelView.tsx`, `KitchenOrderPrintModal.tsx`, `MBWayQRCodeView.tsx`, `PaymentModal.tsx`), eliminando inconsistências e cravando a regra de ouro de zero dados mockados, zero arrays default e zero seeds.
+  - **Inconsistências Identificadas & Corrigidas**:
+    1. *Tipos de Pagamento (`types/order.ts`)*: Estendido `PaymentMethodCode` com `'MBWAY_PHONE' | 'MBWAY_QR' | 'MULTIBANCO' | 'DINHEIRO'` mantendo compatibilidade retroativa com `'MBWAY'`, `'CASH'`, `'NUMERARIO'`, `'POINTS'`. Dicionário `METHODS` em `app/receipt/[id]/page.tsx` atualizado para os novos rótulos.
+    2. *Propagação de `categoryId` nos Itens*: Descoberto que `CustomerCartSheet.tsx` não incluía `categoryId` em `itemsPayload`. Adicionado mapeamento de `categoryId` e `categoryName` no payload para que o motor de impressão filtre itens por categoria em memória (O(1)) sem queries extras.
+    3. *Regra Sem Initial e Sem Array Default*:
+       - Tabela `store_printer_settings` nasce 100% vazia (zero seeds).
+       - No frontend (`PrinterSettingsView.tsx`), `printers` inicia como `[]` vazio. Se vazio, exibe componente `EmptyState` corporativo com botão `[ + Adicionar Primeira Impressora ]`. Proibido qualquer array `DEFAULT_PRINTERS`.
+       - Em `MBWayQRCodeView.tsx`, removido o telefone fixo mockado de exemplo (`+351 912 345 678`), exibindo apenas o contacto real do pedido.
+    4. *Ciclo de Vida do Pedido no Kanban e TV*:
+       - Pedido nasce como `status: 'AWAITING_PAYMENT'` e `paymentStatus: 'PENDING'`. A TV já filtra e oculta da lista "Em Preparação".
+       - Botão `[ Receber ]` em `QRCodeOrdersAdmin.tsx` e `OrderItemsModal.tsx` substitui o update cego para `CASH` pelo novo modal `CounterPaymentDialog.tsx`. Ao liquidar, move para `PREPARING` e `PAID`, entrando na TV e disparando a impressão silenciosa.
+    5. *Reaproveitamento de Componentes Homologados*:
+       - Aba MB WAY QR: reaproveita `MBWayQRCodeView.tsx` e `generateMBWayPayload` de `qrCodeService.ts`.
+       - Aba Dinheiro: reaproveita calculadora de troco e notas rápidas (+5€, +10€, +20€, +50€) de `PaymentModal.tsx`.
+       - Fallback de Impressão: reaproveita Direct Body Mount (`#kitchen-print-mount`) de `KitchenOrderPrintModal.tsx`.
+  - **Documentos Atualizados**:
+    - [docs/PLAN_FLUXO_PAGAMENTO_BALCAO_E_QZ_TRAY_MULTI_IMPRESSORAS.md](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/docs/PLAN_FLUXO_PAGAMENTO_BALCAO_E_QZ_TRAY_MULTI_IMPRESSORAS.md): Seção 2 com auditoria multi-ângulos.
+    - Artefato [plano_executivo_pagamento_balcao_multi_impressoras.md](file:///C:/Users/Henrique%20-%20PC/.gemini/antigravity-ide/brain/8e1b8a4b-43d3-49ca-aed5-35778f2c331c/plano_executivo_pagamento_balcao_multi_impressoras.md).
+
+
+
 - **Eliminação Total de Mocks, Arrays Default e Ternários Hardcoded + Governança de Vídeos da TV Franqueadora [CONCLUÍDO & VALIDADO]**:
   - **Objetivo**: Conectar 100% dos dados a tabelas reais do PostgreSQL (`tenants`, `store_tv_configs`, `store_qrcode_settings`, `audit_logs`, `tables`), eliminar todos os arrays e objetos default (`DEFAULT_TORRES_NOVAS_TENANT`, `DEFAULT_AVEIRO_FRANCHISE_TENANT`, `INITIAL_TENANTS`, `tenantQrConfigCache`, `marqueeConfigsByTenant`, `mock1/mock2`), proibir ternários fixos de IDs/slugs e implementar governança estrita na Smart TV (apenas a Matriz cadastra vídeos e replica para todas as lojas da rede; filiais apenas ativam/pausam localmente).
   - **Alterações Realizadas**:
