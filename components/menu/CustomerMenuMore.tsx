@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { MapPin, Phone, Clock, Star, ExternalLink, Heart, CheckCircle2, Sun, Moon } from 'lucide-react'
+import { Clock, Star, ExternalLink, Heart, CheckCircle2, Sun, Moon } from 'lucide-react'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 
 import CustomerRatingModal from '@/components/menu/CustomerRatingModal'
@@ -29,29 +29,29 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 space-y-6 pb-4 select-none">
       
-      {/* 1. Card Nobre da Unidade Oficial com a Foto Real da Loja */}
+      {/* 1. Card Nobre de Apresentação da Marca com a Foto Real */}
       <div className="p-6 md:p-10 rounded-3xl bg-white border border-purple-100 shadow-md dark:bg-gradient-to-r dark:from-[#200336] dark:via-[#2d054d] dark:to-[#19022c] dark:border-white/15 dark:shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center text-slate-900 dark:text-white transition-colors duration-200">
         
-        {/* Foto da Loja Real (Fachada) */}
+        {/* Foto Real */}
         <div className="lg:col-span-5 relative rounded-2xl overflow-hidden border border-purple-200 dark:border-white/20 shadow-md group">
           <img
             src="/images/official/loja_fachada.webp"
-            alt="Loja Açaí da Rose Torres Novas"
+            alt="Açaí da Rose"
             className="w-full h-64 sm:h-72 object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex items-end p-4">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
             <div>
-              <span className="text-[10px] font-bold uppercase text-pink-400 tracking-wider">Matriz Oficial</span>
-              <div className="text-sm font-bold text-white">Torres Novas · Portugal</div>
+              <span className="text-[10px] font-bold uppercase text-pink-400 tracking-wider">Açaí da Rose</span>
+              <div className="text-sm font-bold text-white">Tradição & Qualidade Artesanal</div>
             </div>
           </div>
         </div>
 
-        {/* Dados Institucionais & Botões de Contato */}
+        {/* Dados Institucionais: Conhecer, Título e Descrição */}
         <div className="lg:col-span-7 space-y-4 text-left">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="px-3 py-1 rounded-full bg-pink-600 text-white font-bold text-xs">
-              Visite-nos em Torres Novas
+            <span className="px-3.5 py-1 rounded-full bg-pink-600 text-white font-bold text-xs tracking-wide">
+              Conheça a Nossa Marca
             </span>
             {isOpen ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold text-xs border border-emerald-300 dark:border-emerald-500/30">
@@ -74,47 +74,15 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
             Trabalhamos diariamente para levar a melhor experiência gastronômica com ingredientes selecionados, frutas frescas da época e o carinho que você merece.
           </p>
 
-          <div className="space-y-2 text-xs text-slate-700 dark:text-purple-200/90 pt-1">
-            <div className="flex items-center gap-2.5">
-              <MapPin className="h-4 w-4 text-pink-500 flex-shrink-0" />
-              <span><b>Morada:</b> {tenant?.address || 'Av. Manuel de Figueiredo 12'}, {tenant?.city || 'Torres Novas'}, Portugal</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Phone className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-              <span><b>Contacto / MB Way:</b> {tenant?.phone || '+351 911 050 264'}</span>
-            </div>
-          </div>
-
-          {/* Links Rápidos Oficiais */}
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <a
-              href="https://wa.me/351911050264"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-11 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all hover:scale-102 cursor-pointer"
-            >
-              <Phone className="h-4 w-4" />
-              <span>Falar no WhatsApp</span>
-            </a>
-
+          <div className="pt-2">
             <a
               href="https://instagram.com/acaidarose.pt"
               target="_blank"
               rel="noopener noreferrer"
-              className="h-11 px-5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all hover:scale-102 cursor-pointer"
+              className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-md transition-all hover:scale-102 cursor-pointer"
             >
               <ExternalLink className="h-4 w-4" />
               <span>@acaidarose.pt</span>
-            </a>
-
-            <a
-              href="https://www.google.com/maps/place/A%C3%A7a%C3%AD+da+Rose+Torres+Novas/@39.483811,-8.538574,17z"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-11 px-5 rounded-2xl bg-purple-100 hover:bg-purple-200 text-purple-900 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white font-bold text-xs flex items-center gap-2 border border-purple-200 dark:border-white/20 transition-all cursor-pointer"
-            >
-              <MapPin className="h-4 w-4 text-pink-500" />
-              <span>Ver no Mapa</span>
             </a>
           </div>
         </div>
@@ -250,22 +218,22 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
 
         {/* 6 Selos de Qualidade */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-          <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 text-center">
+          <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200/60 dark:bg-white/5 dark:border-white/10 text-center text-purple-950 dark:text-purple-100">
             <div className="text-[11px] font-bold">100% VEGAN</div>
           </div>
-          <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 text-center">
+          <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200/60 dark:bg-white/5 dark:border-white/10 text-center text-purple-950 dark:text-purple-100">
             <div className="text-[11px] font-bold">Antioxidantes</div>
           </div>
-          <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 text-center">
+          <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200/60 dark:bg-white/5 dark:border-white/10 text-center text-purple-950 dark:text-purple-100">
             <div className="text-[11px] font-bold">Sem Leite</div>
           </div>
-          <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 text-center">
+          <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200/60 dark:bg-white/5 dark:border-white/10 text-center text-purple-950 dark:text-purple-100">
             <div className="text-[11px] font-bold">Sem Glúten</div>
           </div>
-          <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 text-center">
+          <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200/60 dark:bg-white/5 dark:border-white/10 text-center text-purple-950 dark:text-purple-100">
             <div className="text-[11px] font-bold">Sem Conservantes</div>
           </div>
-          <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100 dark:bg-white/5 dark:border-white/10 text-center">
+          <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200/60 dark:bg-white/5 dark:border-white/10 text-center text-purple-950 dark:text-purple-100">
             <div className="text-[11px] font-bold">Origem Pará</div>
           </div>
         </div>
@@ -273,52 +241,52 @@ export default function CustomerMenuMore({ tenant }: CustomerMenuMoreProps) {
         {/* Ingredientes & Tabela Nutricional */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
           {/* Ingredientes */}
-          <div className="lg:col-span-5 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-            <div className="text-xs font-black uppercase text-pink-400 tracking-wider">
+          <div className="lg:col-span-5 p-4.5 rounded-2xl bg-purple-50/60 border border-purple-200/70 dark:bg-white/5 dark:border-white/10 space-y-2">
+            <div className="text-xs font-black uppercase text-pink-700 dark:text-pink-400 tracking-wider">
               Ingredientes Oficiais (PT):
             </div>
-            <p className="text-xs text-purple-200/90 leading-relaxed font-medium">
+            <p className="text-xs text-slate-700 dark:text-purple-200/90 leading-relaxed font-medium">
               Polpa de Açaí premium, Água, Glucose, Açúcar demerara, Extrato natural de Guaraná, Estabilizante (goma de guar, goma tara, Carboximetilcelulose), Dextrose, Maltodextrina e Ácido cítrico.
             </p>
           </div>
 
           {/* Tabela Nutricional */}
-          <div className="lg:col-span-7 border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+          <div className="lg:col-span-7 border border-purple-200/70 dark:border-white/10 rounded-2xl overflow-hidden shadow-xs dark:shadow-xl bg-white dark:bg-transparent">
             <table className="w-full text-xs text-left">
-              <thead className="bg-white/10 text-purple-200 text-[10px] uppercase font-black">
+              <thead className="bg-purple-100/70 dark:bg-white/10 text-purple-950 dark:text-purple-200 text-[10px] uppercase font-black tracking-wider">
                 <tr>
                   <th className="p-2.5">Componente (Porção 100g)</th>
                   <th className="p-2.5 text-right">Quantidade</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10 text-xs">
-                <tr className="bg-white/5 font-black text-pink-300">
+              <tbody className="divide-y divide-purple-100 dark:divide-white/10 text-xs">
+                <tr className="bg-pink-50/80 dark:bg-white/5 font-black text-pink-700 dark:text-pink-300">
                   <td className="p-2.5">Valor Energético / Energia</td>
                   <td className="p-2.5 text-right font-mono">111 kcal / 469 kJ</td>
                 </tr>
                 <tr>
-                  <td className="p-2.5 text-purple-200">Proteínas</td>
-                  <td className="p-2.5 text-right font-mono font-bold text-white">0,5 g</td>
+                  <td className="p-2.5 text-slate-700 dark:text-purple-200 font-medium">Proteínas</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">0,5 g</td>
                 </tr>
                 <tr>
-                  <td className="p-2.5 text-purple-200">Lípidos (dos quais saturados)</td>
-                  <td className="p-2.5 text-right font-mono font-bold text-white">2,3 g (0,6 g)</td>
+                  <td className="p-2.5 text-slate-700 dark:text-purple-200 font-medium">Lípidos (dos quais saturados)</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">2,3 g (0,6 g)</td>
                 </tr>
                 <tr>
-                  <td className="p-2.5 text-purple-200">Hidratos de Carbono (dos quais açúcares)</td>
-                  <td className="p-2.5 text-right font-mono font-bold text-white">20,9 g (20,7 g)</td>
+                  <td className="p-2.5 text-slate-700 dark:text-purple-200 font-medium">Hidratos de Carbono (dos quais açúcares)</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">20,9 g (20,7 g)</td>
                 </tr>
                 <tr>
-                  <td className="p-2.5 text-purple-200">Fibra Alimentar</td>
-                  <td className="p-2.5 text-right font-mono font-bold text-white">2,5 g</td>
+                  <td className="p-2.5 text-slate-700 dark:text-purple-200 font-medium">Fibra Alimentar</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">2,5 g</td>
                 </tr>
                 <tr>
-                  <td className="p-2.5 text-purple-200">Cálcio / Vitamina C / Potássio</td>
-                  <td className="p-2.5 text-right font-mono font-bold text-white">103 mg / 13 mg / 28,2 mg</td>
+                  <td className="p-2.5 text-slate-700 dark:text-purple-200 font-medium">Cálcio / Vitamina C / Potássio</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">103 mg / 13 mg / 28,2 mg</td>
                 </tr>
                 <tr>
-                  <td className="p-2.5 text-purple-200">Sal</td>
-                  <td className="p-2.5 text-right font-mono font-bold text-white">0,05 g</td>
+                  <td className="p-2.5 text-slate-700 dark:text-purple-200 font-medium">Sal</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">0,05 g</td>
                 </tr>
               </tbody>
             </table>

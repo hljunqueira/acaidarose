@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/i18n/formatters'
-import { Plus, Minus, Trash2, CheckCircle2, ShoppingBag, Smartphone, CreditCard, Clock, AlertCircle, Gift, QrCode, Banknote } from 'lucide-react'
+import { Plus, Minus, Trash2, CheckCircle2, ShoppingBag, Smartphone, CreditCard, Clock, AlertCircle, Gift, QrCode, Banknote, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 import { useLanguageStore } from '@/lib/stores/languageStore'
@@ -725,7 +725,6 @@ export default function CustomerCartSheet({
                         type="text"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder={isEn ? 'e.g. John Smith' : 'Ex: João Silva'}
                         className="w-full h-11 px-3.5 rounded-xl bg-white border border-purple-200 dark:bg-white/5 dark:border-white/15 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-medium"
                       />
                     </div>
@@ -733,84 +732,55 @@ export default function CustomerCartSheet({
                     {/* Forma de Pagamento no Balcão */}
                     <div className="space-y-1.5 pt-1">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
-                          Pagamento no Balcão:
+                        <label htmlFor="customer-payment-method" className="text-xs text-slate-600 dark:text-purple-200 font-bold">
+                          {isEn ? 'Payment at Counter:' : 'Pagamento no Balcão:'}
                         </label>
                         <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold bg-amber-100/70 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
-                          Paga ao levantar
+                          {isEn ? 'Pay upon pickup' : 'Paga ao levantar'}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {allowMbway && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setPaymentMethod('MBWAY_PHONE')}
-                              className={`p-2.5 rounded-xl border text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                                paymentMethod === 'MBWAY_PHONE'
-                                  ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm ring-1 ring-fuchsia-400'
-                                  : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
-                              }`}
-                            >
-                              <Smartphone className="h-4 w-4 text-pink-600 dark:text-pink-400 shrink-0" />
-                              <span className="truncate">MB WAY Nº</span>
-                            </button>
 
-                            <button
-                              type="button"
-                              onClick={() => setPaymentMethod('MBWAY_QR')}
-                              className={`p-2.5 rounded-xl border text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                                paymentMethod === 'MBWAY_QR'
-                                  ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm ring-1 ring-fuchsia-400'
-                                  : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
-                              }`}
-                            >
-                              <QrCode className="h-4 w-4 text-pink-600 dark:text-pink-400 shrink-0" />
-                              <span className="truncate">MB WAY QR</span>
-                            </button>
-                          </>
-                        )}
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                          {paymentMethod === 'MBWAY_PHONE' && <Smartphone className="h-4.5 w-4.5 text-pink-600 dark:text-pink-400" />}
+                          {paymentMethod === 'MBWAY_QR' && <QrCode className="h-4.5 w-4.5 text-pink-600 dark:text-pink-400" />}
+                          {paymentMethod === 'MULTIBANCO' && <CreditCard className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />}
+                          {paymentMethod === 'DINHEIRO' && <Banknote className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />}
+                          {paymentMethod === 'POINTS' && <Gift className="h-4.5 w-4.5 text-purple-600 dark:text-purple-400" />}
+                        </div>
 
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('MULTIBANCO')}
-                          className={`p-2.5 rounded-xl border text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            paymentMethod === 'MULTIBANCO'
-                              ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm ring-1 ring-fuchsia-400'
-                              : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
-                          }`}
+                        <select
+                          id="customer-payment-method"
+                          value={paymentMethod}
+                          onChange={(e) => setPaymentMethod(e.target.value as CustomerPaymentOption)}
+                          className="w-full h-11 pl-10.5 pr-10 rounded-xl bg-white border border-purple-200 dark:bg-zinc-900 dark:border-white/15 text-base sm:text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-fuchsia-500 focus:outline-none appearance-none cursor-pointer transition shadow-xs"
                         >
-                          <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span className="truncate">Multibanco</span>
-                        </button>
+                          {allowMbway && (
+                            <>
+                              <option value="MBWAY_PHONE" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                                {isEn ? 'MB WAY (By Phone Number)' : 'MB WAY (Por Nº de Telemóvel)'}
+                              </option>
+                              <option value="MBWAY_QR" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                                {isEn ? 'MB WAY (QR Code at Counter)' : 'MB WAY (QR Code no Balcão)'}
+                              </option>
+                            </>
+                          )}
+                          <option value="MULTIBANCO" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                            {isEn ? 'Multibanco / Card (Debit or Credit)' : 'Multibanco (Cartão de Débito / Crédito)'}
+                          </option>
+                          <option value="DINHEIRO" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                            {isEn ? 'Cash (Pay at Counter)' : 'Dinheiro (Numerário no Balcão)'}
+                          </option>
+                          {allowPoints && (
+                            <option value="POINTS" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                              {isEn ? 'Redeem Points (Açaí da Rose App)' : 'Resgatar Pontos (App Açaí da Rose)'}
+                            </option>
+                          )}
+                        </select>
 
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('DINHEIRO')}
-                          className={`p-2.5 rounded-xl border text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            paymentMethod === 'DINHEIRO'
-                              ? 'bg-fuchsia-100 border-fuchsia-400 text-fuchsia-900 dark:bg-fuchsia-600/30 dark:border-fuchsia-400 dark:text-white shadow-sm ring-1 ring-fuchsia-400'
-                              : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
-                          }`}
-                        >
-                          <Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="truncate">Dinheiro</span>
-                        </button>
-
-                        {allowPoints && (
-                          <button
-                            type="button"
-                            onClick={() => setPaymentMethod('POINTS')}
-                            className={`p-2.5 rounded-xl border text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer col-span-2 sm:col-span-4 ${
-                              paymentMethod === 'POINTS'
-                                ? 'bg-purple-100 border-purple-500 text-purple-950 dark:bg-purple-600/40 dark:border-purple-400 dark:text-white shadow-sm ring-1 ring-purple-400'
-                                : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/70'
-                            }`}
-                          >
-                            <Gift className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                            <span>Resgatar Pontos (App Açaí da Rose)</span>
-                          </button>
-                        )}
+                        <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400 dark:text-purple-300">
+                          <ChevronDown className="h-4 w-4" />
+                        </div>
                       </div>
                     </div>
 

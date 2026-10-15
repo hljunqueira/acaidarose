@@ -1,6 +1,48 @@
 # SCRATCHPAD - Açaí da Rose
 
-- **Página de Impressoras & Integração QZ Tray em "CONFIGURAÇÕES DA UNIDADE" [CONCLUÍDO & VALIDADO]**:
+- **Desacoplamento de Cidade, Telefone e Maps no Card Institucional (`CustomerMenuMore.tsx`) [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Tornar o card de apresentação 100% institucional e agnóstico de unidade para funcionar harmonicamente em todas as lojas da rede (Figueira da Foz, Torres Novas, Aveiro, etc.), removendo menções a cidades fixas, telefone e Google Maps.
+  - **Entregas Realizadas**:
+    1. *Foto da Loja*: Removido "Matriz Oficial - Torres Novas · Portugal", substituído por "Açaí da Rose · Tradição & Qualidade Artesanal".
+    2. *Badge de Apresentação*: Substituído "Visite-nos em Torres Novas" pela tag "Conheça a Nossa Marca".
+    3. *Título & Descrição*: Mantidos intactos ("O Autêntico Açaí Brasileiro ao seu Alcance" e a descrição gastronômica).
+    4. *Remoção de Dados Fixos*: Removidos os blocos de Morada, Contacto Telefónico/MB Way e os botões de WhatsApp e Google Maps de Torres Novas.
+    5. *Preservação da Rede Oficial*: Mantido o botão do Instagram institucional `@acaidarose.pt`.
+    6. *Limpeza de Imports*: Removidos `MapPin` e `Phone` não utilizados de `lucide-react`.
+    7. *Validação*: `npx tsc --noEmit` executado com 0 erros.
+
+- **Ajuste de Cores & Contraste no Modo Claro do Card de Qualidade (`CustomerMenuMore.tsx`) [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Corrigir textos desbotados/invisíveis no modo claro na seção "Qualidade & Selos de Conformidade Oficial" da aba "Mais / Sobre Nós" do cardápio do cliente.
+  - **Entregas Realizadas**:
+    1. *6 Selos de Qualidade*: Adicionado `text-purple-950 dark:text-purple-100` e bordas suaves `border-purple-200/60 dark:border-white/10`.
+    2. *Box de Ingredientes*: Fundo com contraste suave `bg-purple-50/60`, título em destaque legível `text-pink-700 dark:text-pink-400` e texto em `text-slate-700 dark:text-purple-200/90`.
+    3. *Tabela Nutricional Oficial*:
+       - Cabeçalho: `bg-purple-100/70 text-purple-950 dark:bg-white/10 dark:text-purple-200`.
+       - Linha Valor Energético: `bg-pink-50/80 text-pink-700 dark:bg-white/5 dark:text-pink-300`.
+       - Nutrientes e gramaturas: `text-slate-700 dark:text-purple-200 font-medium` e valores numéricos em `text-slate-900 dark:text-white font-mono font-bold`.
+       - Linhas divisórias: `divide-purple-100 dark:divide-white/10`.
+    4. *Validação*: `npx tsc --noEmit` executado com código de saída 0 (zero erros).
+
+- **Seletor Dropdown para Formas de Pagamento no Balcão (`CustomerCartSheet.tsx`) [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Substituir o conjunto de botões de pagamento que ficavam espremidos e truncavam com reticências (`MB WAY ...`, `Multiban...`) por um seletor dropdown nativo e estilizado de 1 linha, com ícones dinâmicos contextuais e visual clean sem sobrecarga de espaço no checkout mobile/desktop.
+  - **Entregas Realizadas**:
+    1. *Substituição de Layout*:
+       - Removida a grade de botões horizontais com `truncate` em `components/menu/CustomerCartSheet.tsx`.
+       - Implementado componente de campo único de 1 linha (`h-11`) com tag "Paga ao levantar" no topo.
+       - Ícone dinâmico à esquerda com transição automática conforme a opção selecionada (`Smartphone` para MB WAY Nº, `QrCode` para MB WAY QR, `CreditCard` para Multibanco, `Banknote` para Dinheiro, `Gift` para Pontos).
+       - Ícone `ChevronDown` à direita indicando campo de seleção.
+       - Classes responsivas `text-base sm:text-xs` para evitar zoom indesejado no iOS Safari.
+    2. *Textos Sem Truncamento & Acessibilidade*:
+       - Opções com rótulos completos e descritivos:
+         - `MB WAY (Por Nº de Telemóvel)` / `MB WAY (By Phone Number)`
+         - `MB WAY (QR Code no Balcão)` / `MB WAY (QR Code at Counter)`
+         - `Multibanco (Cartão de Débito / Crédito)` / `Multibanco / Card (Debit or Credit)`
+         - `Dinheiro (Numerário no Balcão)` / `Cash (Pay at Counter)`
+         - `Resgatar Pontos (App Açaí da Rose)` / `Redeem Points (Açaí da Rose App)`
+    3. *Validação*:
+       - `npx tsc --noEmit` executado com 0 erros.
+       - `npm run build` executado com sucesso e 40 páginas estáticas geradas com êxito.
+
   - **Objetivo**: Implementar a Central de Impressoras multi-impressoras 1-para-N no grupo "CONFIGURAÇÕES DA UNIDADE" da sidebar com link oficial para download do QZ Tray, detecção de status em tempo real, suporte ESC/POS e corte com guilhotina.
   - **Entregas Realizadas**:
     1. *Sidebar & Roteamento*:
