@@ -1,11 +1,51 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import Link from 'next/link'
 import { MapPin, Utensils, ShoppingBag } from 'lucide-react'
 
 import { useLanguageStore } from '@/lib/stores/languageStore'
 import { getDisplayStoreLocation } from '@/lib/stores/franchiseStore'
+
+function FlagIcon({ code }: { code: string }) {
+  if (code === 'pt') {
+    return (
+      <svg className="w-3.5 h-2.5 rounded-xs shadow-xs shrink-0 inline-block" viewBox="0 0 600 400" aria-hidden="true">
+        <rect width="240" height="400" fill="#046A38" />
+        <rect x="240" width="360" height="400" fill="#DA291C" />
+        <circle cx="240" cy="200" r="80" fill="#FFCC29" stroke="#000" strokeWidth="8" />
+        <path d="M210,170 h60 v60 h-60 z" fill="#DA291C" />
+      </svg>
+    )
+  }
+  if (code === 'en') {
+    return (
+      <svg className="w-3.5 h-2.5 rounded-xs shadow-xs shrink-0 inline-block" viewBox="0 0 741 390" aria-hidden="true">
+        <rect width="741" height="390" fill="#B22234" />
+        <path d="M0,30H741M0,90H741M0,150H741M0,210H741M0,270H741M0,330H741" stroke="#FFFFFF" strokeWidth="30" />
+        <rect width="296" height="210" fill="#3C3B6E" />
+        <circle cx="60" cy="45" r="8" fill="#FFF" />
+        <circle cx="150" cy="45" r="8" fill="#FFF" />
+        <circle cx="240" cy="45" r="8" fill="#FFF" />
+        <circle cx="105" cy="105" r="8" fill="#FFF" />
+        <circle cx="195" cy="105" r="8" fill="#FFF" />
+        <circle cx="60" cy="165" r="8" fill="#FFF" />
+        <circle cx="150" cy="165" r="8" fill="#FFF" />
+        <circle cx="240" cy="165" r="8" fill="#FFF" />
+      </svg>
+    )
+  }
+  if (code === 'es') {
+    return (
+      <svg className="w-3.5 h-2.5 rounded-xs shadow-xs shrink-0 inline-block" viewBox="0 0 750 500" aria-hidden="true">
+        <rect width="750" height="500" fill="#AA151B" />
+        <rect y="125" width="750" height="250" fill="#F1BF00" />
+        <circle cx="220" cy="250" r="45" fill="#AA151B" opacity="0.8" />
+      </svg>
+    )
+  }
+  return null
+}
 
 interface CustomerMenuHeaderProps {
   tenant?: any
@@ -26,8 +66,12 @@ export default function CustomerMenuHeader({
   allowTableTransfer = true,
   onOpenSwitchTable,
 }: CustomerMenuHeaderProps) {
-  const { language, setLanguage } = useLanguageStore()
+  const { language, setLanguage, activeLanguages, loadActiveLanguages } = useLanguageStore()
   const isEn = language === 'en'
+
+  useEffect(() => {
+    loadActiveLanguages(tenant?.id || tenant?.slug)
+  }, [tenant?.id, tenant?.slug, loadActiveLanguages])
 
   const storeName = getDisplayStoreLocation(tenant)
 
@@ -68,48 +112,27 @@ export default function CustomerMenuHeader({
 
         {/* 3. Direita: Seletor Idioma (🇵🇹/🇺🇸), Mesa & Carrinho */}
         <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0">
-          {/* Seletor Oficial de Idioma Clean com Bandeiras */}
-          <div className="flex items-center rounded-xl p-0.5 bg-purple-50 dark:bg-white/10 border border-purple-200/80 dark:border-white/10">
-            <button
-              type="button"
-              onClick={() => setLanguage('pt')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                language === 'pt'
-                  ? 'bg-white dark:bg-purple-900/80 text-purple-950 dark:text-white shadow-xs'
-                  : 'text-slate-500 dark:text-purple-300/70 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Português"
-            >
-              <span>🇵🇹</span>
-              <span className="text-[10px] hidden sm:inline">PT</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage('en')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                language === 'en'
-                  ? 'bg-white dark:bg-purple-900/80 text-purple-950 dark:text-white shadow-xs'
-                  : 'text-slate-500 dark:text-purple-300/70 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="English"
-            >
-              <span>🇺🇸</span>
-              <span className="text-[10px] hidden sm:inline">EN</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage('es')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                language === 'es'
-                  ? 'bg-white dark:bg-purple-900/80 text-purple-950 dark:text-white shadow-xs'
-                  : 'text-slate-500 dark:text-purple-300/70 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Español"
-            >
-              <span>🇪🇸</span>
-              <span className="text-[10px] hidden sm:inline">ES</span>
-            </button>
-          </div>
+          {/* Seletor Oficial de Idioma Clean com Bandeiras SVGs (Dinâmico: Apenas idiomas ativos na loja) */}
+          {activeLanguages && activeLanguages.length > 1 && (
+            <div className="flex items-center rounded-xl p-0.5 bg-purple-50 dark:bg-white/10 border border-purple-200/80 dark:border-white/10">
+              {activeLanguages.map((opt) => (
+                <button
+                  key={opt.code}
+                  type="button"
+                  onClick={() => setLanguage(opt.code)}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    language === opt.code
+                      ? 'bg-white dark:bg-purple-900/80 text-purple-950 dark:text-white shadow-xs'
+                      : 'text-slate-500 dark:text-purple-300/70 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title={opt.name}
+                >
+                  <FlagIcon code={opt.code} />
+                  <span className="text-[10px] font-black uppercase">{opt.code}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {isTable && tableLabel ? (
             <div className="flex items-center gap-1">

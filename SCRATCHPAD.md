@@ -1,6 +1,21 @@
 # SCRATCHPAD - Açaí da Rose
 
-- **UX do Seletor de Pagamento: Opção Placeholder "Selecione..." e Correção de Espaçamento (`CustomerCartSheet.tsx`) [CONCLUÍDO & VALIDADO]**:
+- **Sincronização Dinâmica de Idiomas no Cardápio & Correção de Bandeiras no Windows (`CustomerMenuHeader.tsx` & `languageStore.ts`) [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Fazer o seletor de idiomas do cardápio do cliente refletir em tempo real os idiomas ativados na loja via banco de dados (`store_languages_config`), ocultando idiomas desativados (como Espanhol), e resolver o bug visual do Windows onde emojis de bandeira regional duplicavam como texto (`PT PT`, `US EN`, `ES ES`).
+  - **Causa Raiz Identificada**:
+    1. O header do cardápio (`CustomerMenuHeader.tsx`) possuía 3 botões estáticos hardcoded (`pt`, `en`, `es`) em vez de consultar a API `/api/translations/languages`.
+    2. Como o Windows não possui glifos coloridos para emojis de bandeiras de países, os caracteres Unicode `🇵🇹`, `🇺🇸`, `🇪🇸` eram renderizados como códigos de texto ISO (`PT`, `US`, `ES`). Combinado com o rótulo `PT`/`EN`/`ES`, o resultado ficava duplicado (`PT PT`, `US EN`).
+  - **Entregas Realizadas**:
+    1. *`languageStore.ts`*:
+       - Adicionada lista `activeLanguages` e função `loadActiveLanguages(tenantIdOrSlug)`.
+       - Chamada com `no-store` para `/api/translations/languages?loja=...` filtrando apenas registros com `is_active === true` e deduplicando por `language_code`.
+       - Mecanismo de fallback automático: se o cliente tiver salvo no `localStorage` um idioma que foi desativado (ex: Espanhol), o sistema redefine automaticamente para o idioma padrão (`pt`).
+    2. *`CustomerMenuHeader.tsx`*:
+       - Criado componente vetorial SVG `FlagIcon` de alta fidelidade para Portugal (PT), EUA (EN) e Espanha (ES), garantindo renderização nítida, corporativa e idêntica em qualquer sistema operacional (sem depender de emojis).
+       - Integração com `useEffect` para carregar `loadActiveLanguages` com base na loja atual (`tenant?.id || tenant?.slug`).
+       - Renderização condicional: o seletor só exibe botões para os idiomas que estejam ativos na loja (`activeLanguages`). Como Espanhol está desativado na rede, ele é omitido automaticamente.
+  - **Validação**: `npx tsc --noEmit` executado com código de saída 0 (zero erros).
+
   - **Objetivo**: Corrigir sobreposição do texto com o ícone do select no carrinho mobile e introduzir a opção inicial `Selecione a forma de pagamento...`, limpando o formulário para só exibir campos condicionais após a escolha ativa do cliente.
   - **Entregas Realizadas**:
     1. *Correção de Espaçamento*:
