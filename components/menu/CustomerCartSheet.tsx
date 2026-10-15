@@ -341,11 +341,22 @@ export default function CustomerCartSheet({
     return `${m}:${s < 10 ? '0' : ''}${s}`
   }
 
+  const handleFieldFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const el = e.currentTarget
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 250)
+  }
+
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleCloseDialog()}>
-      <DialogContent className={`w-[95vw] sm:w-full max-w-lg max-h-[92vh] overflow-hidden p-0 rounded-3xl flex flex-col shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#160228] text-white border-white/20' : 'bg-white text-slate-900 border-purple-100'}`}>
+      <DialogContent
+        className={`fixed inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 w-full max-w-none rounded-t-3xl rounded-b-none max-h-[90dvh] h-[90dvh] sm:h-auto sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg sm:max-h-[90vh] sm:rounded-3xl overflow-hidden p-0 flex flex-col shadow-2xl transition-colors duration-200 ${
+          isCustomerDark ? 'dark bg-[#160228] text-white border-white/20' : 'bg-white text-slate-900 border-purple-100'
+        }`}
+      >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-purple-100 dark:border-white/10 bg-purple-50/80 dark:bg-[#1e0333]/95 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-purple-100 dark:border-white/10 bg-purple-50/80 dark:bg-[#1e0333]/95 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-pink-100 text-pink-600 dark:bg-pink-600/20 dark:text-pink-400">
               <ShoppingBag className="h-5 w-5" />
@@ -367,8 +378,8 @@ export default function CustomerCartSheet({
           </div>
         </div>
 
-        {/* Corpo */}
-        <div className="overflow-y-auto p-5 space-y-5 flex-1 text-slate-900 dark:text-white">
+        {/* Corpo com overscroll e padding inferior para não esconder campos sob teclado e rodapé */}
+        <div className="overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 sm:space-y-5 flex-1 text-slate-900 dark:text-white pb-36 sm:pb-6">
           {/* TELA 1: AGUARDANDO MB WAY */}
           {checkoutStep === 'MBWAY_WAITING' && (
             <div className="py-6 text-center space-y-4">
@@ -733,6 +744,7 @@ export default function CustomerCartSheet({
                         type="text"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
+                        onFocus={handleFieldFocus}
                         className="w-full h-11 px-3.5 rounded-xl bg-white border border-purple-200 dark:bg-white/5 dark:border-white/15 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-medium"
                       />
                     </div>
@@ -762,6 +774,7 @@ export default function CustomerCartSheet({
                           id="customer-payment-method"
                           value={paymentMethod}
                           onChange={(e) => setPaymentMethod(e.target.value as CustomerPaymentOption)}
+                          onFocus={handleFieldFocus}
                           style={{ paddingLeft: '2.85rem', paddingRight: '2.5rem' }}
                           className={`w-full h-11 rounded-xl bg-white border dark:bg-zinc-900 transition shadow-xs focus:ring-2 focus:ring-fuchsia-500 focus:outline-none appearance-none cursor-pointer ${
                             !paymentMethod
@@ -813,8 +826,10 @@ export default function CustomerCartSheet({
                         </label>
                         <input
                           type="tel"
+                          inputMode="tel"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(e.target.value)}
+                          onFocus={handleFieldFocus}
                           placeholder="912 345 678"
                           className="w-full h-11 px-3.5 rounded-xl bg-white border border-purple-200 dark:bg-white/5 dark:border-white/15 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono"
                         />
@@ -840,8 +855,10 @@ export default function CustomerCartSheet({
                         </div>
                         <input
                           type="text"
+                          inputMode="numeric"
                           value={customerNif}
                           onChange={(e) => setCustomerNif(e.target.value)}
+                          onFocus={handleFieldFocus}
                           placeholder={paymentMethod === 'POINTS' ? 'NIF registado no app (9 dígitos)' : 'Ex: 123456789'}
                           maxLength={9}
                           className={`w-full h-11 px-3.5 rounded-xl bg-white border text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono ${
@@ -865,7 +882,7 @@ export default function CustomerCartSheet({
         </div>
 
         {/* Rodapé Fixo */}
-        <div className="px-5 py-4 border-t border-purple-100 dark:border-white/10 bg-purple-50/80 dark:bg-[#1e0333] flex items-center justify-between gap-3">
+        <div className="px-5 py-3.5 sm:py-4 border-t border-purple-100 dark:border-white/10 bg-purple-50/95 dark:bg-[#1e0333]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-20">
           {checkoutStep !== 'CART' ? (
             <Button
               type="button"

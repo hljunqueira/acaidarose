@@ -1,6 +1,23 @@
 # SCRATCHPAD - Açaí da Rose
 
-- **Sincronização Dinâmica de Idiomas no Cardápio & Correção de Bandeiras no Windows (`CustomerMenuHeader.tsx` & `languageStore.ts`) [CONCLUÍDO & VALIDADO]**:
+- **Responsividade & Acessibilidade do Checkout Mobile com Teclado Virtual (`CustomerCartSheet.tsx`) [CONCLUÍDO & VALIDADO]**:
+  - **Problema Reportado**: Ao tocar no campo de NIF ou em qualquer input no celular na hora de pagar, o teclado virtual do iOS/Android subia e cobria o campo de digitação, enquanto o modal (centralizado com `translate-y-[-50%]`) ficava espremido contra o rodapé fixo, impedindo a visualização do NIF e dados digitados.
+  - **Causa Raiz Identificada**:
+    1. O `DialogContent` utilizava posicionamento absoluto centralizado (`top-1/2 translate-y-[-50%]`) com `max-h-[92vh]`. Quando o teclado virtual abria, a viewport do celular encolhia e o modal era cortado, empurrando os inputs para trás do rodapé fixo.
+    2. O container rolável interno possuía apenas `pb-5`, sem folga de respiro inferior para que o último campo (NIF) pudesse ser rolado para cima do rodapé fixo.
+    3. Faltava o trigger de auto-scroll (`scrollIntoView`) ao receber foco (`onFocus`).
+  - **Entregas Realizadas**:
+    1. *Bottom Sheet Mobile com Altura Dinâmica (`dvh`)*:
+       - No mobile, o modal foi reestruturado para atuar como um Bottom Sheet nativo ancorado na base: `fixed inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 w-full max-w-none rounded-t-3xl rounded-b-none max-h-[90dvh] h-[90dvh]`.
+       - No desktop (`sm:`), preserva a caixa de diálogo centralizada: `sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-lg sm:rounded-3xl sm:h-auto sm:max-h-[90vh]`.
+    2. *Folga Inferior de Rolagem (`pb-36`)*:
+       - Adicionado `pb-36 sm:pb-6` com `overscroll-contain` no container interno, garantindo mais de 140px de respiro para rolar o campo de NIF e telemóvel bem acima do rodapé fixo e do teclado.
+    3. *Auto-Scroll Centralizado no Foco (`onFocus`)*:
+       - Implementado `handleFieldFocus` com `scrollIntoView({ behavior: 'smooth', block: 'center' })` em todos os campos de entrada (Nome, Forma de Pagamento, Telemóvel e NIF).
+    4. *Teclados Otimizados*:
+       - Adicionado `inputMode="numeric"` no campo de NIF e `inputMode="tel"` no telemóvel para acionar o teclado adequado no iOS e Android.
+  - **Validação**: `npx tsc --noEmit` executado com código de saída 0 (zero erros).
+
   - **Objetivo**: Fazer o seletor de idiomas do cardápio do cliente refletir em tempo real os idiomas ativados na loja via banco de dados (`store_languages_config`), ocultando idiomas desativados (como Espanhol), e resolver o bug visual do Windows onde emojis de bandeira regional duplicavam como texto (`PT PT`, `US EN`, `ES ES`).
   - **Causa Raiz Identificada**:
     1. O header do cardápio (`CustomerMenuHeader.tsx`) possuía 3 botões estáticos hardcoded (`pt`, `en`, `es`) em vez de consultar a API `/api/translations/languages`.
