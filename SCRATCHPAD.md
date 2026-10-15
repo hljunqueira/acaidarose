@@ -1,6 +1,19 @@
 # SCRATCHPAD - Açaí da Rose
 
-- **Desacoplamento de Cidade, Telefone e Maps no Card Institucional (`CustomerMenuMore.tsx`) [CONCLUÍDO & VALIDADO]**:
+- **UX do Seletor de Pagamento: Opção Placeholder "Selecione..." e Correção de Espaçamento (`CustomerCartSheet.tsx`) [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Corrigir sobreposição do texto com o ícone do select no carrinho mobile e introduzir a opção inicial `Selecione a forma de pagamento...`, limpando o formulário para só exibir campos condicionais após a escolha ativa do cliente.
+  - **Entregas Realizadas**:
+    1. *Correção de Espaçamento*:
+       - Adicionado espaçamento inline explícito `style={{ paddingLeft: '2.85rem', paddingRight: '2.5rem' }}` no `<select>`, evitando truncamento ou sobreposição com o ícone flutuante.
+       - Ícones alinhados centralmente via `top-1/2 -translate-y-1/2 z-10`.
+    2. *Opção Inicial "Selecione..." & Validação*:
+       - Estado inicial `paymentMethod` inicializado com string vazia `''`.
+       - Renderizada opção inicial desabilitada `<option value="" disabled>Selecione a forma de pagamento...</option>`.
+       - Exibição de ícone neutro (`CreditCard` translúcido) antes da seleção e transição para o ícone correspondente ao escolher.
+       - Validação no `handleCheckout` bloqueando o envio e focando no seletor com scroll suave caso o cliente não selecione um método.
+    3. *Limpeza Visual (Progressive Disclosure)*:
+       - O campo de telefone específico de MB WAY e o campo de NIF não aparecem de forma prematura na tela, surgindo apenas quando o método correspondente é selecionado.
+    4. *Validação*: `npx tsc --noEmit` executado com código de saída 0 (zero erros).
   - **Objetivo**: Tornar o card de apresentação 100% institucional e agnóstico de unidade para funcionar harmonicamente em todas as lojas da rede (Figueira da Foz, Torres Novas, Aveiro, etc.), removendo menções a cidades fixas, telefone e Google Maps.
   - **Entregas Realizadas**:
     1. *Foto da Loja*: Removido "Matriz Oficial - Torres Novas · Portugal", substituído por "Açaí da Rose · Tradição & Qualidade Artesanal".

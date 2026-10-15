@@ -69,7 +69,7 @@ export default function CustomerCartSheet({
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerNif, setCustomerNif] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentOption>('MBWAY_PHONE')
+  const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentOption | ''>('')
   const [consumptionType, setConsumptionType] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN')
   const [needCutlery, setNeedCutlery] = useState(true)
   const [bagQuantity, setBagQuantity] = useState(0)
@@ -166,6 +166,14 @@ export default function CustomerCartSheet({
 
     if (isNameRequired && !customerName.trim()) {
       toast.error('Por favor, informe o seu nome para identificação no pedido')
+      return
+    }
+
+    if (!paymentMethod) {
+      toast.error('Por favor, selecione a forma de pagamento no balcão')
+      const selectEl = document.getElementById('customer-payment-method')
+      selectEl?.focus()
+      selectEl?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
 
@@ -732,7 +740,7 @@ export default function CustomerCartSheet({
                     {/* Forma de Pagamento no Balcão */}
                     <div className="space-y-1.5 pt-1">
                       <div className="flex items-center justify-between">
-                        <label htmlFor="customer-payment-method" className="text-xs text-slate-600 dark:text-purple-200 font-bold">
+                        <label htmlFor="customer-payment-method" className="text-xs text-slate-700 dark:text-purple-200 font-bold">
                           {isEn ? 'Payment at Counter:' : 'Pagamento no Balcão:'}
                         </label>
                         <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold bg-amber-100/70 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
@@ -740,8 +748,9 @@ export default function CustomerCartSheet({
                         </span>
                       </div>
 
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <div className="relative flex items-center">
+                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none z-10">
+                          {!paymentMethod && <CreditCard className="h-4.5 w-4.5 text-slate-400 dark:text-purple-300/40" />}
                           {paymentMethod === 'MBWAY_PHONE' && <Smartphone className="h-4.5 w-4.5 text-pink-600 dark:text-pink-400" />}
                           {paymentMethod === 'MBWAY_QR' && <QrCode className="h-4.5 w-4.5 text-pink-600 dark:text-pink-400" />}
                           {paymentMethod === 'MULTIBANCO' && <CreditCard className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />}
@@ -753,32 +762,40 @@ export default function CustomerCartSheet({
                           id="customer-payment-method"
                           value={paymentMethod}
                           onChange={(e) => setPaymentMethod(e.target.value as CustomerPaymentOption)}
-                          className="w-full h-11 pl-10.5 pr-10 rounded-xl bg-white border border-purple-200 dark:bg-zinc-900 dark:border-white/15 text-base sm:text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-fuchsia-500 focus:outline-none appearance-none cursor-pointer transition shadow-xs"
+                          style={{ paddingLeft: '2.85rem', paddingRight: '2.5rem' }}
+                          className={`w-full h-11 rounded-xl bg-white border dark:bg-zinc-900 transition shadow-xs focus:ring-2 focus:ring-fuchsia-500 focus:outline-none appearance-none cursor-pointer ${
+                            !paymentMethod
+                              ? 'border-purple-200 dark:border-white/15 text-slate-500 dark:text-purple-200/60 text-base sm:text-xs font-normal'
+                              : 'border-fuchsia-400 dark:border-fuchsia-500/50 text-slate-900 dark:text-white text-base sm:text-xs font-bold'
+                          }`}
                         >
+                          <option value="" disabled className="text-slate-400 dark:text-zinc-500 bg-white dark:bg-zinc-900 font-normal">
+                            {isEn ? 'Select payment method...' : 'Selecione a forma de pagamento...'}
+                          </option>
                           {allowMbway && (
                             <>
-                              <option value="MBWAY_PHONE" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                              <option value="MBWAY_PHONE" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900 font-medium">
                                 {isEn ? 'MB WAY (By Phone Number)' : 'MB WAY (Por Nº de Telemóvel)'}
                               </option>
-                              <option value="MBWAY_QR" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                              <option value="MBWAY_QR" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900 font-medium">
                                 {isEn ? 'MB WAY (QR Code at Counter)' : 'MB WAY (QR Code no Balcão)'}
                               </option>
                             </>
                           )}
-                          <option value="MULTIBANCO" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                          <option value="MULTIBANCO" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900 font-medium">
                             {isEn ? 'Multibanco / Card (Debit or Credit)' : 'Multibanco (Cartão de Débito / Crédito)'}
                           </option>
-                          <option value="DINHEIRO" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                          <option value="DINHEIRO" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900 font-medium">
                             {isEn ? 'Cash (Pay at Counter)' : 'Dinheiro (Numerário no Balcão)'}
                           </option>
                           {allowPoints && (
-                            <option value="POINTS" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
+                            <option value="POINTS" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900 font-medium">
                               {isEn ? 'Redeem Points (Açaí da Rose App)' : 'Resgatar Pontos (App Açaí da Rose)'}
                             </option>
                           )}
                         </select>
 
-                        <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400 dark:text-purple-300">
+                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-slate-400 dark:text-purple-300 z-10">
                           <ChevronDown className="h-4 w-4" />
                         </div>
                       </div>
