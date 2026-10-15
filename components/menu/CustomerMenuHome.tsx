@@ -5,11 +5,12 @@ import { CatalogData, ProductContainer } from '@/types'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { motion, AnimatePresence } from 'framer-motion'
 import CustomerPromoCarousel from '@/components/menu/CustomerPromoCarousel'
-import { Plus } from 'lucide-react'
+import { Plus, Play, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguageStore } from '@/lib/stores/languageStore'
 import { getLocalizedField } from '@/lib/i18n/localization'
 import CustomerItemDetailModal from '@/components/menu/CustomerItemDetailModal'
+import CustomerMediaModal from '@/components/menu/CustomerMediaModal'
 
 interface CustomerMenuHomeProps {
   catalog: CatalogData
@@ -108,6 +109,8 @@ export default function CustomerMenuHome({
 
   // Modal para item unitário
   const [activeItemForDetail, setActiveItemForDetail] = useState<ProductContainer | null>(null)
+  // Modal para visualização exclusiva de foto ou vídeo
+  const [mediaModalProduct, setMediaModalProduct] = useState<ProductContainer | null>(null)
 
   // Filtra itens ativos e visíveis
   const allContainers = useMemo(() => {
@@ -171,6 +174,12 @@ export default function CustomerMenuHome({
           ? '¡Este producto no está disponible a esta hora!'
           : 'Este produto não está disponível neste horário!'
       )
+      return
+    }
+
+    // No modo catálogo vitrine (sem QR code de mesa física), abre exclusivamente a imagem ou vídeo
+    if (isCatalogOnly) {
+      setMediaModalProduct(c)
       return
     }
 
@@ -314,23 +323,40 @@ export default function CustomerMenuHome({
                   <div>
                     {/* Imagem / Vídeo ou Bloco Tipográfico Clean */}
                     {hasVideo || hasImage ? (
-                      <div className="relative h-44 sm:h-40 md:h-44 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 mb-3 border border-purple-100 dark:border-white/10">
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setMediaModalProduct(c)
+                        }}
+                        className="relative h-44 sm:h-40 md:h-44 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 mb-3 border border-purple-100 dark:border-white/10 cursor-zoom-in group/media"
+                        title={hasVideo ? (isEn ? 'Watch video' : isEs ? 'Ver video' : 'Ver vídeo') : (isEn ? 'Enlarge photo' : isEs ? 'Ampliar foto' : 'Ampliar foto')}
+                      >
                         {hasVideo ? (
-                          <video
-                            src={c.videoUrl!}
-                            autoPlay
-                            muted
-                            loop
-                            playsInline
-                            preload="auto"
-                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
+                          <>
+                            <video
+                              src={c.videoUrl!}
+                              autoPlay
+                              muted
+                              loop
+                              playsInline
+                              preload="auto"
+                              className="h-full w-full object-cover group-hover/media:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-xs group-hover/media:bg-pink-600 transition-colors shadow-md">
+                              <Play className="h-3 w-3 fill-current" />
+                            </div>
+                          </>
                         ) : (
-                          <img
-                            src={imageSrc}
-                            alt={displayName}
-                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
+                          <>
+                            <img
+                              src={imageSrc}
+                              alt={displayName}
+                              className="h-full w-full object-cover group-hover/media:scale-105 transition-transform duration-300"
+                            />
+                            <div className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-xs opacity-0 group-hover/media:opacity-100 transition-opacity shadow-md">
+                              <Eye className="h-3 w-3" />
+                            </div>
+                          </>
                         )}
 
                         {!isAvailableInStore ? (
@@ -388,8 +414,18 @@ export default function CustomerMenuHome({
                     </div>
 
                     {isCatalogOnly ? (
-                      <span className="h-9 px-3.5 rounded-xl bg-purple-100 text-purple-900 dark:bg-white/10 dark:text-white font-bold text-xs flex items-center justify-center shrink-0">
-                        {isEn ? 'Details' : isEs ? 'Detalles' : 'Detalhes'}
+                      <span className="h-9 px-3.5 rounded-xl bg-purple-100 text-purple-900 dark:bg-white/10 dark:text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 group-hover:bg-pink-600 group-hover:text-white transition-colors">
+                        {hasVideo ? (
+                          <>
+                            <Play className="h-3 w-3 fill-current" />
+                            <span>{isEn ? 'Watch Video' : isEs ? 'Ver Video' : 'Ver Vídeo'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>{isEn ? 'View Photo' : isEs ? 'Ver Foto' : 'Ver Foto'}</span>
+                          </>
+                        )}
                       </span>
                     ) : !isAvailableInStore ? (
                       <span className="h-9 px-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold text-xs flex items-center justify-center shrink-0 cursor-not-allowed select-none">
@@ -421,14 +457,13 @@ export default function CustomerMenuHome({
         </AnimatePresence>
       </section>
 
-      {/* MODAL DE PRODUTO UNITÁRIO / MODIFICADORES */}
-      {activeItemForDetail && (
+      {/* MODAL DE PRODUTO UNITÁRIO / MODIFICADORES (Apenas quando for QR Code de mesa física) */}
+      {!isCatalogOnly && activeItemForDetail && (
         <CustomerItemDetailModal
           product={activeItemForDetail}
           onClose={() => setActiveItemForDetail(null)}
-          viewOnly={isCatalogOnly}
+          viewOnly={false}
           onAddToCart={(item) => {
-            if (isCatalogOnly) return
             if (onAddToCart) {
               onAddToCart(item)
             }
@@ -436,6 +471,12 @@ export default function CustomerMenuHome({
           }}
         />
       )}
+
+      {/* MODAL DE MÍDIA EXCLUSIVA (Abre somente a foto ou vídeo ampliado com nome e preço) */}
+      <CustomerMediaModal
+        product={mediaModalProduct}
+        onClose={() => setMediaModalProduct(null)}
+      />
     </div>
   )
 }

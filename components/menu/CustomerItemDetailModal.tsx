@@ -9,6 +9,7 @@ import { Plus, Minus, Check } from 'lucide-react'
 import { useLanguageStore } from '@/lib/stores/languageStore'
 import { getLocalizedField } from '@/lib/i18n/localization'
 import { toast } from 'sonner'
+import CustomerMediaModal from '@/components/menu/CustomerMediaModal'
 
 interface CustomerItemDetailModalProps {
   product: ProductContainer | null
@@ -26,6 +27,7 @@ export default function CustomerItemDetailModal({
   const { language } = useLanguageStore()
   const [quantity, setQuantity] = useState(1)
   const [notes, setNotes] = useState('')
+  const [showMediaZoom, setShowMediaZoom] = useState(false)
 
   // Inicializa seleções padrão para os grupos de opções
   const initialOptionsMap = useMemo(() => {
@@ -184,7 +186,11 @@ export default function CustomerItemDetailModal({
         <div className="space-y-4 py-2">
           {/* Mídia: Vídeo ou Imagem */}
           {product.videoUrl ? (
-            <div className="relative h-48 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10">
+            <div
+              onClick={() => setShowMediaZoom(true)}
+              className="relative h-48 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10 cursor-zoom-in group/media"
+              title={isEn ? 'Click to enlarge' : isEs ? 'Clic para ampliar' : 'Clique para ampliar'}
+            >
               <video
                 src={product.videoUrl}
                 autoPlay
@@ -192,15 +198,19 @@ export default function CustomerItemDetailModal({
                 loop
                 playsInline
                 preload="auto"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover group-hover/media:scale-105 transition-transform duration-500"
               />
             </div>
           ) : (product.image || product.videoPoster) ? (
-            <div className="relative h-44 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10">
+            <div
+              onClick={() => setShowMediaZoom(true)}
+              className="relative h-44 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10 cursor-zoom-in group/media"
+              title={isEn ? 'Click to enlarge' : isEs ? 'Clic para ampliar' : 'Clique para ampliar'}
+            >
               <img
                 src={product.image || product.videoPoster || ''}
                 alt={displayName}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover group-hover/media:scale-105 transition-transform duration-300"
               />
             </div>
           ) : null}
@@ -383,6 +393,12 @@ export default function CustomerItemDetailModal({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Zoom Exclusivo de Foto ou Vídeo */}
+      <CustomerMediaModal
+        product={showMediaZoom ? product : null}
+        onClose={() => setShowMediaZoom(false)}
+      />
     </Dialog>
   )
 }

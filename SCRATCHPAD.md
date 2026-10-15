@@ -1,5 +1,16 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Visualização Exclusiva de Foto/Vídeo vs. Customizador de Mesa com QR Code [CONCLUÍDO & VALIDADO]**:
+  - **Problema Reportado**: No modo catálogo vitrine (consulta sem QR Code de mesa física), clicar em "Detalhes" abria o modal de seleção de ingredientes/modificadores (leite, textura, toppings extras). Além disso, clicar na foto ou vídeo do item deveria abrir exclusivamente a mídia (foto/vídeo ampliado) e não as opções de personalização.
+  - **Solução Implementada**:
+    1. *`CustomerMediaModal.tsx`*: Criado componente exclusivo de mídia em popup limpo (backdrop blur, player de vídeo com controles ou foto em alta resolução, nome, peso e preço), sem nenhum formulário de ingredientes.
+    2. *`CustomerMenuHome.tsx`*:
+       - Clique direto no container da foto/vídeo (`e.stopPropagation()`) abre imediatamente o `CustomerMediaModal`.
+       - Em modo catálogo (`isCatalogOnly`), o botão do card exibe `Ver Vídeo` ou `Ver Foto` e o clique no card abre o `CustomerMediaModal`.
+       - Em mesas físicas (`!isCatalogOnly` / QR Code de mesa), o clique no card ou no botão `Pedir`/`Personalizar` abre o customizador completo (`CustomerItemDetailModal` ou `CustomerProductDetail`) para montar e enviar o pedido.
+    3. *`app/menu/page.tsx` & `CustomerItemDetailModal.tsx`*: Integrado o `CustomerMediaModal` para consultas e clique de zoom nas fotos/vídeos.
+  - **Validação**: `npx tsc --noEmit` código 0; `npm run build` gerou todas as rotas com sucesso (código 0).
+
 - **Suporte 100% Dinâmico a Novas Lojas / Franquias (Zero Código) [ANALISADO & VALIDADO]**:
   - **Pergunta do Usuário**: "E quando for loja nova, vai ter que adicionar via código e não pelas configurações da matriz? Responda somente após análise."
   - **Resultado da Análise Técnica**:

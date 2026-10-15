@@ -17,6 +17,7 @@ import CustomerMenuSearch from '@/components/menu/CustomerMenuSearch'
 import CustomerMenuMore from '@/components/menu/CustomerMenuMore'
 import CustomerProductDetail from '@/components/menu/CustomerProductDetail'
 import CustomerCartSheet from '@/components/menu/CustomerCartSheet'
+import CustomerMediaModal from '@/components/menu/CustomerMediaModal'
 import CallWaiterModal from '@/components/menu/CallWaiterModal'
 import SwitchTableModal from '@/components/menu/SwitchTableModal'
 import { Info, Clock } from 'lucide-react'
@@ -267,7 +268,7 @@ function MenuContent() {
   }, [activeLoja, catalogVersion])
 
   const handleSelectContainer = (container: ProductContainer, showInfoOnly = false) => {
-    if (showInfoOnly) {
+    if (showInfoOnly || isCatalogOnly) {
       setInfoModalProduct(container)
     } else {
       setSelectedContainer(container)
@@ -375,61 +376,12 @@ function MenuContent() {
         />
       )}
 
-      {/* 5. Modal Informativo de Detalhes (Fallback / Pesquisa) */}
+      {/* 5. Modal de Mídia Exclusiva (Foto ou Vídeo Ampliado sem modificadores) */}
       {infoModalProduct && (
-        <Dialog open={Boolean(infoModalProduct)} onOpenChange={() => setInfoModalProduct(null)}>
-          <DialogContent className={`border rounded-3xl max-w-md p-6 shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#18022B] text-white border-white/15' : 'bg-white text-slate-900 border-purple-100'}`}>
-            <DialogHeader>
-              <DialogTitle className="text-xl font-black text-slate-900 dark:text-white">
-                {infoModalProduct.name}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2 text-xs text-slate-600 dark:text-purple-200">
-              {infoModalProduct.videoUrl ? (
-                <div className="relative h-48 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10">
-                  <video
-                    src={infoModalProduct.videoUrl}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="auto"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              ) : (infoModalProduct.image || infoModalProduct.videoPoster) ? (
-                <div className="relative h-44 w-full rounded-2xl overflow-hidden bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-white/10">
-                  <img
-                    src={infoModalProduct.image || infoModalProduct.videoPoster || ''}
-                    alt={infoModalProduct.name}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              ) : null}
-
-              <p className="leading-relaxed font-medium">
-                {infoModalProduct.description || 'Delicioso açaí artesanal preparado na hora com os melhores ingredientes selecionados.'}
-              </p>
-              <div className="p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200/80 dark:bg-white/5 dark:border-white/10 flex justify-between items-center">
-                <span className="font-bold text-slate-900 dark:text-white">Preço Base:</span>
-                <span className="text-base font-black text-fuchsia-600 dark:text-pink-400 font-mono">
-                  {formatCurrency(infoModalProduct.precoBase)}
-                </span>
-              </div>
-              <div className="text-[11px] font-medium text-purple-900 bg-purple-100 p-3 rounded-xl border border-purple-200 dark:text-purple-300/80 dark:bg-purple-900/30 dark:border-purple-500/20">
-                Disponível para consumo no salão e take-away na unidade {tenant?.name || 'Açaí da Rose'}.
-              </div>
-            </div>
-            <DialogFooter className="pt-2">
-              <Button
-                onClick={() => setInfoModalProduct(null)}
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold cursor-pointer h-10"
-              >
-                Fechar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <CustomerMediaModal
+          product={infoModalProduct}
+          onClose={() => setInfoModalProduct(null)}
+        />
       )}
 
       {/* 6. Gaveta / Modal do Carrinho e Pedido */}
