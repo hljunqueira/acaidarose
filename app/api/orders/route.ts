@@ -128,6 +128,28 @@ export async function POST(request: NextRequest) {
       paymentStatus: body.paymentStatus || (body.status === 'PAID' || body.status === 'COMPLETED' ? 'PAID' : 'PENDING'),
     }
 
+    // Se o pedido for associado a uma mesa física (salão), valida no banco de dados se a mesa realmente existe na loja
+    if (payload.isTableOrder || payload.tableNumber) {
+      if (!payload.tableNumber) {
+        return NextResponse.json(
+          { error: 'Número da mesa não informado para pedido no salão.' },
+          { status: 400 }
+        )
+      }
+
+      const tableCheck = await query(
+        `SELECT id, status FROM tables WHERE tenant_id::text = $1 AND table_number = $2 AND deleted_at IS NULL LIMIT 1`,
+        [tenantId, Number(payload.tableNumber)]
+      )
+
+      if (!tableCheck.rows || tableCheck.rows.length === 0) {
+        return NextResponse.json(
+          { error: `A Mesa ${payload.tableNumber} não existe ou não está registada nesta unidade. Por favor, faça o pedido no balcão ou consulte a equipa.` },
+          { status: 400 }
+        )
+      }
+    }
+
     const order = await createOrder(payload)
     return NextResponse.json(order, { status: 201 })
   } catch (error: any) {

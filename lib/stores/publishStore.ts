@@ -8,10 +8,18 @@ export interface PendingChangeItem {
   timestamp: string
 }
 
+export interface PendingStoreItem {
+  tenantId: string
+  storeName: string
+  storeSlug: string
+  pendingCount: number
+}
+
 interface PublishState {
   hasPendingChanges: boolean
   pendingCount: number
   pendingSummary: PendingChangeItem[]
+  pendingStores: PendingStoreItem[]
   currentVersion: number
   lastPublishedAt: string | null
   isPublishing: boolean
@@ -24,6 +32,7 @@ interface PublishState {
     options?: { replicateAll?: boolean; note?: string },
     customFetch?: (url: string, init?: RequestInit) => Promise<Response>
   ) => Promise<{ success: boolean; version?: number; message?: string }>
+  publishAllPending: (customFetch?: (url: string, init?: RequestInit) => Promise<Response>) => Promise<{ success: boolean; message?: string }>
   revert: (
     tenantId: string,
     customFetch?: (url: string, init?: RequestInit) => Promise<Response>
@@ -34,6 +43,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
   hasPendingChanges: false,
   pendingCount: 0,
   pendingSummary: [],
+  pendingStores: [],
   currentVersion: 1,
   lastPublishedAt: null,
   isPublishing: false,
@@ -51,6 +61,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
           hasPendingChanges: Boolean(data.hasPendingChanges),
           pendingCount: Number(data.pendingCount) || 0,
           pendingSummary: Array.isArray(data.pendingSummary) ? data.pendingSummary : [],
+          pendingStores: Array.isArray(data.pendingStores) ? data.pendingStores : [],
           currentVersion: Number(data.version) || 1,
           lastPublishedAt: data.publishedAt || null,
           lastCheckedTenantId: tenantId,
@@ -130,6 +141,35 @@ export const usePublishStore = create<PublishState>((set, get) => ({
     } catch (err: any) {
       set({ isPublishing: false })
       return { success: false, message: err?.message || 'Erro de conexão ao publicar' }
+    }
+  },
+
+  publishAllPending: async (customFetch) => {
+    set({ isPublishing: true })
+    try {
+      const fetcher = customFetch || fetch
+      const res = await fetcher('/api/catalog/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publishAllPending: true }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        set({
+          hasPendingChanges: false,
+          pendingCount: 0,
+          pendingSummary: [],
+          pendingStores: [],
+          isPublishing: false,
+        })
+        emitCatalogSync({ tenantId: 'ALL', entity: 'catalog', action: 'update' })
+        return { success: true, message: data.message || 'Todas as lojas foram publicadas com sucesso!' }
+      }
+      set({ isPublishing: false })
+      return { success: false, message: data.error || 'Falha ao publicar em lote' }
+    } catch (err: any) {
+      set({ isPublishing: false })
+      return { success: false, message: err?.message || 'Erro ao publicar em lote' }
     }
   },
 

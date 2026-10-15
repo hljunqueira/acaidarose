@@ -76,6 +76,14 @@ export default function CustomerCartSheet({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('CART')
   const [createdOrder, setCreatedOrder] = useState<any | null>(null)
+  const [submittedOrderSummary, setSubmittedOrderSummary] = useState<{
+    total: number
+    subtotal: number
+    bagFee: number
+    bagQuantity: number
+    consumptionType: string
+    items: any[]
+  } | null>(null)
   const [countdown, setCountdown] = useState<number>(240) // 4 min para autorização MB WAY
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
 
@@ -278,8 +286,17 @@ export default function CustomerCartSheet({
       }
 
       const orderData = await res.json()
-      activeOrderIdRef.current = orderData.id || orderData.order?.id
-      setCreatedOrder(orderData.order || orderData)
+      const created = orderData.order || orderData
+      activeOrderIdRef.current = orderData.id || created?.id
+      setCreatedOrder(created)
+      setSubmittedOrderSummary({
+        total: cartTotal,
+        subtotal: itemsTotal,
+        bagFee,
+        bagQuantity,
+        consumptionType,
+        items: [...cart],
+      })
       onClearCart()
       setCheckoutStep('SUCCESS_COUNTER')
 
@@ -328,6 +345,7 @@ export default function CustomerCartSheet({
     if (checkoutStep === 'SUCCESS_PAID' || checkoutStep === 'SUCCESS_COUNTER') {
       setCheckoutStep('CART')
       setCreatedOrder(null)
+      setSubmittedOrderSummary(null)
       setCustomerName('')
       setCustomerNif('')
       setCustomerPhone('')
@@ -445,6 +463,70 @@ export default function CustomerCartSheet({
                 )}
               </div>
 
+              {/* Resumo Completo dos Itens do Pedido */}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-purple-950/40 border border-purple-150 dark:border-white/10 max-w-xs sm:max-w-sm mx-auto text-left space-y-2.5 shadow-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-purple-950 dark:text-purple-200">
+                    {isEn ? 'Order Items' : 'Itens do Pedido'}
+                  </span>
+                  <span className="text-xs font-black font-mono text-fuchsia-600 dark:text-pink-400">
+                    {formatCurrency(submittedOrderSummary?.total ?? (createdOrder?.total !== undefined ? Number(createdOrder.total) : cartTotal))}
+                  </span>
+                </div>
+
+                <div className="max-h-52 overflow-y-auto space-y-2.5 pr-1 divide-y divide-purple-100/60 dark:divide-white/5">
+                  {(submittedOrderSummary?.items?.length ? submittedOrderSummary.items : (createdOrder?.items || [])).map((item: any, idx: number) => {
+                    const itemName = item.containerName || item.container?.name || item.name || 'Açaí'
+                    const itemPackaging = item.packagingType || item.containerFormat
+                    const lineTotal = item.lineTotal ?? (Number(item.unitPrice || 0) * (item.quantity || 1))
+                    return (
+                      <div key={idx} className="pt-2 first:pt-0 space-y-1 text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                            <span>{item.quantity}x {itemName}</span>
+                            {itemPackaging && (
+                              <span className="text-[9px] bg-purple-200/80 text-purple-900 dark:bg-purple-800/80 dark:text-purple-100 font-black px-1.5 py-0.5 rounded-md uppercase">
+                                {itemPackaging === 'CAIXA' ? 'Caixinha' : 'Taça'}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-bold font-mono text-fuchsia-600 dark:text-pink-400 shrink-0">
+                            {formatCurrency(lineTotal)}
+                          </span>
+                        </div>
+
+                        {/* Bases e Acompanhamentos */}
+                        {item.bases?.length > 0 && (
+                          <div className="text-[10px] text-slate-600 dark:text-purple-200/70">
+                            <span className="font-semibold text-purple-900 dark:text-purple-300">Bases: </span>
+                            {item.bases.map((b: any) => b.name).join(', ')}
+                          </div>
+                        )}
+                        {item.toppings?.length > 0 && (
+                          <div className="text-[10px] text-slate-600 dark:text-purple-200/70">
+                            <span className="font-semibold text-purple-900 dark:text-purple-300">Acompanhamentos: </span>
+                            {item.toppings.map((t: any) => t.name).join(', ')}
+                          </div>
+                        )}
+                        {item.notes && (
+                          <div className="text-[10px] italic text-slate-500 dark:text-purple-300/60">
+                            Obs: {item.notes}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Sacos de Transporte */}
+                {(submittedOrderSummary?.bagFee || 0) > 0 && (
+                  <div className="flex items-center justify-between pt-1.5 border-t border-purple-100 dark:border-white/10 text-[11px] text-slate-600 dark:text-purple-200 font-medium">
+                    <span>{submittedOrderSummary?.bagQuantity}x Saco de Transporte</span>
+                    <span className="font-mono font-bold">{formatCurrency(submittedOrderSummary?.bagFee || 0)}</span>
+                  </div>
+                )}
+              </div>
+
               <p className="text-[11px] text-slate-500 dark:text-purple-300/80 max-w-sm mx-auto">
                 Acompanhe o estado do seu açaí no ecrã da Smart TV no salão.
               </p>
@@ -479,7 +561,10 @@ export default function CustomerCartSheet({
                     </>
                   ) : (
                     <>
-                      Dirija-se ao balcão para efetuar o pagamento de <strong>{formatCurrency(cartTotal)}</strong>.
+                      Dirija-se ao balcão para efetuar o pagamento de{' '}
+                      <strong className="text-pink-600 dark:text-pink-400 font-mono text-sm">
+                        {formatCurrency(submittedOrderSummary?.total ?? (createdOrder?.total !== undefined ? Number(createdOrder.total) : cartTotal))}
+                      </strong>.
                     </>
                   )}
                 </p>
@@ -502,6 +587,70 @@ export default function CustomerCartSheet({
                   {paymentMethod === 'DINHEIRO' && 'Pagamento: Dinheiro / Numerário (no Balcão)'}
                   {paymentMethod === 'POINTS' && 'Pagamento: Resgate de Pontos (App)'}
                 </div>
+              </div>
+
+              {/* Resumo Completo dos Itens do Pedido */}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-purple-950/40 border border-purple-150 dark:border-white/10 max-w-xs sm:max-w-sm mx-auto text-left space-y-2.5 shadow-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-white/10">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-purple-950 dark:text-purple-200">
+                    {isEn ? 'Order Items' : 'Itens do Pedido'}
+                  </span>
+                  <span className="text-xs font-black font-mono text-fuchsia-600 dark:text-pink-400">
+                    {formatCurrency(submittedOrderSummary?.total ?? (createdOrder?.total !== undefined ? Number(createdOrder.total) : cartTotal))}
+                  </span>
+                </div>
+
+                <div className="max-h-52 overflow-y-auto space-y-2.5 pr-1 divide-y divide-purple-100/60 dark:divide-white/5">
+                  {(submittedOrderSummary?.items?.length ? submittedOrderSummary.items : (createdOrder?.items || [])).map((item: any, idx: number) => {
+                    const itemName = item.containerName || item.container?.name || item.name || 'Açaí'
+                    const itemPackaging = item.packagingType || item.containerFormat
+                    const lineTotal = item.lineTotal ?? (Number(item.unitPrice || 0) * (item.quantity || 1))
+                    return (
+                      <div key={idx} className="pt-2 first:pt-0 space-y-1 text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                            <span>{item.quantity}x {itemName}</span>
+                            {itemPackaging && (
+                              <span className="text-[9px] bg-purple-200/80 text-purple-900 dark:bg-purple-800/80 dark:text-purple-100 font-black px-1.5 py-0.5 rounded-md uppercase">
+                                {itemPackaging === 'CAIXA' ? 'Caixinha' : 'Taça'}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-bold font-mono text-fuchsia-600 dark:text-pink-400 shrink-0">
+                            {formatCurrency(lineTotal)}
+                          </span>
+                        </div>
+
+                        {/* Bases e Acompanhamentos */}
+                        {item.bases?.length > 0 && (
+                          <div className="text-[10px] text-slate-600 dark:text-purple-200/70">
+                            <span className="font-semibold text-purple-900 dark:text-purple-300">Bases: </span>
+                            {item.bases.map((b: any) => b.name).join(', ')}
+                          </div>
+                        )}
+                        {item.toppings?.length > 0 && (
+                          <div className="text-[10px] text-slate-600 dark:text-purple-200/70">
+                            <span className="font-semibold text-purple-900 dark:text-purple-300">Acompanhamentos: </span>
+                            {item.toppings.map((t: any) => t.name).join(', ')}
+                          </div>
+                        )}
+                        {item.notes && (
+                          <div className="text-[10px] italic text-slate-500 dark:text-purple-300/60">
+                            Obs: {item.notes}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Sacos de Transporte */}
+                {(submittedOrderSummary?.bagFee || 0) > 0 && (
+                  <div className="flex items-center justify-between pt-1.5 border-t border-purple-100 dark:border-white/10 text-[11px] text-slate-600 dark:text-purple-200 font-medium">
+                    <span>{submittedOrderSummary?.bagQuantity}x Saco de Transporte</span>
+                    <span className="font-mono font-bold">{formatCurrency(submittedOrderSummary?.bagFee || 0)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-200 text-left max-w-sm mx-auto">

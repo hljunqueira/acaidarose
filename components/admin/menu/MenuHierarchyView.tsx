@@ -45,8 +45,9 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const { tenants, getTenant, currentTenant } = useFranchiseStore()
   const storeInfo = resolveTenant(tenantId, tenants) || getTenant(tenantId) || currentTenant
   const storeBadgeName = isSuperAdmin ? 'Franqueadora Master' : (storeInfo?.name || 'Filial')
-  const { publish, revert, isPublishing, markDirty, hasPendingChanges } = usePublishStore()
+  const { publish, publishAllPending, revert, isPublishing, markDirty, hasPendingChanges, pendingStores } = usePublishStore()
   const [isReverting, setIsReverting] = useState(false)
+  const [publishOptionsOpen, setPublishOptionsOpen] = useState(false)
 
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
   const [optionModels, setOptionModels] = useState<OptionModelData[]>([])
@@ -149,10 +150,36 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   }, [fetchCatalog])
 
   const handlePublishChanges = async () => {
+    if (pendingStores.length > 1 && isSuperAdmin) {
+      setPublishOptionsOpen(true)
+      return
+    }
     const res = await publish(tenantId, {}, authFetch)
     if (res.success) {
       toast.success(res.message || 'Todas as alterações de menus, produtos e horários foram publicadas com sucesso!')
       setHasPendingPublish(false)
+    } else {
+      toast.error(res.message || 'Erro ao publicar alterações')
+    }
+  }
+
+  const handlePublishAllStoresDirect = async () => {
+    const res = await publishAllPending(authFetch)
+    if (res.success) {
+      toast.success(res.message || 'Todas as lojas da rede foram publicadas com sucesso!')
+      setHasPendingPublish(false)
+      setPublishOptionsOpen(false)
+    } else {
+      toast.error(res.message || 'Erro ao publicar em lote')
+    }
+  }
+
+  const handlePublishCurrentStoreDirect = async () => {
+    const res = await publish(tenantId, {}, authFetch)
+    if (res.success) {
+      toast.success(res.message || 'Alterações publicadas com sucesso nesta unidade!')
+      setHasPendingPublish(false)
+      setPublishOptionsOpen(false)
     } else {
       toast.error(res.message || 'Erro ao publicar alterações')
     }
@@ -1008,6 +1035,55 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         tenantId={tenantId}
         storeName={isSuperAdmin ? 'Loja Matriz' : 'Filial'}
       />
+
+      {/* Dialog de Escolha de Publicação Agrupada (Franqueadora Master) */}
+      <Dialog open={publishOptionsOpen} onOpenChange={setPublishOptionsOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-[#160228] text-foreground border-purple-100 dark:border-white/10 rounded-3xl p-6 shadow-2xl">
+          <DialogTitle className="text-base sm:text-lg font-black text-purple-950 dark:text-white flex items-center gap-2">
+            <RefreshCw className="h-5 w-5 text-pink-600" />
+            <span>Publicar Alterações do Cardápio</span>
+          </DialogTitle>
+          <div className="space-y-3 my-3 text-xs">
+            <p className="text-slate-600 dark:text-purple-200">
+              Foram detectadas alterações pendentes em <strong>{pendingStores.length} unidades</strong> da rede:
+            </p>
+            <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-1.5">
+              {pendingStores.map((s, idx) => (
+                <div key={idx} className="flex items-center justify-between font-bold">
+                  <span className="text-purple-950 dark:text-white">{s.storeName}</span>
+                  <Badge className="bg-purple-200/80 text-purple-900 dark:bg-purple-900/60 dark:text-purple-200 text-[10px]">
+                    {s.pendingCount} pendente(s)
+                  </Badge>
+                </div>
+              ))}
+            </div>
+            <p className="text-slate-500 dark:text-purple-300 text-[11px]">
+              Deseja publicar em todas as lojas pendentes de uma só vez ou apenas na unidade ativa ({storeBadgeName})?
+            </p>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-purple-100 dark:border-white/10">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isPublishing}
+              onClick={handlePublishCurrentStoreDirect}
+              className="rounded-xl text-xs font-bold"
+            >
+              Publicar Somente Nesta Unidade
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isPublishing}
+              onClick={handlePublishAllStoresDirect}
+              className="rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold text-xs shadow-md"
+            >
+              {isPublishing ? 'Publicando...' : `Publicar em Todas as Lojas (${pendingStores.length})`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Barra Clean de Alterações Pendentes na Loja */}
       {(hasPendingPublish || hasPendingChanges) && (

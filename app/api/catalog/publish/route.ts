@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const rawTenant = body.tenantId || ''
     const targetTenantId = normalizeTenantId(rawTenant)
+    const publishAllPending = Boolean(body.publishAllPending)
     const replicateAll = Boolean(body.replicateAll)
     const note = body.note || ''
 
@@ -19,19 +20,31 @@ export async function POST(request: NextRequest) {
     const authorName = user?.name || 'Operador da Loja'
     const authorRole = user?.role || 'TENANT_ADMIN'
 
-    // Se for publicação para toda a rede
-    if (replicateAll && isSuperOrFranchisor) {
-      const updateRes = await query(`
-        UPDATE store_catalog_versions
-        SET version = version + 1,
-            published_at = NOW(),
-            has_pending_changes = FALSE,
-            pending_changes_count = 0,
-            pending_changes_summary = '[]'::jsonb,
-            last_published_by = $1,
-            updated_at = NOW()
-        RETURNING tenant_id, version, published_at
-      `, [user?.id || null])
+    // Se for publicação para toda a rede ou em lote para todas as lojas com pendências
+    if ((replicateAll || publishAllPending) && isSuperOrFranchisor) {
+      const sql = replicateAll
+        ? `UPDATE store_catalog_versions
+           SET version = version + 1,
+               published_at = NOW(),
+               has_pending_changes = FALSE,
+               pending_changes_count = 0,
+               pending_changes_summary = '[]'::jsonb,
+               last_published_by = $1,
+               updated_at = NOW()
+           RETURNING tenant_id, version, published_at`
+        : `UPDATE store_catalog_versions
+           SET version = version + 1,
+               published_at = NOW(),
+               has_pending_changes = FALSE,
+               pending_changes_count = 0,
+               pending_changes_summary = '[]'::jsonb,
+               last_published_by = $1,
+               updated_at = NOW()
+           WHERE has_pending_changes = TRUE
+           RETURNING tenant_id, version, published_at`
+
+      const updateRes = await query(sql, [user?.id || null])
+      const affectedCount = Number(updateRes?.rowCount) || 0
 
       await recordAuditLog({
         tenantId: targetTenantId,
@@ -40,20 +53,24 @@ export async function POST(request: NextRequest) {
         userRole: authorRole,
         action: 'CATALOG_PUBLISHED_GLOBAL',
         entity: 'CATALOG',
-        message: `Publicação global de cardápio e configurações aplicada para todas as ${updateRes.rowCount} lojas da rede. ${note}`.trim(),
+        message: `Publicação em lote aplicada para ${affectedCount} lojas da rede. ${note}`.trim(),
         metadata: {
-          replicateAll: true,
-          storesCount: updateRes.rowCount,
+          publishAllPending,
+          replicateAll,
+          storesCount: affectedCount,
           note,
         },
       })
 
       return NextResponse.json({
         success: true,
-        replicateAll: true,
-        storesUpdated: updateRes.rowCount,
+        publishAllPending: true,
+        replicateAll,
+        storesUpdated: affectedCount,
         publishedAt: new Date().toISOString(),
-        message: 'Cardápio e configurações publicados com sucesso em toda a rede!',
+        message: affectedCount > 0
+          ? `Cardápio e configurações publicados com sucesso em ${affectedCount} lojas da rede!`
+          : 'Nenhuma alteração pendente encontrada para publicar.',
       })
     }
 

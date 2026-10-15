@@ -106,7 +106,7 @@ function MenuContent() {
       fetch(`/api/tables/token/${encodeURIComponent(paramToken)}`)
         .then((res) => res.json())
         .then((data) => {
-          if (data.table) {
+          if (data?.table) {
             if (data.table.number) {
               const tableNumStr = String(data.table.number).padStart(2, '0')
               setCurrentTableNum(tableNumStr)
@@ -114,11 +114,34 @@ function MenuContent() {
             if (data.table.storeSlug || data.table.tenantId) {
               setActiveLoja(data.table.storeSlug || data.table.tenantId)
             }
+          } else {
+            setCurrentTableNum('')
+          }
+        })
+        .catch(() => {
+          setCurrentTableNum('')
+        })
+    }
+  }, [paramToken])
+
+  // Validação dinâmica se a mesa realmente existe no salão da loja ativa
+  useEffect(() => {
+    if (currentTableNum && activeLoja) {
+      fetch(`/api/tables?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && Array.isArray(data.tables)) {
+            const num = Number(currentTableNum)
+            const exists = data.tables.some((t: any) => Number(t.number) === num)
+            if (!exists) {
+              console.warn(`[Menu] Mesa ${currentTableNum} não registada na loja ${activeLoja}. Redirecionando para Catálogo Digital.`)
+              setCurrentTableNum('')
+            }
           }
         })
         .catch(() => {})
     }
-  }, [paramToken])
+  }, [currentTableNum, activeLoja])
 
   // Configurações do QR Code da loja
   const [qrConfig, setQrConfig] = useState<any>({ mode: 'ORDER_EMISSION', allowTableTransfer: true })

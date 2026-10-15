@@ -17,6 +17,25 @@ export async function GET(request: NextRequest) {
       [tenantId]
     )
 
+    let pendingStores: any[] = []
+    try {
+      const pendingRes = await query(`
+        SELECT v.tenant_id, v.pending_changes_count,
+               t.name as store_name, t.slug as store_slug
+        FROM store_catalog_versions v
+        LEFT JOIN tenants t ON t.id::text = v.tenant_id::text
+        WHERE v.has_pending_changes = TRUE
+      `)
+      if (pendingRes?.rows) {
+        pendingStores = pendingRes.rows.map((r: any) => ({
+          tenantId: r.tenant_id,
+          storeName: r.store_name || 'Loja',
+          storeSlug: r.store_slug || 'loja',
+          pendingCount: Number(r.pending_changes_count) || 0,
+        }))
+      }
+    } catch {}
+
     if (res.rows.length === 0) {
       // Auto-inicializa se não existir registro
       await query(
@@ -35,6 +54,7 @@ export async function GET(request: NextRequest) {
           hasPendingChanges: false,
           pendingCount: 0,
           pendingSummary: [],
+          pendingStores,
         },
         {
           headers: {
@@ -54,6 +74,7 @@ export async function GET(request: NextRequest) {
         hasPendingChanges: Boolean(row.has_pending_changes),
         pendingCount: Number(row.pending_changes_count) || 0,
         pendingSummary: Array.isArray(row.pending_changes_summary) ? row.pending_changes_summary : [],
+        pendingStores,
         updatedAt: row.updated_at,
       },
       {

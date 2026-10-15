@@ -20,10 +20,12 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
     hasPendingChanges,
     pendingCount,
     pendingSummary,
+    pendingStores,
     currentVersion,
     isPublishing,
     checkPending,
     publish,
+    publishAllPending,
     revert,
   } = usePublishStore()
 
@@ -56,6 +58,16 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
     }
   }
 
+  const handlePublishAllStores = async () => {
+    const res = await publishAllPending(authFetch)
+    if (res.success) {
+      toast.success(res.message || 'Todas as lojas pendentes foram publicadas com sucesso!')
+      setDetailsModalOpen(false)
+    } else {
+      toast.error(res.message || 'Erro ao publicar em lote')
+    }
+  }
+
   const handleRevertNow = async () => {
     setIsReverting(true)
     try {
@@ -75,9 +87,11 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
     }
   }
 
-  if (!hasPendingChanges) {
+  if (!hasPendingChanges && (!isSuperOrFranchisor || pendingStores.length === 0)) {
     return null
   }
+
+  const isMultiStorePending = pendingStores.length > 1 && isSuperOrFranchisor
 
   return (
     <>
@@ -86,10 +100,24 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="text-xs sm:text-sm font-bold leading-tight truncate">
-              <span>Há alterações aguardando publicação em </span>
-              <strong className="underline decoration-purple-300 font-extrabold">{storeName}</strong>
+              {isMultiStorePending ? (
+                <>
+                  <span>Há alterações pendentes em </span>
+                  <strong className="underline decoration-pink-400 font-extrabold">{pendingStores.length} lojas da rede</strong>
+                  <span className="text-purple-200 text-xs ml-1 font-normal hidden md:inline">
+                    ({pendingStores.map((s) => s.storeName).join(', ')})
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>Há alterações aguardando publicação em </span>
+                  <strong className="underline decoration-purple-300 font-extrabold">{storeName}</strong>
+                </>
+              )}
               <Badge className="ml-2 bg-purple-900/70 text-purple-100 font-mono text-[10px] border-purple-700/50">
-                {pendingCount} {pendingCount === 1 ? 'modificação' : 'modificações'}
+                {isMultiStorePending
+                  ? `${pendingStores.reduce((acc, s) => acc + s.pendingCount, 0)} no total`
+                  : `${pendingCount} ${pendingCount === 1 ? 'modificação' : 'modificações'}`}
               </Badge>
             </div>
           </div>
@@ -107,29 +135,47 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
               </Button>
             )}
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isPublishing || isReverting}
-              onClick={() => setConfirmRevertOpen(true)}
-              className="h-8 px-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 border-red-400/30 text-red-100 hover:text-white font-bold text-xs cursor-pointer shadow-xs transition flex items-center gap-1.5"
-              title="Descartar modificações pendentes e voltar ao publicado"
-            >
-              {isReverting ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-white" /> : <RotateCcw className="h-3.5 w-3.5" />}
-              <span>{isReverting ? 'Revertendo...' : 'Reverter Alterações'}</span>
-            </Button>
+            {hasPendingChanges && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isPublishing || isReverting}
+                onClick={() => setConfirmRevertOpen(true)}
+                className="h-8 px-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 border-red-400/30 text-red-100 hover:text-white font-bold text-xs cursor-pointer shadow-xs transition flex items-center gap-1.5"
+                title="Descartar modificações pendentes e voltar ao publicado"
+              >
+                {isReverting ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-white" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                <span>{isReverting ? 'Revertendo...' : 'Reverter'}</span>
+              </Button>
+            )}
 
-            <Button
-              type="button"
-              size="sm"
-              disabled={isPublishing || isReverting}
-              onClick={() => handlePublishNow(false)}
-              className="h-8 px-3.5 rounded-xl bg-white text-purple-950 hover:bg-purple-50 font-black text-xs shadow-md cursor-pointer transition flex items-center gap-1.5"
-            >
-              {isPublishing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-purple-950" />}
-              <span>{isPublishing ? 'Publicando...' : 'Publicar Alterações'}</span>
-            </Button>
+            {isMultiStorePending && (
+              <Button
+                type="button"
+                size="sm"
+                disabled={isPublishing || isReverting}
+                onClick={handlePublishAllStores}
+                className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-black text-xs shadow-md cursor-pointer transition flex items-center gap-1.5"
+                title="Publicar de uma só vez todas as alterações de todas as lojas da rede"
+              >
+                {isPublishing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-white" />}
+                <span>Publicar Todas as Lojas ({pendingStores.length})</span>
+              </Button>
+            )}
+
+            {hasPendingChanges && (
+              <Button
+                type="button"
+                size="sm"
+                disabled={isPublishing || isReverting}
+                onClick={() => handlePublishNow(false)}
+                className="h-8 px-3.5 rounded-xl bg-white text-purple-950 hover:bg-purple-50 font-black text-xs shadow-md cursor-pointer transition flex items-center gap-1.5"
+              >
+                {isPublishing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-purple-950" />}
+                <span>{isPublishing ? 'Publicando...' : `Publicar ${storeName}`}</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
