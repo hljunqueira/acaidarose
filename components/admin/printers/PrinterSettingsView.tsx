@@ -360,8 +360,8 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
               </div>
               <p className="text-xs text-slate-600 dark:text-purple-200/80 mt-1">
                 {qzConnected
-                  ? `Comunicação ativa via wss://localhost:8182. Foram detectados ${osDrivers.length} driver(s) térmico(s) instalado(s) no sistema operacional.`
-                  : 'O aplicativo QZ Tray precisa estar em execução no computador do caixa para permitir o envio silencioso de comandas com corte de papel.'}
+                  ? `Comunicação ativa via QZ Tray. Foram detectados ${osDrivers.length} driver(s) térmico(s) instalado(s) no sistema operacional.`
+                  : (qzError || 'O aplicativo QZ Tray precisa estar em execução no computador do caixa para permitir o envio silencioso de comandas com corte de papel.')}
               </p>
             </div>
           </div>
@@ -422,6 +422,33 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
             </p>
           </div>
         </div>
+
+        {/* Dica de Resolução Imediata se Offline */}
+        {!qzConnected && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>O QZ Tray já está instalado mas o navegador ainda não reconheceu? Siga estes 2 passos:</span>
+            </div>
+            <ol className="list-decimal list-inside space-y-1.5 text-slate-700 dark:text-amber-200/90 pl-1">
+              <li>
+                <strong>Autorizar o certificado seguro local (necessário em HTTPS / Produção):</strong>{' '}
+                <a
+                  href="https://localhost:8181"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold underline text-purple-700 dark:text-purple-300 hover:text-purple-900"
+                >
+                  Abrir https://localhost:8181 numa nova aba
+                </a>
+                . Se o Google Chrome exibir <em>&quot;A sua ligação não é privada&quot;</em>, clique em <em>Avançado</em> e depois em <em>Ir para localhost (não seguro)</em>. Feche essa aba e clique no botão <strong>Verificar QZ Tray</strong> acima.
+              </li>
+              <li>
+                <strong>Permissão de Rede Local no Chrome:</strong> Se surgir uma mensagem no navegador ou no ícone de configurações ao lado da URL perguntando se deseja permitir acesso à rede local, selecione <em>Permitir</em>.
+              </li>
+            </ol>
+          </div>
+        )}
       </div>
 
       {/* 3. LISTAGEM DE IMPRESSORAS DA UNIDADE */}

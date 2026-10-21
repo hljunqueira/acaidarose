@@ -1,5 +1,32 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Diagnóstico & Correção da Conexão do QZ Tray Local no Navegador [CONCLUÍDO & VALIDADO]**:
+  - **Sintoma**: O QZ Tray estava instalado e em execução no Windows (processo `javaw.exe` na porta 8181/8182), mas a tela de Impressoras Térmicas acusava `Offline / Não Detectado`.
+  - **Causas Raízes Identificadas**:
+    1. *Inversão Crítica de Portas em `lib/printers/qzClient.ts`*: O código forçava `secure: [8182]` e `insecure: [8181]`. No QZ Tray oficial, a porta segura (WSS / TLS) é **8181** e a insegura (WS) é **8182**. Com a inversão, o navegador tentava fazer handshake TLS em uma porta HTTP puro, quebrando a conexão com `ERR_SSL_PROTOCOL_ERROR`.
+    2. *Sobrescrita de Hosts*: Forçar `host: 'localhost'` impedia o QZ Tray de usar seus domínios canônicos com certificado emitido (`localhost.qz.io` / `qz.surf`).
+    3. *Certificado Falso em `/api/qz/cert`*: Retornava texto com `# QZ_CERTIFICATE não configurado...` que quebrava o parser X.509 do Java no QZ Tray. Corrigido para retornar 404 e só configurar segurança se houver certificado real em `.env`.
+    4. *Orientação de Certificado em HTTPS*: Em sites HTTPS (produção), o navegador Chrome pode exigir uma autorização pontual em `https://localhost:8181`. Adicionada caixa de ajuda dinâmica na interface guiando o operador.
+  - **Validação**: Verificação em Node conectando com sucesso no QZ Tray (`CONNECTED SECURE!`, listando as impressoras locais instaladas `MP-4200 TH`), e `npx tsc --noEmit` compilado com código 0.
+
+- **Página Hub de Redirecionamento da Marca (`/links`) & Display com QR Code [CONCLUÍDO & VALIDADO]**:
+  - **Objetivo**: Criar solução 100% independente do sistema (sem queries de banco, sem mexer no PDV) para centralizar os contactos oficiais da marca em um único QR Code com a logo oficial no centro, sem mencionar cidades:
+    - **Fixo**: 249 825 131
+    - **WhatsApp**: 911 050 264
+    - **Site**: acaidarose.pt
+    - **Instagram**: https://www.instagram.com/acaidarose_pt (@acaidarose_pt)
+    - **Facebook**: https://www.facebook.com/profile.php?id=61550988842732&sk=directory_personal_details (Açaí da Rose)
+    - **vCard**: Botão de 1 toque para guardar contacto na agenda com todos os números e perfis sociais.
+  - **Entregas & Refinamentos Realizados**:
+    1. *Design Clean & Focado*:
+       - Removidas abas de alternância superiores; a tela foca 100% nos botões de contacto oficiais.
+       - Botão "Ver QR Code" no rodapé abre modal exibindo **exclusivamente o QR Code** com a logo no centro e botão de download.
+    2. *`scripts/deploy-links-page.js` & VPS Nginx*:
+       - Deploy estático em `/etc/icontainer/apps/nginx/nginx/www/sites/acaidarose.pt/index/links/` na VPS (`198.50.117.110`) com reload do Nginx.
+    3. *`app/links/page.tsx`*:
+       - Sincronizado para Next.js / Vercel com os links exatos de Instagram e Facebook.
+  - **Validação**: `npx tsc --noEmit` código 0; `curl.exe https://acaidarose.pt/links/` validado com HTTP 200, links de Instagram e Facebook confirmados no ar.
+
 - **Visualização Exclusiva de Foto/Vídeo vs. Customizador de Mesa com QR Code [CONCLUÍDO & VALIDADO]**:
   - **Problema Reportado**: No modo catálogo vitrine (consulta sem QR Code de mesa física), clicar em "Detalhes" abria o modal de seleção de ingredientes/modificadores (leite, textura, toppings extras). Além disso, clicar na foto ou vídeo do item deveria abrir exclusivamente a mídia (foto/vídeo ampliado) e não as opções de personalização.
   - **Solução Implementada**:

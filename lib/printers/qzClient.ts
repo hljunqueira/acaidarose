@@ -25,35 +25,34 @@ export interface QZConnectionStatus {
 let securityConfigured = false
 
 /**
- * Configura os certificados e promessas de assinatura digital com a API da Franqueadora
+ * Configura os certificados e promessas de assinatura digital com a API da Franqueadora (se configurados)
  */
 async function configureSecurity(qz: any) {
   if (securityConfigured) return
   try {
-    qz.security.setCertificatePromise((resolve: (cert: string) => void, reject: (err: any) => void) => {
-      fetch('/api/qz/cert')
-        .then((res) => res.text())
-        .then((cert) => resolve(cert))
-        .catch((err) => reject(err))
-    })
-
-    qz.security.setSignatureAlgorithm('SHA512')
-    qz.security.setSignaturePromise((toSign: string) => {
-      return (resolve: (signature: string) => void, reject: (err: any) => void) => {
-        fetch('/api/qz/sign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: toSign,
+    const certRes = await fetch('/api/qz/cert')
+    if (certRes.ok) {
+      const cert = await certRes.text()
+      if (cert && cert.includes('BEGIN CERTIFICATE') && !cert.includes('não configurado')) {
+        qz.security.setCertificatePromise((resolve: (c: string) => void) => resolve(cert))
+        qz.security.setSignatureAlgorithm('SHA512')
+        qz.security.setSignaturePromise((toSign: string) => {
+          return (resolve: (signature: string) => void, reject: (err: any) => void) => {
+            fetch('/api/qz/sign', {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: toSign,
+            })
+              .then((res) => res.text())
+              .then((signature) => resolve(signature))
+              .catch((err) => reject(err))
+          }
         })
-          .then((res) => res.text())
-          .then((signature) => resolve(signature))
-          .catch((err) => reject(err))
       }
-    })
-
+    }
     securityConfigured = true
   } catch (err) {
-    console.warn('[QZ Tray] Falha ao configurar assinatura digital:', err)
+    console.warn('[QZ Tray] Assinatura opcional não configurada:', err)
   }
 }
 
@@ -76,13 +75,13 @@ export async function connectQZ(): Promise<QZConnectionStatus> {
 
     await configureSecurity(qz)
 
+    const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:'
+
+    // Usa a configuração oficial e automática do QZ Tray:
+    // - Em HTTPS: usa WSS (portas seguras 8181, 8282) e domínios com fallback (localhost, localhost.qz.io, qz.surf)
+    // - Em HTTP: usa WS (portas inseguras 8182, 8283)
     await qz.websocket.connect({
-      host: 'localhost',
-      port: {
-        secure: [8182, 8183],
-        insecure: [8181, 8180],
-      },
-      usingSecure: true,
+      usingSecure: isHttps,
       keepAlive: 60,
       retries: 2,
       delay: 1,
@@ -94,7 +93,7 @@ export async function connectQZ(): Promise<QZConnectionStatus> {
     console.warn('[QZ Tray] Erro de conexão:', err?.message || err)
     return {
       connected: false,
-      error: err?.message || 'QZ Tray não está em execução no computador local.',
+      error: err?.message || 'QZ Tray não está em execução ou foi bloqueado pelo navegador.',
     }
   }
 }

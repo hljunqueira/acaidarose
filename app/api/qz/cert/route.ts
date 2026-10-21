@@ -8,13 +8,7 @@ export async function GET() {
   const cert = process.env.QZ_CERTIFICATE || process.env.QZ_PUBLIC_CERT
 
   if (!cert) {
-    return new NextResponse(
-      '-----BEGIN CERTIFICATE-----\n# QZ_CERTIFICATE não configurado nas variáveis de ambiente\n-----END CERTIFICATE-----',
-      {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain' },
-      }
-    )
+    return new NextResponse(null, { status: 404 })
   }
 
   // Remove aspas eventuais e formata quebras de linha
