@@ -408,7 +408,7 @@ export default function OrderHistoryAdminView({
   }
 
   const handlePrintReceipt = (orderId: string) => {
-    window.open(`/receipt/${orderId}`, '_blank', 'width=450,height=700')
+    window.open(`/receipt/${orderId}?print=true`, '_blank', 'width=450,height=700')
   }
 
   // Exportação CSV Profissional

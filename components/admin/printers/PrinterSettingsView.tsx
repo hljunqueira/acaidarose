@@ -23,9 +23,10 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { StorePrinterSetting, PrinterType, PrinterConnectionType } from '@/types/printer'
+import { StorePrinterSetting, PrinterType, PrinterConnectionType, PrintLayout } from '@/types/printer'
 import { connectQZ, getInstalledPrinters, printRawData } from '@/lib/printers/qzClient'
-import { buildTestEscPosReceipt } from '@/lib/printers/escposBuilder'
+import { buildTestEscPosReceipt, ESC_POS_COMMANDS } from '@/lib/printers/escposBuilder'
+import { THERMAL_LOGO_BASE64 } from '@/lib/printers/logoData'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
 import { useAuthStore } from '@/lib/stores/authStore'
 
@@ -36,7 +37,9 @@ interface PrinterSettingsViewProps {
 export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewProps) {
   const activeTenantId = tenantId || '11111111-1111-1111-1111-111111111111'
   const { authFetch } = useAuthStore()
-  const { categories } = useMenuConfigStore()
+  const { categories: storeCategories } = useMenuConfigStore()
+  const [localCategories, setLocalCategories] = useState<any[]>([])
+  const effectiveCategories = localCategories.length > 0 ? localCategories : (storeCategories || [])
 
   // Lista de impressoras configuradas (100% dinâmica do PostgreSQL, sem seeds)
   const [printers, setPrinters] = useState<StorePrinterSetting[]>([])
@@ -62,6 +65,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
   const [customDriver, setCustomDriver] = useState('')
   const [printerType, setPrinterType] = useState<PrinterType>('EPSON_ESC_POS')
   const [connectionType, setConnectionType] = useState<PrinterConnectionType>('QZ_TRAY')
+  const [printLayout, setPrintLayout] = useState<PrintLayout>('FULL_RECEIPT')
+  const [highlightCustomer, setHighlightCustomer] = useState<boolean>(true)
+  const [printLogo, setPrintLogo] = useState<boolean>(true)
+  const [printQrCode, setPrintQrCode] = useState<boolean>(true)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
   const [routingTab, setRoutingTab] = useState<'CATEGORIES' | 'PRODUCTS'>('CATEGORIES')
@@ -74,7 +81,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
   // Teste de Impressão
   const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null)
 
-  // 1. Carrega impressoras e catálogo de produtos da loja via API
+  // 1. Carrega impressoras, produtos e categorias da loja via API
   const fetchPrinters = useCallback(async () => {
     setLoading(true)
     try {
@@ -101,6 +108,19 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
     } catch (err) {
       console.warn('Falha ao carregar produtos para filtro de impressora:', err)
     }
+
+    try {
+      const catRes = await fetch(`/api/categories?tenantId=${encodeURIComponent(activeTenantId)}`)
+      if (catRes.ok) {
+        const catData = await catRes.json()
+        const catList = Array.isArray(catData.categories) ? catData.categories : (Array.isArray(catData) ? catData : [])
+        if (catList.length > 0) {
+          setLocalCategories(catList)
+        }
+      }
+    } catch (err) {
+      console.warn('Falha ao carregar categorias para filtro de impressora:', err)
+    }
   }, [activeTenantId, authFetch])
 
   // 2. Conexão e teste com o QZ Tray
@@ -113,10 +133,22 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
         setQzConnected(true)
         setQzVersion(status.version || 'v2.2+')
         const drivers = await getInstalledPrinters()
-        setOsDrivers(drivers)
+        // Prioriza impressoras térmicas físicas (ex: MP-4200 TH, EPSON, POS) no topo
+        const sorted = [...drivers].sort((a, b) => {
+          const aThermal = /mp|th|pos|epson|bema|daruma|tm|thermal|receipt/i.test(a)
+          const bThermal = /mp|th|pos|epson|bema|daruma|tm|thermal|receipt/i.test(b)
+          const aVirtual = /xps|pdf|fax|onenote|root/i.test(a)
+          const bVirtual = /xps|pdf|fax|onenote|root/i.test(b)
+          if (aThermal && !bThermal) return -1
+          if (!aThermal && bThermal) return 1
+          if (!aVirtual && bVirtual) return -1
+          if (aVirtual && !bVirtual) return 1
+          return a.localeCompare(b)
+        })
+        setOsDrivers(sorted)
       } else {
         setQzConnected(false)
-        setQzError(status.error || 'QZ Tray não responde na porta 8182')
+        setQzError(status.error || 'QZ Tray não responde')
       }
     } catch (err: any) {
       setQzConnected(false)
@@ -135,10 +167,19 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
   const handleOpenCreateModal = () => {
     setEditingPrinter(null)
     setName('')
-    setDriverName(osDrivers[0] || '')
+    // Pré-seleciona a impressora térmica física (ex: MP-4200 TH)
+    const preferred = osDrivers.find((d) => /mp|th|pos|epson|bema|daruma|tm|thermal/i.test(d))
+      || osDrivers.find((d) => !/xps|pdf|fax|onenote/i.test(d))
+      || osDrivers[0]
+      || ''
+    setDriverName(preferred)
     setCustomDriver('')
     setPrinterType('EPSON_ESC_POS')
     setConnectionType('QZ_TRAY')
+    setPrintLayout('FULL_RECEIPT')
+    setHighlightCustomer(true)
+    setPrintLogo(true)
+    setPrintQrCode(true)
     setSelectedCategories([])
     setSelectedProducts([])
     setProductSearch('')
@@ -162,6 +203,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
     }
     setPrinterType(printer.printerType)
     setConnectionType(printer.connectionType)
+    setPrintLayout(printer.printLayout || 'FULL_RECEIPT')
+    setHighlightCustomer(printer.highlightCustomer !== false)
+    setPrintLogo(printer.printLogo !== false)
+    setPrintQrCode(printer.printQrCode !== false)
     setSelectedCategories(printer.categories || [])
     setSelectedProducts(printer.products || [])
     setProductSearch('')
@@ -184,6 +229,22 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
     setSelectedProducts((prev) =>
       prev.includes(prodId) ? prev.filter((id) => id !== prodId) : [...prev, prodId]
     )
+  }
+
+  // Selecionar ou desmarcar todas as categorias
+  const selectAllCategories = () => {
+    setSelectedCategories(effectiveCategories.map((c) => c.id))
+  }
+  const deselectAllCategories = () => {
+    setSelectedCategories([])
+  }
+
+  // Selecionar ou desmarcar todos os produtos
+  const selectAllProducts = () => {
+    setSelectedProducts(products.map((p) => p.id))
+  }
+  const deselectAllProducts = () => {
+    setSelectedProducts([])
   }
 
   // Lista de produtos filtrada pela busca
@@ -213,6 +274,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
         driverName: resolvedDriver,
         printerType,
         connectionType,
+        printLayout,
+        highlightCustomer,
+        printLogo,
+        printQrCode,
         categories: selectedCategories,
         products: selectedProducts,
         copies,
@@ -243,6 +308,9 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
       toast.success(editingPrinter ? 'Impressora atualizada com sucesso!' : 'Impressora adicionada com sucesso!')
       setModalOpen(false)
       fetchPrinters()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('printers-updated'))
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Falha ao salvar impressora.')
     } finally {
@@ -262,6 +330,9 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
 
       toast.success(`Impressora "${printer.name}" removida.`)
       fetchPrinters()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('printers-updated'))
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Falha ao remover impressora.')
     }
@@ -286,10 +357,57 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
       }
 
       const testPayload = buildTestEscPosReceipt('AÇAÍ DA ROSE', printer.name)
-      await printRawData(printer.driverName, [testPayload])
+      const qzData: any[] = []
+      qzData.push(ESC_POS_COMMANDS.INIT)
+      qzData.push(ESC_POS_COMMANDS.CODE_PAGE_WPC1252)
+
+      if (printer.printLogo !== false && THERMAL_LOGO_BASE64) {
+        qzData.push(ESC_POS_COMMANDS.ALIGN_CENTER)
+        qzData.push({
+          type: 'raw',
+          format: 'image',
+          flavor: 'base64',
+          data: THERMAL_LOGO_BASE64,
+          options: { language: 'ESCPOS', dotDensity: 'double' },
+        })
+        qzData.push('\n')
+      }
+
+      qzData.push(testPayload)
+      await printRawData(printer.driverName, qzData)
       toast.success(`Teste enviado com sucesso para ${printer.name}!`)
+
+      // Registra evento no Log de Auditoria TI de Henrique
+      fetch('/api/dev/audit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: activeTenantId,
+          action: 'TEST_PRINT_DISPATCHED',
+          entity: 'IMPRESSORAS_QZ',
+          entityId: printer.id,
+          message: `Teste de corte e comunicação térmico enviado para "${printer.name}" (${printer.driverName}) via QZ Tray`,
+          level: 'INFO',
+          metadata: { printerId: printer.id, driver: printer.driverName },
+        }),
+      }).catch(() => {})
     } catch (err: any) {
       toast.error(`Falha no teste: ${err?.message || 'Erro de comunicação'}`)
+
+      // Registra falha no Log de Auditoria TI de Henrique
+      fetch('/api/dev/audit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: activeTenantId,
+          action: 'TEST_PRINT_ERROR',
+          entity: 'IMPRESSORAS_QZ',
+          entityId: printer.id,
+          message: `Falha no teste de impressão para "${printer.name}" (${printer.driverName}): ${err?.message || 'Erro de comunicação'}`,
+          level: 'ERROR',
+          metadata: { printerId: printer.id, driver: printer.driverName, error: err?.message },
+        }),
+      }).catch(() => {})
     } finally {
       setTestingPrinterId(null)
     }
@@ -492,7 +610,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {printers.map((printer) => {
               const matchedCategoryNames = (printer.categories || []).map((catId) => {
-                const found = categories.find((c) => c.id === catId)
+                const found = effectiveCategories.find((c) => c.id === catId)
                 return found?.name || catId
               })
 
@@ -537,6 +655,28 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
 
                     {/* Especificações Técnicas */}
                     <div className="flex flex-wrap gap-1.5 text-[10px]">
+                      <span className="px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/40 text-purple-950 dark:text-purple-200 font-bold border border-purple-200 dark:border-purple-500/20">
+                        {printer.printLayout === 'KITCHEN_SLIP' ? 'Comanda Cozinha (Foto 1)' : printer.printLayout === 'TICKET_ONLY' ? 'Ticket Senha' : 'Talão Completo Caixa (Foto 2)'}
+                      </span>
+
+                      {printer.highlightCustomer !== false && (
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-500/20">
+                          Senha & Nome no Topo
+                        </span>
+                      )}
+
+                      {printer.printLogo !== false && (
+                        <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/30 text-purple-900 dark:text-purple-300 font-semibold border border-purple-200 dark:border-purple-500/20">
+                          Logo no Topo
+                        </span>
+                      )}
+
+                      {printer.printQrCode !== false && (
+                        <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-500/20">
+                          QR Code no Rodapé
+                        </span>
+                      )}
+
                       <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-white/5 text-purple-900 dark:text-purple-200 font-medium border border-purple-100 dark:border-white/5 flex items-center gap-1">
                         <Scissors className="h-3 w-3 text-purple-600" />
                         {printer.printerType === 'EPSON_ESC_POS' ? 'ESC/POS Térmica' : printer.printerType}
@@ -638,7 +778,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
 
       {/* 4. MODAL DE ADICIONAR / EDITAR IMPRESSORA */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-2xl p-6">
+        <DialogContent className="max-w-5xl w-[95vw] rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Printer className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -646,70 +786,73 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitPrinter} className="space-y-4 pt-2">
-            {/* Nome de Exibição */}
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-purple-200">
-                Nome de Identificação:
-              </Label>
-              <Input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Impressora Copa / Açaí"
-                className="h-10 text-xs rounded-xl"
-              />
-              <p className="text-[10.5px] text-slate-500 dark:text-purple-300/70">
-                Identifica o setor onde a impressora física está instalada.
-              </p>
-            </div>
-
-            {/* Seleção do Driver no SO */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
+          <form onSubmit={handleSubmitPrinter} className="space-y-3.5 pt-2">
+            {/* Linha 1: Nome de Identificação & Driver no SO */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Nome de Exibição */}
+              <div className="space-y-1">
                 <Label className="text-xs font-bold text-slate-700 dark:text-purple-200">
-                  Driver do Sistema Operacional:
+                  Nome de Identificação:
                 </Label>
-                {qzConnected && (
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                    <Check className="h-3 w-3" /> QZ Tray Online
-                  </span>
-                )}
-              </div>
-
-              {osDrivers.length > 0 ? (
-                <select
-                  value={driverName}
-                  onChange={(e) => setDriverName(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#1a052e] text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-purple-500"
-                >
-                  {osDrivers.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                  <option value="__CUSTOM__">Outro (Digitar manualmente)</option>
-                </select>
-              ) : null}
-
-              {(osDrivers.length === 0 || driverName === '__CUSTOM__') && (
                 <Input
                   type="text"
                   required
-                  value={customDriver}
-                  onChange={(e) => setCustomDriver(e.target.value)}
-                  placeholder="Ex: POS-80, EPSON TM-T20X, etc."
-                  className="h-10 text-xs rounded-xl font-mono mt-1.5"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ex: Copa / Açaí / Balcão"
+                  className="h-9 text-xs rounded-xl"
                 />
-              )}
-              <p className="text-[10.5px] text-slate-500 dark:text-purple-300/70">
-                Nome exato da impressora instalada no Painel de Controle / Dispositivos do Windows.
-              </p>
+                <p className="text-[10px] text-slate-500 dark:text-purple-300/70">
+                  Identifica o setor onde a impressora física está instalada.
+                </p>
+              </div>
+
+              {/* Seleção do Driver no SO */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-purple-200">
+                    Driver do Sistema Operacional:
+                  </Label>
+                  {qzConnected && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <Check className="h-3 w-3" /> QZ Tray Online
+                    </span>
+                  )}
+                </div>
+
+                {osDrivers.length > 0 ? (
+                  <select
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#1a052e] text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-purple-500"
+                  >
+                    {osDrivers.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                    <option value="__CUSTOM__">Outro (Digitar manualmente)</option>
+                  </select>
+                ) : null}
+
+                {(osDrivers.length === 0 || driverName === '__CUSTOM__') && (
+                  <Input
+                    type="text"
+                    required
+                    value={customDriver}
+                    onChange={(e) => setCustomDriver(e.target.value)}
+                    placeholder="Ex: POS-80, EPSON TM-T20X, etc."
+                    className="h-9 text-xs rounded-xl font-mono mt-1"
+                  />
+                )}
+                <p className="text-[10px] text-slate-500 dark:text-purple-300/70">
+                  Nome exato da impressora instalada no Painel de Controle / Dispositivos do Windows.
+                </p>
+              </div>
             </div>
 
-            {/* Protocolo e Vias */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Linha 2: Protocolo e Vias */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs font-bold text-slate-700 dark:text-purple-200">
                   Protocolo:
@@ -717,7 +860,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                 <select
                   value={printerType}
                   onChange={(e) => setPrinterType(e.target.value as PrinterType)}
-                  className="w-full h-10 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#1a052e] text-xs text-slate-900 dark:text-white"
+                  className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#1a052e] text-xs text-slate-900 dark:text-white"
                 >
                   <option value="EPSON_ESC_POS">EPSON ESC/POS (Recomendado)</option>
                   <option value="GENERIC_ESC_POS">ESC/POS Genérico</option>
@@ -732,7 +875,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                 <select
                   value={copies}
                   onChange={(e) => setCopies(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#1a052e] text-xs text-slate-900 dark:text-white"
+                  className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#1a052e] text-xs text-slate-900 dark:text-white"
                 >
                   <option value={1}>1 Via (Produção)</option>
                   <option value={2}>2 Vias (Produção + Cliente)</option>
@@ -740,7 +883,80 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
               </div>
             </div>
 
-            {/* Roteamento por Categorias ou Produtos/Itens */}
+            {/* Linha: Modelo do Talão & Opções para o Caixa */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-xl border border-purple-200/70 dark:border-purple-500/20 bg-purple-50/40 dark:bg-purple-950/20">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-800 dark:text-purple-200 flex items-center justify-between">
+                  <span>Modelo do Talão (Layout):</span>
+                  <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">Térmica 80mm</span>
+                </Label>
+                <select
+                  value={printLayout}
+                  onChange={(e) => setPrintLayout(e.target.value as PrintLayout)}
+                  className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#1a052e] text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="FULL_RECEIPT">Talão Completo de Caixa / Conferência (Foto 2 - Recomendado)</option>
+                  <option value="KITCHEN_SLIP">Comanda de Produção / Copa (Foto 1 - Foco em Montagem)</option>
+                  <option value="TICKET_ONLY">Ticket Rápido de Senha (Balcão)</option>
+                </select>
+                <p className="text-[10px] text-slate-500 dark:text-purple-300/70">
+                  {printLayout === 'FULL_RECEIPT'
+                    ? 'Imprime cabeçalho fiscal (NIF, Morada, Tel), itens com bases e acompanhamentos Grátis, subtotais e totais.'
+                    : printLayout === 'KITCHEN_SLIP'
+                    ? 'Imprime comanda operacional enxuta para a bancada de montagem dos açaís.'
+                    : 'Imprime ticket econômico com senha gigante para entregar ao cliente.'}
+                </p>
+              </div>
+
+              <div className="flex flex-col justify-center space-y-2.5 pt-1 md:pt-0">
+                <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-slate-800 dark:text-white">
+                  <input
+                    type="checkbox"
+                    checked={highlightCustomer}
+                    onChange={(e) => setHighlightCustomer(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4 mt-0.5"
+                  />
+                  <div>
+                    <span>Destacar Senha (#001) e Cliente no Topo</span>
+                    <p className="text-[10px] font-normal text-slate-500 dark:text-purple-300/70">
+                      Imprime o número da comanda/senha e o nome do cliente em tamanho duplo no topo do talão para identificação e chamada rápida no caixa.
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-slate-800 dark:text-white">
+                  <input
+                    type="checkbox"
+                    checked={printLogo}
+                    onChange={(e) => setPrintLogo(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4 mt-0.5"
+                  />
+                  <div>
+                    <span>Imprimir Logomarca no Topo</span>
+                    <p className="text-[10px] font-normal text-slate-500 dark:text-purple-300/70">
+                      Imprime a logomarca oficial do Açaí da Rose em bitmap térmico monocromático de alta definição.
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-slate-800 dark:text-white">
+                  <input
+                    type="checkbox"
+                    checked={printQrCode}
+                    onChange={(e) => setPrintQrCode(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4 mt-0.5"
+                  />
+                  <div>
+                    <span>Imprimir QR Code da Comanda no Rodapé</span>
+                    <p className="text-[10px] font-normal text-slate-500 dark:text-purple-300/70">
+                      Permite que o cliente aponte a câmara do telemóvel para consultar o pedido digitalmente ou avaliar o atendimento.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Linha 3: Roteamento de Produção com Grid de 6 Colunas */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold text-slate-700 dark:text-purple-200">
@@ -750,7 +966,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                   <button
                     type="button"
                     onClick={() => setRoutingTab('CATEGORIES')}
-                    className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                       routingTab === 'CATEGORIES'
                         ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white shadow-xs'
                         : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
@@ -761,7 +977,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                   <button
                     type="button"
                     onClick={() => setRoutingTab('PRODUCTS')}
-                    className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                       routingTab === 'PRODUCTS'
                         ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white shadow-xs'
                         : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
@@ -773,28 +989,52 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
               </div>
 
               {routingTab === 'CATEGORIES' ? (
-                <div className="space-y-1.5">
-                  <div className="max-h-36 overflow-y-auto p-2.5 rounded-xl border border-purple-100 dark:border-white/10 bg-purple-50/30 dark:bg-white/[0.02] grid grid-cols-2 gap-1.5">
-                    {categories.length === 0 ? (
-                      <div className="col-span-2 text-center text-[11px] text-slate-400 py-2">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] px-0.5">
+                    <span className="text-slate-500 dark:text-purple-300/70 font-medium">
+                      {selectedCategories.length} de {effectiveCategories.length} selecionada(s)
+                    </span>
+                    <div className="flex items-center gap-2 font-semibold text-[11px]">
+                      <button
+                        type="button"
+                        onClick={selectAllCategories}
+                        className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+                      >
+                        Selecionar Todas
+                      </button>
+                      <span className="text-slate-300 dark:text-white/20">|</span>
+                      <button
+                        type="button"
+                        onClick={deselectAllCategories}
+                        className="text-slate-500 dark:text-slate-400 hover:underline cursor-pointer"
+                      >
+                        Desmarcar Todas
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto p-2.5 rounded-xl border border-purple-100 dark:border-white/10 bg-purple-50/30 dark:bg-white/[0.02] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
+                    {effectiveCategories.length === 0 ? (
+                      <div className="col-span-full text-center text-[11px] text-slate-400 py-3">
                         Nenhuma categoria encontrada no catálogo.
                       </div>
                     ) : (
-                      categories.map((cat) => {
+                      effectiveCategories.map((cat) => {
                         const isChecked = selectedCategories.includes(cat.id)
                         return (
                           <button
                             key={cat.id}
                             type="button"
                             onClick={() => toggleCategory(cat.id)}
-                            className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium text-left transition flex items-center justify-between ${
+                            className={`px-2 py-1.5 rounded-lg border text-[10.5px] font-medium text-left transition flex items-center justify-between gap-1 cursor-pointer truncate ${
                               isChecked
                                 ? 'bg-purple-100 border-purple-400 text-purple-950 dark:bg-purple-900/40 dark:border-purple-400 dark:text-white shadow-xs'
                                 : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50/60 dark:bg-white/5 dark:border-white/5 dark:text-purple-200/70'
                             }`}
+                            title={cat.name}
                           >
                             <span className="truncate">{cat.name}</span>
-                            {isChecked && <Check className="h-3 w-3 text-purple-600 dark:text-purple-400 shrink-0 ml-1" />}
+                            {isChecked && <Check className="h-3 w-3 text-purple-600 dark:text-purple-400 shrink-0" />}
                           </button>
                         )
                       })
@@ -805,7 +1045,30 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                   </p>
                 </div>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] px-0.5">
+                    <span className="text-slate-500 dark:text-purple-300/70 font-medium">
+                      {selectedProducts.length} de {products.length} item(ns) selecionado(s)
+                    </span>
+                    <div className="flex items-center gap-2 font-semibold text-[11px]">
+                      <button
+                        type="button"
+                        onClick={selectAllProducts}
+                        className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+                      >
+                        Selecionar Todos
+                      </button>
+                      <span className="text-slate-300 dark:text-white/20">|</span>
+                      <button
+                        type="button"
+                        onClick={deselectAllProducts}
+                        className="text-slate-500 dark:text-slate-400 hover:underline cursor-pointer"
+                      >
+                        Desmarcar Todos
+                      </button>
+                    </div>
+                  </div>
+
                   <Input
                     type="text"
                     value={productSearch}
@@ -813,9 +1076,9 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                     placeholder="Pesquisar produto pelo nome..."
                     className="h-8 text-xs rounded-lg"
                   />
-                  <div className="max-h-40 overflow-y-auto p-2.5 rounded-xl border border-purple-100 dark:border-white/10 bg-purple-50/30 dark:bg-white/[0.02] grid grid-cols-2 gap-1.5">
+                  <div className="max-h-48 overflow-y-auto p-2.5 rounded-xl border border-purple-100 dark:border-white/10 bg-purple-50/30 dark:bg-white/[0.02] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
                     {filteredProductsList.length === 0 ? (
-                      <div className="col-span-2 text-center text-[11px] text-slate-400 py-2">
+                      <div className="col-span-full text-center text-[11px] text-slate-400 py-3">
                         Nenhum produto encontrado.
                       </div>
                     ) : (
@@ -826,14 +1089,15 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                             key={prod.id}
                             type="button"
                             onClick={() => toggleProduct(prod.id)}
-                            className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium text-left transition flex items-center justify-between ${
+                            className={`px-2 py-1.5 rounded-lg border text-[10.5px] font-medium text-left transition flex items-center justify-between gap-1 cursor-pointer truncate ${
                               isChecked
                                 ? 'bg-pink-100 border-pink-400 text-pink-950 dark:bg-pink-900/40 dark:border-pink-400 dark:text-white shadow-xs'
                                 : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50/60 dark:bg-white/5 dark:border-white/5 dark:text-purple-200/70'
                             }`}
+                            title={prod.name}
                           >
                             <span className="truncate">{prod.name}</span>
-                            {isChecked && <Check className="h-3 w-3 text-pink-600 dark:text-pink-400 shrink-0 ml-1" />}
+                            {isChecked && <Check className="h-3 w-3 text-pink-600 dark:text-pink-400 shrink-0" />}
                           </button>
                         )
                       })

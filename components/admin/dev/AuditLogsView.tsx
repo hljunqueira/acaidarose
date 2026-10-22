@@ -47,6 +47,19 @@ export default function AuditLogsView() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null)
 
+  const [autoRefresh, setAutoRefresh] = useState(false)
+
+  const SCOPE_ALIASES: Record<string, string[]> = {
+    IMPRESSORAS_QZ: ['IMPRESSORA', 'QZ', 'PRINT'],
+    PRODUTOS_CATALOGO: ['PRODUTO', 'CATALOG', 'CARDAPIO', 'MENU', 'CATEGORIA'],
+    ESTOQUE_SUPPLY: ['ESTOQUE', 'SUPPLY', 'INVENTORY', 'INSUMO'],
+    MESAS_QR_SECURITY: ['MESA', 'TABLE', 'QR_SECURITY'],
+    QRCODE: ['QRCODE', 'QR_CODE'],
+    ORDER: ['ORDER', 'PEDIDO'],
+    SMART_TV: ['TV', 'SMART_TV'],
+    FRANCHISE: ['FRANCHISE', 'FRANQUIA', 'REDE'],
+  }
+
   const fetchLogs = useCallback(async (isManual = false) => {
     setLoading(true)
     try {
@@ -71,13 +84,43 @@ export default function AuditLogsView() {
     fetchLogs(false)
   }, [fetchLogs])
 
+  useEffect(() => {
+    if (!autoRefresh) return
+    const interval = setInterval(() => {
+      fetchLogs(false)
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [autoRefresh, fetchLogs])
+
+  const countByScope = React.useMemo(() => {
+    const counts: Record<string, number> = { ALL: logs.length }
+    const scopes = [
+      'IMPRESSORAS_QZ',
+      'PRODUTOS_CATALOGO',
+      'ESTOQUE_SUPPLY',
+      'MESAS_QR_SECURITY',
+      'QRCODE',
+      'ORDER',
+      'SMART_TV',
+      'FRANCHISE',
+    ]
+    scopes.forEach((sc) => {
+      const aliases = SCOPE_ALIASES[sc] || [sc]
+      counts[sc] = logs.filter((l) => {
+        const target = `${l.scope || ''} ${l.action || ''}`.toUpperCase()
+        return aliases.some((a) => target.includes(a.toUpperCase()))
+      }).length
+    })
+    return counts
+  }, [logs])
+
   const filteredLogs = logs.filter((l) => {
     if (filterLevel !== 'ALL' && l.level !== filterLevel) return false
     if (filterScope !== 'ALL') {
-      const matchScope =
-        l.scope?.toUpperCase().includes(filterScope) ||
-        l.action?.toUpperCase().includes(filterScope)
-      if (!matchScope) return false
+      const aliases = SCOPE_ALIASES[filterScope] || [filterScope]
+      const target = `${l.scope || ''} ${l.action || ''}`.toUpperCase()
+      const match = aliases.some((a) => target.includes(a.toUpperCase()))
+      if (!match) return false
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
@@ -85,6 +128,7 @@ export default function AuditLogsView() {
         l.message?.toLowerCase().includes(q) ||
         l.author?.toLowerCase().includes(q) ||
         l.scope?.toLowerCase().includes(q) ||
+        l.action?.toLowerCase().includes(q) ||
         l.tenant?.toLowerCase().includes(q)
       if (!matchText) return false
     }
@@ -109,16 +153,32 @@ export default function AuditLogsView() {
           </div>
         </div>
 
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => fetchLogs(true)}
-          disabled={loading}
-          className="h-9 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-xs font-bold text-purple-950 dark:text-white gap-2 cursor-pointer shadow-2xs self-start sm:self-auto"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Atualizar Logs</span>
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`h-9 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              autoRefresh
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-600/40 text-emerald-700 dark:text-emerald-400'
+                : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white'
+            }`}
+          >
+            <span className={`inline-block h-2 w-2 rounded-full mr-1.5 ${autoRefresh ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+            <span>{autoRefresh ? 'Ao Vivo (10s)' : 'Auto-Sync: Desligado'}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => fetchLogs(true)}
+            disabled={loading}
+            className="h-9 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-xs font-bold text-purple-950 dark:text-white gap-2 cursor-pointer shadow-2xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Atualizar Logs</span>
+          </Button>
+        </div>
       </div>
 
       {/* Barra de Filtros & Pesquisa */}
@@ -139,6 +199,7 @@ export default function AuditLogsView() {
         <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           {[
             { id: 'ALL', label: 'Todos' },
+            { id: 'IMPRESSORAS_QZ', label: 'Impressoras & QZ Tray' },
             { id: 'PRODUTOS_CATALOGO', label: 'Produtos & Cardápio' },
             { id: 'ESTOQUE_SUPPLY', label: 'Estoque & B2B' },
             { id: 'MESAS_QR_SECURITY', label: 'Hashes das Mesas' },
@@ -146,32 +207,48 @@ export default function AuditLogsView() {
             { id: 'ORDER', label: 'Pedidos' },
             { id: 'SMART_TV', label: 'Smart TV' },
             { id: 'FRANCHISE', label: 'Franquias' },
-          ].map((scope) => (
-            <button
-              key={scope.id}
-              type="button"
-              onClick={() => setFilterScope(scope.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                filterScope === scope.id
-                  ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
-                  : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-150 dark:border-white/10 hover:bg-purple-50'
-              }`}
-            >
-              {scope.label}
-            </button>
-          ))}
+          ].map((scope) => {
+            const count = countByScope[scope.id] ?? 0
+            return (
+              <button
+                key={scope.id}
+                type="button"
+                onClick={() => setFilterScope(scope.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                  filterScope === scope.id
+                    ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-150 dark:border-white/10 hover:bg-purple-50'
+                }`}
+              >
+                <span>{scope.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    filterScope === scope.id
+                      ? 'bg-white/20 text-white'
+                      : 'bg-purple-100 dark:bg-white/10 text-purple-800 dark:text-purple-300'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Filtro de Nível */}
         <div className="flex items-center gap-1 p-0.5 bg-white dark:bg-white/5 rounded-xl border border-purple-150 dark:border-white/10 shrink-0">
-          {(['ALL', 'INFO', 'WARN'] as const).map((lvl) => (
+          {(['ALL', 'INFO', 'WARN', 'ERROR'] as const).map((lvl) => (
             <button
               key={lvl}
               type="button"
               onClick={() => setFilterLevel(lvl)}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filterLevel === lvl
-                  ? 'bg-purple-900 dark:bg-purple-700 text-white'
+                  ? lvl === 'ERROR'
+                    ? 'bg-rose-600 text-white'
+                    : lvl === 'WARN'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-purple-900 dark:bg-purple-700 text-white'
                   : 'text-purple-900 dark:text-purple-200 hover:text-purple-950'
               }`}
             >

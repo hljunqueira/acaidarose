@@ -135,7 +135,7 @@ export async function getInstalledPrinters(): Promise<string[]> {
 /**
  * Envia dados brutos ESC/POS para a impressora via QZ Tray
  */
-export async function printRawData(printerName: string, rawData: (string | number[])[]): Promise<boolean> {
+export async function printRawData(printerName: string, rawData: any[]): Promise<boolean> {
   const qz = await getQZ()
   if (!qz) throw new Error('Biblioteca QZ Tray indisponível')
 
@@ -147,7 +147,7 @@ export async function printRawData(printerName: string, rawData: (string | numbe
   }
 
   const config = qz.configs.create(printerName, {
-    encoding: 'CP850', // Tabela para suporte de acentuação em PT-PT
+    encoding: 'windows-1252', // Suporte nativo a € (Euro) e acentuação PT-PT
   })
 
   await qz.print(config, rawData)

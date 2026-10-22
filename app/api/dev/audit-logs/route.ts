@@ -121,6 +121,53 @@ export async function GET(req: NextRequest) {
       })
     })
 
+    // Logs de Impressoras Térmicas & QZ Tray
+    const printersRes = await query(
+      `SELECT id, tenant_id, name, driver_name, print_layout, highlight_customer, copies, is_active, created_at, updated_at
+       FROM store_printer_settings
+       ORDER BY updated_at DESC
+       LIMIT 30`
+    ).catch(() => ({ rows: [] }))
+
+    printersRes.rows.forEach((p: any) => {
+      const storeName =
+        p.tenant_id === '22222222-2222-2222-2222-222222222222' || String(p.tenant_id).includes('torres')
+          ? 'Loja 2 - Torres Novas'
+          : p.tenant_id === '33333333-3333-3333-3333-333333333333' || String(p.tenant_id).includes('aveiro')
+          ? 'Loja 3 - Aveiro'
+          : 'Loja 1 - Figueira da Foz (Matriz)'
+
+      const layoutLabel =
+        p.print_layout === 'KITCHEN_SLIP'
+          ? 'Comanda Cozinha'
+          : p.print_layout === 'TICKET_ONLY'
+          ? 'Ticket Senha'
+          : 'Talão Completo Caixa (Foto 2)'
+
+      formattedLogs.push({
+        id: `prn-${p.id}-${p.updated_at ? new Date(p.updated_at).getTime() : '1'}`,
+        timestamp: new Date(p.updated_at || p.created_at).toISOString().replace('T', ' ').substring(0, 19),
+        level: p.is_active ? 'INFO' : 'WARN',
+        scope: 'IMPRESSORAS_QZ',
+        action: p.is_active ? 'PRINTER_ONLINE' : 'PRINTER_PAUSED',
+        message: `Impressora "${p.name}" (${p.driver_name}) · Modelo: ${layoutLabel} · Senha no topo: ${p.highlight_customer ? 'SIM' : 'NÃO'} · Vias: ${p.copies} · Estado: ${p.is_active ? 'ATIVA' : 'PAUSADA'}`,
+        author: 'Henrique Linhares Junqueira',
+        role: 'SUPER_ADMIN',
+        tenant: storeName,
+        entityId: p.id,
+        metadata: {
+          printerId: p.id,
+          name: p.name,
+          driverName: p.driver_name,
+          printLayout: p.print_layout,
+          highlightCustomer: p.highlight_customer,
+          copies: p.copies,
+          isActive: p.is_active,
+          tenantId: p.tenant_id,
+        },
+      })
+    })
+
     // Ordena pelo timestamp decrescente
     formattedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
@@ -148,5 +195,27 @@ export async function GET(req: NextRequest) {
       { error: err.message || 'Erro ao carregar logs de auditoria' },
       { status: 500 }
     )
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const { recordAuditLog } = await import('@/lib/repositories/auditRepository')
+    await recordAuditLog({
+      tenantId: body.tenantId || null,
+      userId: body.userId || null,
+      authorName: body.authorName || 'QZ Tray / Impressão Automática',
+      userRole: body.userRole || 'SISTEMA',
+      action: body.action || 'PRINT_EVENT',
+      entity: body.entity || 'IMPRESSORAS_QZ',
+      entityId: body.entityId || null,
+      message: body.message || 'Evento de impressão processado',
+      metadata: body.metadata || {},
+      level: body.level || 'INFO',
+    })
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Erro ao gravar log' }, { status: 500 })
   }
 }

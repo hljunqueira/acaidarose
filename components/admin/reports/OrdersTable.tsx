@@ -16,7 +16,7 @@ interface OrdersTableProps {
 
 export default function OrdersTable({ orders, isAdmin, onCancelClick }: OrdersTableProps) {
   const handlePrint = (id: string) => {
-    window.open(`/receipt/${id}`, '_blank', 'width=400,height=600')
+    window.open(`/receipt/${id}?print=true`, '_blank', 'width=400,height=600')
   }
 
   if (orders.length === 0) {

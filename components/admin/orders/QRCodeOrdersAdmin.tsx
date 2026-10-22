@@ -43,6 +43,9 @@ import CancelReasonDialog from './CancelReasonDialog'
 import OrderItemsModal from './OrderItemsModal'
 import KitchenOrderPrintModal from './KitchenOrderPrintModal'
 import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
+import { StorePrinterSetting } from '@/types/printer'
+import { connectQZ } from '@/lib/printers/qzClient'
+import { printOrderDirectly } from '@/lib/printers/autoPrintService'
 
 interface QRCodeOrdersAdminProps {
   tenantId: string
@@ -147,8 +150,71 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   const [cancelLoading, setCancelLoading] = useState(false)
   const [orderForKitchenPrint, setOrderForKitchenPrint] = useState<Order | null>(null)
 
+  // Estado e Controle de Impressão Térmica Automática via QZ Tray
+  const [storePrinters, setStorePrinters] = useState<StorePrinterSetting[]>([])
+  const [qzOnline, setQzOnline] = useState(false)
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(true)
+
+  const printedOrdersSetRef = React.useRef<Set<string>>(new Set())
+  const isFirstLoadRef = React.useRef(true)
+  const storePrintersRef = React.useRef<StorePrinterSetting[]>([])
+  const autoPrintEnabledRef = React.useRef(true)
+
+  React.useEffect(() => {
+    storePrintersRef.current = storePrinters
+  }, [storePrinters])
+
+  React.useEffect(() => {
+    autoPrintEnabledRef.current = autoPrintEnabled
+  }, [autoPrintEnabled])
+
   const { authFetch } = useAuthStore()
   const { currentTenant } = useFranchiseStore()
+
+  // Carrega configuração de impressoras da loja
+  const fetchStorePrinters = useCallback(async () => {
+    try {
+      const res = await authFetch(`/api/tenants/${encodeURIComponent(tenantId)}/printers`)
+      if (res.ok) {
+        const data = await res.json()
+        setStorePrinters(data.printers || [])
+      }
+    } catch {
+      // silencia erro de rede inicial
+    }
+  }, [tenantId, authFetch])
+
+  // Verifica conexão com QZ Tray local
+  const checkQzConnection = useCallback(async () => {
+    try {
+      const conn = await connectQZ()
+      setQzOnline(conn.connected)
+    } catch {
+      setQzOnline(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    fetchStorePrinters()
+    checkQzConnection()
+
+    const onPrintersUpdated = () => {
+      fetchStorePrinters()
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('printers-updated', onPrintersUpdated)
+      window.addEventListener('storage', onPrintersUpdated)
+    }
+    const interval = setInterval(fetchStorePrinters, 30000)
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('printers-updated', onPrintersUpdated)
+        window.removeEventListener('storage', onPrintersUpdated)
+      }
+      clearInterval(interval)
+    }
+  }, [fetchStorePrinters, checkQzConnection])
 
   const loadOrders = useCallback(async () => {
     try {
@@ -159,6 +225,45 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
         const newCount = newOrders.filter(
           (o) => o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'AWAITING_PAYMENT' || o.status === 'PENDING' || o.status === 'OPEN'
         ).length
+
+        // Na primeira carga após abrir a tela, apenas memorizamos os IDs já existentes no banco para não disparar impressão de pedidos antigos
+        if (isFirstLoadRef.current) {
+          newOrders.forEach((o) => printedOrdersSetRef.current.add(o.id))
+          isFirstLoadRef.current = false
+        } else {
+          // Nas consultas seguintes, detecta novos pedidos QR Code que ainda não foram impressos
+          const incomingOrders = newOrders.filter(
+            (o) =>
+              !printedOrdersSetRef.current.has(o.id) &&
+              o.status !== 'CANCELLED' &&
+              (o.isQRCode || o.channel === 'QR_CODE' || o.isTableOrder)
+          )
+
+          for (const order of incomingOrders) {
+            printedOrdersSetRef.current.add(order.id)
+            if (autoPrintEnabledRef.current) {
+              printOrderDirectly(order, storePrintersRef.current, {
+                storeInfo: {
+                  name: currentTenant?.name || 'Açaí da Rose',
+                  nif: currentTenant?.nif || '',
+                  address: currentTenant?.address || '',
+                  phone: currentTenant?.phone || '',
+                },
+              })
+                .then((res) => {
+                  if (res.success) {
+                    toast.success(
+                      `Pedido #${String(order.orderNumber || 1).padStart(3, '0')} impresso automaticamente em: ${res.printersNames.join(', ')}`
+                    )
+                  }
+                })
+                .catch((err) => {
+                  console.warn('[AutoPrint] Erro:', err)
+                })
+            }
+          }
+        }
+
         if (newCount > prevCount && prevCount > 0 && soundEnabled) {
           playOrderNotificationSound()
           toast.info('Novo pedido recebido via QR Code!')
@@ -171,7 +276,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     } finally {
       setLoading(false)
     }
-  }, [tenantId, authFetch, prevCount, soundEnabled])
+  }, [tenantId, authFetch, prevCount, soundEnabled, currentTenant?.name])
 
   useEffect(() => {
     loadOrders()
@@ -263,9 +368,28 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     }
   }
 
-  // Impressão da comanda de montagem para a cozinha
-  const handlePrintOrder = (e: React.MouseEvent | null, order: Order) => {
+  // Impressão da comanda de montagem para a cozinha (Silenciosa via QZ Tray ou fallback nativo)
+  const handlePrintOrder = async (e: React.MouseEvent | null, order: Order) => {
     if (e) e.stopPropagation()
+    const activePrinters = storePrinters.filter((p) => p.isActive)
+    if (activePrinters.length > 0 && qzOnline) {
+      try {
+        const res = await printOrderDirectly(order, activePrinters, {
+          storeInfo: {
+            name: currentTenant?.name || 'Açaí da Rose',
+            nif: currentTenant?.nif || '',
+            address: currentTenant?.address || '',
+            phone: currentTenant?.phone || '',
+          },
+        })
+        if (res.success) {
+          toast.success(`Comanda #${String(order.orderNumber || 1).padStart(3, '0')} impressa em: ${res.printersNames.join(', ')}`)
+          return
+        }
+      } catch (err: any) {
+        console.warn('Falha na impressão direta via QZ Tray:', err)
+      }
+    }
     setOrderForKitchenPrint(order)
   }
 
@@ -582,6 +706,32 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
             }`}
           >
             {soundEnabled ? <Volume2 className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" /> : <VolumeX className="h-3.5 w-3.5 text-red-500" />}
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const nextVal = !autoPrintEnabled
+              setAutoPrintEnabled(nextVal)
+              toast.info(nextVal ? 'Impressão automática ativada!' : 'Impressão automática pausada.')
+            }}
+            title={autoPrintEnabled ? 'Impressão automática QZ Tray ativa' : 'Impressão automática pausada'}
+            className={`h-8 px-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center gap-1.5 ${
+              autoPrintEnabled
+                ? 'border-purple-300 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-950/40 text-purple-950 dark:text-purple-200'
+                : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <Printer className={`h-3.5 w-3.5 ${autoPrintEnabled ? 'text-purple-700 dark:text-pink-400' : 'text-slate-400'}`} />
+            <span className="hidden sm:inline">Auto-Imprimir: {autoPrintEnabled ? 'ON' : 'OFF'}</span>
+            <span
+              className={`h-2 w-2 rounded-full ${
+                qzOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
+              }`}
+              title={qzOnline ? 'QZ Tray Conectado' : 'QZ Tray Desconectado'}
+            />
           </Button>
 
           <Button

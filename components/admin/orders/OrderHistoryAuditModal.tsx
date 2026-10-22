@@ -79,7 +79,7 @@ export default function OrderHistoryAuditModal({
   }
 
   const handlePrint = () => {
-    window.open(`/receipt/${order.id}`, '_blank')
+    window.open(`/receipt/${order.id}?print=true`, '_blank')
   }
 
   const elapsedMinutes = Math.max(

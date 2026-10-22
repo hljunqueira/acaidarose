@@ -27,7 +27,7 @@ export default function OrderReceiptModal({
   const receiptUrl = generateOrderReceiptUrl(order.id)
 
   const handlePrint = () => {
-    window.open(`/receipt/${order.id}`, '_blank', 'width=400,height=600')
+    window.open(`/receipt/${order.id}?print=true`, '_blank', 'width=400,height=600')
   }
 
   return (

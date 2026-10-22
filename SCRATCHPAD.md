@@ -1,5 +1,79 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Diagnóstico SSH: Anexos de E-mail não visíveis em Dispositivos Móveis [CONCLUÍDO & VALIDADO]**:
+  - **Sintoma Reportado**: No telemóvel do Valdair (print do app de e-mail/Gmail), o e-mail da contabilidade ("Reencaminho o e-mail com o IRS.") exibia apenas um ícone de imagem quebrada e nenhum dos dois anexos em PDF.
+  - **Inspeção Realizada via SSH na VPS (`198.50.117.110`)**:
+    1. *Integridade no Servidor*: O e-mail `1792675652...` em `/root/acaidarose/data/mail_data/domains/acaidarose.pt/valdair/Maildir/` (310 KB) contém 100% dos anexos íntegros no disco:
+       - `IRS ROSANE.pdf` (83.400 bytes, PDF válido)
+       - `DEMOSNTRAÇÃO LIQUIDAÇÃO IRS.pdf` (70.986 bytes, PDF válido)
+       - `image001.png` (inline image)
+    2. *Causa Raiz Identificada nos Logs (`mail.log` e `auth.log`)*:
+       - O telemóvel (`188.83.112.207` MEO) está configurado incorretamente com o protocolo **POP3** em vez de **IMAP**.
+       - O cliente POP3 móvel executa apenas `TOP` (limite de corte móvel a ~119 KB) e nunca executa `RETR` (`top=1/119534, retr=0/0`).
+       - O corte a 119 KB atinge o início do primeiro PDF sem fechar os boundaries MIME, fazendo com que o leitor móvel descarte os anexos.
+    3. *Correção*: Configuração do telemóvel para utilizar **IMAP** (`mail.acaidarose.pt:993` SSL/TLS) e SMTP (`mail.acaidarose.pt:587` STARTTLS).
+
+  - **Solicitação do Usuário**:
+    1. "no automatico ainda ta saindo assim o layout sem a logo que nem e no manual, analise e faça um plano" (Foto do talão automático com VIA DE COZINHA, Total do Pedido 6.50 ?, sem logo, sem QR code).
+    2. "E colocar palavras em pt como cash em pt e status do pedido em pt, e pode executar o plano".
+  - **Entregas Realizadas**:
+    1. **Logomarca Monocromática Oficial (`public/logo-thermal.png` & `lib/printers/logoData.ts`)**:
+       - Gerada imagem térmica monocromática em alta definição (380px de largura, 1-bit achatado em fundo `#ffffff` sólido sem transparência para evitar blocos pretos térmicos).
+       - Exportada constante `THERMAL_LOGO_BASE64` e função assíncrona `generateReceiptQrCodeBase64`.
+    2. **Integração de Imagem com QZ Tray e ESC/POS Multi-Part**:
+       - `lib/printers/autoPrintService.ts`: Monta o payload híbrido suportado nativamente pelo QZ Tray (`INIT` + `WPC1252` + imagem base64 da logo centralizada + texto ESC/POS do talão + QR Code da comanda + corte de guilhotina).
+       - O QR Code da comanda aponta dinamicamente para a URL `${origin}/receipt/${order.id}` para leitura rápida e avaliação de satisfação do cliente.
+    3. **Termos 100% Canônicos em PT-PT (`lib/printers/escposBuilder.ts` & `app/receipt/[id]/page.tsx`)**:
+       - `formatPaymentMethodPT`: `CASH` / `DINHEIRO` -> `Numerário`, `MBWAY` -> `MB Way`, `CARD` / `MULTIBANCO` -> `Multibanco (TPA)`, `BALCAO` -> `Balcão`.
+       - `formatOrderStatusPT`: `PAID` -> `PAGO`, `PENDING` -> `PENDENTE`, `PREPARING` -> `EM PREPARO`, `READY` -> `PRONTO`, `COMPLETED` -> `CONCLUÍDO`, `CANCELLED` -> `ANULADO`.
+       - Eliminado o caractere `?` na exibição do Euro: trocado `CODE_PAGE_CP850` por `CODE_PAGE_WPC1252` em todas as rotas e comprovativos, exibindo perfeitamente `€ 6,50`.
+    4. **Configuração por Impressora no Painel (`PrinterSettingsView.tsx`) & Banco PostgreSQL**:
+       - Tabela `store_printer_settings` migrada com as colunas `print_logo BOOLEAN DEFAULT true` e `print_qr_code BOOLEAN DEFAULT true`.
+       - Modal de edição/criação de impressora com toggles intuitivos: `[✓] Imprimir Logomarca no Topo` e `[✓] Imprimir QR Code da Comanda no Rodapé`.
+       - Badges correspondentes (`Logo no Topo`, `QR Code no Rodapé`) adicionados aos cards das impressoras.
+       - Ação "Testar Corte" atualizada para enviar a logomarca oficial no cabeçalho do teste.
+    5. **Validação**:
+       - `npx tsc --noEmit` executado com código de saída 0 (zero erros de tipagem).
+
+- **Modelos de Impressão (Talão Completo de Caixa - Foto 2 vs Comanda de Cozinha - Foto 1) & Destaque de Senha/Cliente [CONCLUÍDO & EM PRODUÇÃO]**:
+  - **Solicitação do Usuário**:
+    1. "Automatico tem que sair tbm assim e no caixa tem que sair a senha e nome do cliente, e possivel fazer isso nas configurações da impressora?"
+    2. Referência: Foto 2 do talão físico com cabeçalho fiscal completo (NIF, morada, tel), dados de comanda e operador, dados do cliente, itens com bases e acompanhamentos ("Grátis"/preços), subtotal, total e forma de pagamento.
+  - **Solução & Implementações Realizadas**:
+    1. **Configurável nas Configurações da Impressora (`PrinterSettingsView.tsx`)**:
+       - Adicionado seletor de **Modelo do Talão (Layout de Impressão)**:
+         - `Talão Completo de Caixa / Conferência (Foto 2 - Recomendado)`: Layout idêntico à Foto 2, com NIF, morada, contacto, comanda, cliente, itens detalhados com bases, acompanhamentos "Grátis", subtotal por item, total e pagamento.
+         - `Comanda de Produção / Copa (Foto 1 - Foco em Montagem)`: Versão reduzida para a bancada de montagem rápida dos açaís.
+         - `Ticket Rápido de Senha (Balcão)`: Versão econômica com senha gigante para entrega ao cliente.
+       - Adicionada opção do Caixa:
+         - `[✓] Destacar Senha (#001) e Cliente no Topo`: Imprime a senha/comanda (`#001`) e o nome do cliente (`ROSANE`) em tamanho duplo e negrito no topo do talão para facilitar a chamada e identificação no balcão e no caixa.
+    2. **Banco de Dados PostgreSQL**:
+       - Colunas `print_layout` e `highlight_customer` persistidas na tabela `store_printer_settings` e sincronizadas via repositório e API (`GET`, `POST`, `PUT`).
+    3. **Builder ESC/POS Direto (`lib/printers/escposBuilder.ts`)**:
+       - `buildFullOrderEscPosReceipt`: Formatação exata em 40 colunas (`padRow`), bases e acompanhamentos agrupados com "Grátis" / preços, totais e rodapé de comprovativo interno.
+       - Suporte nativo a acentuação e Euro (`€ 6,50` em vez de `?`): Tabela WPC1252 (`\x1Bt\x10`) no ESC/POS e `encoding: 'windows-1252'` no QZ Tray.
+    4. **Auto-Impressão Silenciosa (`lib/printers/autoPrintService.ts`) & Pedidos QR Code (`QRCodeOrdersAdmin.tsx`)**:
+       - Roteamento inteligente baseado no layout configurado na impressora ativa.
+       - Dados fiscais (NIF, morada, telefone) consultados dinamicamente a partir do `currentTenant` da unidade.
+    5. **Validação**: `npx tsc --noEmit` compilado com código 0 e deploy de produção publicado na Vercel (`https://acaidarose.vercel.app`).
+
+  - **Solicitação do Usuário**:
+    1. "Deixar o modal com 6 grid e largo e compacto"
+    2. "e verificar se o pedido feito pelos qr code da loja vai impirir automatico"
+  - **1. Modal de Impressoras (`PrinterSettingsView.tsx`)**:
+    - **Largura Expandida & Altura Otimizada**: De `max-w-lg` para `max-w-5xl w-[95vw]` com rolagem interna compacta.
+    - **Header em 2 Colunas**: Linha 1 (`Nome de Identificação` + `Driver do SO`) e Linha 2 (`Protocolo` + `Número de Vias`) organizados lado a lado, reduzindo a altura vertical em 50%.
+    - **Grid de 6 Colunas Compacto**: A seleção de `Categorias` e `Produtos` agora utiliza `grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5` com botões compactos (`px-2 py-1.5 text-[10.5px]`). Todas as 17 categorias cabem em 3 linhas compactas sem rolagem excessiva.
+  - **2. Diagnóstico & Implementação da Auto-Impressão de Pedidos QR Code**:
+    - **Diagnóstico Real**: Anteriormente, pedidos feitos pelos clientes via QR Code no telemóvel caíam no banco PostgreSQL e eram detectados pelo painel a cada 8s tocando som e exibindo toast, mas **NÃO imprimiam automaticamente** na impressora física. Além disso, o telemóvel do cliente jamais conseguiria se comunicar diretamente com a impressora da loja (o QZ Tray roda localmente no PC Windows da loja).
+    - **Solução Implementada**:
+      - `lib/printers/autoPrintService.ts`: Serviço que roteia os itens do pedido com base nas categorias e produtos configurados em cada impressora ativa, gera o recibo ESC/POS térmico formatado (`buildOrderKitchenEscPosReceipt`) e despacha silenciosamente para o driver local via QZ Tray (`printRawData`).
+      - `components/admin/orders/QRCodeOrdersAdmin.tsx`:
+        - Integrado watcher de novos pedidos: na primeira carga, registra os pedidos existentes para evitar reimpressão de histórico antigo. Nos polls seguintes (a cada 8s), todo novo pedido recebido via QR Code ou comanda de mesa dispara automaticamente a impressão na impressora térmica ativa da unidade.
+        - Botão de controle de status no cabeçalho: `[✓ Auto-Imprimir: ON/OFF]` com luz indicadora de conexão do QZ Tray (Verde pulsante para Online / Âmbar para Offline).
+        - Botão de impressão manual no card do pedido atualizado: se o QZ Tray estiver online com impressora ativa, imprime diretamente em 1 clique sem abrir diálogo do navegador; caso contrário, abre o modal de contingência nativo como fallback.
+  - **Validação**: `npx tsc --noEmit` compilado com código 0 (sem erros de tipagem).
+
 - **Diagnóstico & Correção da Conexão do QZ Tray Local no Navegador [CONCLUÍDO & VALIDADO]**:
   - **Sintoma**: O QZ Tray estava instalado e em execução no Windows (processo `javaw.exe` na porta 8181/8182), mas a tela de Impressoras Térmicas acusava `Offline / Não Detectado`.
   - **Causas Raízes Identificadas**:
@@ -623,6 +697,25 @@
   - **Sistema de IVA de Portugal (B2B da Franqueadora)**:
     - Segregação de Preço Líquido (sem IVA) + IVA (6%, 13%, 23%) = Total c/ IVA em todo o catálogo mestre de suprimentos, compras de fornecedores e pedidos de abastecimento da rede.
     - Campos de peso líquido (kg), preço por kg e margem líquida da Matriz integrados e persistidos no banco de dados.
+  - **Módulo de Impressão Térmica QZ Tray & Layouts de Talão**:
+    - **Modelos de Impressão (Layouts)**:
+      - `FULL_RECEIPT` (Talão Completo Caixa - Foto 2): Cabeçalho institucional (nome, NIF, morada, contacto), comanda/ticket, data/hora, operador, cliente, discriminação de itens com bases e acompanhamentos (grátis / adicionais), subtotal, total em €, método de pagamento e aviso "Documento de conferência / Não serve de fatura".
+      - `KITCHEN_SLIP` (Comanda de Produção / Cozinha): Itens, recipientes e acompanhamentos em destaque para expedição.
+      - `TICKET_ONLY` (Ticket Rápido de Senha): Focado exclusivamente no número da senha e identificação do cliente/mesa.
+    - **Destaque de Senha e Cliente no Topo**: Banner de alta visibilidade `[ #001 ]` e `MESA 1 - ROSANE` em tamanho duplo e negrito no topo do talão.
+    - **Acentuação e Símbolo do Euro (€)**: Troca da codificação de página para `windows-1252` (`CODE_PAGE_WPC1252`), eliminando caracteres estranhos e garantindo `€` impecável nas impressoras ESC/POS (80mm).
+    - **Configuração Multi-Impressora**: Seletores no `PrinterSettingsView.tsx` para definir o modelo de impressão e toggle para destacar a senha/cliente por impressora individual.
+  - **Logs & Auditoria TI (`AuditLogsView.tsx` & `/api/dev/audit-logs`)**:
+    - Integração de todos os eventos de impressão (`IMPRESSORAS_QZ`): cadastros, alterações de layout, testes de corte, impressões automáticas e eventuais falhas.
+    - Mapeamento robusto com `SCOPE_ALIASES` para que os filtros por chip (`Impressoras & QZ Tray`, `Produtos & Cardápio`, `Estoque & B2B`, etc.) capturem 100% dos eventos mesmo com variações de escopo.
+    - Contadores dinâmicos de eventos em cada chip de filtro.
+    - Suporte a filtro por nível crítico (`ERROR`, `WARN`, `INFO`, `ALL`).
+    - Modo de sincronização contínua ao vivo (`Auto-Sync 10s`).
+  - **Correção da Impressão Térmica de Cozinha (Foto 1) e QR Code Contínuo**:
+    - **Causa Raiz 1 (QR Code saindo cortado em 2 vias na Foto 2)**: Na impressão via navegador (`/receipt/[id]`), a folha continha margens e tamanho fixo no `@page`, fazendo o Chromium quebrar a página após a seção de pagamento. Drivers de bobina térmica executam guilhotina automática (`GS V 0`) em cada quebra de página, gerando o corte entre o pagamento e o QR Code. Corrigido com CSS contínuo estrito de 80mm (`width: 74mm`, `@page { margin: 0 }`, `break-inside: avoid !important`, `break-before: avoid !important` no QR code), garantindo talão 100% contínuo sem cortes indesejados.
+    - **Causa Raiz 2 (Layout Cozinha saindo como Caixa na Foto 2)**: O pedido #001 foi impresso às 14:52 quando a Cozinha ainda estava com layout `FULL_RECEIPT` no banco, e o cache do `QRCodeOrdersAdmin` não atualizava dinamicamente ao salvar nas configurações. Implementado disparador de evento `printers-updated` no `PrinterSettingsView`, re-busca periódica (30s) e suporte a duplo layout nativo na página `/receipt/[id]` com alternador imediato entre `Comanda Cozinha (Foto 1)` e `Talão Caixa (Foto 2)`.
+    - **Aprimoramento da Comanda de Cozinha (ESC/POS & Web)**: Formatação dos acompanhamentos e modificadores no padrão checklist operacional `[ ] Item (Qtd)` para bancada de montagem rápida, aviso de saco de transporte e destino em alto contraste.
 - **Compilação & Validação**:
   - `npx tsc --noEmit` validado com 0 erros.
+  - Sincronização e envio de dados testados com QZ Tray e impressão contínua.
 

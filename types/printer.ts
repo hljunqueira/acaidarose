@@ -1,6 +1,8 @@
 export type PrinterType = 'EPSON_ESC_POS' | 'GENERIC_ESC_POS' | 'HTML_WINDOW'
 export type PrinterConnectionType = 'QZ_TRAY' | 'NATIVE_PRINT'
 
+export type PrintLayout = 'FULL_RECEIPT' | 'KITCHEN_SLIP' | 'TICKET_ONLY'
+
 export interface StorePrinterSetting {
   id: string
   tenantId: string
@@ -8,6 +10,10 @@ export interface StorePrinterSetting {
   driverName: string
   printerType: PrinterType
   connectionType: PrinterConnectionType
+  printLayout?: PrintLayout
+  highlightCustomer?: boolean
+  printLogo?: boolean
+  printQrCode?: boolean
   categories: string[] // IDs das categorias vinculadas
   products: string[] // IDs dos produtos/itens vinculados
   copies: number
@@ -22,6 +28,10 @@ export interface CreatePrinterInput {
   driverName: string
   printerType?: PrinterType
   connectionType?: PrinterConnectionType
+  printLayout?: PrintLayout
+  highlightCustomer?: boolean
+  printLogo?: boolean
+  printQrCode?: boolean
   categories?: string[]
   products?: string[]
   copies?: number
