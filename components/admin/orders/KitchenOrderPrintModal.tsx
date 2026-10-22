@@ -23,7 +23,7 @@ export default function KitchenOrderPrintModal({
 }: KitchenOrderPrintModalProps) {
   if (!order) return null
 
-  const isTable = order.isTableOrder !== false && !!order.tableNumber
+  const isTable = order.isTableOrder !== false && !!order.tableNumber && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
   const isPaid = order.paymentStatus === 'PAID'
   const items = Array.isArray(order.items) ? order.items : []
   const foodItems = items.filter((it: any) => !it.isBagItem && it.id !== 'bag-item' && it.containerId !== 'saco-transporte')
@@ -209,7 +209,7 @@ export default function KitchenOrderPrintModal({
                 {isTakeawayOrder
                   ? '>>> PARA LEVAR (TAKEAWAY) <<<'
                   : isTable
-                  ? `>>> CONSUMO NO LOCAL (MESA ${order.tableNumber}) <<<`
+                  ? `>>> CONSUMO NO LOCAL (ESPLANADA ${order.tableNumber}) <<<`
                   : '>>> CONSUMO NO LOCAL (BALCÃO) <<<'}
               </div>
 
@@ -227,7 +227,7 @@ export default function KitchenOrderPrintModal({
                 <div className="flex justify-between">
                   <span className="font-bold text-zinc-600">CLIENTE:</span>
                   <span className="font-black uppercase text-black">
-                    {order.customerName || (isTable ? `Mesa ${order.tableNumber}` : 'Balcão')}
+                    {order.customerName || (isTable ? `Esplanada ${order.tableNumber}` : 'Balcão')}
                   </span>
                 </div>
 

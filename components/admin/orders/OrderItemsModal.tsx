@@ -46,7 +46,7 @@ export default function OrderItemsModal({
 }: OrderItemsModalProps) {
   if (!order) return null
 
-  const isTable = order.isTableOrder !== false && !!order.tableNumber
+  const isTable = order.isTableOrder !== false && !!order.tableNumber && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
   const isPaid = order.paymentStatus === 'PAID'
   const isWaitingPayment = !isPaid || order.status === 'WAITING_PAYMENT' || (order.status as string) === 'AWAITING_PAYMENT' || (order.status as string) === 'PENDING'
 
@@ -64,7 +64,7 @@ export default function OrderItemsModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
-        {/* Header com Ticket, Mesa e Nome */}
+        {/* Header com Ticket, Esplanada e Nome */}
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
           <DialogTitle className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export default function OrderItemsModal({
               </span>
               {isTable ? (
                 <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-black text-xs py-0.5 px-2 rounded-lg">
-                  {order.tableNumber}
+                  Esplanada {order.tableNumber}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-xs font-bold border-purple-300 dark:border-white/20 text-purple-800 dark:text-purple-200">

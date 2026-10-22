@@ -128,23 +128,27 @@ export async function POST(request: NextRequest) {
       paymentStatus: body.paymentStatus || (body.status === 'PAID' || body.status === 'COMPLETED' ? 'PAID' : 'PENDING'),
     }
 
-    // Se o pedido for associado a uma mesa física (salão), valida no banco de dados se a mesa realmente existe na loja
-    if (payload.isTableOrder || payload.tableNumber) {
-      if (!payload.tableNumber) {
+    // Se o pedido for associado a uma mesa física (esplanada/salão), valida no banco de dados se a mesa realmente existe na loja
+    const tableNumStr = payload.tableNumber ? String(payload.tableNumber).trim().toLowerCase() : ''
+    const isPhysicalTable = Boolean(payload.isTableOrder) && Boolean(payload.tableNumber) && tableNumStr !== 'balcão' && tableNumStr !== 'balcao'
+
+    if (isPhysicalTable) {
+      const cleanNum = Number(payload.tableNumber)
+      if (!cleanNum || isNaN(cleanNum)) {
         return NextResponse.json(
-          { error: 'Número da mesa não informado para pedido no salão.' },
+          { error: 'Número da mesa inválido para pedido na esplanada.' },
           { status: 400 }
         )
       }
 
       const tableCheck = await query(
         `SELECT id, status FROM tables WHERE tenant_id::text = $1 AND table_number = $2 AND deleted_at IS NULL LIMIT 1`,
-        [tenantId, Number(payload.tableNumber)]
+        [tenantId, cleanNum]
       )
 
       if (!tableCheck.rows || tableCheck.rows.length === 0) {
         return NextResponse.json(
-          { error: `A Mesa ${payload.tableNumber} não existe ou não está registada nesta unidade. Por favor, faça o pedido no balcão ou consulte a equipa.` },
+          { error: `A Esplanada ${payload.tableNumber} não existe ou não está registada nesta unidade. Por favor, faça o pedido no balcão ou consulte a equipa.` },
           { status: 400 }
         )
       }

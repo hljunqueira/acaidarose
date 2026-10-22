@@ -40,6 +40,7 @@ interface CustomerCartSheetProps {
   tenantId?: string
   tenantName?: string
   isTable?: boolean
+  isBalcao?: boolean
   tableNumber?: string | number
   qrConfig?: any
 }
@@ -58,6 +59,7 @@ export default function CustomerCartSheet({
   tenantId,
   tenantName,
   isTable,
+  isBalcao,
   tableNumber,
   qrConfig,
 }: CustomerCartSheetProps) {
@@ -153,7 +155,7 @@ export default function CustomerCartSheet({
     }
   }, [checkoutStep, createdOrder])
 
-  const isNameRequired = qrConfig?.customerNameRule !== 'OPTIONAL'
+  const isNameRequired = isBalcao || qrConfig?.customerNameRule !== 'OPTIONAL'
   const isPhoneRequired = qrConfig?.customerPhoneRule === 'REQUIRED'
   const showPhoneField = qrConfig?.customerPhoneRule !== 'NONE' || paymentMethod === 'MBWAY_PHONE'
   const isPointsPayment = paymentMethod === 'POINTS'
@@ -252,8 +254,8 @@ export default function CustomerCartSheet({
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim() || undefined,
         customerNif: customerNif.trim() || undefined,
-        tableNumber: tableNumber ? Number(tableNumber) : null,
-        isTableOrder: Boolean(isTable),
+        tableNumber: isBalcao ? 'Balcão' : tableNumber ? String(tableNumber) : null,
+        isTableOrder: Boolean(isTable && !isBalcao),
         paymentMethod: paymentMethod,
         paymentStatus: 'PENDING',
         status: initialStatus,
@@ -270,8 +272,10 @@ export default function CustomerCartSheet({
         needBag: bagQuantity > 0,
         bagQuantity,
         bagFee,
-        notes: isTable
-          ? `Mesa ${tableNumber} · ${takeawayLabel} · ${paymentLabel}`
+        notes: isBalcao
+          ? `Balcão · ${takeawayLabel} · ${paymentLabel}`
+          : isTable
+          ? `Esplanada ${tableNumber} · ${takeawayLabel} · ${paymentLabel}`
           : `Balcão · ${takeawayLabel} · ${paymentLabel}`,
       }
 
@@ -287,7 +291,9 @@ export default function CustomerCartSheet({
 
       const orderData = await res.json()
       const created = orderData.order || orderData
-      activeOrderIdRef.current = orderData.id || created?.id
+      const finalOrderId = orderData.id || created?.id
+      const finalOrderNumber = orderData.orderNumber || created?.orderNumber || created?.order_number || '001'
+      activeOrderIdRef.current = finalOrderId
       setCreatedOrder(created)
       setSubmittedOrderSummary({
         total: cartTotal,
@@ -299,6 +305,26 @@ export default function CustomerCartSheet({
       })
       onClearCart()
       setCheckoutStep('SUCCESS_COUNTER')
+
+      // Persistência isolada no smartphone do cliente para notificação seletiva (Zero Alarme Falso)
+      if (typeof window !== 'undefined' && finalOrderId) {
+        try {
+          const activeOrderPayload = {
+            orderId: String(finalOrderId),
+            orderNumber: String(finalOrderNumber),
+            customerName: customerName.trim(),
+            origin: isBalcao ? 'BALCAO' : 'ESPLANADA',
+            tableLabel: isBalcao ? 'Balcão' : `Esplanada ${tableNumber || ''}`.trim(),
+            tenantId: tenantId || '11111111-1111-1111-1111-111111111111',
+            status: created?.status || initialStatus,
+            total: cartTotal,
+            createdAt: new Date().toISOString(),
+            notifiedReady: false,
+          }
+          localStorage.setItem('customer_active_order', JSON.stringify(activeOrderPayload))
+          window.dispatchEvent(new Event('customer_order_updated'))
+        } catch {}
+      }
 
       if (paymentMethod === 'MBWAY_PHONE') {
         toast.info('Pré-pedido registado com MB WAY! Dirija-se ao caixa para validar o telemóvel e efetuar o pagamento.')

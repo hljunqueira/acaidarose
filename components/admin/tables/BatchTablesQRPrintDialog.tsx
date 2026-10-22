@@ -40,7 +40,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
       <html lang="pt">
       <head>
         <meta charset="utf-8" />
-        <title>Placas de Mesas — Açaí da Rose</title>
+        <title>Placas de Esplanada — Açaí da Rose</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800;900&display=swap" rel="stylesheet">
@@ -101,21 +101,21 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
             padding: 8px;
             border-radius: 16px;
             border: 1.5px solid #e9d5ff;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             display: inline-block;
           }
           .print-card .qr-wrapper svg {
             display: block;
           }
           .print-card .table-num {
-            font-size: 20px;
+            font-size: 19px;
             font-weight: 900;
             color: #1b032e;
             letter-spacing: -0.5px;
             line-height: 1.1;
           }
           .print-card .table-extra {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 800;
             color: #db2777;
             text-transform: uppercase;
@@ -123,7 +123,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
             margin-top: 2px;
           }
           .print-card .instruction {
-            font-size: 9.5px;
+            font-size: 8.5px;
             font-weight: 800;
             color: #6b21a8;
             text-transform: uppercase;
@@ -155,10 +155,10 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
       <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10">
           <DialogTitle className="text-base font-black text-purple-950 dark:text-white flex items-center gap-2">
-            <span>Folha de Impressão — Placas de Mesas ({tables.length})</span>
+            <span>Folha de Impressão — Placas de Esplanada ({tables.length})</span>
           </DialogTitle>
           <p className="text-xs text-purple-700/80 dark:text-purple-300/80">
-            Layout em grade A4 otimizado com linhas de corte para tesoura. Cada placa contém QR Code em alta definição e identificação da mesa.
+            Layout em grade A4 otimizado com linhas de corte para tesoura. Cada placa contém QR Code em alta definição e identificação da mesa de esplanada.
           </p>
         </DialogHeader>
 
@@ -174,10 +174,10 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
             const formattedNum = table.number.toString().padStart(2, '0')
             const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${formattedNum}&loja=${lojaSlug}`
 
-            // Evita duplicar "Mesa 5" abaixo de "MESA 05"
+            // Evita duplicar "Esplanada 5" abaixo de "ESPLANADA 05"
             const isRedundantNickname =
               !table.nickname ||
-              /^mesa\s*\d+$/i.test(table.nickname.trim()) ||
+              /^(mesa|esplanada)\s*\d+$/i.test(table.nickname.trim()) ||
               table.nickname.trim().toLowerCase() === 'salão' ||
               table.nickname.trim().toLowerCase() === 'salao'
 
@@ -206,7 +206,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
                 </div>
 
                 <div className="table-num text-lg font-black text-purple-950 dark:text-white font-mono tracking-tight">
-                  MESA {formattedNum}
+                  ESPLANADA {formattedNum}
                 </div>
 
                 {!isRedundantNickname && (

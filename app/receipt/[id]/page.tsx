@@ -207,12 +207,12 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                 <span className="text-2xl font-black tracking-tight">#{formattedTicket}</span>
               </div>
 
-              {/* Box de Destino (Mesa ou Balcão / Takeaway) */}
+              {/* Box de Destino (Esplanada ou Balcão / Takeaway) */}
               <div className="border-2 border-black py-1.5 px-2 text-center font-black text-sm uppercase bg-zinc-100 tracking-wide">
                 {isTakeaway
                   ? '>>> PARA LEVAR (TAKEAWAY) <<<'
-                  : isTable
-                  ? `>>> CONSUMO NO LOCAL (MESA ${order.tableNumber}) <<<`
+                  : isTable && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
+                  ? `>>> CONSUMO NO LOCAL (ESPLANADA ${order.tableNumber}) <<<`
                   : '>>> CONSUMO NO LOCAL (BALCÃO) <<<'}
               </div>
 
@@ -230,7 +230,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                 <div className="flex justify-between">
                   <span className="font-bold text-zinc-600">CLIENTE:</span>
                   <span className="font-black uppercase text-black">
-                    {order.customerName || (isTable ? `Mesa ${order.tableNumber}` : 'Balcão')}
+                    {order.customerName || (isTable && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao' ? `Esplanada ${order.tableNumber}` : 'Balcão')}
                   </span>
                 </div>
 
@@ -386,7 +386,11 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             <div className="flex justify-between text-[11px]">
               <span>Consumo</span>
               <span className="font-black uppercase">
-                {isTakeaway ? 'CONSUMO NO LOCAL (TAKEAWAY)' : isTable ? `CONSUMO NO LOCAL (MESA ${order.tableNumber})` : 'CONSUMO NO LOCAL'}
+                {isTakeaway
+                  ? 'CONSUMO NO LOCAL (TAKEAWAY)'
+                  : isTable && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
+                  ? `CONSUMO NO LOCAL (ESPLANADA ${order.tableNumber})`
+                  : 'CONSUMO NO LOCAL (BALCÃO)'}
               </span>
             </div>
             {((order.bagQuantity && order.bagQuantity > 0) || isTakeaway) && (

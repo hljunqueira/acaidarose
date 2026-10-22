@@ -782,5 +782,155 @@
 - [x] **Fase 3**: Refatorar `BaseSelector.tsx`, `CustomerProductDetail.tsx` e `cartStore.ts` com Açaí Tradicional fixo + 1 creme incluso (e 2 cremes para Somente Creme) — design clean sem ícones decorativos ou emojis.
 - [x] **Fase 4**: Migração do PostgreSQL executada (`shipping_fee`, Categoria `GRAFICOS`, 10 Fornecedores oficiais), validação `npx tsc --noEmit` com código 0 e deploy contínuo em execução.
 
+---
+
+## [Plano de Execução: Identificação de Mesa/Esplanada vs Balcão, Notificação Seletiva no Telemóvel & Aba de Balcão no Gestor de Mesas]
+
+### 1. Diagnóstico & Análise Técnica Aprofundada
+
+#### A. Identificação do Ponto de Atendimento (Esplanada vs. Balcão)
+- **Cenário Atual**:
+  - O sistema foi desenhado primariamente em torno de mesas numéricas (`Mesa 01`, `Mesa 02`). Se o cliente entra no `/menu` sem parâmetro de mesa ou token, o cardápio entrava em modo `Catálogo Digital (View Only)` bloqueando pedidos de autoatendimento no balcão.
+  - Em Portugal (Figueira da Foz, Torres Novas, Aveiro), a nomenclatura oficial do salão/exterior é **Esplanada** (ex: `Esplanada 01`), e os pedidos feitos em pé na fila são **Balcão**.
+- **Solução Arquitetural**:
+  - **Mesa de Esplanada**:
+    - URL do QR Code: `/menu?tipo=mesa&numero=04&loja=figueira-da-foz&token=tb04_xxx`.
+    - Cabeçalho do menu exibe: `Esplanada 04 · Figueira da Foz`.
+    - Pedido gravado no banco com: `tableNumber: 'Esplanada 04'` (ou `04`), `isTableOrder: true`.
+    - Na Comanda de Cozinha (`KITCHEN_SLIP`): Topo destaca **`ESPLANADA 04 - [NOME DO CLIENTE]`**.
+    - No PDV/Admin de Pedidos: Badge de alta visibilidade `ESPLANADA 04`.
+    - Na TV de Senhas: Ticket exibe `ESPLANADA 04`.
+  - **Balcão (Autoatendimento)**:
+    - URL do QR Code: `/menu?tipo=balcao&loja=figueira-da-foz`.
+    - Cabeçalho do menu exibe: `Balcão · Figueira da Foz`.
+    - Cardápio ativo para compras normais (desativa o bloqueio `VIEW_ONLY`).
+    - Campo **Nome do Cliente** torna-se **estritamente obrigatório** para identificação de entrega.
+    - Pedido gravado no banco com: `tableNumber: 'Balcão'`, `isTableOrder: false`.
+    - Na Comanda de Cozinha (`KITCHEN_SLIP`): Topo destaca **`BALCÃO - [NOME DO CLIENTE]`**.
+    - No PDV/Admin de Pedidos: Badge diferenciada `BALCÃO`.
+    - Na TV de Senhas: Ticket exibe `BALCÃO` e TTS anuncia: *"Senha #003, Rosane, retirar no balcão"*.
+
+---
+
+#### B. Notificação no Telemóvel: Análise Técnica de "Broadcast vs. IP do Telemóvel" (Zero Alarme Falso)
+O usuário levantou a dúvida técnica: *"se for por balcão e broadcast ou IP do telemóvel para não notificar todos"*.
+
+1. **Por que Identificar por IP do Telemóvel NÃO FUNCIONA (e causa desastre de UX)**:
+   - **NAT no Wi-Fi da Loja**: Clientes conectados à rede Wi-Fi da loja compartilham o **mesmo endereço IP público** do roteador.
+   - **CGNAT no 4G/5G**: Operadoras móveis (MEO, Vodafone, NOS) colocam centenas de smartphones sob o mesmo endereço IP público através de Carrier-Grade NAT.
+   - **Consequência do IP**: Se o servidor disparasse a notificação para o IP do cliente cujo pedido ficou pronto, **todos os telemóveis de clientes conectados no Wi-Fi da loja apitariam ao mesmo tempo**, gerando falso alarme generalizado e correria indevida ao balcão.
+2. **Por que Broadcast Global sem Filtro também FALHA**:
+   - Se o servidor enviar um broadcast via SSE / WebSocket dizendo *"Pedido #003 pronto!"* para todos os clientes conectados no cardápio da loja, todos os celulares tocariam som e vibrariam.
+3. **A Solução Técnica Segura, Robusta e À Prova de Falhas: Vínculo Local por `orderId` Único**:
+   - **Passo 1 (Criação do Pedido)**: Ao finalizar o pedido no `/menu`, o backend retorna o objeto criado com `id` (UUID único, ex: `c7f91a2b-3456-4b89-a1b2-c3d4e5f67890`), `orderNumber` (`003`), `customerName` (`Rosane`), `status` (`PREPARING`).
+   - **Passo 2 (Gravação Local no Smartphone)**: O navegador do cliente grava imediatamente no seu próprio `localStorage`:
+     ```ts
+     localStorage.setItem('customer_active_order', JSON.stringify({
+       orderId: 'c7f91a2b-3456-4b89-a1b2-c3d4e5f67890',
+       orderNumber: '003',
+       customerName: 'Rosane',
+       tableLabel: 'Balcão', // ou 'Esplanada 04'
+       tenantId: '11111111-1111-1111-1111-111111111111',
+       storeSlug: 'figueira-da-foz',
+       status: 'PREPARING',
+       notifiedReady: false
+     }))
+     ```
+   - **Passo 3 (Escuta e Notificação Seletiva 100% Blindada)**:
+     - O componente `CustomerOrderLiveTracker.tsx` no telemóvel do cliente implementa dupla camada de monitoramento:
+       1. **Polling Atômico Dedicado**: A cada 3 a 4 segundos, consulta `GET /api/orders/${activeOrder.orderId}/status`. Como NENHUM outro telemóvel possui esse UUID no seu `localStorage`, **apenas o smartphone do dono consulta e recebe o seu próprio status**.
+       2. **Filtro Estrito em Eventos Realtime/Broadcast**: Caso a TV ou o Admin emita um evento via SSE/BroadcastChannel:
+          ```ts
+          if (!activeOrder || event.orderId !== activeOrder.orderId) {
+            return // Ignora solenemente! Silêncio absoluto no telemóvel alheio.
+          }
+          ```
+   - **Passo 4 (Disparo do Alerta Único no Celular Correto)**:
+     - Quando `status === 'READY'` (ou o operador clica em `[ Chamar na TV ]`):
+       - Som limpo de chime via Web Audio API (`playOrderNotificationSound()`).
+       - Vibração tátil no celular: `navigator.vibrate([300, 150, 300, 150, 500])`.
+       - Modal de tela cheia no telemóvel:
+         - *"O seu Açaí está pronto!"*
+         - *"Senha #003 · Rosane"*
+         - *"Pode retirar no balcão de entrega."*
+         - Botão `[ Já Retirei / Concluir ]` que encerra o tracker.
+       - Marca `notifiedReady: true` no `localStorage` para evitar repetições contínuas.
+
+---
+
+#### C. Aba Separada para o QR Code de Balcão no Gestor de Mesas (`TablesManagementView.tsx`)
+O usuário solicitou: *"e o Qr code balcao pode separar uma aba dentro do gestor de mesas para não quebrar o token e criar rotas diferentes"*.
+
+1. **Como Não Quebrar o Token e Não Criar Rotas Conflitantes**:
+   - As mesas normais possuem registros na tabela `tables` com `table_number` (INTEGER) e `qr_code_token` (VARCHAR).
+   - Se tentássemos criar uma "mesa balcão" com `table_number = 'Balcão'`, o PostgreSQL geraria erro de tipagem (`INTEGER` vs `STRING`), ou poluiria a contagem de mesas do salão.
+   - **Arquitetura da Aba no Gestor de Mesas**:
+     - No `TablesManagementView.tsx`, incluir o componente de Abas (`Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`):
+       - **Aba 1: `Mesas de Esplanada`**:
+         - Mantém 100% da lógica atual de listagem de mesas (números 01, 02, etc.), geração de tokens hash criptográficos (`tb01_xxx`), exclusão e diálogo de impressão em lote e individual.
+         - Atualiza os rótulos de exibição de `Mesa 01` para `Esplanada 01`.
+       - **Aba 2: `QR Code do Balcão`**:
+         - Área dedicada para configurar, visualizar e imprimir a placa física do Balcão de Autoatendimento da loja selecionada.
+         - **Rota Canônica Uniforme**: Aponta para `${origin}/menu?tipo=balcao&loja=${lojaSlug}`.
+         - Mantém a mesma rota canônica `/menu`, sem criar sub-rotas órfãs ou duplicadas.
+         - Gera placa de alta fidelidade para corte e montagem em acrílico/balcão:
+           - Logotipo oficial Açaí da Rose + Identificação da Loja.
+           - QR Code SVG nítido em alta resolução.
+           - Título: **BALCÃO DE ATENDIMENTO**.
+           - Instrução: *"Aponte a câmara do seu telemóvel, faça o seu pedido e acompanhe a chamada"*.
+         - Ações na aba: `[ Copiar Link do Balcão ]`, `[ Descarregar Imagem PNG ]` e `[ Imprimir Placa de Balcão ]`.
+
+---
+
+### 2. Mapa de Arquivos a Serem Modificados
+
+1. **`components/admin/tables/TablesManagementView.tsx`**:
+   - Integração das abas `[ Mesas de Esplanada ]` e `[ QR Code do Balcão ]` via `@/components/ui/tabs`.
+   - Aba Esplanada: listagem e impressão de placas de mesa renomeadas para `Esplanada XX`.
+   - Aba Balcão: visualizador da placa física de balcão com botões de cópia de link, download PNG e impressão.
+2. **`components/admin/tables/SingleTableQRDialog.tsx` & `BatchTablesQRPrintDialog.tsx`**:
+   - Nomenclatura atualizada para `Esplanada XX` (ex: `Esplanada 01`, `Esplanada 02`).
+   - Design clean sem ícones decorativos ou emojis.
+3. **`app/menu/page.tsx`**:
+   - Suporte a `tipo=balcao`: define `isBalcao = true`, permitindo pedidos normais de balcão (sem travar em `VIEW_ONLY`).
+   - Nomenclatura do cabeçalho: `Esplanada XX · [Loja]` (se mesa) ou `Balcão · [Loja]` (se balcão).
+4. **`app/api/orders/route.ts`**:
+   - Ajustar validação de mesa física: se `isTableOrder === false` ou `tableNumber === 'Balcão'`, não executa checagem de `Number(tableNumber)` na tabela de mesas (evita erro `NaN` e rejeição indevida).
+5. **`components/menu/CustomerCartSheet.tsx`**:
+   - Se for balcão, campo `Nome do Cliente` torna-se obrigatório.
+   - Envio do pedido com `tableNumber: 'Balcão'` e `isTableOrder: false`.
+   - Ao receber a resposta da criação do pedido com sucesso, persiste o objeto no `localStorage` (`customer_active_order`).
+6. **`components/menu/CustomerOrderLiveTracker.tsx` (Novo Componente)**:
+   - Barra de status elegante fixada no rodapé do cardápio: `Pedido #003 · A preparar... [Ver Estado]`.
+   - Hook de polling atômico dedicado a cada 3s em `/api/orders/${orderId}` + escuta de chamadas.
+   - Filtro de isolamento estrito: só reage se `event.orderId === activeOrder.orderId`.
+   - Disparo de Web Audio (chime), vibração (`navigator.vibrate`) e modal de retirada quando `status === 'READY'`.
+
+---
+
+### 3. Fases de Execução Propostas
+
+- [x] **Fase 1**: Abas de Esplanada vs. Balcão no Gestor de Mesas (`TablesManagementView.tsx`):
+  - Criadas abas Radix UI `[ Mesas de Esplanada ]` e `[ QR Code do Balcão ]`.
+  - Implementado visualizador, download SVG/PNG e impressor da Placa Oficial de Balcão com rota `/menu?tipo=balcao&loja=...` (`CounterQRView.tsx`).
+  - Atualizadas nomenclaturas das placas individuais e em lote para `Esplanada XX`.
+- [x] **Fase 2**: Suporte a Pedido de Balcão no Menu & API de Pedidos:
+  - `app/menu/page.tsx`: liberados pedidos quando `tipo=balcao` sem exigir mesa.
+  - `app/api/orders/route.ts`: validação flexibilizada para não exigir mesa física no banco para `Balcão`.
+  - `CustomerCartSheet.tsx`: Nome do Cliente obrigatório para pedidos de balcão e persistência do `customer_active_order` no `localStorage`.
+- [x] **Fase 3**: Notificação Seletiva no Telemóvel do Cliente (`CustomerOrderLiveTracker.tsx`):
+  - Criado componente de acompanhamento em tempo real no `/menu`.
+  - Consulta atômica de status do pedido do cliente por `orderId` único a cada 3.5s.
+  - Disparo de som de chime (Web Audio API) + vibração tátil (`navigator.vibrate`) + modal em ecrã inteiro quando o pedido estiver `READY` ou chamado.
+  - Blindagem contra alarme falso em celulares de terceiros (filtragem estrita por `orderId` e `orderNumber`).
+- [x] **Fase 4**: Kanban e Histórico Operacional atualizados para Esplanada vs. Balcão:
+  - `QRCodeOrdersAdmin.tsx`: badges dinâmicas `Esplanada XX` vs `Balcão` no Kanban e na tabela.
+  - `KitchenOrderPrintModal.tsx`: cabeçalho de destino atualizado para `ESPLANADA` vs `BALCÃO` e sem QR Code na impressão de produção.
+  - `OrderItemsModal.tsx` & `OrderHistoryAdminView.tsx`: rótulos e badges atualizados.
+- [x] **Fase 5**: Validação e Build:
+  - `npx tsc --noEmit` executado com código 0 (sem erros de tipagem).
+  - `npm run build` executado com código 0 (41 rotas estáticas e dinâmicas geradas com sucesso).
+
+
 
 

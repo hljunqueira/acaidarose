@@ -87,7 +87,7 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
   {
     id: 'READY',
     title: 'Prontos p/ Entrega',
-    subtitle: 'Pronto para servir à mesa/balcão',
+    subtitle: 'Pronto para servir à esplanada/balcão',
     color: 'text-emerald-950 dark:text-white',
     bgLight: 'bg-emerald-500/10 dark:bg-emerald-950/25 backdrop-blur-md',
     borderLight: 'border-emerald-300 dark:border-emerald-500/40',
@@ -460,7 +460,8 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   const handleCallTicketOnTV = async (order: Order) => {
     const formattedNum = String(order.orderNumber || 1).padStart(3, '0')
     const ticketNum = `#${formattedNum}`
-    const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+    const isTableOrder = order.isTableOrder !== false && !!order.tableNumber && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
+    const clientName = order.customerName || (isTableOrder ? `Esplanada ${order.tableNumber}` : 'Balcão')
 
     broadcastTVCall(
       {
@@ -560,7 +561,8 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       if (targetStatus === 'READY') {
         const formattedNum = String(order.orderNumber || 1).padStart(3, '0')
         const ticketNum = `#${formattedNum}`
-        const clientName = order.customerName || (order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão')
+        const isTableOrder = order.isTableOrder !== false && !!order.tableNumber && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
+        const clientName = order.customerName || (isTableOrder ? `Esplanada ${order.tableNumber}` : 'Balcão')
         broadcastTVCall(
           {
             ticket: ticketNum,
@@ -588,7 +590,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   // Filtro de pesquisa e de origem
   const filteredOrders = orders.filter((o) => {
     // Filtro de Origem
-    const isTable = o.isTableOrder !== false && !!o.tableNumber
+    const isTable = o.isTableOrder !== false && !!o.tableNumber && String(o.tableNumber).toLowerCase() !== 'balcão' && String(o.tableNumber).toLowerCase() !== 'balcao'
     if (originFilter === 'TABLES' && !isTable) return false
     if (originFilter === 'COUNTER' && isTable) return false
 
@@ -659,8 +661,8 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     }
   }
 
-  const countTables = orders.filter((o) => o.isTableOrder !== false && !!o.tableNumber).length
-  const countCounter = orders.filter((o) => o.isTableOrder === false || !o.tableNumber).length
+  const countTables = orders.filter((o) => o.isTableOrder !== false && !!o.tableNumber && String(o.tableNumber).toLowerCase() !== 'balcão' && String(o.tableNumber).toLowerCase() !== 'balcao').length
+  const countCounter = orders.filter((o) => o.isTableOrder === false || !o.tableNumber || String(o.tableNumber).toLowerCase() === 'balcão' || String(o.tableNumber).toLowerCase() === 'balcao').length
 
   const handleManualRefresh = async () => {
     setLoading(true)
@@ -685,7 +687,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar senha, mesa, cliente..."
+              placeholder="Buscar senha, esplanada, cliente..."
               className="h-8 text-xs pl-8 pr-2 bg-white dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white placeholder:text-purple-400 dark:placeholder:text-purple-300/50 rounded-xl"
             />
           </div>
@@ -783,7 +785,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
             }`}
           >
             <Smartphone className="h-3.5 w-3.5" />
-            <span>Mesas / QR Code</span>
+            <span>Esplanadas / QR Code</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">
               {countTables}
             </span>
@@ -844,7 +846,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
               <thead>
                 <tr className="border-b border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/[0.02] text-purple-950/70 dark:text-purple-200/70 font-extrabold uppercase text-[10px] tracking-wider">
                   <th className="py-3 px-4">Senha / Ticket</th>
-                  <th className="py-3 px-3">Origem & Mesa</th>
+                  <th className="py-3 px-3">Origem & Ponto</th>
                   <th className="py-3 px-3">Cliente</th>
                   <th className="py-3 px-3">Tempo / SLA</th>
                   <th className="py-3 px-3">Itens</th>
@@ -862,7 +864,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
                   </tr>
                 ) : (
                   filteredOrders.map((order) => {
-                    const isTable = order.isTableOrder !== false && !!order.tableNumber
+                    const isTable = order.isTableOrder !== false && !!order.tableNumber && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
                     const elapsedMinutes = calculateElapsedMinutes(order.createdAt)
                     const sla = getSlaBadge(elapsedMinutes)
                     const items = order.items || []
@@ -898,7 +900,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
                           <div className="flex flex-col gap-1 items-start">
                             {isTable ? (
                               <Badge className="bg-purple-700 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-lg">
-                                Mesa {order.tableNumber}
+                                Esplanada {order.tableNumber}
                               </Badge>
                             ) : (
                               <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
@@ -1072,7 +1074,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
                   </div>
                 ) : (
                   colOrders.map((order) => {
-                    const isTable = order.isTableOrder !== false && !!order.tableNumber
+                    const isTable = order.isTableOrder !== false && !!order.tableNumber && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
                     const elapsedMinutes = calculateElapsedMinutes(order.createdAt)
                     const sla = getSlaBadge(elapsedMinutes)
                     const isDraggingThis = draggedOrderId === order.id
@@ -1100,10 +1102,15 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
                               #{order.orderNumber || 100}
                             </span>
                             
-                            {/* Mesa se houver */}
-                            {isTable && (
+                            {/* Ponto de Pedido: Esplanada se houver */}
+                            {isTable ? (
                               <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0 px-1.5 rounded-md border-0 shrink-0">
-                                Mesa {String(order.tableNumber).replace(/\D/g, '') || order.tableNumber}
+                                Esplanada {String(order.tableNumber).replace(/\D/g, '') || order.tableNumber}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-purple-200 dark:border-white/20 bg-purple-50/50 dark:bg-white/5 text-purple-900 dark:text-purple-200 text-[8.5px] font-bold py-0 px-1.5 rounded-md shrink-0 flex items-center gap-0.5">
+                                <Store className="h-2.5 w-2.5" />
+                                <span>Balcão</span>
                               </Badge>
                             )}
 
@@ -1169,7 +1176,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
                           <div className="flex items-center justify-between gap-1 text-xs font-bold text-purple-950 dark:text-white">
                             <span className="truncate flex items-center gap-1 min-w-0">
                               <User className="h-3 w-3 text-purple-700 dark:text-pink-400 shrink-0" />
-                              <span className="truncate font-extrabold text-[11px]">{order.customerName || (isTable ? 'Cliente na Mesa' : 'Cliente Balcão')}</span>
+                              <span className="truncate font-extrabold text-[11px]">{order.customerName || (isTable ? 'Cliente na Esplanada' : 'Cliente Balcão')}</span>
                             </span>
                             {order.paymentStatus === 'PAID' && (
                               <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 shrink-0 whitespace-nowrap">

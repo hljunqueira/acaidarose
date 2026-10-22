@@ -252,7 +252,7 @@ export default function OrderHistoryAdminView({
           d.tables.forEach((t: any) => {
             const num = Number(t.number ?? t.table_number ?? t.tableNumber)
             if (typeof num === 'number' && !isNaN(num) && num > 0) {
-              const label = t.nickname || `Mesa ${String(num).padStart(2, '0')}`
+              const label = t.nickname || `Esplanada ${String(num).padStart(2, '0')}`
               if (!map.has(num)) {
                 map.set(num, label)
               }
@@ -436,7 +436,8 @@ export default function OrderHistoryAdminView({
     ]
 
     const rows = orders.map((o) => {
-      const consumptionLabel = o.consumptionType === 'TAKEAWAY' ? 'Takeaway' : o.tableNumber ? `Mesa ${o.tableNumber}` : 'Balcão'
+      const isTableOrder = o.tableNumber && String(o.tableNumber).toLowerCase() !== 'balcão' && String(o.tableNumber).toLowerCase() !== 'balcao'
+      const consumptionLabel = o.consumptionType === 'TAKEAWAY' ? 'Takeaway' : isTableOrder ? `Esplanada ${o.tableNumber}` : 'Balcão'
       return [
         `"#${o.orderNumber}"`,
         `"${formatDateTime(o.createdAt)}"`,
@@ -493,7 +494,7 @@ export default function OrderHistoryAdminView({
 
   const consumptionOptions: FilterOption[] = [
     { value: 'ALL', label: 'Todos Canais' },
-    { value: 'DINE_IN', label: 'Mesa (Salão)' },
+    { value: 'DINE_IN', label: 'Esplanada / Salão' },
     { value: 'COUNTER', label: 'Balcão' },
     { value: 'TAKEAWAY', label: 'Takeaway' },
   ]
@@ -827,9 +828,9 @@ export default function OrderHistoryAdminView({
                           <Badge variant="outline" className="text-[10px] font-bold border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300">
                             Takeaway
                           </Badge>
-                        ) : o.tableNumber ? (
+                        ) : o.tableNumber && String(o.tableNumber).toLowerCase() !== 'balcão' && String(o.tableNumber).toLowerCase() !== 'balcao' ? (
                           <Badge variant="outline" className="text-[10px] font-bold border-purple-200 dark:border-purple-500/30 text-purple-900 dark:text-purple-200">
-                            Mesa {o.tableNumber}
+                            Esplanada {o.tableNumber}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-[10px] font-bold border-slate-200 dark:border-white/20 text-slate-600 dark:text-slate-300">
@@ -984,8 +985,8 @@ export default function OrderHistoryAdminView({
                   <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                     {selectedOrder.consumptionType === 'TAKEAWAY'
                       ? 'Takeaway (Para levar)'
-                      : selectedOrder.tableNumber
-                      ? `Mesa ${selectedOrder.tableNumber}`
+                      : selectedOrder.tableNumber && String(selectedOrder.tableNumber).toLowerCase() !== 'balcão' && String(selectedOrder.tableNumber).toLowerCase() !== 'balcao'
+                      ? `Esplanada ${selectedOrder.tableNumber}`
                       : 'Balcão'}
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-purple-300/80 mt-0.5">

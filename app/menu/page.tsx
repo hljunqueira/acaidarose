@@ -20,6 +20,7 @@ import CustomerCartSheet from '@/components/menu/CustomerCartSheet'
 import CustomerMediaModal from '@/components/menu/CustomerMediaModal'
 import CallWaiterModal from '@/components/menu/CallWaiterModal'
 import SwitchTableModal from '@/components/menu/SwitchTableModal'
+import CustomerOrderLiveTracker from '@/components/menu/CustomerOrderLiveTracker'
 import { Info, Clock } from 'lucide-react'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
 import { subscribeCatalogSync } from '@/lib/utils/catalogSync'
@@ -78,6 +79,7 @@ function MenuContent() {
   const rawLoja = searchParams.get('loja') || searchParams.get('tenantId') || searchParams.get('tenant') || '1'
   const paramNumero = searchParams.get('numero') || searchParams.get('mesa') || searchParams.get('table') || ''
   const paramToken = searchParams.get('token') || searchParams.get('hash') || searchParams.get('t') || ''
+  const paramTipo = searchParams.get('tipo') || ''
 
   // Sincronização explícita do tema escuro no documento HTML (para que Portais e Modais herdem o tema)
   useEffect(() => {
@@ -95,6 +97,14 @@ function MenuContent() {
   // Estado dinâmico da mesa e da loja ativa
   const [activeLoja, setActiveLoja] = useState(rawLoja)
   const [currentTableNum, setCurrentTableNum] = useState(paramNumero)
+
+  // Identificação de Balcão vs Esplanada
+  const isBalcao =
+    paramTipo === 'balcao' ||
+    paramNumero.toLowerCase() === 'balcao' ||
+    paramNumero.toLowerCase() === 'balcão' ||
+    currentTableNum.toLowerCase() === 'balcao' ||
+    currentTableNum.toLowerCase() === 'balcão'
 
   // Sincroniza se o searchParam inicial de loja mudar
   useEffect(() => {
@@ -127,8 +137,8 @@ function MenuContent() {
 
   // Validação dinâmica se a mesa realmente existe no salão da loja ativa
   useEffect(() => {
-    // Se o cliente acessou por token de QR Code validado pelo banco, não precisa revalidar
-    if (paramToken) return
+    // Se o cliente acessou por token de QR Code validado pelo banco ou for Balcão, não precisa revalidar mesa
+    if (paramToken || isBalcao) return
 
     if (currentTableNum && activeLoja) {
       fetch(`/api/tables?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, { cache: 'no-store' })
@@ -138,21 +148,21 @@ function MenuContent() {
             const num = Number(currentTableNum)
             const exists = data.tables.some((t: any) => Number(t.number) === num || Number(t.tableNumber) === num)
             if (!exists) {
-              console.warn(`[Menu] Mesa ${currentTableNum} não registada na loja ${activeLoja}. Redirecionando para Catálogo Digital.`)
+              console.warn(`[Menu] Esplanada ${currentTableNum} não registada na loja ${activeLoja}. Redirecionando para Catálogo Digital.`)
               setCurrentTableNum('')
             }
           }
         })
         .catch(() => {})
     }
-  }, [currentTableNum, activeLoja, paramToken])
+  }, [currentTableNum, activeLoja, paramToken, isBalcao])
 
   // Configurações do QR Code da loja
   const [qrConfig, setQrConfig] = useState<any>({ mode: 'ORDER_EMISSION', allowTableTransfer: true })
 
-  // Se o cliente acessou diretamente sem mesa/número ou se o modo da loja for VIEW_ONLY, abre em modo Catálogo Vitrine (Read-Only)
-  const isTable = Boolean(currentTableNum)
-  const isCatalogOnly = !isTable || qrConfig.mode === 'VIEW_ONLY'
+  // Se o cliente acessou diretamente sem mesa/balcão ou se o modo da loja for VIEW_ONLY, abre em modo Catálogo Vitrine (Read-Only)
+  const isTable = Boolean(currentTableNum) && !isBalcao
+  const isCatalogOnly = (!isTable && !isBalcao) || qrConfig.mode === 'VIEW_ONLY'
 
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [catalog, setCatalog] = useState<CatalogData>({ containers: [], bases: [], toppings: [] })
@@ -171,7 +181,11 @@ function MenuContent() {
   const [waiterModalOpen, setWaiterModalOpen] = useState(false)
   const [switchTableModalOpen, setSwitchTableModalOpen] = useState(false)
 
-  const tableLabel = isTable ? `Mesa ${currentTableNum}` : 'Catálogo Digital'
+  const tableLabel = isBalcao
+    ? 'Balcão'
+    : isTable
+    ? `Esplanada ${currentTableNum}`
+    : 'Catálogo Digital'
   const cartTotal = cart.reduce((acc, item) => acc + (Number(item.lineTotal) || 0), 0)
 
   // Status de Aberto/Fechado da Loja no fuso de Portugal
@@ -311,12 +325,12 @@ function MenuContent() {
         </div>
       )}
 
-      {/* Aviso de Modo Catálogo Vitrine (quando acessado diretamente sem QR Code de mesa) */}
-      {isCatalogOnly && storeStatus.isOpen && (
+      {/* Aviso de Modo Catálogo Vitrine (quando acessado diretamente sem QR Code de mesa ou balcão) */}
+      {isCatalogOnly && !isBalcao && storeStatus.isOpen && (
         <div className="bg-purple-100 text-purple-950 dark:bg-purple-950/80 dark:text-purple-200 border-b border-purple-200 dark:border-purple-800/40 px-4 py-2.5 text-center text-xs flex items-center justify-center gap-2">
           <Info className="h-4 w-4 text-pink-500 shrink-0" />
           <span>
-            <strong>Modo Catálogo Digital:</strong> Para fazer pedidos e pagamentos na mesa, faça a leitura do QR Code da sua mesa física.
+            <strong>Modo Catálogo Digital:</strong> Para fazer pedidos e pagamentos, faça a leitura do QR Code da sua mesa de esplanada ou da placa do balcão.
           </span>
         </div>
       )}
@@ -332,7 +346,7 @@ function MenuContent() {
               setCart((prev) => [...prev, item])
               toast.success(`${item.containerName} adicionado ao pedido!`)
             }}
-            isTable={isTable}
+            isTable={isTable || isBalcao}
             isCatalogOnly={isCatalogOnly || !storeStatus.isOpen}
           />
         )}
@@ -356,7 +370,7 @@ function MenuContent() {
         cartCount={cart.length}
         cartTotal={cartTotal}
         onOpenCart={() => setCartOpen(true)}
-        isTable={isTable}
+        isTable={isTable || isBalcao}
         onCallWaiter={() => setWaiterModalOpen(true)}
       />
 
@@ -410,7 +424,8 @@ function MenuContent() {
         tenantId={tenant?.id}
         tenantName={tenant?.name}
         isTable={isTable}
-        tableNumber={currentTableNum}
+        isBalcao={isBalcao}
+        tableNumber={isBalcao ? 'Balcão' : currentTableNum}
         qrConfig={qrConfig}
       />
 
@@ -434,6 +449,9 @@ function MenuContent() {
           onTableSwitched={handleTableSwitched}
         />
       )}
+
+      {/* 9. Rastreamento e Alerta ao Vivo no Smartphone do Cliente (Zero Notificação Cruzada) */}
+      <CustomerOrderLiveTracker />
     </div>
   )
 }

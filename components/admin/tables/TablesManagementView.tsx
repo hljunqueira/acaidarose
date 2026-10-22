@@ -12,6 +12,9 @@ import AddEditTableDialog from './AddEditTableDialog'
 import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 import { Copy } from 'lucide-react'
 
+import CounterQRView from './CounterQRView'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+
 interface TablesManagementViewProps {
   tenantId: string
 }
@@ -41,7 +44,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
       const dataTables = await resTables.json()
       if (dataTables.tables) setTables(dataTables.tables)
     } catch {
-      toast.error('Erro ao carregar mesas')
+      toast.error('Erro ao carregar mesas de esplanada')
     } finally {
       setLoading(false)
     }
@@ -86,7 +89,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
     try {
       const res = await fetch(`/api/tables/${tableToDelete.id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Falha ao eliminar mesa')
-      toast.success(`Mesa ${tableToDelete.number} eliminada com sucesso!`)
+      toast.success(`Esplanada ${tableToDelete.number} eliminada com sucesso!`)
       setTableToDelete(null)
       fetchData()
     } catch (err: any) {
@@ -100,8 +103,8 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
     setDeleteAllLoading(true)
     try {
       const res = await fetch(`/api/tables?tenantId=${encodeURIComponent(tenantId)}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Falha ao eliminar todas as mesas')
-      toast.success('Todas as mesas foram eliminadas com sucesso!')
+      if (!res.ok) throw new Error('Falha ao eliminar todas as mesas de esplanada')
+      toast.success('Todas as mesas de esplanada foram eliminadas com sucesso!')
       setDeleteAllOpen(false)
       fetchData()
     } catch (err: any) {
@@ -113,158 +116,187 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
 
   return (
     <div className="space-y-4">
-      {/* Header Minimalista */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-purple-100 dark:border-white/10">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">
-              Gestão de Mesas
-            </h1>
-            {!isMaster && (
-              <Badge className="bg-purple-100 dark:bg-white/10 text-purple-800 dark:text-purple-300 text-[10px] font-bold border-0">
-                Modo Franqueado (Leitura)
-              </Badge>
-            )}
+      {/* Abas Radix UI: Mesas de Esplanada vs QR Code do Balcão */}
+      <Tabs defaultValue="esplanada" className="w-full space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-black text-purple-950 dark:text-white tracking-tight">
+                Gestão de Mesas e Balcão
+              </h1>
+              {!isMaster && (
+                <Badge className="bg-purple-100 dark:bg-white/10 text-purple-800 dark:text-purple-300 text-[10px] font-bold border-0">
+                  Modo Franqueado (Leitura)
+                </Badge>
+              )}
+            </div>
+            <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
+              Configure as mesas de esplanada e o QR Code de autoatendimento no balcão da unidade.
+            </p>
           </div>
-          <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
-            {isMaster
-              ? `Configure as mesas do salão e imprima as placas de QR Code (${tables.length} mesas registadas)`
-              : `Visualização e impressão das placas de QR Code da unidade (${tables.length} mesas ativas)`}
-          </p>
+
+          <TabsList className="bg-purple-100/70 dark:bg-white/10 p-1 rounded-2xl h-10 border border-purple-200 dark:border-white/10 self-start sm:self-auto">
+            <TabsTrigger
+              value="esplanada"
+              className="rounded-xl px-3.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-purple-900 data-[state=active]:text-purple-950 dark:data-[state=active]:text-white shadow-xs cursor-pointer"
+            >
+              Mesas de Esplanada ({tables.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="balcao"
+              className="rounded-xl px-3.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-purple-900 data-[state=active]:text-purple-950 dark:data-[state=active]:text-white shadow-xs cursor-pointer"
+            >
+              QR Code do Balcão
+            </TabsTrigger>
+          </TabsList>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setBatchQROpen(true)}
-            className="h-9 text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white rounded-xl cursor-pointer shadow-xs"
-          >
-            Imprimir Todas as Placas
-          </Button>
+        {/* ABA 1: MESAS DE ESPLANADA */}
+        <TabsContent value="esplanada" className="space-y-4 m-0 focus-visible:outline-none">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="text-xs font-bold text-purple-900 dark:text-purple-200">
+              {tables.length} {tables.length === 1 ? 'mesa de esplanada ativa' : 'mesas de esplanada ativas'}
+            </div>
 
-          {isMaster && (
-            <>
-              {tables.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDeleteAllOpen(true)}
-                  className="h-9 text-xs font-bold border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 rounded-xl cursor-pointer"
-                >
-                  Excluir Todas
-                </Button>
-              )}
-
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
+                variant="outline"
                 size="sm"
-                onClick={handleOpenAdd}
-                className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+                onClick={() => setBatchQROpen(true)}
+                className="h-9 text-xs font-bold border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white rounded-xl cursor-pointer shadow-xs"
               >
-                Nova Mesa
+                Imprimir Todas as Placas
               </Button>
-            </>
-          )}
-        </div>
-      </div>
 
-      {/* Tabela de Mesas */}
-      <div className="bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs dark:shadow-xl overflow-hidden text-slate-900 dark:text-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-purple-50/70 dark:bg-white/5 border-b border-purple-100 dark:border-white/10 text-purple-950 dark:text-purple-200 font-black uppercase text-[10px] tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4">Mesa</th>
-                <th className="py-3.5 px-4">Apelido / Localização</th>
-                <th className="py-3.5 px-4">Hash do QR Code</th>
-                <th className="py-3.5 px-4">Situação</th>
-                <th className="py-3.5 px-4">QR Code Autoatendimento</th>
-                {isMaster && <th className="py-3.5 px-4 text-right">Ações</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-purple-100 dark:divide-white/10">
-              {loading ? (
-                <tr>
-                  <td colSpan={isMaster ? 6 : 5} className="py-12 text-center text-purple-700 dark:text-purple-300/60 font-bold">
-                    A carregar mesas...
-                  </td>
-                </tr>
-              ) : tables.length === 0 ? (
-                <tr>
-                  <td colSpan={isMaster ? 6 : 5} className="py-12 text-center text-purple-700/70 dark:text-purple-300/60">
-                    Nenhuma mesa registada nesta unidade.
-                  </td>
-                </tr>
-              ) : (
-                tables.map((t) => (
-                  <tr
-                    key={t.id}
-                    className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors"
+              {isMaster && (
+                <>
+                  {tables.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteAllOpen(true)}
+                      className="h-9 text-xs font-bold border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 rounded-xl cursor-pointer"
+                    >
+                      Excluir Todas
+                    </Button>
+                  )}
+
+                  <Button
+                    size="sm"
+                    onClick={handleOpenAdd}
+                    className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
                   >
-                    <td className="py-3.5 px-4 font-mono font-black text-sm text-purple-800 dark:text-pink-300">
-                      Mesa {t.number.toString().padStart(2, '0')}
-                    </td>
-                    <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
-                      {t.nickname || `Mesa ${t.number.toString().padStart(2, '0')}`}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <button
-                        type="button"
-                        onClick={() => handleCopyTableHash(t.code || `tb${t.number}`)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-150 dark:border-white/10 font-mono text-[11px] font-bold text-purple-900 dark:text-purple-200 transition-colors cursor-pointer"
-                        title="Clique para copiar a Hash desta mesa"
-                      >
-                        <span>{t.code || `tb${t.number}`}</span>
-                        <Copy className="h-3 w-3 opacity-60" />
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Badge
-                        className={`text-[10px] py-0.5 px-2.5 font-bold ${
-                          t.status === 'AVAILABLE'
-                            ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
-                            : 'bg-pink-100 dark:bg-pink-500/20 text-pink-800 dark:text-pink-300 border border-pink-200 dark:border-pink-500/30'
-                        }`}
-                      >
-                        {t.status === 'AVAILABLE' ? 'Disponível / Livre' : 'Em Atendimento'}
-                      </Badge>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenSingleQR(t)}
-                        className="inline-flex items-center gap-1 text-purple-700 dark:text-pink-400 hover:text-purple-900 dark:hover:text-pink-300 font-bold text-xs underline underline-offset-2 cursor-pointer"
-                      >
-                        <span>Ver / Imprimir Placa</span>
-                      </button>
-                    </td>
-                    {isMaster && (
-                      <td className="py-3.5 px-4 text-right space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEdit(t)}
-                          className="text-xs text-purple-800 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 font-bold h-7 px-2.5 rounded-lg cursor-pointer"
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteTable(t)}
-                          className="text-xs text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 hover:bg-pink-50 dark:hover:bg-pink-950/30 font-bold h-7 px-2.5 rounded-lg cursor-pointer"
-                        >
-                          Eliminar
-                        </Button>
-                      </td>
-                    )}
-                  </tr>
-                ))
+                    Nova Mesa de Esplanada
+                  </Button>
+                </>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </div>
+          </div>
+
+          {/* Tabela de Mesas */}
+          <div className="bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs dark:shadow-xl overflow-hidden text-slate-900 dark:text-white">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-purple-50/70 dark:bg-white/5 border-b border-purple-100 dark:border-white/10 text-purple-950 dark:text-purple-200 font-black uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3.5 px-4">Esplanada</th>
+                    <th className="py-3.5 px-4">Apelido / Posição</th>
+                    <th className="py-3.5 px-4">Hash do QR Code</th>
+                    <th className="py-3.5 px-4">Situação</th>
+                    <th className="py-3.5 px-4">QR Code Autoatendimento</th>
+                    {isMaster && <th className="py-3.5 px-4 text-right">Ações</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-purple-100 dark:divide-white/10">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={isMaster ? 6 : 5} className="py-12 text-center text-purple-700 dark:text-purple-300/60 font-bold">
+                        A carregar mesas de esplanada...
+                      </td>
+                    </tr>
+                  ) : tables.length === 0 ? (
+                    <tr>
+                      <td colSpan={isMaster ? 6 : 5} className="py-12 text-center text-purple-700/70 dark:text-purple-300/60">
+                        Nenhuma mesa de esplanada registada nesta unidade.
+                      </td>
+                    </tr>
+                  ) : (
+                    tables.map((t) => (
+                      <tr
+                        key={t.id}
+                        className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors"
+                      >
+                        <td className="py-3.5 px-4 font-mono font-black text-sm text-purple-800 dark:text-pink-300">
+                          Esplanada {t.number.toString().padStart(2, '0')}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
+                          {t.nickname || `Esplanada ${t.number.toString().padStart(2, '0')}`}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyTableHash(t.code || `tb${t.number}`)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-150 dark:border-white/10 font-mono text-[11px] font-bold text-purple-900 dark:text-purple-200 transition-colors cursor-pointer"
+                            title="Clique para copiar a Hash desta mesa"
+                          >
+                            <span>{t.code || `tb${t.number}`}</span>
+                            <Copy className="h-3 w-3 opacity-60" />
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <Badge
+                            className={`text-[10px] py-0.5 px-2.5 font-bold ${
+                              t.status === 'AVAILABLE'
+                                ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
+                                : 'bg-pink-100 dark:bg-pink-500/20 text-pink-800 dark:text-pink-300 border border-pink-200 dark:border-pink-500/30'
+                            }`}
+                          >
+                            {t.status === 'AVAILABLE' ? 'Disponível / Livre' : 'Em Atendimento'}
+                          </Badge>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenSingleQR(t)}
+                            className="inline-flex items-center gap-1 text-purple-700 dark:text-pink-400 hover:text-purple-900 dark:hover:text-pink-300 font-bold text-xs underline underline-offset-2 cursor-pointer"
+                          >
+                            <span>Ver / Imprimir Placa</span>
+                          </button>
+                        </td>
+                        {isMaster && (
+                          <td className="py-3.5 px-4 text-right space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEdit(t)}
+                              className="text-xs text-purple-800 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 font-bold h-7 px-2.5 rounded-lg cursor-pointer"
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteTable(t)}
+                              className="text-xs text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 hover:bg-pink-50 dark:hover:bg-pink-950/30 font-bold h-7 px-2.5 rounded-lg cursor-pointer"
+                            >
+                              Eliminar
+                            </Button>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ABA 2: QR CODE DO BALCÃO */}
+        <TabsContent value="balcao" className="space-y-4 m-0 focus-visible:outline-none">
+          <CounterQRView tenantId={tenantId} />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <SingleTableQRDialog
