@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { Trash2 } from 'lucide-react'
+import InventoryCategoriesDialog from './InventoryCategoriesDialog'
 
 export interface InventoryItemFormData {
   id?: string
@@ -62,27 +63,32 @@ export default function InventoryItemDialog({
   const [minAlertQuantity, setMinAlertQuantity] = useState(2)
   const [isCriticalChecklist, setIsCriticalChecklist] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false)
   const [categories, setCategories] = useState<{ id: string; name: string; code: string }[]>([
     { id: 'cat-base', name: 'Bases & Cremes', code: 'BASE' },
     { id: 'cat-calda', name: 'Caldas Nobres', code: 'CALDA' },
-    { id: 'cat-fruta', name: 'Frutas Frescas', code: 'FRUTA' },
     { id: 'cat-topping', name: 'Acompanhamentos & Crocantes', code: 'TOPPING' },
     { id: 'cat-embalagem', name: 'Copos & Embalagens', code: 'EMBALAGEM' },
     { id: 'cat-descartavel', name: 'Descartáveis', code: 'DESCARTAVEL' },
     { id: 'cat-limpeza', name: 'Higiene & Limpeza', code: 'LIMPEZA' },
+    { id: 'cat-graficos', name: 'Produtos Gráficos & Merchandising', code: 'GRAFICOS' },
   ])
 
   // Carregar categorias dinâmicas do banco
+  const reloadCategories = () => {
+    fetch('/api/inventory/categories')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.categories) && data.categories.length > 0) {
+          setCategories(data.categories)
+        }
+      })
+      .catch(() => {})
+  }
+
   useEffect(() => {
     if (open) {
-      fetch('/api/inventory/categories')
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data.categories) && data.categories.length > 0) {
-            setCategories(data.categories)
-          }
-        })
-        .catch(() => {})
+      reloadCategories()
     }
   }, [open])
 
@@ -200,7 +206,16 @@ export default function InventoryItemDialog({
 
             {/* Categoria (1 coluna) */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Categoria</Label>
+                <button
+                  type="button"
+                  onClick={() => setCategoriesDialogOpen(true)}
+                  className="text-[10px] font-bold text-purple-600 hover:text-purple-800 dark:text-pink-400 cursor-pointer hover:underline"
+                >
+                  + Nova Categoria
+                </button>
+              </div>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -277,6 +292,7 @@ export default function InventoryItemDialog({
               <Label className="text-xs font-bold text-purple-950 dark:text-white">Classe de IVA (PT)</Label>
               <div className="flex items-center gap-1">
                 {[
+                  { label: '0%', val: 0, desc: 'Sem IVA / Isento (0%)' },
                   { label: '6%', val: 6, desc: 'Reduzido (Leite, Água)' },
                   { label: '13%', val: 13, desc: 'Intermédio (Prontos)' },
                   { label: '23%', val: 23, desc: 'Normal (B2B)' },
@@ -468,6 +484,13 @@ export default function InventoryItemDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Modal para criar e gerenciar categorias de insumo */}
+      <InventoryCategoriesDialog
+        open={categoriesDialogOpen}
+        onOpenChange={setCategoriesDialogOpen}
+        onCategoriesUpdated={reloadCategories}
+      />
     </Dialog>
   )
 }

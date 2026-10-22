@@ -68,10 +68,58 @@ export default function CustomerProductDetail({
   const hasDynamicGroups = !!(container.optionGroups && container.optionGroups.length > 0)
   const [customSelections, setCustomSelections] = useState<Record<string, Record<string, number>>>({})
 
-  const [selectedBases, setSelectedBases] = useState<ProductBase[]>([bases?.[0]].filter(Boolean))
+  const isSomenteCreme =
+    (container.name || '').toLowerCase().includes('somente creme') ||
+    (container.name || '').toLowerCase().includes('apenas creme')
+  const isBaseFixed = container.isBaseFixed !== undefined ? container.isBaseFixed : !isSomenteCreme
+
+  const acaiBase = useMemo(() => {
+    return bases.find(
+      (b) =>
+        (b.name || '').toLowerCase().includes('açaí') ||
+        (b.name || '').toLowerCase().includes('acai')
+    )
+  }, [bases])
+
+  const [selectedBases, setSelectedBases] = useState<ProductBase[]>(() => {
+    if (isBaseFixed && acaiBase) return [acaiBase]
+    return [bases?.[0]].filter(Boolean)
+  })
   const [selectedToppings, setSelectedToppings] = useState<ProductTopping[]>([])
   const [notes, setNotes] = useState('')
   const quantity = 1
+
+  // Garante que o Açaí Tradicional esteja pré-marcado obrigatoriamente se for base fixa
+  React.useEffect(() => {
+    if (isBaseFixed) {
+      if (acaiBase && !selectedBases.some((b) => b.id === acaiBase.id)) {
+        setSelectedBases((prev) => [acaiBase, ...prev.filter((b) => b.id !== acaiBase.id)])
+      }
+      if (hasDynamicGroups) {
+        const basesGroup = (container.optionGroups || []).find(
+          (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme')
+        )
+        if (basesGroup) {
+          const acaiOpt = (basesGroup.options || []).find(
+            (o: any) => (o.name || '').toLowerCase().includes('açaí') || (o.name || '').toLowerCase().includes('acai')
+          )
+          if (acaiOpt) {
+            setCustomSelections((prev) => {
+              const currentGroup = prev[basesGroup.id] || {}
+              if (currentGroup[acaiOpt.id] === 1) return prev
+              return {
+                ...prev,
+                [basesGroup.id]: {
+                  ...currentGroup,
+                  [acaiOpt.id]: 1,
+                },
+              }
+            })
+          }
+        }
+      }
+    }
+  }, [isBaseFixed, acaiBase, hasDynamicGroups, container.optionGroups])
 
   const weight = container.weightGrams || 500
   const isLargeContainer = 
@@ -120,7 +168,6 @@ export default function CustomerProductDetail({
 
   // Regras de Preços Canônicas / Dinâmicas
   const basePrice = container.precoBase
-  const extraBasesCount = Math.max(0, selectedBases.length - 1)
   const basesModel = (container.optionGroups || []).find((g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme'))
   const toppingsModel = (container.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
   const frutasModel = (container.optionGroups || []).find((g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta'))
@@ -128,6 +175,16 @@ export default function CustomerProductDetail({
   const additionalBasePrice = basesModel?.additionalPrice !== undefined ? Number(basesModel.additionalPrice) : 2.0
   const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.50
   const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
+
+  const extraBasesCount = useMemo(() => {
+    if (isBaseFixed) {
+      const cremesCount = selectedBases.filter((b) => !acaiBase || b.id !== acaiBase.id).length
+      const maxCremesGratis = Number(container.limiteCremes) || 1
+      return Math.max(0, cremesCount - maxCremesGratis)
+    }
+    const maxBases = Number(container.limiteCremes) || Number(container.limiteBases) || 2
+    return Math.max(0, selectedBases.length - maxBases)
+  }, [isBaseFixed, selectedBases, acaiBase, container.limiteCremes, container.limiteBases])
 
   const extraBasesPrice = extraBasesCount * additionalBasePrice
   const extraToppingsCount = isUnlimited ? 0 : Math.max(0, selectedExtras.length - maxToppingsGratis)
@@ -146,6 +203,22 @@ export default function CustomerProductDetail({
       const selections = customSelections[group.id || group.name] || {}
       const groupAddPrice = Number(group.additionalPrice || 0)
       const groupTotalCount = Object.values(selections).reduce((a, b) => a + b, 0)
+      const isBaseGroup = group.id === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
+
+      if (isBaseGroup && isBaseFixed) {
+        const acaiOpt = (group.options || []).find((o: any) => (o.name || '').toLowerCase().includes('açaí') || (o.name || '').toLowerCase().includes('acai'))
+        let cremesCount = 0
+        for (const [optId, qty] of Object.entries(selections)) {
+          if (!acaiOpt || optId !== acaiOpt.id) {
+            cremesCount += Number(qty) || 0
+          }
+        }
+        const maxFree = Number(container.limiteCremes) || 1
+        if (cremesCount > maxFree && groupAddPrice > 0) {
+          sum += (cremesCount - maxFree) * groupAddPrice
+        }
+        continue
+      }
 
       if (group.priceType === 'Individual') {
         for (const opt of group.options || []) {
@@ -173,7 +246,7 @@ export default function CustomerProductDetail({
       }
     }
     return sum
-  }, [hasDynamicGroups, container.optionGroups, customSelections])
+  }, [hasDynamicGroups, container.optionGroups, customSelections, isBaseFixed, container.limiteCremes])
 
   const unitTotal = hasDynamicGroups
     ? +(basePrice + dynamicGroupsPrice).toFixed(2)
@@ -182,6 +255,16 @@ export default function CustomerProductDetail({
 
   // Handlers para grupos dinâmicos
   const updateDynamicOptionQty = (groupId: string, optionId: string, delta: number, group: any) => {
+    const isBaseGroup = group.id === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
+    if (isBaseGroup && isBaseFixed) {
+      const opt = (group.options || []).find((o: any) => o.id === optionId)
+      const isAcai = opt && ((opt.name || '').toLowerCase().includes('açaí') || (opt.name || '').toLowerCase().includes('acai'))
+      if (isAcai && delta < 0) {
+        toast.info('O Açaí Tradicional é a base fixa inclusa deste copo.')
+        return
+      }
+    }
+
     const currentGroupSelections = customSelections[groupId] || {}
     const currentQty = currentGroupSelections[optionId] || 0
     const groupTotalQty = Object.values(currentGroupSelections).reduce((a, b) => a + b, 0)
@@ -208,6 +291,16 @@ export default function CustomerProductDetail({
   }
 
   const toggleDynamicOptionSingle = (groupId: string, optionId: string, group: any) => {
+    const isBaseGroup = group.id === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
+    if (isBaseGroup && isBaseFixed) {
+      const opt = (group.options || []).find((o: any) => o.id === optionId)
+      const isAcai = opt && ((opt.name || '').toLowerCase().includes('açaí') || (opt.name || '').toLowerCase().includes('acai'))
+      if (isAcai) {
+        toast.info('O Açaí Tradicional é a base fixa inclusa deste copo.')
+        return
+      }
+    }
+
     const currentGroupSelections = customSelections[groupId] || {}
     const isSelected = (currentGroupSelections[optionId] || 0) > 0
     const groupTotalQty = Object.values(currentGroupSelections).reduce((a, b) => a + b, 0)
@@ -237,8 +330,14 @@ export default function CustomerProductDetail({
   }
 
   const toggleBase = (base: ProductBase) => {
+    const isAcai = (base.name || '').toLowerCase().includes('açaí') || (base.name || '').toLowerCase().includes('acai')
+    if (isBaseFixed && isAcai) {
+      toast.info('O Açaí Tradicional é a base fixa inclusa deste copo.')
+      return
+    }
+
     if (selectedBases.some((b) => b.id === base.id)) {
-      if (selectedBases.length === 1) {
+      if (selectedBases.length === 1 && !isBaseFixed) {
         toast.info('Selecione pelo menos 1 base para o seu pedido')
         return
       }
@@ -746,16 +845,35 @@ export default function CustomerProductDetail({
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <span>1. Base / Cremes</span>
-                      <span className="text-fuchsia-600 dark:text-fuchsia-400 font-bold">({selectedBases.length})</span>
+                      <span>{isBaseFixed ? '1. Base & Cremes Gelados' : '1. Cremes Gelados & Bases'}</span>
+                      <span className="text-purple-700 dark:text-purple-400 font-bold">({selectedBases.length})</span>
                     </label>
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">1 p/unid. Adicional mais 2€</span>
+                    <span className="text-[11px] text-purple-700 dark:text-purple-400 font-bold">
+                      {isBaseFixed ? 'Açaí fixo incluso + 1 creme grátis (extra +€ 2,00)' : '2 opções inclusas (extra +€ 2,00)'}
+                    </span>
                   </div>
 
+                  {isBaseFixed && acaiBase && (
+                    <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-white/5 border border-purple-200 dark:border-white/10 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">
+                          {acaiBase.name}
+                        </span>
+                        <span className="ml-2 text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-white/10 px-1.5 py-0.5 rounded">
+                          Base Fixa Inclusa
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300">
+                        Obrigatório
+                      </span>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {bases.map((base) => {
+                    {(isBaseFixed ? bases.filter((b) => !acaiBase || b.id !== acaiBase.id) : bases).map((base) => {
                       const isSelected = selectedBases.some((b) => b.id === base.id)
                       const isAvailable = base.isAvailableInStore !== false
+                      const isExtra = !isSelected && (isBaseFixed ? (selectedBases.length - 1 >= 1) : selectedBases.length >= 2)
                       return (
                         <button
                           key={base.id}
@@ -770,7 +888,12 @@ export default function CustomerProductDetail({
                               : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                           }`}
                         >
-                          <span className="line-clamp-2 leading-tight flex-1 pr-1 text-[11px] sm:text-xs break-words">{base.name}</span>
+                          <div className="min-w-0 flex-1 pr-1">
+                            <span className="line-clamp-2 leading-tight text-[11px] sm:text-xs break-words">{base.name}</span>
+                            {isExtra && isAvailable && (
+                              <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">+€ 2,00</div>
+                            )}
+                          </div>
                           {isSelected ? (
                             <Check className="h-3.5 w-3.5 text-white dark:text-fuchsia-300 flex-shrink-0 ml-1" />
                           ) : !isAvailable ? (

@@ -118,6 +118,7 @@ export default function HomePage() {
         .then((data) => {
           if (Array.isArray(data.tenants)) {
             setTenantsList(data.tenants)
+            useFranchiseStore.getState().setTenants(data.tenants)
             if (user.role !== 'SUPER_ADMIN' && user.role !== 'FRANCHISOR_ADMIN' && user.tenantId) {
               const matched = data.tenants.find((t: Tenant) => t.id === user.tenantId)
               if (matched) setCurrentTenant(matched)
@@ -139,7 +140,10 @@ export default function HomePage() {
     try {
       const res = await authFetch('/api/tenants')
       const data = await res.json()
-      if (data.tenants) setTenantsList(data.tenants)
+      if (data.tenants) {
+        setTenantsList(data.tenants)
+        useFranchiseStore.getState().setTenants(data.tenants)
+      }
     } catch {
       // Ignora erro se não autenticado
     }

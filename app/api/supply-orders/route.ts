@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { tenantId, items, totalAmount, totalSavings, notes } = body
+    const { tenantId, items, totalAmount, totalSavings, notes, subtotalNet, taxTotal, taxBreakdown, shippingFee } = body
 
     if (!tenantId || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'tenantId e itens são obrigatórios' }, { status: 400 })
@@ -30,7 +30,11 @@ export async function POST(req: NextRequest) {
       items,
       Number(totalAmount) || 0,
       Number(totalSavings) || 0,
-      notes
+      notes,
+      subtotalNet !== undefined ? Number(subtotalNet) : undefined,
+      taxTotal !== undefined ? Number(taxTotal) : undefined,
+      taxBreakdown,
+      shippingFee !== undefined ? Number(shippingFee) : 0
     )
 
     return NextResponse.json({ order }, { status: 201 })

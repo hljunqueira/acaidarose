@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { SlidersHorizontal, CheckCircle2, ShieldCheck, Heart } from 'lucide-react'
+import { SlidersHorizontal, Check } from 'lucide-react'
+import { useAuthStore } from '@/lib/stores/authStore'
 
 interface ContainerRuleItem {
   id: string
@@ -25,6 +26,8 @@ interface ContainerRuleItem {
   limiteFrutas: number // 999 para livres
   limiteToppings: number // 999 para livres
   limiteComplementosGratis: number
+  isBaseFixed: boolean
+  rawContainer: any
 }
 
 interface ContainerAssemblyRulesDialogProps {
@@ -40,6 +43,7 @@ export default function ContainerAssemblyRulesDialog({
   tenantId,
   onSaved,
 }: ContainerAssemblyRulesDialogProps) {
+  const { authFetch } = useAuthStore()
   const [rules, setRules] = useState<ContainerRuleItem[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -49,12 +53,16 @@ export default function ContainerAssemblyRulesDialog({
     const fetchContainers = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/catalog?tenantId=${encodeURIComponent(tenantId)}`)
+        const fetcher = authFetch || fetch
+        const res = await fetcher(`/api/catalog?tenantId=${encodeURIComponent(tenantId)}`)
         if (res.ok) {
           const data = await res.json()
           if (Array.isArray(data.containers)) {
             const mapped: ContainerRuleItem[] = data.containers.map((c: any) => {
               const weight = Number(c.weightGrams) || 0
+              const basesGroup = c.optionGroups?.find(
+                (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme')
+              )
               const frutasGroup = c.optionGroups?.find(
                 (g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta')
               )
@@ -65,10 +73,19 @@ export default function ContainerAssemblyRulesDialog({
                   g.name?.toLowerCase().includes('topping')
               )
 
-              const limiteBases = Number(c.limiteBases) || 2
+              const isSomenteCreme = (c.name || '').toLowerCase().includes('somente creme') || (c.name || '').toLowerCase().includes('apenas creme')
+              const isBaseFixed = basesGroup?.isBaseFixed !== undefined
+                ? Boolean(basesGroup.isBaseFixed)
+                : !isSomenteCreme
+
+              const limiteBases = basesGroup?.maxQty !== undefined
+                ? Number(basesGroup.maxQty)
+                : Number(c.limiteBases) || (isBaseFixed ? 1 : 2)
+
               const limiteFrutas = frutasGroup
                 ? Number(frutasGroup.maxQty) || (weight >= 500 ? 999 : weight === 250 ? 2 : 3)
                 : weight >= 500 ? 999 : weight === 250 ? 2 : 3
+
               const limiteToppings = toppingsGroup
                 ? Number(toppingsGroup.maxQty) || (weight >= 500 ? 999 : weight === 250 ? 3 : 4)
                 : weight >= 500 ? 999 : weight === 250 ? 3 : 4
@@ -81,8 +98,9 @@ export default function ContainerAssemblyRulesDialog({
                 limiteBases,
                 limiteFrutas,
                 limiteToppings,
-                limiteComplementosGratis:
-                  Number(c.limiteComplementosGratis) || (weight >= 500 ? 999 : 3),
+                limiteComplementosGratis: limiteToppings,
+                isBaseFixed,
+                rawContainer: c,
               }
             })
             setRules(mapped)
@@ -95,7 +113,7 @@ export default function ContainerAssemblyRulesDialog({
       }
     }
     fetchContainers()
-  }, [open, tenantId])
+  }, [open, tenantId, authFetch])
 
   const handleUpdateField = (id: string, field: keyof ContainerRuleItem, value: any) => {
     setRules((prev) =>
@@ -105,25 +123,62 @@ export default function ContainerAssemblyRulesDialog({
 
   const handleSave = async () => {
     setSaving(true)
+    const fetcher = authFetch || fetch
     try {
       for (const rule of rules) {
-        await fetch('/api/products', {
-          method: 'PATCH',
+        const raw = rule.rawContainer || {}
+        let optionGroups = Array.isArray(raw.optionGroups) && raw.optionGroups.length > 0
+          ? [...raw.optionGroups]
+          : []
+
+        // Sincroniza os grupos de opções reais salvos no PostgreSQL
+        if (optionGroups.length > 0) {
+          optionGroups = optionGroups.map((g: any) => {
+            if (g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme')) {
+              return {
+                ...g,
+                maxQty: rule.limiteBases,
+                isBaseFixed: rule.isBaseFixed,
+              }
+            }
+            if (g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta')) {
+              return {
+                ...g,
+                maxQty: rule.limiteFrutas,
+              }
+            }
+            if (g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping')) {
+              return {
+                ...g,
+                maxQty: rule.limiteToppings,
+              }
+            }
+            return g
+          })
+        }
+
+        const res = await fetcher(`/api/products/containers/${rule.id}`, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            category: 'containers',
-            id: rule.id,
-            tenantId,
+            ...raw,
             limiteBases: rule.limiteBases,
-            limiteComplementosGratis: rule.limiteComplementosGratis,
+            limiteToppings: rule.limiteToppings,
+            limiteComplementosGratis: rule.limiteToppings,
+            optionGroups,
           }),
         })
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.error || `Erro ao salvar regra para ${rule.name}`)
+        }
       }
       toast.success('Regras de montagem do açaí configuradas e salvas no banco de dados!')
       if (onSaved) onSaved()
       onOpenChange(false)
-    } catch {
-      toast.error('Erro ao salvar algumas regras de montagem.')
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao salvar algumas regras de montagem.')
     } finally {
       setSaving(false)
     }
@@ -180,10 +235,49 @@ export default function ContainerAssemblyRulesDialog({
                   </span>
                 </div>
 
+                {/* Seletor de Base Fixa vs Livre */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-xl bg-purple-100/60 dark:bg-white/5 border border-purple-200/60 dark:border-white/10">
+                  <span className="text-xs font-bold text-purple-950 dark:text-white">
+                    Regra da Base:
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUpdateField(rule.id, 'isBaseFixed', true)
+                        handleUpdateField(rule.id, 'limiteBases', 1)
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                        rule.isBaseFixed
+                          ? 'bg-purple-700 text-white shadow-xs'
+                          : 'bg-white dark:bg-white/10 text-purple-900 dark:text-purple-300 hover:bg-purple-50'
+                      }`}
+                    >
+                      Açaí Tradicional Fixo + 1 Creme Incluso
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUpdateField(rule.id, 'isBaseFixed', false)
+                        handleUpdateField(rule.id, 'limiteBases', 2)
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                        !rule.isBaseFixed
+                          ? 'bg-purple-700 text-white shadow-xs'
+                          : 'bg-white dark:bg-white/10 text-purple-900 dark:text-purple-300 hover:bg-purple-50'
+                      }`}
+                    >
+                      Livre Escolha (Somente Creme)
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                   {/* Bases Inclusas */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">Bases Inclusas</Label>
+                    <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">
+                      {rule.isBaseFixed ? 'Cremes Gelados Inclusos' : 'Bases/Cremes Inclusos'}
+                    </Label>
                     <Input
                       type="number"
                       min="1"
@@ -192,6 +286,9 @@ export default function ContainerAssemblyRulesDialog({
                       onChange={(e) => handleUpdateField(rule.id, 'limiteBases', Number(e.target.value))}
                       className="h-9 rounded-xl text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
                     />
+                    <p className="text-[10px] text-purple-700/80 dark:text-purple-300/70 font-medium">
+                      {rule.isBaseFixed ? 'Açaí é fixo. +1 creme incluso grátis.' : 'Cliente escolhe os cremes livremente.'}
+                    </p>
                   </div>
 
                   {/* Frutas Inclusas */}
@@ -271,7 +368,7 @@ export default function ContainerAssemblyRulesDialog({
             onClick={handleSave}
             className="h-10 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold text-xs px-5 shadow-lg shadow-pink-600/30 flex items-center gap-1.5 cursor-pointer"
           >
-            <CheckCircle2 className="h-3.5 w-3.5" />
+            <Check className="h-3.5 w-3.5" />
             <span>Salvar Regras de Montagem</span>
           </Button>
         </DialogFooter>

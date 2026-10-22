@@ -1,5 +1,15 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Módulo de Suprimentos B2B, Isenção de IVA (0%), Frete Fixo Franquias, Produtos Gráficos, Fornecedores & Certificado QZ Tray [CONCLUÍDO & EM PRODUÇÃO]**:
+  - **Solicitações do Usuário Atendidas**:
+    1. *Opção Sem IVA / Isento (0%)*: Há produtos em Portugal sem incidência de IVA.
+    2. *Blindagem de Custos para Franquias*: Lojas filiais/franqueadas (Torres Novas, Aveiro) visualizam apenas catálogo de insumos homologados para compra, sem ter acesso aos custos de aquisição da Matriz ou margens de lucro corporativas.
+    3. *Frete Fixo de Distribuição (€ 60,00)*: Estipulado frete fixo de € 60,00 por pedido de abastecimento para entrega consolidada mensal partindo da central na Figueira da Foz para Aveiro e Torres Novas (preparado para futuro cálculo por km).
+    4. *Exclusão de Frutas Frescas e Criação de Produtos Gráficos & Merchandising (`GRAFICOS`)*: Removida a categoria `cat-fruta` e adicionada `Produtos Gráficos & Merchandising` (código `GRAFICOS`), além de botão dinâmico `+ Nova Categoria` no diálogo de insumos para cadastrar novas categorias sob demanda.
+    5. *Lista Oficial de Fornecedores da Franqueadora*: Cadastrados os 10 fornecedores oficiais homologados (Açaí Amazon Berry S.L., Friends Açaí, Pedaços do Brasil, CJS Embalagens, Ecopak, Monouso, Aviludo, Gelcentro, Makro, Recheio Cash & Carry SA) com gestão completa editável (criar, editar, inativar) via `SuppliersManagementModal`.
+    6. *Eliminação Definitiva de Avisos do QZ Tray*: Gerado certificado digital X.509 de 20 anos (`acaidarose-qz-cert.crt`) para registro no QZ Tray (`Site Manager`), integrado aos endpoints `/api/qz/cert` e `/api/qz/sign` com chave privada RSA SHA-512 sincronizada na Vercel e local.
+    7. *Deploy da Plataforma*: Executado `node scripts/deploy-plataforma.js` e promovido na Vercel e VPS com sucesso.
+
 - **Diagnóstico SSH: Anexos de E-mail não visíveis em Dispositivos Móveis [CONCLUÍDO & VALIDADO]**:
   - **Sintoma Reportado**: No telemóvel do Valdair (print do app de e-mail/Gmail), o e-mail da contabilidade ("Reencaminho o e-mail com o IRS.") exibia apenas um ícone de imagem quebrada e nenhum dos dois anexos em PDF.
   - **Inspeção Realizada via SSH na VPS (`198.50.117.110`)**:
@@ -718,4 +728,59 @@
 - **Compilação & Validação**:
   - `npx tsc --noEmit` validado com 0 erros.
   - Sincronização e envio de dados testados com QZ Tray e impressão contínua.
+
+---
+
+## [Plano de Execução: Blindagem B2B Franquias & Regras de Produtos/Opcionais Sem Fallbacks]
+
+### 1. Diagnóstico e Causa Raiz
+1. **Vazamento de Custos em Torres Novas (`StoreSupplyOrdersView.tsx`)**:
+   - `app/page.tsx` carregava `/api/tenants`, mas não chamava `setTenants` na store do Zustand (`useFranchiseStore`).
+   - Com isso, a lista de lojas ficava apenas com a Matriz inicial. Ao buscar Torres Novas (`22222222-...`), `resolveTenant` caía no fallback `list[0]`, tratando Torres Novas indevidamente como Matriz.
+   - `StoreSupplyOrdersView` também não validava a `role` do usuário: gerentes de franquia (`TENANT_ADMIN`) jamais podem ver dados de Franqueadora.
+2. **Brecha de Montagem no Açaí (Açaí Tradicional Fixo + 1 Creme Incluso)**:
+   - No PDV (`BaseSelector.tsx`) e Cardápio (`cartStore.ts`), o Açaí Tradicional vinha como um botão opcional desmarcado.
+   - O cliente conseguia desmarcar o açaí e selecionar 2 cremes gelados caros (ex: Ninho + Pitaya) pelo preço do açaí comum, causando prejuízo.
+   - O produto tradicional de Açaí deve vir com **Açaí Tradicional obrigatório/fixo incluso**, dando direito a **+1 creme gelado incluso**. Cremes adicionais somam **+€ 2,00 cada**.
+   - Para quem deseja apenas cremes sem açaí, já existem os produtos específicos `Copo (Somente Creme)` com preços ajustados (€ 7.50, € 10.50, etc.).
+3. **Auditoria de Edição de Produtos & Opcionais (Eliminação Total de Fallbacks/Mocks)**:
+   - `ContainerAssemblyRulesDialog.tsx` só enviava `limiteBases` e `limiteComplementosGratis`, descartando `limiteFrutas` e `limiteToppings` e não atualizando `option_groups`.
+   - `productsRepository.ts` continha ternários fixos no código (`limiteFrutas = weight === 250 ? 2 : weight === 350 ? 3 : 999`), ignorando os valores gravados no PostgreSQL.
+   - `ProductEditDialog.tsx` usava funções de defaults baseadas em `weight` em vez de persistir e ler as configurações reais do banco de dados.
+
+---
+
+### 2. Arquitetura e Regras de Negócio (100% PostgreSQL — Zero Mock / Zero Fallback)
+1. **Na Edição de Produto (`ProductEditDialog.tsx` & `ContainerAssemblyRulesDialog.tsx`)**:
+   - Cada produto do tipo montagem (Copo / Taça / Caixa) possui em `product_containers.option_groups` e colunas reais:
+     - `isBaseFixed`: boolean indicando se o Açaí Tradicional é a base fixa inclusa (padrão `true` para copos de açaí, `false` para produtos "Somente Creme").
+     - `limite_bases` / `maxQty`: quantidade de cremes gelados inclusos (ex: 1 incluso para açaí; 2 inclusos para somente creme).
+     - `additionalPrice`: preço cobrado por creme excedente (ex: € 2,00).
+     - `limite_complementos_gratis`: quantidade de acompanhamentos inclusos (ou 999 para livre).
+     - `limite_frutas`: quantidade de frutas inclusas (ou 999 para livre).
+   - Ao salvar na Franqueadora/Matriz, os dados são salvos em `product_containers` no PostgreSQL e propagados para a rede.
+2. **Na Edição de Opcional (`ProductEditDialog.tsx`, `product_bases`, `product_toppings`)**:
+   - O usuário pode alterar livremente nomes, preços adicionais (`preco_extra`), categoria, status ativo/inativo e mídias.
+   - O repositório e as telas lêem 100% desses registros sem criar defaults que sobrescrevam o usuário.
+3. **No PDV e Cardápio (`BaseSelector.tsx`, `PDVView.tsx`, `cartStore.ts`, `CustomerProductDetail.tsx`)**:
+   - Lêem a configuração do produto do banco de dados:
+     - Se `isBaseFixed: true`: Açaí Tradicional aparece fixo com badge `[✓ Base Fixa Inclusa]` (bloqueado contra desmarcação).
+     - O seletor de cremes exibe: *"Cremes Gelados (1 incluso no pedido • Cremes adicionais +€ 2,00 cada)"*.
+     - Se o produto for "Somente Creme" (`isBaseFixed: false`): permite selecionar 2 cremes inclusos.
+   - O cálculo em `cartStore.ts` respeita estritamente o `additionalPrice` e limites salvos no produto.
+4. **Página de Vendas B2B para Franquias (`StoreSupplyOrdersView.tsx`)**:
+   - Oculta 100% de custos da Matriz e margens de lucro para qualquer usuário de filial/franquia ou não-admin.
+   - Catálogo comercial limpo: Nome, Categoria, Unidade/Embalagem, Preço Líquido (s/ IVA), Alíquota IVA, Preço c/ IVA, Quantidade a Pedir.
+   - Frete fixo de € 60,00 por pedido adicionado no carrinho e checkout.
+   - Botões de criação/edição de insumos bloqueados para franquias.
+
+---
+
+### 3. Fases de Execução
+- [x] **Fase 1**: Blindagem de Matriz vs Franquias no `app/page.tsx` e `StoreSupplyOrdersView.tsx` (Página de Vendas B2B + Frete Fixo € 60,00).
+- [x] **Fase 2**: Eliminar fallbacks em `productsRepository.ts` e salvar regras completas em `ContainerAssemblyRulesDialog.tsx` e `ProductEditDialog.tsx`.
+- [x] **Fase 3**: Refatorar `BaseSelector.tsx`, `CustomerProductDetail.tsx` e `cartStore.ts` com Açaí Tradicional fixo + 1 creme incluso (e 2 cremes para Somente Creme) — design clean sem ícones decorativos ou emojis.
+- [x] **Fase 4**: Migração do PostgreSQL executada (`shipping_fee`, Categoria `GRAFICOS`, 10 Fornecedores oficiais), validação `npx tsc --noEmit` com código 0 e deploy contínuo em execução.
+
+
 

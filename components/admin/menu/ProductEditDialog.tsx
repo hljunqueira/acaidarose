@@ -41,22 +41,29 @@ export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionMode
   const toppings = catalog?.toppings || []
   const weight = item?.weightGrams || 500
 
-  const defaultBasesMax = weight === 250 ? 1 : weight === 350 ? 2 : weight === 1000 ? 4 : 3
-  const defaultFrutasMax = weight === 250 ? 2 : weight === 350 ? 3 : 999
-  const defaultToppingsMax = weight === 250 ? 3 : weight === 350 ? 4 : 999
+  const isSomenteCreme = (item?.name || '').toLowerCase().includes('somente creme') || (item?.name || '').toLowerCase().includes('apenas creme')
+  const isBaseFixed = item?.isBaseFixed !== undefined ? item.isBaseFixed : !isSomenteCreme
 
-  const basesMax = item?.limiteBases !== undefined && item?.limiteBases !== null ? Number(item.limiteBases) : defaultBasesMax
-  const frutasMax = item?.limiteFrutas !== undefined && item?.limiteFrutas !== null ? Number(item.limiteFrutas) : defaultFrutasMax
-  const toppingsMax = item?.limiteToppings !== undefined && item?.limiteToppings !== null ? Number(item.limiteToppings) : defaultToppingsMax
+  const basesMax = item?.limiteBases !== undefined && item?.limiteBases !== null 
+    ? Number(item.limiteBases) 
+    : (isBaseFixed ? 1 : 2)
+  const frutasMax = item?.limiteFrutas !== undefined && item?.limiteFrutas !== null 
+    ? Number(item.limiteFrutas) 
+    : (weight >= 500 ? 999 : weight === 250 ? 2 : 3)
+  const toppingsMax = item?.limiteToppings !== undefined && item?.limiteToppings !== null 
+    ? Number(item.limiteToppings) 
+    : (weight >= 500 ? 999 : weight === 250 ? 3 : 4)
 
   return [
     {
       id: 'model-bases',
-      name: 'Escolha seu creme ou base gelada',
+      name: isBaseFixed ? 'Cremes Gelados Inclusos' : 'Escolha seu creme ou base gelada',
       priceType: 'Gratis',
       minQty: item?.minBases ?? 1,
       maxQty: basesMax,
-      isRequired: (item?.minBases ?? 1) > 0,
+      additionalPrice: 2.0,
+      isBaseFixed,
+      isRequired: true,
       active: true,
       options: bases.map((b: any) => ({
         id: b.id,

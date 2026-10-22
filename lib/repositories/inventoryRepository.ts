@@ -89,6 +89,7 @@ export interface SupplyOrderRow {
   paymentStatus?: 'PENDING' | 'PAID' | 'INVOICED_30D'
   totalAmount: number
   totalSavings: number
+  shippingFee?: number
   subtotalNet?: number
   taxTotal?: number
   taxBreakdown?: Record<string, number>
@@ -593,6 +594,7 @@ export async function getSupplyOrders(tenantId?: string): Promise<SupplyOrderRow
       `SELECT so.id, so.tenant_id as "tenantId", t.name as "tenantName",
               so.order_number as "orderNumber", so.status,
               so.total_amount as "totalAmount", so.total_savings as "totalSavings",
+              COALESCE(so.shipping_fee, 0) as "shippingFee",
               so.subtotal_net as "subtotalNet", so.tax_total as "taxTotal",
               so.tax_breakdown as "taxBreakdown",
               so.items_json as "items", so.rejection_reason as "rejectionReason",
@@ -613,6 +615,7 @@ export async function getSupplyOrders(tenantId?: string): Promise<SupplyOrderRow
         status: r.status,
         totalAmount: Number(r.totalAmount) || 0,
         totalSavings: Number(r.totalSavings) || 0,
+        shippingFee: Number(r.shippingFee) || 0,
         subtotalNet: Number(r.subtotalNet) || 0,
         taxTotal: Number(r.taxTotal) || 0,
         taxBreakdown: r.taxBreakdown && typeof r.taxBreakdown === 'object' ? r.taxBreakdown : {},
@@ -639,10 +642,12 @@ export async function createSupplyOrder(
   notes?: string,
   subtotalNet?: number,
   taxTotal?: number,
-  taxBreakdown?: Record<string, number>
+  taxBreakdown?: Record<string, number>,
+  shippingFee?: number
 ): Promise<SupplyOrderRow> {
   const id = uuidv4()
   const orderNum = Math.floor(1000 + Math.random() * 9000)
+  const fee = Number(shippingFee) || 0
 
   // Se não vier discriminado, calcular automaticamente com base nos itens
   let calcNet = subtotalNet !== undefined ? subtotalNet : 0
@@ -690,9 +695,9 @@ export async function createSupplyOrder(
     const res = await query(
       `INSERT INTO supply_orders (
          id, tenant_id, order_number, status, payment_status, total_amount, 
-         total_savings, subtotal_net, tax_total, tax_breakdown, items_json, notes, created_at
+         total_savings, shipping_fee, subtotal_net, tax_total, tax_breakdown, items_json, notes, created_at
        )
-       VALUES ($1, $2, $3, 'PENDING', 'PENDING', $4, $5, $6, $7, $8, $9, $10, now())
+       VALUES ($1, $2, $3, 'PENDING', 'PENDING', $4, $5, $6, $7, $8, $9, $10, $11, now())
        RETURNING *`,
       [
         id,
@@ -700,6 +705,7 @@ export async function createSupplyOrder(
         orderNum,
         totalAmount,
         totalSavings,
+        fee,
         calcNet,
         calcTax,
         JSON.stringify(calcBreakdown),
@@ -714,8 +720,8 @@ export async function createSupplyOrder(
       action: 'SUPPLY_ORDER_CREATED',
       entity: 'supply_orders',
       entityId: id,
-      message: `Novo pedido B2B #${orderNum} (€ ${totalAmount.toFixed(2)}) com reserva de estoque e IVA discriminado`,
-      metadata: { orderId: id, totalAmount, totalSavings, subtotalNet: calcNet, taxTotal: calcTax, notes },
+      message: `Novo pedido B2B #${orderNum} (€ ${totalAmount.toFixed(2)} + frete € ${fee.toFixed(2)}) com reserva de estoque e IVA discriminado`,
+      metadata: { orderId: id, totalAmount, totalSavings, shippingFee: fee, subtotalNet: calcNet, taxTotal: calcTax, notes },
     })
 
     return {
@@ -726,6 +732,7 @@ export async function createSupplyOrder(
       paymentStatus: r.payment_status || 'PENDING',
       totalAmount: Number(r.total_amount) || 0,
       totalSavings: Number(r.total_savings) || 0,
+      shippingFee: Number(r.shipping_fee) || fee,
       subtotalNet: Number(r.subtotal_net) || 0,
       taxTotal: Number(r.tax_total) || 0,
       taxBreakdown: r.tax_breakdown && typeof r.tax_breakdown === 'object' ? r.tax_breakdown : {},
@@ -743,6 +750,7 @@ export async function createSupplyOrder(
       paymentStatus: 'PENDING',
       totalAmount,
       totalSavings,
+      shippingFee: fee,
       subtotalNet: calcNet,
       taxTotal: calcTax,
       taxBreakdown: calcBreakdown,
@@ -1105,6 +1113,86 @@ export async function createSupplier(data: {
   } catch (err) {
     console.error('Erro ao cadastrar fornecedor:', err)
     return null
+  }
+}
+
+/**
+ * Atualiza um fornecedor existente
+ */
+export async function updateSupplier(
+  id: string,
+  data: Partial<{
+    name: string
+    nif?: string | null
+    email?: string | null
+    phone?: string | null
+    category?: string | null
+    leadTimeDays?: number
+    isActive?: boolean
+  }>
+): Promise<SupplierRow | null> {
+  try {
+    const fields: string[] = []
+    const values: any[] = []
+    let idx = 1
+
+    if (data.name !== undefined) {
+      fields.push(`name = $${idx++}`)
+      values.push(data.name.trim())
+    }
+    if (data.nif !== undefined) {
+      fields.push(`nif = $${idx++}`)
+      values.push(data.nif ? data.nif.trim() : null)
+    }
+    if (data.email !== undefined) {
+      fields.push(`email = $${idx++}`)
+      values.push(data.email ? data.email.trim() : null)
+    }
+    if (data.phone !== undefined) {
+      fields.push(`phone = $${idx++}`)
+      values.push(data.phone ? data.phone.trim() : null)
+    }
+    if (data.category !== undefined) {
+      fields.push(`category = $${idx++}`)
+      values.push(data.category ? data.category.trim() : null)
+    }
+    if (data.leadTimeDays !== undefined) {
+      fields.push(`lead_time_days = $${idx++}`)
+      values.push(Number(data.leadTimeDays) || 3)
+    }
+    if (data.isActive !== undefined) {
+      fields.push(`is_active = $${idx++}`)
+      values.push(Boolean(data.isActive))
+    }
+
+    if (fields.length === 0) return null
+
+    values.push(id)
+    const res = await query(
+      `UPDATE suppliers 
+       SET ${fields.join(', ')} 
+       WHERE id = $${idx}
+       RETURNING id, name, nif, email, phone, category, lead_time_days as "leadTimeDays", is_active as "isActive", created_at as "createdAt"`,
+      values
+    )
+    return res.rows[0] || null
+  } catch (err) {
+    console.error('Erro ao atualizar fornecedor:', err)
+    return null
+  }
+}
+
+/**
+ * Exclui logicamente ou fisicamente um fornecedor
+ */
+export async function deleteSupplier(id: string): Promise<boolean> {
+  try {
+    // Soft delete para não quebrar integridade referencial com histórico de compras
+    await query(`UPDATE suppliers SET is_active = false WHERE id = $1`, [id])
+    return true
+  } catch (err) {
+    console.error('Erro ao excluir fornecedor:', err)
+    return false
   }
 }
 

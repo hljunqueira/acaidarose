@@ -50,6 +50,8 @@ import {
   SupplierPurchaseRow,
 } from '@/lib/repositories/inventoryRepository'
 import InventoryItemDialog, { InventoryItemFormData } from './InventoryItemDialog'
+import { useFranchiseStore, resolveTenant, FIGUEIRA_HQ_ID } from '@/lib/stores/franchiseStore'
+import SuppliersManagementModal from './SuppliersManagementModal'
 
 export default function StoreSupplyOrdersView({
   tenantId = '11111111-1111-1111-1111-111111111111',
@@ -57,6 +59,18 @@ export default function StoreSupplyOrdersView({
   tenantId?: string
 }) {
   const { user, authFetch } = useAuthStore()
+  const { currentTenant, tenants } = useFranchiseStore()
+  const activeTenant = resolveTenant(tenantId || currentTenant?.id, tenants)
+
+  // Blindagem estrita: Apenas Super Admin / Franqueadora Staff operando na Matriz (Figueira da Foz) vê custos internos
+  const isFranchisorStaff = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN'
+  const isMatriz = isFranchisorStaff && (
+    activeTenant?.id === FIGUEIRA_HQ_ID || 
+    activeTenant?.slug === 'figueira-da-foz' || 
+    activeTenant?.slug === 'figueira' ||
+    Boolean(activeTenant?.isHeadquarters)
+  )
+
   const [catalog, setCatalog] = useState<MasterInventoryItem[]>([])
   const [orders, setOrders] = useState<SupplyOrderRow[]>([])
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([])
@@ -73,11 +87,15 @@ export default function StoreSupplyOrdersView({
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  // Contexto Sede / Central da Matriz sempre ativo nesta tela
-  const isMasterAdmin = true
-  const [supplyMode, setSupplyMode] = useState<'distributor' | 'store_order'>('distributor')
-  const isMatriz = supplyMode === 'distributor'
   const [activeTab, setActiveTab] = useState<'orders' | 'purchases' | 'catalog' | 'report'>('catalog')
+  const [suppliersModalOpen, setSuppliersModalOpen] = useState(false)
+
+  // Ajusta aba ativa caso mude de Matriz para Franquia
+  useEffect(() => {
+    if (!isMatriz && activeTab !== 'catalog' && activeTab !== 'orders') {
+      setActiveTab('catalog')
+    }
+  }, [isMatriz, activeTab])
 
   // Modal de Confirmação e Envio do Pedido de Reposição (Franquia)
   const [confirmModalOpen, setConfirmModalOpen] = useState(false)
@@ -128,8 +146,9 @@ export default function StoreSupplyOrdersView({
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      // 1. Carrega catálogo mestre oficial
-      const resCat = await authFetch('/api/inventory?scope=master')
+      // 1. Carrega catálogo mestre oficial (Matriz) ou catálogo sanitizado para franquias
+      const catUrl = isMatriz ? '/api/inventory?scope=master' : `/api/inventory?scope=franchise_order&tenantId=${tenantId}`
+      const resCat = await authFetch(catUrl)
       if (resCat.ok) {
         const data = await resCat.json()
         if (Array.isArray(data.items)) {
@@ -137,7 +156,7 @@ export default function StoreSupplyOrdersView({
         }
       }
 
-      // 2. Carrega pedidos B2B: se Matriz Aveiro carrega todos os pedidos da rede; se franquia carrega apenas daquela loja
+      // 2. Carrega pedidos B2B: se Matriz carrega todos os pedidos da rede; se franquia carrega apenas daquela loja
       const ordersUrl = isMatriz ? '/api/supply-orders' : `/api/supply-orders?tenantId=${tenantId}`
       const resOrders = await authFetch(ordersUrl)
       if (resOrders.ok) {
@@ -207,6 +226,10 @@ export default function StoreSupplyOrdersView({
   const totalSavings = totalMarket - totalHQ
   const hasPreorderItems = selectedItemsList.some((it) => it.isPreorder)
 
+  // Frete Fixo: Franquias têm frete fixo de 60 € da Matriz; Matriz tem frete 0
+  const shippingFee = isMatriz ? 0 : 60.00
+  const grandTotal = totalHQ + (selectedItemsList.length > 0 ? shippingFee : 0)
+
   // Envio oficial do pedido da franquia para a matriz
   const handleConfirmSendOrder = async () => {
     if (selectedItemsList.length === 0) return
@@ -219,8 +242,9 @@ export default function StoreSupplyOrdersView({
         body: JSON.stringify({
           tenantId,
           items: selectedItemsList,
-          totalAmount: totalHQ,
+          totalAmount: grandTotal,
           totalSavings,
+          shippingFee: selectedItemsList.length > 0 ? shippingFee : 0,
           notes: orderNotes.trim() || undefined,
         }),
       })
@@ -478,16 +502,20 @@ export default function StoreSupplyOrdersView({
       {/* HEADER MINIMALISTA COM TÍTULO NA LINHA SUPERIOR */}
       <div>
         <h1 className="text-xl sm:text-2xl font-black text-purple-950 dark:text-white tracking-tight">
-          Central de Suprimentos & Distribuição (Matriz)
+          {isMatriz
+            ? 'Central de Suprimentos & Distribuição (Matriz)'
+            : `Reposição com a Matriz (B2B) • ${activeTenant.name}`}
         </h1>
         <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 font-medium">
-          Catálogo corporativo homologado, armazém central e preços B2B com regime fiscal de Portugal (Preço Líquido + IVA)
+          {isMatriz
+            ? 'Catálogo corporativo homologado, armazém central e preços B2B com regime fiscal de Portugal (Preço Líquido + IVA)'
+            : 'Selecione as quantidades dos insumos homologados e envie o pedido mensal de reposição para a Central de Abastecimento (Figueira da Foz)'}
         </p>
       </div>
 
       {/* BARRA DE NAVEGAÇÃO E AÇÕES EM LINHA ÚNICA (h-10) */}
       <div className="flex items-center justify-between gap-3 border-b border-purple-150 dark:border-white/10 pb-3 flex-wrap">
-        {/* Abas da Central */}
+        {/* Abas */}
         <div className="flex items-center gap-2 overflow-x-auto">
           <button
             type="button"
@@ -499,7 +527,7 @@ export default function StoreSupplyOrdersView({
             }`}
           >
             <Boxes className="h-4 w-4" />
-            <span>Catálogo B2B & Armazém</span>
+            <span>{isMatriz ? 'Catálogo B2B & Armazém' : 'Catálogo para Reposição'}</span>
             <span className="text-[10px] opacity-70">({catalog.length} insumos)</span>
           </button>
 
@@ -513,43 +541,47 @@ export default function StoreSupplyOrdersView({
             }`}
           >
             <ClipboardList className="h-4 w-4" />
-            <span>Pedidos das Franquias</span>
+            <span>{isMatriz ? 'Pedidos das Franquias' : 'Meus Pedidos de Reposição'}</span>
             <Badge className="bg-white/20 text-white text-[10px] py-0 px-1.5 ml-1">
               {orders.filter((o) => o.status === 'PENDING').length}
             </Badge>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('purchases')}
-            className={`h-10 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-              activeTab === 'purchases'
-                ? 'bg-purple-800 text-white shadow-xs'
-                : 'bg-purple-50 dark:bg-white/5 text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-200/60 dark:border-white/10'
-            }`}
-          >
-            <Factory className="h-4 w-4" />
-            <span>Compras com Fornecedores</span>
-            <span className="text-[10px] opacity-70">({purchases.length})</span>
-          </button>
+          {isMatriz && (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab('purchases')}
+                className={`h-10 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+                  activeTab === 'purchases'
+                    ? 'bg-purple-800 text-white shadow-xs'
+                    : 'bg-purple-50 dark:bg-white/5 text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-200/60 dark:border-white/10'
+                }`}
+              >
+                <Factory className="h-4 w-4" />
+                <span>Compras com Fornecedores</span>
+                <span className="text-[10px] opacity-70">({purchases.length})</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('report')}
-            className={`h-10 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-              activeTab === 'report'
-                ? 'bg-purple-800 text-white shadow-xs'
-                : 'bg-purple-50 dark:bg-white/5 text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-200/60 dark:border-white/10'
-            }`}
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span>DRE & Margem da Rede</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('report')}
+                className={`h-10 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+                  activeTab === 'report'
+                    ? 'bg-purple-800 text-white shadow-xs'
+                    : 'bg-purple-50 dark:bg-white/5 text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-200/60 dark:border-white/10'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>DRE & Margem da Rede</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Botões de Ação na mesma linha com h-10 padronizado */}
         <div className="flex items-center gap-2 shrink-0">
-          {activeTab === 'catalog' && (
+          {isMatriz && activeTab === 'catalog' && (
             <Button
               onClick={() => {
                 setEditingItem(null)
@@ -562,13 +594,33 @@ export default function StoreSupplyOrdersView({
             </Button>
           )}
 
-          {activeTab === 'purchases' && (
+          {isMatriz && activeTab === 'purchases' && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setSuppliersModalOpen(true)}
+                className="h-10 px-4 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold cursor-pointer shadow-xs flex items-center gap-2"
+              >
+                <Building2 className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+                <span>Fornecedores ({suppliers.length})</span>
+              </Button>
+              <Button
+                onClick={handleOpenNewPurchase}
+                className="h-10 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold cursor-pointer shadow-xs flex items-center gap-2"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>Nova Entrada / Compra</span>
+              </Button>
+            </>
+          )}
+
+          {!isMatriz && activeTab === 'catalog' && totalItemsCount > 0 && (
             <Button
-              onClick={handleOpenNewPurchase}
-              className="h-10 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold cursor-pointer shadow-xs flex items-center gap-2"
+              onClick={() => setConfirmModalOpen(true)}
+              className="h-10 px-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-xs font-black cursor-pointer shadow-xs flex items-center gap-2"
             >
-              <PlusCircle className="h-4 w-4" />
-              <span>Nova Compra</span>
+              <ShoppingCart className="h-4 w-4" />
+              <span>Revisar Pedido ({totalItemsCount})</span>
             </Button>
           )}
 
@@ -590,10 +642,12 @@ export default function StoreSupplyOrdersView({
             <CardHeader className="p-4 sm:p-5 border-b border-purple-150 dark:border-white/10 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-sm font-black text-purple-950 dark:text-white">
-                  Catálogo Mestre Homologado para a Rede
+                  {isMatriz ? 'Catálogo Mestre Homologado para a Rede' : 'Catálogo Oficial de Reposição B2B'}
                 </CardTitle>
                 <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium mt-0.5">
-                  Tabela oficial B2B com cotações líquidas, taxas de IVA de Portugal (6%, 13%, 23%) e valor final de liquidação
+                  {isMatriz
+                    ? 'Tabela oficial B2B com cotações líquidas, taxas de IVA de Portugal (0%, 6%, 13%, 23%) e valor final de liquidação'
+                    : 'Selecione as quantidades dos insumos homologados que deseja receber da Central da Matriz'}
                 </p>
               </div>
               <span className="text-[11px] font-bold text-purple-700 dark:text-pink-400">
@@ -604,18 +658,31 @@ export default function StoreSupplyOrdersView({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-purple-50/70 dark:bg-white/5 border-b border-purple-150 dark:border-white/10 text-[11px] font-black uppercase text-purple-900/80 dark:text-purple-300/70">
-                    <tr>
-                      <th className="py-3.5 px-4">Insumo Homologado</th>
-                      <th className="py-3.5 px-4">Cód. SKU</th>
-                      <th className="py-3.5 px-4">Embalagem</th>
-                      <th className="py-3.5 px-4">Estoque Central</th>
-                      <th className="py-3.5 px-4">Último Custo (s/ IVA)</th>
-                      <th className="py-3.5 px-4">Preço B2B (s/ IVA)</th>
-                      <th className="py-3.5 px-4">IVA (%)</th>
-                      <th className="py-3.5 px-4">Total c/ IVA</th>
-                      <th className="py-3.5 px-4">Margem Matriz</th>
-                      <th className="py-3.5 px-4 text-right">Ação</th>
-                    </tr>
+                    {isMatriz ? (
+                      <tr>
+                        <th className="py-3.5 px-4">Insumo Homologado</th>
+                        <th className="py-3.5 px-4">Cód. SKU</th>
+                        <th className="py-3.5 px-4">Embalagem</th>
+                        <th className="py-3.5 px-4">Estoque Central</th>
+                        <th className="py-3.5 px-4">Último Custo (s/ IVA)</th>
+                        <th className="py-3.5 px-4">Preço B2B (s/ IVA)</th>
+                        <th className="py-3.5 px-4">IVA (%)</th>
+                        <th className="py-3.5 px-4">Total c/ IVA</th>
+                        <th className="py-3.5 px-4">Margem Matriz</th>
+                        <th className="py-3.5 px-4 text-right">Ação</th>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <th className="py-3.5 px-4">Insumo Homologado</th>
+                        <th className="py-3.5 px-4">Cód. SKU</th>
+                        <th className="py-3.5 px-4">Embalagem</th>
+                        <th className="py-3.5 px-4">Disponibilidade na Matriz</th>
+                        <th className="py-3.5 px-4">Preço B2B (s/ IVA)</th>
+                        <th className="py-3.5 px-4">IVA (%)</th>
+                        <th className="py-3.5 px-4">Preço c/ IVA</th>
+                        <th className="py-3.5 px-4 text-right">Comprar / Quantidade</th>
+                      </tr>
+                    )}
                   </thead>
                   <tbody className="divide-y divide-purple-100 dark:divide-white/5">
                     {catalog.length === 0 ? (
@@ -637,6 +704,148 @@ export default function StoreSupplyOrdersView({
 
                         const netMargin = Math.max(0, supplyNet - costNet)
                         const marginPercent = supplyNet > 0 ? ((netMargin / supplyNet) * 100).toFixed(1) : '0.0'
+
+                        if (!isMatriz) {
+                          return (
+                            <tr key={item.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
+                              {/* 1. Insumo Homologado */}
+                              <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
+                                <div>{item.name}</div>
+                                {item.category && (
+                                  <span className="text-[10px] text-purple-600/70 dark:text-purple-400/70 font-semibold">
+                                    {item.category}
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* 2. Cód. SKU */}
+                              <td className="py-3.5 px-4 font-mono text-[11px] font-bold text-purple-900/70 dark:text-purple-300/70">
+                                {item.supplyCode || '—'}
+                              </td>
+
+                              {/* 3. Embalagem e Peso */}
+                              <td className="py-3.5 px-4 text-purple-800 dark:text-purple-200">
+                                <span className="font-bold">{item.unit}</span>
+                                {item.netWeightKg && Number(item.netWeightKg) > 0 && (
+                                  <span className="block text-[11px] text-purple-600/80 dark:text-purple-400 font-mono">
+                                    ({item.netWeightKg} kg)
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* 4. Disponibilidade na Matriz */}
+                              <td className="py-3.5 px-4 font-mono font-bold">
+                                <span
+                                  className={`px-2 py-0.5 rounded-lg text-xs font-mono font-black ${
+                                    (item.centralStock || 0) > 10
+                                      ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                      : (item.centralStock || 0) > 0
+                                      ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300'
+                                      : 'bg-zinc-100 text-zinc-700 dark:bg-white/10 dark:text-zinc-300'
+                                  }`}
+                                >
+                                  {(item.centralStock || 0) > 10
+                                    ? 'Disponível'
+                                    : (item.centralStock || 0) > 0
+                                    ? `${item.centralStock} ${item.unit}`
+                                    : 'Sob Demanda'}
+                                </span>
+                              </td>
+
+                              {/* 5. Preço B2B (s/ IVA) */}
+                              <td className="py-3.5 px-4 font-mono">
+                                <div className="font-black text-purple-950 dark:text-white text-sm">
+                                  {formatCurrency(supplyNet)}
+                                </div>
+                                {item.pricePerKg && Number(item.pricePerKg) > 0 && (
+                                  <div className="text-[10px] text-purple-600 dark:text-pink-400 font-bold">
+                                    {formatCurrency(item.pricePerKg)} / kg
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* 6. IVA (%) */}
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold ${
+                                    taxRate === 0
+                                      ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200'
+                                      : taxRate === 6
+                                      ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                      : taxRate === 13
+                                      ? 'bg-blue-100 text-blue-900 dark:bg-blue-950/60 dark:text-blue-300'
+                                      : 'bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300'
+                                  }`}
+                                  title={taxRate === 0 ? 'Isento de IVA (0%)' : `IVA de ${taxRate}% sobre ${formatCurrency(supplyNet)} = ${formatCurrency(supplyTax)}`}
+                                >
+                                  {taxRate === 0 ? '0% (Sem IVA)' : `+${taxRate}% (${formatCurrency(supplyTax)})`}
+                                </span>
+                              </td>
+
+                              {/* 7. Preço c/ IVA */}
+                              <td className="py-3.5 px-4 font-mono">
+                                <div className="text-base font-black text-pink-600 dark:text-pink-400">
+                                  {formatCurrency(supplyGross)}
+                                </div>
+                                <div className="text-[10px] text-purple-600/70 dark:text-purple-400/70 font-semibold">
+                                  Total faturado
+                                </div>
+                              </td>
+
+                              {/* 8. Comprar / Quantidade com Stepper */}
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const curr = quantities[item.id] || 0
+                                      if (curr <= 1) {
+                                        const copy = { ...quantities }
+                                        delete copy[item.id]
+                                        setQuantities(copy)
+                                      } else {
+                                        setQuantities({ ...quantities, [item.id]: curr - 1 })
+                                      }
+                                    }}
+                                    disabled={!quantities[item.id]}
+                                    className="h-8 w-8 rounded-xl bg-purple-100 dark:bg-white/10 hover:bg-purple-200 dark:hover:bg-white/20 text-purple-950 dark:text-white flex items-center justify-center font-black disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition text-sm"
+                                    title="Diminuir quantidade"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={quantities[item.id] || ''}
+                                    placeholder="0"
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value) || 0
+                                      if (val <= 0) {
+                                        const copy = { ...quantities }
+                                        delete copy[item.id]
+                                        setQuantities(copy)
+                                      } else {
+                                        setQuantities({ ...quantities, [item.id]: val })
+                                      }
+                                    }}
+                                    className="w-14 h-8 text-center font-mono font-bold text-xs rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const curr = quantities[item.id] || 0
+                                      setQuantities({ ...quantities, [item.id]: curr + 1 })
+                                    }}
+                                    className="h-8 w-8 rounded-xl bg-purple-700 hover:bg-purple-800 text-white flex items-center justify-center font-black cursor-pointer transition shadow-2xs text-sm"
+                                    title="Aumentar quantidade"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        }
 
                         return (
                           <tr key={item.id} className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors">
@@ -706,15 +915,17 @@ export default function StoreSupplyOrdersView({
                             <td className="py-3.5 px-4">
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold ${
-                                  taxRate === 6
+                                  taxRate === 0
+                                    ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200'
+                                    : taxRate === 6
                                     ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300'
                                     : taxRate === 13
                                     ? 'bg-blue-100 text-blue-900 dark:bg-blue-950/60 dark:text-blue-300'
                                     : 'bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300'
                                 }`}
-                                title={`IVA de ${taxRate}% sobre ${formatCurrency(supplyNet)} = ${formatCurrency(supplyTax)}`}
+                                title={taxRate === 0 ? 'Isento de IVA (0%)' : `IVA de ${taxRate}% sobre ${formatCurrency(supplyNet)} = ${formatCurrency(supplyTax)}`}
                               >
-                                +{taxRate}% ({formatCurrency(supplyTax)})
+                                {taxRate === 0 ? '0% (Sem IVA)' : `+${taxRate}% (${formatCurrency(supplyTax)})`}
                               </span>
                             </td>
 
@@ -1467,8 +1678,8 @@ export default function StoreSupplyOrdersView({
         </div>
       )}
 
-      {/* Histórico de Pedidos da Franquia (Exibido apenas para a Loja Franquiada) */}
-      {!isMatriz && (
+      {/* Histórico de Pedidos da Franquia (Exibido apenas para a Loja Franquiada na aba de Pedidos) */}
+      {!isMatriz && activeTab === 'orders' && (
         <Card className="border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] rounded-3xl overflow-hidden shadow-xs">
           <CardHeader className="p-4 sm:p-5 border-b border-purple-150 dark:border-white/10">
             <CardTitle className="text-sm font-black text-purple-950 dark:text-white">
@@ -1585,9 +1796,13 @@ export default function StoreSupplyOrdersView({
                 {totalItemsCount} {totalItemsCount === 1 ? 'insumo selecionado' : 'insumos selecionados'}
               </div>
               <div className="text-[11px] text-purple-200/90 font-medium">
-                Total Matriz: <strong className="text-pink-300 font-mono text-xs">{formatCurrency(totalHQ)}</strong>
+                Insumos: <strong className="text-white font-mono text-xs">{formatCurrency(totalHQ)}</strong>
+                <span className="mx-1 text-purple-400">•</span>
+                Frete Fixo: <strong className="text-pink-300 font-mono text-xs">{formatCurrency(shippingFee)}</strong>
+                <span className="mx-1 text-purple-400">=</span>
+                Total: <strong className="text-pink-300 font-mono text-xs">{formatCurrency(grandTotal)}</strong>
                 {totalSavings > 0 && (
-                  <span className="text-emerald-400 font-bold ml-1.5">(Economia: +{formatCurrency(totalSavings)})</span>
+                  <span className="text-emerald-400 font-bold ml-1.5 hidden sm:inline">(Economia: +{formatCurrency(totalSavings)})</span>
                 )}
               </div>
             </div>
@@ -1649,18 +1864,27 @@ export default function StoreSupplyOrdersView({
             </div>
 
             {/* Quadro Financeiro do Pedido */}
-            <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-1 text-xs">
+            <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-1.5 text-xs">
               <div className="flex justify-between text-purple-700/80 dark:text-purple-300/70">
-                <span>Total Estimado no Mercado de Rua:</span>
-                <span className="line-through font-mono">{formatCurrency(totalMarket)}</span>
+                <span>Subtotal Insumos (Preço de Fábrica):</span>
+                <span className="font-mono font-bold text-purple-950 dark:text-white">{formatCurrency(totalHQ)}</span>
               </div>
-              <div className="flex justify-between font-bold text-purple-950 dark:text-white text-sm pt-1 border-t border-purple-200/60 dark:border-white/10">
-                <span>Total Matriz (Preço de Fábrica):</span>
-                <span className="font-mono text-pink-600 dark:text-pink-400">{formatCurrency(totalHQ)}</span>
+              <div className="flex justify-between text-purple-700/80 dark:text-purple-300/70 items-center">
+                <div>
+                  <span>Frete Fixo de Distribuição:</span>
+                  <span className="block text-[10px] text-purple-600/70 dark:text-purple-400/70">
+                    Rota mensal consolidada da Matriz (Figueira da Foz)
+                  </span>
+                </div>
+                <span className="font-mono font-bold text-purple-950 dark:text-white">{formatCurrency(shippingFee)}</span>
+              </div>
+              <div className="flex justify-between font-black text-purple-950 dark:text-white text-sm pt-2 border-t border-purple-200/60 dark:border-white/10">
+                <span>Total Geral a Faturar:</span>
+                <span className="font-mono text-pink-600 dark:text-pink-400 text-base">{formatCurrency(grandTotal)}</span>
               </div>
               {totalSavings > 0 && (
-                <div className="flex justify-between font-bold text-emerald-600 dark:text-emerald-400 text-xs pt-1">
-                  <span>Economia Líquida da Franquia:</span>
+                <div className="flex justify-between font-bold text-emerald-600 dark:text-emerald-400 text-xs pt-1 border-t border-purple-100 dark:border-white/5">
+                  <span>Economia em relação ao Mercado:</span>
                   <span className="font-mono">+{formatCurrency(totalSavings)}</span>
                 </div>
               )}
@@ -2272,6 +2496,13 @@ export default function StoreSupplyOrdersView({
         onSave={handleSaveMasterItem}
         onDelete={handleDeleteMasterItem}
         isMaster={true}
+      />
+
+      {/* Modal de Gestão de Fornecedores Oficiais da Franqueadora */}
+      <SuppliersManagementModal
+        open={suppliersModalOpen}
+        onOpenChange={setSuppliersModalOpen}
+        onSuppliersUpdated={loadData}
       />
     </div>
   )

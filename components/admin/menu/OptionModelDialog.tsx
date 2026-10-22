@@ -40,6 +40,7 @@ export interface OptionModelData {
   allowItemQuantity?: boolean
   isRequired: boolean
   showDetailed?: boolean
+  isBaseFixed?: boolean
   options: OptionItem[]
 }
 

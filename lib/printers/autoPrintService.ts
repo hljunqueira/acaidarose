@@ -117,7 +117,7 @@ export async function printOrderDirectly(
       let textPayload = ''
       const layout = printer.printLayout || 'FULL_RECEIPT'
       const shouldPrintLogo = printer.printLogo !== false
-      const shouldPrintQrCode = printer.printQrCode !== false
+      const shouldPrintQrCode = layout !== 'KITCHEN_SLIP' && printer.printQrCode !== false
 
       if (layout === 'KITCHEN_SLIP') {
         textPayload = buildOrderKitchenEscPosReceipt(order, {
@@ -178,7 +178,7 @@ export async function printOrderDirectly(
       // 3. QR Code da Comanda no Rodapé
       if (shouldPrintQrCode && qrCodeBase64) {
         qzData.push(ESC_POS_COMMANDS.ALIGN_CENTER)
-        const qrHeader = layout === 'KITCHEN_SLIP' ? 'Conferência Balcão / Cozinha:\n' : 'Consulte ou avalie o seu pedido:\n'
+        const qrHeader = 'Consulte ou avalie o seu pedido:\n'
         qzData.push(qrHeader)
         qzData.push({
           type: 'raw',

@@ -29,6 +29,7 @@ export interface ProductContainer {
   productType?: 'CONTAINER' | 'ITEM'
   menuId?: string | null
   optionGroups?: any[]
+  isBaseFixed?: boolean
 }
 
 export interface ProductBase {

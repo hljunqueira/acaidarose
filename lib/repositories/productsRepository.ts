@@ -33,20 +33,22 @@ export async function bumpStoreCatalogVersion(targetTenantIds?: string[]): Promi
 export function buildDefaultOptionGroupsForContainer(
   weight: number,
   basesList: ProductBase[],
-  toppingsList: ProductTopping[]
+  toppingsList: ProductTopping[],
+  isBaseFixed: boolean = true
 ) {
-  const defaultBasesMax = 2
+  const defaultBasesMax = isBaseFixed ? 1 : 2
   const defaultFrutasMax = weight >= 500 ? 999 : weight === 250 ? 2 : 3
   const defaultToppingsMax = weight >= 500 ? 999 : weight === 250 ? 3 : 4
 
   return [
     {
       id: 'model-bases',
-      name: 'Escolha seu creme ou base gelada',
+      name: isBaseFixed ? 'Cremes Gelados Inclusos' : 'Escolha seu creme ou base gelada',
       priceType: 'Gratis' as const,
       additionalPrice: 2.00,
       minQty: 1,
       maxQty: defaultBasesMax,
+      isBaseFixed,
       isRequired: true,
       active: true,
       allowItemQuantity: true,
@@ -264,7 +266,6 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         const isVisible = override ? override.isVisible : !!row.active
         const isAvailable = override ? override.isAvailable : !!row.active
         const weight = row.weight_grams ? Number(row.weight_grams) : null
-        const limiteFrutas = weight === 250 ? 2 : weight === 350 ? 3 : 999
         const isItem = row.product_type === 'ITEM'
 
         // Localiza categoria correspondente
@@ -283,13 +284,47 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         const categoryName = matchedCat ? matchedCat.name : ''
         const menuId = matchedCat ? matchedCat.menuId : null
 
+        const isSomenteCreme = (row.name || '').toLowerCase().includes('somente creme') || (row.name || '').toLowerCase().includes('apenas creme')
+        const isBaseFixedDefault = !isSomenteCreme
+
         // Produtos unitários prontos (lanches) não usam construtor de taça de açaí
         let optionGroups: any[] = []
         if (row.option_groups && Array.isArray(row.option_groups) && row.option_groups.length > 0) {
           optionGroups = row.option_groups
         } else if (!isItem && weight) {
-          optionGroups = buildDefaultOptionGroupsForContainer(weight, bases, toppings)
+          optionGroups = buildDefaultOptionGroupsForContainer(weight, bases, toppings, isBaseFixedDefault)
         }
+
+        const basesGroup = optionGroups.find(
+          (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme')
+        )
+        const frutasGroup = optionGroups.find(
+          (g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta')
+        )
+        const toppingsGroup = optionGroups.find(
+          (g: any) =>
+            g.id === 'model-toppings' ||
+            g.name?.toLowerCase().includes('acompanhamento') ||
+            g.name?.toLowerCase().includes('topping')
+        )
+
+        const isBaseFixed = basesGroup?.isBaseFixed !== undefined
+          ? Boolean(basesGroup.isBaseFixed)
+          : !isSomenteCreme
+
+        const limiteBases = basesGroup?.maxQty !== undefined
+          ? Number(basesGroup.maxQty)
+          : (row.limite_bases !== null && row.limite_bases !== undefined ? Number(row.limite_bases) : (isBaseFixed ? 1 : 2))
+
+        const limiteFrutas = frutasGroup?.maxQty !== undefined
+          ? Number(frutasGroup.maxQty)
+          : (weight && weight >= 500 ? 999 : weight === 250 ? 2 : 3)
+
+        const limiteToppings = toppingsGroup?.maxQty !== undefined
+          ? Number(toppingsGroup.maxQty)
+          : (row.limite_complementos_gratis !== null && row.limite_complementos_gratis !== undefined
+              ? Number(row.limite_complementos_gratis)
+              : (weight && weight >= 500 ? 999 : weight === 250 ? 3 : 4))
 
         containers.push({
           id: row.id,
@@ -302,10 +337,11 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           weightGrams: weight,
           precoBase: customPrice !== undefined ? customPrice : Number(row.preco_base),
           price: customPrice !== undefined ? customPrice : Number(row.preco_base),
-          limiteBases: row.limite_bases,
-          limiteToppings: row.limite_complementos_gratis,
-          limiteCremes: row.limite_bases,
-          limiteFrutas: limiteFrutas,
+          limiteBases,
+          limiteToppings,
+          limiteCremes: limiteBases,
+          limiteFrutas,
+          isBaseFixed,
           emoji: '',
           image: row.image_url || row.video_poster || null,
           videoUrl: row.video_url,

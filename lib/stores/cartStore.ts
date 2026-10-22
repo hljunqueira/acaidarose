@@ -25,9 +25,20 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
   const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.50
   const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
 
-  // 1. Cremes / Bases Extras (padrão € 2,00 ou configurado no modelo)
-  const maxBases = item.container.limiteCremes || item.container.limiteBases || 2
-  const extraBasesCount = Math.max(0, (item.bases?.length || 0) - maxBases)
+  // 1. Cremes / Bases Extras (Açaí fixo incluso + 1 creme incluso; ou 2 cremes para Somente Creme)
+  const isSomenteCreme = (item.container.name || '').toLowerCase().includes('somente creme') || (item.container.name || '').toLowerCase().includes('apenas creme')
+  const isBaseFixed = item.container.isBaseFixed !== undefined ? item.container.isBaseFixed : !isSomenteCreme
+
+  let extraBasesCount = 0
+  if (isBaseFixed) {
+    const acaiBase = (item.bases || []).find((b) => (b.name || '').toLowerCase().includes('açaí') || (b.name || '').toLowerCase().includes('acai'))
+    const cremesCount = (item.bases || []).filter((b) => !acaiBase || b.id !== acaiBase.id).length
+    const maxCremesGratis = Number(item.container.limiteCremes) || 1
+    extraBasesCount = Math.max(0, cremesCount - maxCremesGratis)
+  } else {
+    const maxBases = Number(item.container.limiteCremes) || Number(item.container.limiteBases) || 2
+    extraBasesCount = Math.max(0, (item.bases?.length || 0) - maxBases)
+  }
   const extraBasesPrice = extraBasesCount * additionalBasePrice
 
   // 2. Frutas & Toppings Tradicionais vs Premium
@@ -167,12 +178,20 @@ export const useCartStore = create<CartState>()(
       toggleBase: (base: ProductBase) =>
         set((s) => {
           if (!s.draft || !s.draft.container) return s
+          const isSomenteCreme = (s.draft.container.name || '').toLowerCase().includes('somente creme') || (s.draft.container.name || '').toLowerCase().includes('apenas creme')
+          const isBaseFixed = s.draft.container.isBaseFixed !== undefined ? s.draft.container.isBaseFixed : !isSomenteCreme
+          const isAcai = (base.name || '').toLowerCase().includes('açaí') || (base.name || '').toLowerCase().includes('acai')
+
           const exists = s.draft.bases.find((b) => b.id === base.id)
           let bases: ProductBase[]
           if (exists) {
+            // Se for açaí em copo com base fixa obrigatória, não permite desmarcar
+            if (isBaseFixed && isAcai) {
+              return s
+            }
             bases = s.draft.bases.filter((b) => b.id !== base.id)
           } else {
-            // Permite adicionar mais de 1 creme, somando como creme adicional (+€ 2,00)
+            // Adiciona creme, respeitando a cota e somando excedente
             bases = [...s.draft.bases, base]
           }
           return { draft: { ...s.draft, bases } }

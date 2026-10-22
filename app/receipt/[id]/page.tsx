@@ -352,15 +352,11 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               </div>
             )}
 
-            <div className="border-t border-dashed border-black my-2" />
+            <div className="border-t-2 border-dashed border-black my-2" />
 
-            {/* QR Code de Autenticação / Conferência na Cozinha (Sem corte!) */}
-            <div className="qr-code-section flex flex-col items-center py-2 text-center">
-              <div className="p-1.5 bg-white border border-black mb-1">
-                <QRCodeSVG value={receiptUrl} size={85} level="M" />
-              </div>
-              <span className="text-[9px] text-gray-700 font-bold">Conferência Balcão / Cozinha</span>
-              <div className="text-[9px] text-gray-500 mt-0.5">Comanda de Produção Interna</div>
+            {/* Rodapé Limpo da Comanda de Produção (Sem QR Code) */}
+            <div className="text-center text-[10px] font-bold text-zinc-700 py-1">
+              *** FIM DA COMANDA DE PRODUÇÃO ***
             </div>
           </div>
         ) : (
@@ -532,17 +528,19 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           </div>
         )}
 
-        {/* Botão de Avaliação do Cliente (Apenas Visível em Tela) */}
-        <div className="no-print mt-4 flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setFeedbackOpen(true)}
-            className="w-full py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:opacity-90 cursor-pointer"
-          >
-            <Star className="h-3.5 w-3.5 fill-white" />
-            <span>Avaliar Atendimento da Loja</span>
-          </button>
-        </div>
+        {/* Botão de Avaliação do Cliente (Apenas Visível no Talão de Caixa) */}
+        {activeLayout === 'FULL_RECEIPT' && (
+          <div className="no-print mt-4 flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFeedbackOpen(true)}
+              className="w-full py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:opacity-90 cursor-pointer"
+            >
+              <Star className="h-3.5 w-3.5 fill-white" />
+              <span>Avaliar Atendimento da Loja</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <CustomerRatingModal

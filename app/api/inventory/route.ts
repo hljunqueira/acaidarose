@@ -11,6 +11,17 @@ export async function GET(req: NextRequest) {
     const tenantId = searchParams.get('tenantId')
     const scope = searchParams.get('scope')
 
+    if (scope === 'franchise_order') {
+      const items = await getAllMasterItems()
+      // Blindagem comercial: Remove custos de fornecedor da Matriz para franquias/filiais
+      const sanitized = items.map((it) => ({
+        ...it,
+        lastCostPrice: 0,
+        lastCostPriceWithTax: 0,
+      }))
+      return NextResponse.json({ items: sanitized })
+    }
+
     if (scope === 'master' || !tenantId) {
       const items = await getAllMasterItems()
       return NextResponse.json({ items })
