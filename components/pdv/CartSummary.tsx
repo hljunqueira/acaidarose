@@ -79,7 +79,7 @@ export default function CartSummary({
                           {qty}x
                         </span>
                       )}
-                      {item.packagingType && (
+                      {item.packagingType && ((item.container?.weightGrams && item.container.weightGrams >= 750) || (item.container?.name || '').toLowerCase().includes('sensação') || (item.container?.name || '').toLowerCase().includes('família') || (item.container?.name || '').toLowerCase().includes('1kg')) && (
                         <span className="text-[10px] bg-purple-200/70 text-purple-900 font-black px-1.5 py-0.5 rounded-md uppercase">
                           {item.packagingType === 'CAIXA' ? 'Caixinha' : 'Taça'}
                         </span>

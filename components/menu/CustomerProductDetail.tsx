@@ -386,8 +386,8 @@ export default function CustomerProductDetail({
         containerName: finalContainerName,
         containerWeight: container.weightGrams,
         container: { ...container, name: finalContainerName },
-        packagingType: containerFormat || 'TACA',
-        containerFormat: containerFormat || 'TACA',
+        packagingType: isLargeContainer ? (containerFormat || 'TACA') : undefined,
+        containerFormat: isLargeContainer ? (containerFormat || 'TACA') : undefined,
         bases: flatBases,
         toppings: flatToppings,
         customSelections,
@@ -414,8 +414,8 @@ export default function CustomerProductDetail({
       containerName: finalContainerName,
       containerWeight: container.weightGrams,
       container: { ...container, name: finalContainerName },
-      packagingType: containerFormat || 'TACA',
-      containerFormat: containerFormat || 'TACA',
+      packagingType: isLargeContainer ? (containerFormat || 'TACA') : undefined,
+      containerFormat: isLargeContainer ? (containerFormat || 'TACA') : undefined,
       bases: selectedBases,
       toppings: selectedToppings,
       extraBasesCount,
@@ -616,6 +616,9 @@ export default function CustomerProductDetail({
                 const isObligatory = group.isRequired || (group.minQty && group.minQty > 0)
                 const isDetailed = !!group.showDetailed
 
+                const isBaseGroup = groupId === 'model-bases' || (group.name || '').toLowerCase().includes('base') || (group.name || '').toLowerCase().includes('creme')
+                const isAcaiCopo = !isSomenteCreme && isBaseGroup
+
                 return (
                   <div key={groupId || groupIdx} className="space-y-2.5 p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10">
                     <div className="flex items-center justify-between flex-wrap gap-1.5">
@@ -632,7 +635,11 @@ export default function CustomerProductDetail({
                       </label>
 
                       <div className="flex items-center gap-1.5">
-                        {isObligatory ? (
+                        {isAcaiCopo ? (
+                          <Badge className="bg-purple-100 text-purple-900 border border-purple-200 dark:bg-white/10 dark:text-purple-200 font-bold text-[9px] py-0 px-1.5">
+                            Opcional
+                          </Badge>
+                        ) : isObligatory ? (
                           <Badge className="bg-purple-700 text-white font-bold text-[9px] py-0 px-1.5">
                             Obrigatório {group.minQty ? `(Mín: ${group.minQty})` : ''}
                           </Badge>
@@ -642,7 +649,9 @@ export default function CustomerProductDetail({
                           </Badge>
                         )}
                         <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold">
-                          {group.priceType === 'Individual'
+                          {isAcaiCopo
+                            ? `1 creme opcional incluído (creme extra +${formatCurrency(Number(group.additionalPrice || 2.0))})`
+                            : group.priceType === 'Individual'
                             ? (group.additionalPrice && Number(group.additionalPrice) > 0 ? `+${formatCurrency(Number(group.additionalPrice))}/un.` : 'Valor por item')
                             : (group.additionalPrice && Number(group.additionalPrice) > 0 ? `Até ${group.maxQty || 1} opções incluídas (extra +${formatCurrency(Number(group.additionalPrice))})` : 'Incluso')}
                         </span>

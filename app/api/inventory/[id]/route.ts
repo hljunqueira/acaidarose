@@ -21,14 +21,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       lastCostPrice,
       centralStock,
       taxRate,
+      purchaseTaxRate,
       hasPurchaseTax,
       netWeightKg,
       pricePerKg,
       isCriticalChecklist,
     } = body
 
-    if (tenantId && minAlertQuantity !== undefined) {
-      await updateStoreMinAlert(tenantId, id, Number(minAlertQuantity))
+    if (minAlertQuantity !== undefined) {
+      const targetTenant = tenantId || '11111111-1111-1111-1111-111111111111'
+      await updateStoreMinAlert(targetTenant, id, Number(minAlertQuantity))
     }
 
     const updated = await updateMasterItem(id, {
@@ -40,8 +42,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       supplyPrice: supplyPrice !== undefined ? Number(supplyPrice) : undefined,
       lastCostPrice: lastCostPrice !== undefined ? Number(lastCostPrice) : undefined,
       centralStock: centralStock !== undefined ? Number(centralStock) : undefined,
-      taxRate: taxRate !== undefined ? Number(taxRate) : undefined,
+      taxRate: taxRate !== undefined && taxRate !== null ? Number(taxRate) : undefined,
+      purchaseTaxRate: purchaseTaxRate !== undefined && purchaseTaxRate !== null ? Number(purchaseTaxRate) : undefined,
       hasPurchaseTax: hasPurchaseTax !== undefined ? Boolean(hasPurchaseTax) : undefined,
+      minAlertQuantity: minAlertQuantity !== undefined && minAlertQuantity !== null ? Number(minAlertQuantity) : undefined,
       netWeightKg: netWeightKg !== undefined ? Number(netWeightKg) : undefined,
       pricePerKg: pricePerKg !== undefined ? Number(pricePerKg) : undefined,
       isCriticalChecklist,

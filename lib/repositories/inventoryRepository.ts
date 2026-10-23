@@ -21,6 +21,7 @@ export interface InventoryItemRow {
   supplyPriceWithTax?: number
   lastCostPriceWithTax?: number
   taxRate?: number
+  purchaseTaxRate?: number
   hasPurchaseTax?: boolean
   netWeightKg?: number
   pricePerKg?: number
@@ -41,11 +42,13 @@ export interface MasterInventoryItem {
   supplyPriceWithTax?: number
   lastCostPriceWithTax?: number
   taxRate?: number
+  purchaseTaxRate?: number
   hasPurchaseTax?: boolean
   netWeightKg?: number
   pricePerKg?: number
   centralStock: number
   lastCostPrice: number
+  minAlertQuantity?: number
   isCriticalChecklist?: boolean
   createdAt?: string
 }
@@ -205,7 +208,9 @@ export async function getAllMasterItems(): Promise<MasterInventoryItem[]> {
               central_stock_quantity as "centralStock",
               last_cost_price as "lastCostPrice",
               tax_rate as "taxRate",
+              purchase_tax_rate as "purchaseTaxRate",
               has_purchase_tax as "hasPurchaseTax",
+              min_alert_quantity as "minAlertQuantity",
               net_weight_kg as "netWeightKg",
               price_per_kg as "pricePerKg",
               is_critical_checklist as "isCriticalChecklist",
@@ -217,12 +222,11 @@ export async function getAllMasterItems(): Promise<MasterInventoryItem[]> {
       return res.rows.map((r) => {
         const supplyPrice = Number(r.supplyPrice) || 0
         const lastCostPrice = Number(r.lastCostPrice) || 0
-        const taxRate = r.taxRate !== null && r.taxRate !== undefined && Number(r.taxRate) > 0 ? Number(r.taxRate) : 23.00
-        const hasPurchaseTax = r.hasPurchaseTax !== false
+        const taxRate = r.taxRate !== null && r.taxRate !== undefined ? Number(r.taxRate) : 23.00
+        const purchaseTaxRate = r.purchaseTaxRate !== null && r.purchaseTaxRate !== undefined ? Number(r.purchaseTaxRate) : (r.hasPurchaseTax === false ? 0 : 23.00)
+        const hasPurchaseTax = purchaseTaxRate > 0
         const supplyPriceWithTax = Number((supplyPrice * (1 + taxRate / 100)).toFixed(2))
-        const lastCostPriceWithTax = hasPurchaseTax
-          ? Number((lastCostPrice * (1 + taxRate / 100)).toFixed(2))
-          : lastCostPrice
+        const lastCostPriceWithTax = Number((lastCostPrice * (1 + purchaseTaxRate / 100)).toFixed(2))
 
         return {
           id: r.id,
@@ -237,7 +241,9 @@ export async function getAllMasterItems(): Promise<MasterInventoryItem[]> {
           lastCostPrice,
           lastCostPriceWithTax,
           taxRate,
+          purchaseTaxRate,
           hasPurchaseTax,
+          minAlertQuantity: r.minAlertQuantity !== null && r.minAlertQuantity !== undefined ? Number(r.minAlertQuantity) : 2.00,
           netWeightKg: r.netWeightKg !== null && r.netWeightKg !== undefined ? Number(r.netWeightKg) : undefined,
           pricePerKg: r.pricePerKg !== null && r.pricePerKg !== undefined ? Number(r.pricePerKg) : undefined,
           isCriticalChecklist: Boolean(r.isCriticalChecklist),
@@ -264,28 +270,38 @@ export async function createMasterItem(data: {
   centralStock?: number
   lastCostPrice?: number
   taxRate?: number
+  purchaseTaxRate?: number
   hasPurchaseTax?: boolean
   netWeightKg?: number
   pricePerKg?: number
+  minAlertQuantity?: number
   isCriticalChecklist?: boolean
 }): Promise<MasterInventoryItem> {
   const id = uuidv4()
-  const taxRate = data.taxRate !== undefined && Number(data.taxRate) > 0 ? Number(data.taxRate) : 23.00
-  const hasPurchaseTax = data.hasPurchaseTax ?? true
+  const taxRate = data.taxRate !== undefined && data.taxRate !== null ? Number(data.taxRate) : 23.00
+  const purchaseTaxRate = data.purchaseTaxRate !== undefined && data.purchaseTaxRate !== null
+    ? Number(data.purchaseTaxRate)
+    : (data.hasPurchaseTax === false ? 0 : 23.00)
+  const hasPurchaseTax = purchaseTaxRate > 0
+  const minAlertQuantity = data.minAlertQuantity !== undefined && data.minAlertQuantity !== null ? Number(data.minAlertQuantity) : 2.00
+
   const res = await query(
     `INSERT INTO inventory_items (
        id, name, unit, category, supply_code, market_benchmark_price, 
        franchise_supply_price, central_stock_quantity, last_cost_price, 
-       tax_rate, has_purchase_tax, net_weight_kg, price_per_kg, is_critical_checklist
+       tax_rate, purchase_tax_rate, has_purchase_tax, min_alert_quantity,
+       net_weight_kg, price_per_kg, is_critical_checklist
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      RETURNING id, name, unit, category, supply_code as "supplyCode",
                market_benchmark_price as "marketPrice", 
                franchise_supply_price as "supplyPrice", 
                central_stock_quantity as "centralStock",
                last_cost_price as "lastCostPrice",
                tax_rate as "taxRate",
+               purchase_tax_rate as "purchaseTaxRate",
                has_purchase_tax as "hasPurchaseTax",
+               min_alert_quantity as "minAlertQuantity",
                net_weight_kg as "netWeightKg",
                price_per_kg as "pricePerKg",
                is_critical_checklist as "isCriticalChecklist",
@@ -301,7 +317,9 @@ export async function createMasterItem(data: {
       data.centralStock ?? 0,
       data.lastCostPrice ?? 0,
       taxRate,
+      purchaseTaxRate,
       hasPurchaseTax,
+      minAlertQuantity,
       data.netWeightKg ?? null,
       data.pricePerKg ?? null,
       data.isCriticalChecklist ?? false,
@@ -310,8 +328,8 @@ export async function createMasterItem(data: {
   const r = res.rows[0]
   const supplyPrice = Number(r.supplyPrice) || 0
   const lastCostPrice = Number(r.lastCostPrice) || 0
-  const savedTaxRate = Number(r.taxRate) || 23.00
-  const savedHasPurchaseTax = r.hasPurchaseTax !== false
+  const savedTaxRate = Number(r.taxRate) || 0
+  const savedPurchaseTaxRate = Number(r.purchaseTaxRate) || 0
 
   return {
     id: r.id,
@@ -324,11 +342,11 @@ export async function createMasterItem(data: {
     supplyPriceWithTax: Number((supplyPrice * (1 + savedTaxRate / 100)).toFixed(2)),
     centralStock: Number(r.centralStock) || 0,
     lastCostPrice,
-    lastCostPriceWithTax: savedHasPurchaseTax
-      ? Number((lastCostPrice * (1 + savedTaxRate / 100)).toFixed(2))
-      : lastCostPrice,
+    lastCostPriceWithTax: Number((lastCostPrice * (1 + savedPurchaseTaxRate / 100)).toFixed(2)),
     taxRate: savedTaxRate,
-    hasPurchaseTax: savedHasPurchaseTax,
+    purchaseTaxRate: savedPurchaseTaxRate,
+    hasPurchaseTax: savedPurchaseTaxRate > 0,
+    minAlertQuantity: Number(r.minAlertQuantity) || 2.00,
     netWeightKg: r.netWeightKg !== null && r.netWeightKg !== undefined ? Number(r.netWeightKg) : undefined,
     pricePerKg: r.pricePerKg !== null && r.pricePerKg !== undefined ? Number(r.pricePerKg) : undefined,
     isCriticalChecklist: Boolean(r.isCriticalChecklist),
@@ -351,13 +369,20 @@ export async function updateMasterItem(
     centralStock?: number
     lastCostPrice?: number
     taxRate?: number
+    purchaseTaxRate?: number
     hasPurchaseTax?: boolean
     netWeightKg?: number
     pricePerKg?: number
+    minAlertQuantity?: number
     isCriticalChecklist?: boolean
   }>
 ): Promise<MasterInventoryItem | null> {
-  const taxRate = data.taxRate !== undefined ? (Number(data.taxRate) > 0 ? Number(data.taxRate) : 23.00) : null
+  const taxRate = data.taxRate !== undefined && data.taxRate !== null ? Number(data.taxRate) : null
+  const purchaseTaxRate = data.purchaseTaxRate !== undefined && data.purchaseTaxRate !== null
+    ? Number(data.purchaseTaxRate)
+    : (data.hasPurchaseTax === false ? 0 : null)
+  const minAlert = data.minAlertQuantity !== undefined && data.minAlertQuantity !== null ? Number(data.minAlertQuantity) : null
+
   const res = await query(
     `UPDATE inventory_items
      SET name = COALESCE($2, name),
@@ -372,7 +397,9 @@ export async function updateMasterItem(
          has_purchase_tax = COALESCE($11, has_purchase_tax),
          net_weight_kg = COALESCE($12, net_weight_kg),
          price_per_kg = COALESCE($13, price_per_kg),
-         is_critical_checklist = COALESCE($14, is_critical_checklist)
+         is_critical_checklist = COALESCE($14, is_critical_checklist),
+         purchase_tax_rate = COALESCE($15, purchase_tax_rate),
+         min_alert_quantity = COALESCE($16, min_alert_quantity)
      WHERE id = $1
      RETURNING id, name, unit, category, supply_code as "supplyCode",
                market_benchmark_price as "marketPrice", 
@@ -380,7 +407,9 @@ export async function updateMasterItem(
                central_stock_quantity as "centralStock",
                last_cost_price as "lastCostPrice",
                tax_rate as "taxRate",
+               purchase_tax_rate as "purchaseTaxRate",
                has_purchase_tax as "hasPurchaseTax",
+               min_alert_quantity as "minAlertQuantity",
                net_weight_kg as "netWeightKg",
                price_per_kg as "pricePerKg",
                is_critical_checklist as "isCriticalChecklist",
@@ -396,18 +425,20 @@ export async function updateMasterItem(
       data.centralStock,
       data.lastCostPrice,
       taxRate,
-      data.hasPurchaseTax !== undefined ? data.hasPurchaseTax : null,
+      data.hasPurchaseTax !== undefined ? data.hasPurchaseTax : (purchaseTaxRate !== null ? purchaseTaxRate > 0 : null),
       data.netWeightKg,
       data.pricePerKg,
       data.isCriticalChecklist,
+      purchaseTaxRate,
+      minAlert,
     ]
   )
   if (!res || !res.rows[0]) return null
   const r = res.rows[0]
   const supplyPrice = Number(r.supplyPrice) || 0
   const lastCostPrice = Number(r.lastCostPrice) || 0
-  const savedTaxRate = Number(r.taxRate) || 23.00
-  const savedHasPurchaseTax = r.hasPurchaseTax !== false
+  const savedTaxRate = Number(r.taxRate) || 0
+  const savedPurchaseTaxRate = Number(r.purchaseTaxRate) || 0
 
   return {
     id: r.id,
@@ -420,11 +451,11 @@ export async function updateMasterItem(
     supplyPriceWithTax: Number((supplyPrice * (1 + savedTaxRate / 100)).toFixed(2)),
     centralStock: Number(r.centralStock) || 0,
     lastCostPrice,
-    lastCostPriceWithTax: savedHasPurchaseTax
-      ? Number((lastCostPrice * (1 + savedTaxRate / 100)).toFixed(2))
-      : lastCostPrice,
+    lastCostPriceWithTax: Number((lastCostPrice * (1 + savedPurchaseTaxRate / 100)).toFixed(2)),
     taxRate: savedTaxRate,
-    hasPurchaseTax: savedHasPurchaseTax,
+    purchaseTaxRate: savedPurchaseTaxRate,
+    hasPurchaseTax: savedPurchaseTaxRate > 0,
+    minAlertQuantity: Number(r.minAlertQuantity) || 2.00,
     netWeightKg: r.netWeightKg !== null && r.netWeightKg !== undefined ? Number(r.netWeightKg) : undefined,
     pricePerKg: r.pricePerKg !== null && r.pricePerKg !== undefined ? Number(r.pricePerKg) : undefined,
     isCriticalChecklist: Boolean(r.isCriticalChecklist),
@@ -457,11 +488,13 @@ export async function getStoreInventory(tenantId: string): Promise<InventoryItem
               ii.market_benchmark_price as market_price, 
               ii.franchise_supply_price as supply_price,
               ii.tax_rate,
+              ii.purchase_tax_rate,
+              ii.has_purchase_tax,
               ii.net_weight_kg,
               ii.price_per_kg,
               ii.is_critical_checklist,
               COALESCE(si.current_quantity, 10.00) as current_quantity,
-              COALESCE(si.min_alert_quantity, 2.00) as min_alert_quantity
+              COALESCE(si.min_alert_quantity, ii.min_alert_quantity, 2.00) as min_alert_quantity
        FROM inventory_items ii
        LEFT JOIN store_inventory si ON ii.id = si.item_id AND si.tenant_id::text = $1
        ORDER BY ii.category, ii.name`,
@@ -474,6 +507,9 @@ export async function getStoreInventory(tenantId: string): Promise<InventoryItem
         const min = Number(r.min_alert_quantity) || 0
         const supplyPrice = Number(r.supply_price) || 0
         const taxRate = r.tax_rate !== null && r.tax_rate !== undefined ? Number(r.tax_rate) : 23.00
+        const purchaseTaxRate = r.purchase_tax_rate !== null && r.purchase_tax_rate !== undefined
+          ? Number(r.purchase_tax_rate)
+          : (r.has_purchase_tax === false ? 0 : 23.00)
         const supplyPriceWithTax = Number((supplyPrice * (1 + taxRate / 100)).toFixed(2))
 
         let status: 'NORMAL' | 'ALERT' | 'CRITICAL' = 'NORMAL'
@@ -490,6 +526,8 @@ export async function getStoreInventory(tenantId: string): Promise<InventoryItem
           supplyPrice,
           supplyPriceWithTax,
           taxRate,
+          purchaseTaxRate,
+          hasPurchaseTax: purchaseTaxRate > 0,
           netWeightKg: r.net_weight_kg !== null && r.net_weight_kg !== undefined ? Number(r.net_weight_kg) : undefined,
           pricePerKg: r.price_per_kg !== null && r.price_per_kg !== undefined ? Number(r.price_per_kg) : undefined,
           currentQuantity: current,
@@ -516,17 +554,29 @@ export async function adjustStoreStock(params: {
   difference: number
   reason: string
   operatorId?: string
+  newMinAlert?: number
 }): Promise<boolean> {
-  const { tenantId, itemId, newQuantity, difference, reason, operatorId } = params
+  const { tenantId, itemId, newQuantity, difference, reason, operatorId, newMinAlert } = params
   try {
     // 1. Upsert em store_inventory
     await query(
       `INSERT INTO store_inventory (id, tenant_id, item_id, current_quantity, min_alert_quantity, last_counted_at, updated_at)
-       VALUES ($1, $2, $3, $4, 2.00, now(), now())
+       VALUES ($1, $2, $3, $4, COALESCE($5, 2.00), now(), now())
        ON CONFLICT (tenant_id, item_id)
-       DO UPDATE SET current_quantity = $4, last_counted_at = now(), updated_at = now()`,
-      [uuidv4(), tenantId, itemId, newQuantity]
+       DO UPDATE SET current_quantity = $4,
+                     min_alert_quantity = COALESCE($5, store_inventory.min_alert_quantity),
+                     last_counted_at = now(),
+                     updated_at = now()`,
+      [uuidv4(), tenantId, itemId, newQuantity, newMinAlert ?? null]
     )
+
+    // Se newMinAlert foi passado, atualiza também no item mestre para manter coerência
+    if (newMinAlert !== undefined && newMinAlert !== null) {
+      await query(
+        `UPDATE inventory_items SET min_alert_quantity = $1 WHERE id = $2`,
+        [newMinAlert, itemId]
+      )
+    }
 
     // 2. Insert em inventory_audits
     await query(
@@ -549,7 +599,7 @@ export async function adjustStoreStock(params: {
       action: 'STOCK_ADJUSTED',
       entity: 'store_inventory',
       entityId: itemId,
-      message: `Ajuste de estoque: novo saldo ${newQuantity} (${reason})`,
+      message: `Ajuste de estoque: novo saldo ${newQuantity} (${reason})${newMinAlert !== undefined ? `, limite mínimo alterado para ${newMinAlert}` : ''}`,
       metadata: params,
     })
 
@@ -572,6 +622,13 @@ export async function updateStoreMinAlert(tenantId: string, itemId: string, minA
        DO UPDATE SET min_alert_quantity = $4, updated_at = now()`,
       [uuidv4(), tenantId, itemId, minAlert]
     )
+
+    // Sincroniza também no mestre
+    await query(
+      `UPDATE inventory_items SET min_alert_quantity = $1 WHERE id = $2`,
+      [minAlert, itemId]
+    )
+
     return true
   } catch (err) {
     console.error('Erro ao atualizar limite mínimo:', err)

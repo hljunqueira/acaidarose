@@ -48,6 +48,20 @@ interface CustomerCartSheetProps {
 
 type CheckoutStep = 'CART' | 'MBWAY_WAITING' | 'SUCCESS_PAID' | 'SUCCESS_COUNTER'
 
+function isLargePackagingItem(itemName: string, weight?: number): boolean {
+  if (weight && Number(weight) >= 750) return true
+  const lower = (itemName || '').toLowerCase()
+  return (
+    lower.includes('750') ||
+    lower.includes('1kg') ||
+    lower.includes('1 kg') ||
+    lower.includes('sensação') ||
+    lower.includes('sensacao') ||
+    lower.includes('família') ||
+    lower.includes('familia')
+  )
+}
+
 export type CustomerPaymentOption = 'MBWAY_PHONE' | 'MBWAY_QR' | 'MULTIBANCO' | 'DINHEIRO' | 'POINTS'
 
 export default function CustomerCartSheet({
@@ -512,7 +526,7 @@ export default function CustomerCartSheet({
                         <div className="flex items-start justify-between gap-2">
                           <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                             <span>{item.quantity}x {itemName}</span>
-                            {itemPackaging && (
+                            {isLargePackagingItem(itemName, item.containerWeight) && itemPackaging && (
                               <span className="text-[9px] bg-purple-200/80 text-purple-900 dark:bg-purple-800/80 dark:text-purple-100 font-black px-1.5 py-0.5 rounded-md uppercase">
                                 {itemPackaging === 'CAIXA' ? 'Caixinha' : 'Taça'}
                               </span>
@@ -638,7 +652,7 @@ export default function CustomerCartSheet({
                         <div className="flex items-start justify-between gap-2">
                           <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                             <span>{item.quantity}x {itemName}</span>
-                            {itemPackaging && (
+                            {isLargePackagingItem(itemName, item.containerWeight) && itemPackaging && (
                               <span className="text-[9px] bg-purple-200/80 text-purple-900 dark:bg-purple-800/80 dark:text-purple-100 font-black px-1.5 py-0.5 rounded-md uppercase">
                                 {itemPackaging === 'CAIXA' ? 'Caixinha' : 'Taça'}
                               </span>
@@ -726,7 +740,7 @@ export default function CustomerCartSheet({
                           <div>
                             <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                               <span>{item.container?.name || item.containerName || 'Açaí Personalizado'}</span>
-                              {(item.packagingType || item.containerFormat) && (
+                              {isLargePackagingItem(item.container?.name || item.containerName || '', item.containerWeight) && (item.packagingType || item.containerFormat) && (
                                 <span className="text-[9px] bg-purple-200/80 text-purple-900 dark:bg-purple-800/80 dark:text-purple-100 font-black px-1.5 py-0.5 rounded-md uppercase">
                                   {(item.packagingType || item.containerFormat) === 'CAIXA' ? 'Caixinha Plástica' : 'Taça'}
                                 </span>

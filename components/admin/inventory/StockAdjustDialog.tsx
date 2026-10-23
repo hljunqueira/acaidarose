@@ -22,6 +22,7 @@ interface StockAdjustDialogProps {
     newQuantity: number
     difference: number
     reason: string
+    newMinAlert?: number
   }) => Promise<void> | void
 }
 
@@ -33,6 +34,7 @@ export default function StockAdjustDialog({
 }: StockAdjustDialogProps) {
   const [adjustType, setAdjustType] = useState<'ENTRY' | 'BREAKAGE' | 'DAILY_USAGE' | 'COUNT'>('ENTRY')
   const [quantityInput, setQuantityInput] = useState('')
+  const [minAlertInput, setMinAlertInput] = useState<string>('2')
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -40,6 +42,9 @@ export default function StockAdjustDialog({
     setQuantityInput('')
     setReason('')
     setAdjustType('ENTRY')
+    if (item) {
+      setMinAlertInput(String(item.minAlertQuantity ?? 2))
+    }
   }, [open, item])
 
   if (!item) return null
@@ -69,10 +74,12 @@ export default function StockAdjustDialog({
     if (isNaN(inputVal) || inputVal < 0) return
     setLoading(true)
     try {
+      const parsedMin = parseFloat(minAlertInput)
       await onConfirmAdjust({
         itemId: item.id,
         newQuantity: computedNewQty,
         difference: computedDiff,
+        newMinAlert: !isNaN(parsedMin) && parsedMin >= 0 ? parsedMin : undefined,
         reason:
           reason ||
           (adjustType === 'ENTRY'
@@ -146,6 +153,30 @@ export default function StockAdjustDialog({
               onChange={(e) => setReason(e.target.value)}
               className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs text-purple-950 dark:text-white"
             />
+          </div>
+
+          {/* Limite Mínimo de Alerta da Loja */}
+          <div className="space-y-1.5 p-3 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-150 dark:border-white/10">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                Limite Mínimo em Estoque ({item.unit})
+              </Label>
+              <span className="text-[10px] text-purple-600 dark:text-pink-400 font-bold">
+                Alerta de reposição desta loja
+              </span>
+            </div>
+            <Input
+              type="number"
+              step="1"
+              min="0"
+              placeholder="Ex: 20"
+              value={minAlertInput}
+              onChange={(e) => setMinAlertInput(e.target.value)}
+              className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-black/30 text-xs text-purple-950 dark:text-white font-mono font-bold"
+            />
+            <p className="text-[10px] text-purple-700/80 dark:text-purple-300/70">
+              A loja entrará em alerta se o saldo físico ficar abaixo deste valor.
+            </p>
           </div>
 
           {/* Prévia do Resultado */}

@@ -26,6 +26,7 @@ export interface InventoryItemFormData {
   centralStock?: number
   lastCostPrice?: number
   taxRate?: number
+  purchaseTaxRate?: number
   hasPurchaseTax?: boolean
   netWeightKg?: number
   pricePerKg?: number
@@ -59,6 +60,7 @@ export default function InventoryItemDialog({
   const [centralStock, setCentralStock] = useState(0)
   const [lastCostPrice, setLastCostPrice] = useState(0)
   const [taxRate, setTaxRate] = useState(23)
+  const [purchaseTaxRate, setPurchaseTaxRate] = useState(23)
   const [hasPurchaseTax, setHasPurchaseTax] = useState(true)
   const [netWeightKg, setNetWeightKg] = useState<number | ''>('')
   const [pricePerKg, setPricePerKg] = useState<number | ''>('')
@@ -85,7 +87,7 @@ export default function InventoryItemDialog({
           setCategories(data.categories)
         }
       })
-      .catch(() => {})
+      .catch(() => { })
   }
 
   useEffect(() => {
@@ -102,9 +104,13 @@ export default function InventoryItemDialog({
       setUnit(item.unit || 'Baldes')
       setMarketPrice(item.marketPrice || 0)
       setSupplyPrice(item.supplyPrice || 0)
-      const itemTax = item.taxRate !== undefined && Number(item.taxRate) > 0 ? Number(item.taxRate) : 23
+      const itemTax = item.taxRate !== undefined && item.taxRate !== null ? Number(item.taxRate) : 23
       setTaxRate(itemTax)
-      setHasPurchaseTax(item.hasPurchaseTax !== undefined ? item.hasPurchaseTax : true)
+      const itemPurchaseTax = item.purchaseTaxRate !== undefined && item.purchaseTaxRate !== null
+        ? Number(item.purchaseTaxRate)
+        : (item.hasPurchaseTax === false ? 0 : 23)
+      setPurchaseTaxRate(itemPurchaseTax)
+      setHasPurchaseTax(itemPurchaseTax > 0)
       setNetWeightKg(item.netWeightKg !== undefined ? Number(item.netWeightKg) : '')
       setPricePerKg(item.pricePerKg !== undefined ? Number(item.pricePerKg) : '')
       setMinAlertQuantity(item.minAlertQuantity ?? 2)
@@ -119,6 +125,7 @@ export default function InventoryItemDialog({
       setCentralStock(0)
       setLastCostPrice(0)
       setTaxRate(23)
+      setPurchaseTaxRate(23)
       setHasPurchaseTax(true)
       setNetWeightKg('')
       setPricePerKg('')
@@ -135,9 +142,7 @@ export default function InventoryItemDialog({
     }
   }
 
-  const costWithTax = hasPurchaseTax
-    ? Number((lastCostPrice * (1 + taxRate / 100)).toFixed(2))
-    : lastCostPrice
+  const costWithTax = Number((lastCostPrice * (1 + purchaseTaxRate / 100)).toFixed(2))
   const supplyWithTax = Number((supplyPrice * (1 + taxRate / 100)).toFixed(2))
   const netMargin = Math.max(0, supplyPrice - lastCostPrice)
   const marginPercent = supplyPrice > 0 ? ((netMargin / supplyPrice) * 100).toFixed(1) : '0.0'
@@ -157,8 +162,9 @@ export default function InventoryItemDialog({
         supplyPrice: Number(supplyPrice) || 0,
         centralStock: Number(centralStock) || 0,
         lastCostPrice: Number(lastCostPrice) || 0,
-        taxRate: Number(taxRate) > 0 ? Number(taxRate) : 23,
-        hasPurchaseTax,
+        taxRate: Number(taxRate) >= 0 ? Number(taxRate) : 23,
+        purchaseTaxRate: Number(purchaseTaxRate) >= 0 ? Number(purchaseTaxRate) : 23,
+        hasPurchaseTax: purchaseTaxRate > 0,
         netWeightKg: netWeightKg !== '' ? Number(netWeightKg) : undefined,
         pricePerKg: pricePerKg !== '' ? Number(pricePerKg) : undefined,
         minAlertQuantity: Number(minAlertQuantity) || 2,
@@ -293,105 +299,152 @@ export default function InventoryItemDialog({
               />
             </div>
 
-            {/* Alíquota de IVA (%) 100% Configurável (1 coluna) */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-purple-950 dark:text-white">Classe de IVA (PT)</Label>
-              <div className="flex items-center gap-1">
-                {[
-                  { label: '6%', val: 6, desc: 'Reduzido (Leite, Água)' },
-                  { label: '13%', val: 13, desc: 'Intermédio (Prontos)' },
-                  { label: '23%', val: 23, desc: 'Normal (B2B)' },
-                ].map((b) => (
-                  <button
-                    key={b.val}
-                    type="button"
-                    onClick={() => setTaxRate(b.val)}
-                    title={b.desc}
-                    className={`flex-1 h-10 rounded-xl text-[11px] font-bold transition cursor-pointer border ${
-                      taxRate === b.val
-                        ? 'bg-purple-800 text-white border-purple-800 shadow-xs'
-                        : 'bg-purple-50/50 dark:bg-white/5 text-purple-900 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
-                    }`}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-                <div className="w-16 shrink-0 relative">
+            {/* SESSÃO FINANCEIRA B2B: CUSTO DE FORNECEDOR (COMPRA) vs VENDA FRANQUIA (REVENDA) */}
+            <div className="col-span-1 sm:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {/* Bloco 1: Custo do Fornecedor (Compra Matriz) */}
+              <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-200/80 dark:border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase text-purple-900 dark:text-purple-200 tracking-wider">
+                    Custo de Fornecedor (Compra)
+                  </span>
+                  <span className="text-[11px] font-mono font-black text-purple-700 dark:text-pink-300">
+                    {purchaseTaxRate > 0
+                      ? `${formatCurrency(costWithTax)} c/ IVA (${purchaseTaxRate}%)`
+                      : `${formatCurrency(lastCostPrice)} (0% IVA na Compra)`}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Preço de Custo Líquido (€ s/ IVA)</Label>
                   <Input
                     type="number"
-                    step="0.1"
-                    min="1"
-                    max="100"
-                    value={taxRate}
-                    onChange={(e) => setTaxRate(parseFloat(e.target.value) || 23)}
-                    className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-[11px] text-purple-950 dark:text-white font-mono text-center px-1"
-                    title="Alíquota de IVA personalizada"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={lastCostPrice}
+                    onChange={(e) => setLastCostPrice(parseFloat(e.target.value) || 0)}
+                    className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-black/20 text-xs text-purple-950 dark:text-white font-mono"
                   />
-                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-purple-500 font-bold pointer-events-none">%</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-purple-950 dark:text-white">IVA da Compra (Fornecedor)</Label>
+                    <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">Taxa na Fatura de Entrada</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {[
+                      { label: '0%', val: 0, desc: 'Isento' },
+                      { label: '6%', val: 6, desc: 'Reduzido (Insumos básicos)' },
+                      { label: '13%', val: 13, desc: 'Intermédio' },
+                      { label: '23%', val: 23, desc: 'Normal (Padrão PT)' },
+                    ].map((b) => (
+                      <button
+                        key={`purchase-${b.val}`}
+                        type="button"
+                        onClick={() => {
+                          setPurchaseTaxRate(b.val)
+                          setHasPurchaseTax(b.val > 0)
+                        }}
+                        title={b.desc}
+                        className={`flex-1 h-9 rounded-xl text-[11px] font-bold transition cursor-pointer border ${purchaseTaxRate === b.val
+                            ? 'bg-purple-800 text-white border-purple-800 shadow-xs'
+                            : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                          }`}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                    <div className="w-16 shrink-0 relative">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={purchaseTaxRate}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value) || 0
+                          setPurchaseTaxRate(v)
+                          setHasPurchaseTax(v > 0)
+                        }}
+                        className="h-9 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-black/20 text-[11px] text-purple-950 dark:text-white font-mono text-center px-1"
+                        title="Alíquota de IVA personalizada na compra"
+                      />
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-purple-500 font-bold pointer-events-none">%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Preço de Custo Fornecedor Líquido (€ s/ IVA) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold text-purple-950 dark:text-white">Custo Fornec. (€ s/ IVA)</Label>
-                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-mono font-bold">
-                  {hasPurchaseTax ? `${formatCurrency(costWithTax)} c/ IVA` : `${formatCurrency(lastCostPrice)} (Sem IVA na compra)`}
-                </span>
-              </div>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={lastCostPrice}
-                onChange={(e) => setLastCostPrice(parseFloat(e.target.value) || 0)}
-                className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs text-purple-950 dark:text-white font-mono"
-              />
-              {/* Seletor Com / Sem IVA na compra */}
-              <div className="flex items-center gap-1.5 pt-0.5">
-                <span className="text-[10px] font-bold text-purple-700/80 dark:text-purple-300/80">Compra:</span>
-                <button
-                  type="button"
-                  onClick={() => setHasPurchaseTax(false)}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
-                    !hasPurchaseTax
-                      ? 'bg-purple-800 text-white border-purple-800 shadow-xs'
-                      : 'bg-purple-50/50 dark:bg-white/5 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-white/10 hover:bg-purple-100'
-                  }`}
-                >
-                  Sem IVA (0% na compra)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHasPurchaseTax(true)}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
-                    hasPurchaseTax
-                      ? 'bg-purple-800 text-white border-purple-800 shadow-xs'
-                      : 'bg-purple-50/50 dark:bg-white/5 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-white/10 hover:bg-purple-100'
-                  }`}
-                >
-                  Com IVA ({taxRate}%)
-                </button>
-              </div>
-            </div>
+              {/* Bloco 2: Venda Franquia (Faturamento B2B) */}
+              <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-200/80 dark:border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase text-purple-900 dark:text-purple-200 tracking-wider">
+                    Venda para Franquia (B2B)
+                  </span>
+                  <span className="text-[11px] font-mono font-black text-emerald-600 dark:text-emerald-400">
+                    {taxRate > 0
+                      ? `${formatCurrency(supplyWithTax)} c/ IVA (${taxRate}%)`
+                      : `${formatCurrency(supplyPrice)} (0% IVA na Venda / Espanha)`}
+                  </span>
+                </div>
 
-            {/* Preço de Venda Franquia Líquido (€ s/ IVA) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold text-purple-950 dark:text-white">Venda Franquia (€ s/ IVA)</Label>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold font-mono">
-                  {formatCurrency(supplyWithTax)} c/ IVA
-                </span>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Preço de Venda Líquido (€ s/ IVA)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={supplyPrice}
+                    onChange={(e) => setSupplyPrice(parseFloat(e.target.value) || 0)}
+                    className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-black/20 text-xs text-purple-950 dark:text-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-purple-950 dark:text-white">IVA da Venda (Franquia / Depósito)</Label>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                      {taxRate === 0 ? 'Depósito Espanha (Isento)' : 'Portugal Normal'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {[
+                      { label: '0%', val: 0, desc: 'Depósito Espanha (Venda sem IVA)' },
+                      { label: '6%', val: 6, desc: 'Reduzido' },
+                      { label: '13%', val: 13, desc: 'Intermédio' },
+                      { label: '23%', val: 23, desc: 'Normal (B2B Portugal)' },
+                    ].map((b) => (
+                      <button
+                        key={`sale-${b.val}`}
+                        type="button"
+                        onClick={() => setTaxRate(b.val)}
+                        title={b.desc}
+                        className={`flex-1 h-9 rounded-xl text-[11px] font-bold transition cursor-pointer border ${taxRate === b.val
+                            ? 'bg-purple-800 text-white border-purple-800 shadow-xs'
+                            : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                          }`}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                    <div className="w-16 shrink-0 relative">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={taxRate}
+                        onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                        className="h-9 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-black/20 text-[11px] text-purple-950 dark:text-white font-mono text-center px-1"
+                        title="Alíquota de IVA personalizada na venda"
+                      />
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-purple-500 font-bold pointer-events-none">%</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={supplyPrice}
-                onChange={(e) => setSupplyPrice(parseFloat(e.target.value) || 0)}
-                className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs text-purple-950 dark:text-white font-mono"
-              />
             </div>
 
             {/* Preço Mercado Externo (€) */}

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Boxes,
   AlertTriangle,
@@ -51,11 +52,7 @@ export default function InventoryManagementView({
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
 
-  const isMatriz =
-    tenantId === '11111111-1111-1111-1111-111111111111' ||
-    user?.tenantId === '11111111-1111-1111-1111-111111111111' ||
-    user?.role === 'SUPER_ADMIN' ||
-    user?.role === 'FRANCHISOR_ADMIN'
+  const isMatriz = tenantId === '11111111-1111-1111-1111-111111111111'
 
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0)
   const [transferModalOpen, setTransferModalOpen] = useState(false)
@@ -79,6 +76,9 @@ export default function InventoryManagementView({
   const [editingItem, setEditingItem] = useState<InventoryItemFormData | null>(null)
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false)
   const [adjustingItem, setAdjustingItem] = useState<InventoryItemRow | null>(null)
+  const [minAlertModalItem, setMinAlertModalItem] = useState<InventoryItemRow | null>(null)
+  const [minAlertModalVal, setMinAlertModalVal] = useState<string>('2')
+  const [savingMinAlert, setSavingMinAlert] = useState(false)
   const [checklistOpen, setChecklistOpen] = useState(false)
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false)
   const [categoriesList, setCategoriesList] = useState<{ id: string; name: string; code: string }[]>([])
@@ -163,7 +163,7 @@ export default function InventoryManagementView({
         const res = await authFetch(`/api/inventory/${formData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...formData, tenantId }),
         })
         if (!res.ok) throw new Error('Falha ao atualizar insumo')
         toast.success('Insumo e limites atualizados com sucesso!')
@@ -172,7 +172,7 @@ export default function InventoryManagementView({
         const res = await authFetch('/api/inventory', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...formData, tenantId }),
         })
         if (!res.ok) throw new Error('Falha ao cadastrar insumo')
         toast.success('Novo insumo cadastrado com sucesso!')
@@ -207,6 +207,7 @@ export default function InventoryManagementView({
     newQuantity: number
     difference: number
     reason: string
+    newMinAlert?: number
   }) => {
     try {
       const res = await authFetch('/api/inventory/adjust', {
@@ -222,6 +223,36 @@ export default function InventoryManagementView({
       loadInventory()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao ajustar saldo')
+    }
+  }
+
+  const handleSaveMinAlert = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!minAlertModalItem) return
+    const val = parseFloat(minAlertModalVal)
+    if (isNaN(val) || val < 0) {
+      toast.error('Informe um limite válido')
+      return
+    }
+    setSavingMinAlert(true)
+    try {
+      const res = await authFetch('/api/inventory/min-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId,
+          itemId: minAlertModalItem.id,
+          minAlert: val,
+        }),
+      })
+      if (!res.ok) throw new Error('Falha ao atualizar limite mínimo')
+      toast.success(`Limite mínimo de "${minAlertModalItem.name}" atualizado para ${val} ${minAlertModalItem.unit}!`)
+      setMinAlertModalItem(null)
+      loadInventory()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar limite')
+    } finally {
+      setSavingMinAlert(false)
     }
   }
 
@@ -460,8 +491,19 @@ export default function InventoryManagementView({
                     <td className="py-3.5 px-4 font-black text-purple-950 dark:text-white font-mono text-sm">
                       {item.currentQuantity} <span className="text-[10px] font-normal text-purple-700/70 dark:text-purple-300/60">{item.unit}</span>
                     </td>
-                    <td className="py-3.5 px-4 text-purple-700/80 dark:text-purple-300/70 font-mono">
-                      {item.minAlertQuantity} {item.unit}
+                    <td className="py-3.5 px-4 font-mono">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMinAlertModalItem(item)
+                          setMinAlertModalVal(String(item.minAlertQuantity || 2))
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-white/5 dark:hover:bg-white/10 text-purple-900 dark:text-purple-200 font-bold text-xs cursor-pointer border border-purple-200/60 dark:border-white/10 transition group"
+                        title="Clique para alterar o limite mínimo em estoque desta loja"
+                      >
+                        <span>{item.minAlertQuantity} {item.unit}</span>
+                        <Edit2 className="h-3 w-3 text-purple-500 group-hover:text-purple-700 dark:text-pink-400" />
+                      </button>
                     </td>
                     <td className="py-3.5 px-4">
                       {item.status === 'NORMAL' && (
@@ -517,6 +559,9 @@ export default function InventoryManagementView({
                               unit: item.unit,
                               marketPrice: item.marketPrice,
                               supplyPrice: item.supplyPrice,
+                              taxRate: item.taxRate,
+                              purchaseTaxRate: item.purchaseTaxRate,
+                              hasPurchaseTax: item.hasPurchaseTax,
                               minAlertQuantity: item.minAlertQuantity,
                               isCriticalChecklist: item.isCriticalChecklist,
                             })
@@ -567,6 +612,60 @@ export default function InventoryManagementView({
         item={adjustingItem}
         onConfirmAdjust={handleConfirmAdjust}
       />
+
+      {/* MODAL RÁPIDO DE ALTERAÇÃO DE LIMITE MÍNIMO DE ESTOQUE DA LOJA */}
+      <Dialog open={!!minAlertModalItem} onOpenChange={(open) => !open && setMinAlertModalItem(null)}>
+        <DialogContent className="max-w-md p-6 bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 text-purple-950 dark:text-white rounded-3xl shadow-2xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+              Ajustar Limite Mínimo: {minAlertModalItem?.name}
+            </DialogTitle>
+            <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
+              Defina o estoque mínimo de segurança que esta unidade deve manter no balcão antes de emitir alerta.
+            </p>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveMinAlert} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                Limite Mínimo ({minAlertModalItem?.unit})
+              </Label>
+              <Input
+                required
+                type="number"
+                step="1"
+                min="0"
+                value={minAlertModalVal}
+                onChange={(e) => setMinAlertModalVal(e.target.value)}
+                className="h-11 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-sm font-mono font-black text-purple-950 dark:text-white px-3"
+                placeholder="Ex: 20"
+                autoFocus
+              />
+              <p className="text-[11px] text-purple-700/80 dark:text-purple-300/70">
+                Ex: Para manter no mínimo 20 {minAlertModalItem?.unit}, digite 20 e clique em Guardar Limite.
+              </p>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-purple-100 dark:border-white/10">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMinAlertModalItem(null)}
+                className="h-9 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingMinAlert}
+                className="h-9 text-xs font-black px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white cursor-pointer shadow-xs"
+              >
+                {savingMinAlert ? 'A guardar...' : 'Guardar Limite'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <ShiftChecklistDialog
         open={checklistOpen}

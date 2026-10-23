@@ -971,6 +971,8 @@ export default function StoreSupplyOrdersView({
                                       lastCostPrice: item.lastCostPrice,
                                       hasPurchaseTax: item.hasPurchaseTax !== false,
                                       taxRate: item.taxRate !== undefined ? Number(item.taxRate) : 23,
+                                      purchaseTaxRate: item.purchaseTaxRate !== undefined ? Number(item.purchaseTaxRate) : (item.hasPurchaseTax === false ? 0 : 23),
+                                      minAlertQuantity: item.minAlertQuantity !== undefined ? Number(item.minAlertQuantity) : 2,
                                       netWeightKg: item.netWeightKg !== undefined ? Number(item.netWeightKg) : undefined,
                                       pricePerKg: item.pricePerKg !== undefined ? Number(item.pricePerKg) : undefined,
                                       isCriticalChecklist: item.isCriticalChecklist,

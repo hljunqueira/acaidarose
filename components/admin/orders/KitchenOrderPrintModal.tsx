@@ -280,7 +280,12 @@ export default function KitchenOrderPrintModal({
                             CAIXA TAKEAWAY
                           </span>
                         )}
-                        {(it.packagingType === 'TACA' || it.containerFormat === 'TACA') && !(it.containerName || it.container?.name || '').toLowerCase().includes('caixa') && (
+                        {(it.packagingType === 'TACA' || it.containerFormat === 'TACA') &&
+                          !(it.containerName || it.container?.name || '').toLowerCase().includes('caixa') &&
+                          ((it.container?.weightGrams && it.container.weightGrams >= 750) ||
+                            (it.containerName || it.container?.name || '').toLowerCase().includes('sensação') ||
+                            (it.containerName || it.container?.name || '').toLowerCase().includes('família') ||
+                            (it.containerName || it.container?.name || '').toLowerCase().includes('1kg')) && (
                           <span className="bg-zinc-200 text-black px-1.5 py-0.5 text-[11px] font-black rounded-xs whitespace-nowrap border border-black">
                             TAÇA
                           </span>

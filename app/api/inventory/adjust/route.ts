@@ -4,7 +4,7 @@ import { adjustStoreStock } from '@/lib/repositories/inventoryRepository'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { tenantId, itemId, newQuantity, difference, reason, operatorId } = body
+    const { tenantId, itemId, newQuantity, difference, reason, operatorId, newMinAlert } = body
 
     if (!tenantId || !itemId || newQuantity === undefined) {
       return NextResponse.json({ error: 'tenantId, itemId e newQuantity são obrigatórios' }, { status: 400 })
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
       difference: Number(difference) || 0,
       reason: reason || 'AJUSTE_MANUAL',
       operatorId,
+      newMinAlert: newMinAlert !== undefined && newMinAlert !== null ? Number(newMinAlert) : undefined,
     })
 
     if (!success) {

@@ -48,9 +48,11 @@ export async function POST(req: NextRequest) {
       lastCostPrice,
       centralStock,
       taxRate,
+      purchaseTaxRate,
       hasPurchaseTax,
       netWeightKg,
       pricePerKg,
+      minAlertQuantity,
       isCriticalChecklist,
     } = body
 
@@ -67,8 +69,10 @@ export async function POST(req: NextRequest) {
       supplyPrice: Number(supplyPrice) || 0,
       lastCostPrice: lastCostPrice !== undefined ? Number(lastCostPrice) : undefined,
       centralStock: centralStock !== undefined ? Number(centralStock) : undefined,
-      taxRate: taxRate !== undefined ? Number(taxRate) : 23.00,
+      taxRate: taxRate !== undefined && taxRate !== null ? Number(taxRate) : 23.00,
+      purchaseTaxRate: purchaseTaxRate !== undefined && purchaseTaxRate !== null ? Number(purchaseTaxRate) : undefined,
       hasPurchaseTax: hasPurchaseTax !== undefined ? Boolean(hasPurchaseTax) : true,
+      minAlertQuantity: minAlertQuantity !== undefined && minAlertQuantity !== null ? Number(minAlertQuantity) : 2.00,
       netWeightKg: netWeightKg !== undefined ? Number(netWeightKg) : undefined,
       pricePerKg: pricePerKg !== undefined ? Number(pricePerKg) : undefined,
       isCriticalChecklist: Boolean(isCriticalChecklist),
