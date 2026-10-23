@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { RestaurantTable, TableStatus } from '@/types/tables'
+import { RestaurantTable, TableStatus, TableType } from '@/types/tables'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +32,7 @@ export default function AddEditTableDialog({
   onSuccess,
 }: AddEditTableDialogProps) {
   const [isBatch, setIsBatch] = useState(false)
+  const [tableType, setTableType] = useState<TableType>('MESA')
   const [number, setNumber] = useState('1')
   const [startNumber, setStartNumber] = useState('1')
   const [endNumber, setEndNumber] = useState('10')
@@ -43,12 +44,14 @@ export default function AddEditTableDialog({
   useEffect(() => {
     if (table) {
       setIsBatch(false)
+      setTableType(table.type || 'MESA')
       setNumber(table.number.toString())
       setNickname(table.nickname || '')
       setStatus(table.status || 'AVAILABLE')
       setHashToken(table.code || generateRandomHash(table.number))
     } else if (open) {
       setIsBatch(false)
+      setTableType('MESA')
       const maxNum =
         existingTables.length > 0
           ? Math.max(...existingTables.map((t) => Number(t.number) || 0))
@@ -96,6 +99,7 @@ export default function AddEditTableDialog({
           body: JSON.stringify({
             tenantId,
             isBatch: true,
+            type: tableType,
             startNumber: numStart,
             endNumber: numEnd,
           }),
@@ -104,14 +108,19 @@ export default function AddEditTableDialog({
           const err = await res.json().catch(() => ({}))
           throw new Error(err.error || 'Falha ao criar lote de mesas')
         }
-        toast.success(`${totalBatchCount} mesas adicionadas a partir da Mesa ${numStart}!`)
+        const typeLabel = tableType === 'ESPLANADA' ? 'esplanadas' : 'mesas'
+        toast.success(`${totalBatchCount} ${typeLabel} adicionadas a partir do nº ${numStart}!`)
       } else {
         const tableNum = table ? table.number : (Number(number) || 1)
+        const defaultName = tableType === 'ESPLANADA'
+          ? `Esplanada ${tableNum.toString().padStart(2, '0')}`
+          : `Mesa ${tableNum.toString().padStart(2, '0')}`
         const payload = {
           tenantId,
           number: tableNum,
+          type: tableType,
           code: hashToken.trim() || generateRandomHash(tableNum),
-          nickname: nickname.trim() || `Mesa ${tableNum.toString().padStart(2, '0')}`,
+          nickname: nickname.trim() || defaultName,
           serviceChargePercent: 0,
           status,
         }
@@ -127,9 +136,10 @@ export default function AddEditTableDialog({
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))
-          throw new Error(errData.error || 'Falha ao guardar mesa')
+          throw new Error(errData.error || 'Falha ao guardar')
         }
-        toast.success(table ? `Mesa ${tableNum} atualizada!` : `Mesa ${tableNum} adicionada ao salão!`)
+        const typeLabel = tableType === 'ESPLANADA' ? 'Esplanada' : 'Mesa'
+        toast.success(table ? `${typeLabel} ${tableNum} atualizada!` : `${typeLabel} ${tableNum} adicionada com sucesso!`)
       }
 
       onSuccess()
@@ -146,7 +156,9 @@ export default function AddEditTableDialog({
       <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#160228] border border-purple-100 dark:border-white/15 shadow-2xl text-slate-900 dark:text-white">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
-            {table ? `Editar Mesa ${table.number.toString().padStart(2, '0')}` : 'Adicionar Mesas'}
+            {table
+              ? `Editar ${tableType === 'ESPLANADA' ? 'Esplanada' : 'Mesa'} ${table.number.toString().padStart(2, '0')}`
+              : 'Adicionar Mesa ou Esplanada'}
           </DialogTitle>
         </DialogHeader>
 
@@ -162,7 +174,7 @@ export default function AddEditTableDialog({
                   : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
               }`}
             >
-              Mesa Única
+              Unidade Única
             </button>
             <button
               type="button"
@@ -179,6 +191,42 @@ export default function AddEditTableDialog({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 my-2">
+          {/* Seletor de Tipo: Mesa (Salão) vs Esplanada (Rua/Calçada) - Disponível tanto na Criação quanto na Edição */}
+          <div className="space-y-1.5 p-3 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10">
+            <Label className="text-xs font-bold text-purple-950 dark:text-white">
+              Tipo de Espaço / Localização:
+            </Label>
+            <div className="grid grid-cols-2 p-1 bg-white dark:bg-[#160228] rounded-xl border border-purple-150 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setTableType('MESA')}
+                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  tableType === 'MESA'
+                    ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                    : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+                }`}
+              >
+                Mesa (Salão / Interna)
+              </button>
+              <button
+                type="button"
+                onClick={() => setTableType('ESPLANADA')}
+                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  tableType === 'ESPLANADA'
+                    ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                    : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+                }`}
+              >
+                Esplanada (Rua / Calçada)
+              </button>
+            </div>
+            <p className="text-[10.5px] text-purple-700/80 dark:text-purple-300/70 font-medium leading-tight">
+              {tableType === 'ESPLANADA'
+                ? 'Mesas de rua/calçada. O QR Code e a comanda exibirão "Esplanada".'
+                : 'Mesas internas no salão. O QR Code e a comanda exibirão "Mesa".'}
+            </p>
+          </div>
+
           {isBatch && !table ? (
             /* Formulário em Lote */
             <div className="space-y-3 p-4 bg-purple-50/50 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10">
@@ -213,7 +261,9 @@ export default function AddEditTableDialog({
               {/* Número da Mesa */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Número da Mesa</Label>
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                    {tableType === 'ESPLANADA' ? 'Número da Esplanada' : 'Número da Mesa'}
+                  </Label>
                   {table && (
                     <span className="text-[10px] text-muted-foreground font-semibold">
                       Bloqueado na edição
@@ -237,12 +287,12 @@ export default function AddEditTableDialog({
 
               {/* Apelido / Localização */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-purple-950 dark:text-white">Apelido / Localização</Label>
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">Apelido / Descrição da Posição</Label>
                 <Input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  placeholder={`Mesa ${table ? table.number.toString().padStart(2, '0') : number}`}
+                  placeholder={tableType === 'ESPLANADA' ? `Esplanada ${table ? table.number.toString().padStart(2, '0') : number}` : `Mesa ${table ? table.number.toString().padStart(2, '0') : number}`}
                   className="h-10 text-xs rounded-xl"
                 />
               </div>
@@ -341,8 +391,8 @@ export default function AddEditTableDialog({
                 : table
                 ? 'Guardar Alterações'
                 : isBatch
-                ? `Criar ${totalBatchCount} Mesas`
-                : 'Adicionar Mesa'}
+                ? `Criar ${totalBatchCount} ${tableType === 'ESPLANADA' ? 'Esplanadas' : 'Mesas'}`
+                : `Adicionar ${tableType === 'ESPLANADA' ? 'Esplanada' : 'Mesa'}`}
             </Button>
           </DialogFooter>
         </form>

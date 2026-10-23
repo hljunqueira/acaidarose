@@ -1,6 +1,7 @@
 import { CartItem } from './order'
 
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'BILLING'
+export type TableType = 'MESA' | 'ESPLANADA'
 
 export interface TableOrderItem extends CartItem {
   customerName?: string
@@ -15,6 +16,7 @@ export interface RestaurantTable {
   tenantId: string
   number: number
   code: string
+  type?: TableType
   nickname?: string
   serviceChargePercent?: number
   status: TableStatus

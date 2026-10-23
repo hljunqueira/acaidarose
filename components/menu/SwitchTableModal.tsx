@@ -14,6 +14,12 @@ interface SwitchTableModalProps {
   onTableSwitched: (newTableNumber: string) => void
 }
 
+interface TableOption {
+  number: number
+  type: 'MESA' | 'ESPLANADA'
+  nickname?: string
+}
+
 export default function SwitchTableModal({
   open,
   onOpenChange,
@@ -23,7 +29,7 @@ export default function SwitchTableModal({
 }: SwitchTableModalProps) {
   const { isDark: isCustomerDark } = useCustomerTheme()
   const [selectedTable, setSelectedTable] = useState<number | null>(null)
-  const [availableTables, setAvailableTables] = useState<number[]>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  const [availableTables, setAvailableTables] = useState<TableOption[]>([])
   const [loading, setLoading] = useState(false)
   const [switching, setSwitching] = useState(false)
 
@@ -37,8 +43,14 @@ export default function SwitchTableModal({
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data.tables) && data.tables.length > 0) {
-            const tableNumbers = data.tables.map((t: any) => Number(t.number || t.table_number)).filter(Boolean)
-            setAvailableTables(tableNumbers.sort((a: number, b: number) => a - b))
+            const tableList: TableOption[] = data.tables
+              .map((t: any) => ({
+                number: Number(t.number || t.table_number),
+                type: (t.type || t.table_type || 'MESA') as 'MESA' | 'ESPLANADA',
+                nickname: t.nickname,
+              }))
+              .filter((t: TableOption) => Boolean(t.number))
+            setAvailableTables(tableList.sort((a, b) => a.number - b.number))
           }
         })
         .catch(() => {})
@@ -48,7 +60,7 @@ export default function SwitchTableModal({
 
   const handleConfirmSwitch = async () => {
     if (!selectedTable) {
-      toast.error('Selecione uma mesa')
+      toast.error('Selecione uma mesa ou esplanada')
       return
     }
 
@@ -71,7 +83,7 @@ export default function SwitchTableModal({
 
       if (!res.ok) throw new Error('Falha ao atualizar mesa')
 
-      toast.success(`Mesa alterada para a Mesa ${selectedTable} com sucesso!`)
+      toast.success(`Mesa alterada para o nº ${selectedTable} com sucesso!`)
       onTableSwitched(String(selectedTable))
       onOpenChange(false)
     } catch (err: any) {
@@ -86,26 +98,27 @@ export default function SwitchTableModal({
       <DialogContent className={`w-[92vw] sm:w-full max-w-md p-5 sm:p-6 rounded-3xl shadow-2xl transition-colors duration-200 ${isCustomerDark ? 'dark bg-[#160228] text-white border-white/20' : 'bg-white text-slate-900 border-purple-100'}`}>
         <DialogHeader className="text-left space-y-1">
           <DialogTitle className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-            Trocar de Mesa
+            Trocar de Mesa / Esplanada
           </DialogTitle>
           <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">
-            Selecione a sua nova mesa no salão para onde se mudou:
+            Selecione a sua nova posição no salão ou esplanada para onde se mudou:
           </p>
         </DialogHeader>
 
         {/* Grade de Mesas */}
         <div className="py-3">
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-1">
-            {availableTables.map((num) => {
-              const isCurrent = num === currentNum
-              const isSelected = selectedTable === num
+            {availableTables.map((t) => {
+              const isCurrent = t.number === currentNum
+              const isSelected = selectedTable === t.number
+              const isOutdoor = t.type === 'ESPLANADA'
 
               return (
                 <button
-                  key={num}
+                  key={t.number}
                   type="button"
-                  onClick={() => setSelectedTable(num)}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer font-bold ${
+                  onClick={() => setSelectedTable(t.number)}
+                  className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer font-bold ${
                     isSelected
                       ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white border-transparent shadow-md scale-105'
                       : isCurrent
@@ -113,8 +126,10 @@ export default function SwitchTableModal({
                       : 'bg-purple-50/50 hover:bg-purple-100/80 text-slate-800 border-purple-150 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white dark:border-white/10'
                   }`}
                 >
-                  <div className="text-xs uppercase text-opacity-80">Mesa</div>
-                  <div className="text-base font-black font-mono">{num}</div>
+                  <div className="text-[10px] uppercase font-bold text-opacity-80">
+                    {isOutdoor ? 'Esplanada' : 'Mesa'}
+                  </div>
+                  <div className="text-base font-black font-mono">{t.number}</div>
                   {isCurrent && <div className="text-[9px] font-extrabold mt-0.5 opacity-80">(Atual)</div>}
                 </button>
               )

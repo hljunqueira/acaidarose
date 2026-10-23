@@ -693,9 +693,10 @@ export default function StoreSupplyOrdersView({
                       </tr>
                     ) : (
                       catalog.map((item) => {
-                        const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 23.00
+                        const taxRate = item.taxRate !== undefined && Number(item.taxRate) > 0 ? Number(item.taxRate) : 23.00
+                        const hasPurchaseTax = item.hasPurchaseTax !== false
                         const costNet = Number(item.lastCostPrice || 0)
-                        const costTax = Number(((costNet * taxRate) / 100).toFixed(2))
+                        const costTax = hasPurchaseTax ? Number(((costNet * taxRate) / 100).toFixed(2)) : 0
                         const costGross = Number((costNet + costTax).toFixed(2))
 
                         const supplyNet = Number(item.supplyPrice || 0)
@@ -895,7 +896,11 @@ export default function StoreSupplyOrdersView({
                                 {formatCurrency(costNet)}
                               </div>
                               <div className="text-[10px] text-purple-600/80 dark:text-purple-400 font-medium">
-                                {formatCurrency(costGross)} c/ IVA
+                                {hasPurchaseTax ? (
+                                  `${formatCurrency(costGross)} c/ IVA`
+                                ) : (
+                                  <span className="text-zinc-500 dark:text-zinc-400 font-normal">Sem IVA (Compra)</span>
+                                )}
                               </div>
                             </td>
 
@@ -915,17 +920,15 @@ export default function StoreSupplyOrdersView({
                             <td className="py-3.5 px-4">
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold ${
-                                  taxRate === 0
-                                    ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200'
-                                    : taxRate === 6
+                                  taxRate === 6
                                     ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300'
                                     : taxRate === 13
                                     ? 'bg-blue-100 text-blue-900 dark:bg-blue-950/60 dark:text-blue-300'
                                     : 'bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300'
                                 }`}
-                                title={taxRate === 0 ? 'Isento de IVA (0%)' : `IVA de ${taxRate}% sobre ${formatCurrency(supplyNet)} = ${formatCurrency(supplyTax)}`}
+                                title={`IVA de ${taxRate}% sobre ${formatCurrency(supplyNet)} = ${formatCurrency(supplyTax)}`}
                               >
-                                {taxRate === 0 ? '0% (Sem IVA)' : `+${taxRate}% (${formatCurrency(supplyTax)})`}
+                                {`+${taxRate}% (${formatCurrency(supplyTax)})`}
                               </span>
                             </td>
 
@@ -966,6 +969,7 @@ export default function StoreSupplyOrdersView({
                                       supplyPrice: item.supplyPrice,
                                       centralStock: item.centralStock,
                                       lastCostPrice: item.lastCostPrice,
+                                      hasPurchaseTax: item.hasPurchaseTax !== false,
                                       taxRate: item.taxRate !== undefined ? Number(item.taxRate) : 23,
                                       netWeightKg: item.netWeightKg !== undefined ? Number(item.netWeightKg) : undefined,
                                       pricePerKg: item.pricePerKg !== undefined ? Number(item.pricePerKg) : undefined,

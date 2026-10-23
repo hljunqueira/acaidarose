@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
         Number(body.startNumber),
         Number(body.endNumber),
         body.assignedStaffId,
-        body.assignedStaffName
+        body.assignedStaffName,
+        body.type || 'MESA'
       )
       return NextResponse.json({ tables: created }, { status: 201 })
     }

@@ -25,6 +25,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
 
   const [tables, setTables] = useState<RestaurantTable[]>([])
   const [loading, setLoading] = useState(true)
+  const [tableFilter, setTableFilter] = useState<'ALL' | 'MESA' | 'ESPLANADA'>('ALL')
 
   // Dialogs
   const [addEditOpen, setAddEditOpen] = useState(false)
@@ -44,7 +45,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
       const dataTables = await resTables.json()
       if (dataTables.tables) setTables(dataTables.tables)
     } catch {
-      toast.error('Erro ao carregar mesas de esplanada')
+      toast.error('Erro ao carregar mesas e esplanadas')
     } finally {
       setLoading(false)
     }
@@ -86,10 +87,11 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
   const handleConfirmDeleteTable = async () => {
     if (!tableToDelete) return
     setDeleteLoading(true)
+    const typeLabel = tableToDelete.type === 'ESPLANADA' ? 'Esplanada' : 'Mesa'
     try {
       const res = await fetch(`/api/tables/${tableToDelete.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Falha ao eliminar mesa')
-      toast.success(`Esplanada ${tableToDelete.number} eliminada com sucesso!`)
+      if (!res.ok) throw new Error('Falha ao eliminar')
+      toast.success(`${typeLabel} ${tableToDelete.number} eliminada com sucesso!`)
       setTableToDelete(null)
       fetchData()
     } catch (err: any) {
@@ -103,8 +105,8 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
     setDeleteAllLoading(true)
     try {
       const res = await fetch(`/api/tables?tenantId=${encodeURIComponent(tenantId)}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Falha ao eliminar todas as mesas de esplanada')
-      toast.success('Todas as mesas de esplanada foram eliminadas com sucesso!')
+      if (!res.ok) throw new Error('Falha ao eliminar todas as mesas')
+      toast.success('Todas as mesas e esplanadas foram eliminadas com sucesso!')
       setDeleteAllOpen(false)
       fetchData()
     } catch (err: any) {
@@ -114,10 +116,18 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
     }
   }
 
+  const mesasCount = tables.filter((t) => t.type !== 'ESPLANADA').length
+  const esplanadasCount = tables.filter((t) => t.type === 'ESPLANADA').length
+  const filteredTables = tables.filter((t) => {
+    if (tableFilter === 'MESA') return t.type !== 'ESPLANADA'
+    if (tableFilter === 'ESPLANADA') return t.type === 'ESPLANADA'
+    return true
+  })
+
   return (
     <div className="space-y-4">
-      {/* Abas Radix UI: Mesas de Esplanada vs QR Code do Balcão */}
-      <Tabs defaultValue="esplanada" className="w-full space-y-4">
+      {/* Abas Radix UI: Mesas & Esplanadas vs QR Code do Balcão */}
+      <Tabs defaultValue="mesas" className="w-full space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-purple-100 dark:border-white/10">
           <div>
             <div className="flex items-center gap-2">
@@ -131,16 +141,16 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
               )}
             </div>
             <p className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
-              Configure as mesas de esplanada e o QR Code de autoatendimento no balcão da unidade.
+              Configure as mesas de salão (internas), esplanadas (rua/calçada) e o QR Code de autoatendimento no balcão da unidade.
             </p>
           </div>
 
           <TabsList className="bg-purple-100/70 dark:bg-white/10 p-1 rounded-2xl h-10 border border-purple-200 dark:border-white/10 self-start sm:self-auto">
             <TabsTrigger
-              value="esplanada"
+              value="mesas"
               className="rounded-xl px-3.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-purple-900 data-[state=active]:text-purple-950 dark:data-[state=active]:text-white shadow-xs cursor-pointer"
             >
-              Mesas de Esplanada ({tables.length})
+              Mesas & Esplanadas ({tables.length})
             </TabsTrigger>
             <TabsTrigger
               value="balcao"
@@ -151,11 +161,44 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
           </TabsList>
         </div>
 
-        {/* ABA 1: MESAS DE ESPLANADA */}
-        <TabsContent value="esplanada" className="space-y-4 m-0 focus-visible:outline-none">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="text-xs font-bold text-purple-900 dark:text-purple-200">
-              {tables.length} {tables.length === 1 ? 'mesa de esplanada ativa' : 'mesas de esplanada ativas'}
+        {/* ABA 1: MESAS & ESPLANADAS */}
+        <TabsContent value="mesas" className="space-y-4 m-0 focus-visible:outline-none">
+          {/* Barra de Filtro Rápido e Botões de Ação */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 p-1 bg-purple-50 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setTableFilter('ALL')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  tableFilter === 'ALL'
+                    ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                    : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+                }`}
+              >
+                Todas ({tables.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTableFilter('MESA')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  tableFilter === 'MESA'
+                    ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                    : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+                }`}
+              >
+                Mesas Salão ({mesasCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTableFilter('ESPLANADA')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  tableFilter === 'ESPLANADA'
+                    ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
+                    : 'text-purple-900 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+                }`}
+              >
+                Esplanadas Rua ({esplanadasCount})
+              </button>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -186,7 +229,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
                     onClick={handleOpenAdd}
                     className="h-9 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 dark:hover:from-pink-500 dark:hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
                   >
-                    Nova Mesa de Esplanada
+                    + Nova Mesa ou Esplanada
                   </Button>
                 </>
               )}
@@ -199,7 +242,8 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
               <table className="w-full text-left text-xs">
                 <thead className="bg-purple-50/70 dark:bg-white/5 border-b border-purple-100 dark:border-white/10 text-purple-950 dark:text-purple-200 font-black uppercase text-[10px] tracking-wider">
                   <tr>
-                    <th className="py-3.5 px-4">Esplanada</th>
+                    <th className="py-3.5 px-4">Identificação</th>
+                    <th className="py-3.5 px-4">Ambiente</th>
                     <th className="py-3.5 px-4">Apelido / Posição</th>
                     <th className="py-3.5 px-4">Hash do QR Code</th>
                     <th className="py-3.5 px-4">Situação</th>
@@ -210,81 +254,98 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
                 <tbody className="divide-y divide-purple-100 dark:divide-white/10">
                   {loading ? (
                     <tr>
-                      <td colSpan={isMaster ? 6 : 5} className="py-12 text-center text-purple-700 dark:text-purple-300/60 font-bold">
-                        A carregar mesas de esplanada...
+                      <td colSpan={isMaster ? 7 : 6} className="py-12 text-center text-purple-700 dark:text-purple-300/60 font-bold">
+                        A carregar mesas e esplanadas...
                       </td>
                     </tr>
-                  ) : tables.length === 0 ? (
+                  ) : filteredTables.length === 0 ? (
                     <tr>
-                      <td colSpan={isMaster ? 6 : 5} className="py-12 text-center text-purple-700/70 dark:text-purple-300/60">
-                        Nenhuma mesa de esplanada registada nesta unidade.
+                      <td colSpan={isMaster ? 7 : 6} className="py-12 text-center text-purple-700/70 dark:text-purple-300/60">
+                        Nenhuma mesa ou esplanada encontrada nesta unidade com o filtro selecionado.
                       </td>
                     </tr>
                   ) : (
-                    tables.map((t) => (
-                      <tr
-                        key={t.id}
-                        className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors"
-                      >
-                        <td className="py-3.5 px-4 font-mono font-black text-sm text-purple-800 dark:text-pink-300">
-                          Esplanada {t.number.toString().padStart(2, '0')}
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
-                          {t.nickname || `Esplanada ${t.number.toString().padStart(2, '0')}`}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <button
-                            type="button"
-                            onClick={() => handleCopyTableHash(t.code || `tb${t.number}`)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-150 dark:border-white/10 font-mono text-[11px] font-bold text-purple-900 dark:text-purple-200 transition-colors cursor-pointer"
-                            title="Clique para copiar a Hash desta mesa"
-                          >
-                            <span>{t.code || `tb${t.number}`}</span>
-                            <Copy className="h-3 w-3 opacity-60" />
-                          </button>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <Badge
-                            className={`text-[10px] py-0.5 px-2.5 font-bold ${
-                              t.status === 'AVAILABLE'
-                                ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
-                                : 'bg-pink-100 dark:bg-pink-500/20 text-pink-800 dark:text-pink-300 border border-pink-200 dark:border-pink-500/30'
-                            }`}
-                          >
-                            {t.status === 'AVAILABLE' ? 'Disponível / Livre' : 'Em Atendimento'}
-                          </Badge>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenSingleQR(t)}
-                            className="inline-flex items-center gap-1 text-purple-700 dark:text-pink-400 hover:text-purple-900 dark:hover:text-pink-300 font-bold text-xs underline underline-offset-2 cursor-pointer"
-                          >
-                            <span>Ver / Imprimir Placa</span>
-                          </button>
-                        </td>
-                        {isMaster && (
-                          <td className="py-3.5 px-4 text-right space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenEdit(t)}
-                              className="text-xs text-purple-800 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 font-bold h-7 px-2.5 rounded-lg cursor-pointer"
-                            >
-                              Editar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteTable(t)}
-                              className="text-xs text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 hover:bg-pink-50 dark:hover:bg-pink-950/30 font-bold h-7 px-2.5 rounded-lg cursor-pointer"
-                            >
-                              Eliminar
-                            </Button>
+                    filteredTables.map((t) => {
+                      const isOutdoor = t.type === 'ESPLANADA'
+                      const typeLabel = isOutdoor ? 'Esplanada' : 'Mesa'
+                      const formattedNum = t.number.toString().padStart(2, '0')
+
+                      return (
+                        <tr
+                          key={t.id}
+                          className="hover:bg-purple-50/50 dark:hover:bg-white/5 transition-colors"
+                        >
+                          <td className="py-3.5 px-4 font-mono font-black text-sm text-purple-950 dark:text-white">
+                            {typeLabel} {formattedNum}
                           </td>
-                        )}
-                      </tr>
-                    ))
+                          <td className="py-3.5 px-4">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold ${
+                                isOutdoor
+                                  ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300'
+                                  : 'bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300'
+                              }`}
+                            >
+                              {isOutdoor ? 'Rua / Calçada' : 'Salão / Interna'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-purple-950 dark:text-white">
+                            {t.nickname || `${typeLabel} ${formattedNum}`}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyTableHash(t.code || `tb${t.number}`)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-150 dark:border-white/10 font-mono text-[11px] font-bold text-purple-900 dark:text-purple-200 transition-colors cursor-pointer"
+                              title="Clique para copiar a Hash desta mesa"
+                            >
+                              <span>{t.code || `tb${t.number}`}</span>
+                              <Copy className="h-3 w-3 opacity-60" />
+                            </button>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <Badge
+                              className={`text-[10px] py-0.5 px-2.5 font-bold ${
+                                t.status === 'AVAILABLE'
+                                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
+                                  : 'bg-pink-100 dark:bg-pink-500/20 text-pink-800 dark:text-pink-300 border border-pink-200 dark:border-pink-500/30'
+                              }`}
+                            >
+                              {t.status === 'AVAILABLE' ? 'Disponível / Livre' : 'Em Atendimento'}
+                            </Badge>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenSingleQR(t)}
+                              className="inline-flex items-center gap-1 text-purple-700 dark:text-pink-400 hover:text-purple-900 dark:hover:text-pink-300 font-bold text-xs underline underline-offset-2 cursor-pointer"
+                            >
+                              <span>Ver / Imprimir Placa</span>
+                            </button>
+                          </td>
+                          {isMaster && (
+                            <td className="py-3.5 px-4 text-right space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenEdit(t)}
+                                className="text-xs text-purple-800 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 font-bold h-7 px-2.5 rounded-lg cursor-pointer"
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteTable(t)}
+                                className="text-xs text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 hover:bg-pink-50 dark:hover:bg-pink-950/30 font-bold h-7 px-2.5 rounded-lg cursor-pointer"
+                              >
+                                Eliminar
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>
@@ -307,7 +368,7 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
       />
 
       <BatchTablesQRPrintDialog
-        tables={tables}
+        tables={filteredTables}
         open={batchQROpen}
         onOpenChange={setBatchQROpen}
       />
@@ -327,8 +388,8 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
             open={Boolean(tableToDelete)}
             onOpenChange={(open) => !open && setTableToDelete(null)}
             title="Eliminar Mesa"
-            description={`Tem a certeza que deseja eliminar a Mesa ${tableToDelete?.number}? Esta ação removerá a mesa do salão.`}
-            confirmLabel="Eliminar Mesa"
+            description={`Tem a certeza que deseja eliminar a ${tableToDelete?.type === 'ESPLANADA' ? 'Esplanada' : 'Mesa'} ${tableToDelete?.number}? Esta ação removerá a unidade do salão.`}
+            confirmLabel="Eliminar"
             cancelLabel="Cancelar"
             variant="destructive"
             loading={deleteLoading}
@@ -339,8 +400,8 @@ export default function TablesManagementView({ tenantId }: TablesManagementViewP
             open={deleteAllOpen}
             onOpenChange={setDeleteAllOpen}
             title="Excluir Todas as Mesas"
-            description="Tem a certeza que deseja eliminar TODAS as mesas desta unidade? Todas as mesas atuais serão removidas do salão."
-            confirmLabel="Excluir Todas as Mesas"
+            description="Tem a certeza que deseja eliminar TODAS as mesas e esplanadas desta unidade? Todas as mesas atuais serão removidas do salão."
+            confirmLabel="Excluir Todas"
             cancelLabel="Cancelar"
             variant="destructive"
             loading={deleteAllLoading}

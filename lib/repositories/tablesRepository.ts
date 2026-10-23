@@ -1,4 +1,4 @@
-import { RestaurantTable, TableStatus, TableOrderItem } from '@/types'
+import { RestaurantTable, TableStatus, TableOrderItem, TableType } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
 import { resolveTenantId } from '@/lib/repositories/tenantsRepository'
@@ -12,6 +12,8 @@ export async function ensureTablesTable() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id UUID NOT NULL,
         table_number INTEGER NOT NULL,
+        table_type VARCHAR(20) DEFAULT 'MESA',
+        nickname VARCHAR(100),
         qr_code_token VARCHAR(255),
         status VARCHAR(50) DEFAULT 'AVAILABLE' NOT NULL,
         current_order_id UUID,
@@ -24,6 +26,8 @@ export async function ensureTablesTable() {
       );
       CREATE INDEX IF NOT EXISTS idx_tables_tenant_id ON tables(tenant_id);
       CREATE INDEX IF NOT EXISTS idx_tables_qr_token ON tables(qr_code_token);
+      ALTER TABLE tables ADD COLUMN IF NOT EXISTS table_type VARCHAR(20) DEFAULT 'MESA';
+      ALTER TABLE tables ADD COLUMN IF NOT EXISTS nickname VARCHAR(100);
     `)
     hasEnsuredTable = true
   } catch (err) {
@@ -42,12 +46,12 @@ export async function getTablesByTenant(tenantId: string): Promise<RestaurantTab
     const isAll = !tenantId || tenantId === 'all' || tenantId === 'ALL'
     const effectiveTenantId = isAll ? 'ALL' : await resolveTenantId(tenantId)
     const sql = isAll
-      ? `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
+      ? `SELECT id, tenant_id, table_number, table_type, nickname, qr_code_token, status, current_order_id, 
                 total_amount, last_activity, activated_at, created_at, updated_at
          FROM tables 
          WHERE deleted_at IS NULL
          ORDER BY table_number ASC`
-      : `SELECT id, tenant_id, table_number, qr_code_token, status, current_order_id, 
+      : `SELECT id, tenant_id, table_number, table_type, nickname, qr_code_token, status, current_order_id, 
                 total_amount, last_activity, activated_at, created_at, updated_at
          FROM tables 
          WHERE tenant_id::text = $1 AND deleted_at IS NULL
@@ -57,19 +61,26 @@ export async function getTablesByTenant(tenantId: string): Promise<RestaurantTab
     const res = await query(sql, params)
 
     if (res.rows && res.rows.length > 0) {
-      return res.rows.map((t: any) => ({
-        id: t.id,
-        tenantId: t.tenant_id,
-        number: t.table_number,
-        code: t.qr_code_token || generateTableHash(t.table_number),
-        nickname: `Mesa ${t.table_number.toString().padStart(2, '0')}`,
-        status: (t.status || 'AVAILABLE') as TableStatus,
-        total: Number(t.total_amount) || 0,
-        activatedAt: t.activated_at,
-        items: [],
-        createdAt: t.created_at,
-        updatedAt: t.updated_at,
-      }))
+      return res.rows.map((t: any) => {
+        const tableType = (t.table_type || 'MESA') as TableType
+        const defaultName = tableType === 'ESPLANADA'
+          ? `Esplanada ${t.table_number.toString().padStart(2, '0')}`
+          : `Mesa ${t.table_number.toString().padStart(2, '0')}`
+        return {
+          id: t.id,
+          tenantId: t.tenant_id,
+          number: t.table_number,
+          type: tableType,
+          code: t.qr_code_token || generateTableHash(t.table_number),
+          nickname: t.nickname || defaultName,
+          status: (t.status || 'AVAILABLE') as TableStatus,
+          total: Number(t.total_amount) || 0,
+          activatedAt: t.activated_at,
+          items: [],
+          createdAt: t.created_at,
+          updatedAt: t.updated_at,
+        }
+      })
     }
 
     return []
@@ -91,12 +102,17 @@ export async function getTableById(id: string): Promise<RestaurantTable | null> 
     const res = await query(`SELECT * FROM tables WHERE id::text = $1 AND deleted_at IS NULL LIMIT 1`, [id])
     if (res.rows?.[0]) {
       const t = res.rows[0]
+      const tableType = (t.table_type || 'MESA') as TableType
+      const defaultName = tableType === 'ESPLANADA'
+        ? `Esplanada ${t.table_number.toString().padStart(2, '0')}`
+        : `Mesa ${t.table_number.toString().padStart(2, '0')}`
       return {
         id: t.id,
         tenantId: t.tenant_id,
         number: t.table_number,
+        type: tableType,
         code: t.qr_code_token || generateTableHash(t.table_number),
-        nickname: `Mesa ${t.table_number.toString().padStart(2, '0')}`,
+        nickname: t.nickname || defaultName,
         status: (t.status || 'AVAILABLE') as TableStatus,
         total: Number(t.total_amount) || 0,
         activatedAt: t.activated_at,
@@ -118,12 +134,17 @@ export async function getTableByToken(token: string): Promise<RestaurantTable | 
     )
     if (res.rows?.[0]) {
       const t = res.rows[0]
+      const tableType = (t.table_type || 'MESA') as TableType
+      const defaultName = tableType === 'ESPLANADA'
+        ? `Esplanada ${t.table_number.toString().padStart(2, '0')}`
+        : `Mesa ${t.table_number.toString().padStart(2, '0')}`
       return {
         id: t.id,
         tenantId: t.tenant_id,
         number: t.table_number,
+        type: tableType,
         code: t.qr_code_token,
-        nickname: `Mesa ${t.table_number.toString().padStart(2, '0')}`,
+        nickname: t.nickname || defaultName,
         status: (t.status || 'AVAILABLE') as TableStatus,
         total: Number(t.total_amount) || 0,
         activatedAt: t.activated_at,
@@ -164,9 +185,13 @@ export async function createTable(payload: Partial<RestaurantTable>): Promise<Re
   const id = payload.id || uuidv4()
   const tenantId = payload.tenantId || '11111111-1111-1111-1111-111111111111'
   const tableNumber = Number(payload.number) || 1
+  const tableType = (payload.type || 'MESA') as TableType
   const code = payload.code || generateTableHash(tableNumber)
   const status = payload.status || 'AVAILABLE'
-  const nickname = payload.nickname || `Mesa ${tableNumber.toString().padStart(2, '0')}`
+  const defaultName = tableType === 'ESPLANADA'
+    ? `Esplanada ${tableNumber.toString().padStart(2, '0')}`
+    : `Mesa ${tableNumber.toString().padStart(2, '0')}`
+  const nickname = payload.nickname || defaultName
 
   // 1. Se já existe registro para esse número na loja, reativa ou atualiza
   const existing = await query(
@@ -179,20 +204,23 @@ export async function createTable(payload: Partial<RestaurantTable>): Promise<Re
     const updateRes = await query(
       `UPDATE tables 
        SET qr_code_token = COALESCE(NULLIF(qr_code_token, ''), $2),
-           status = $3,
+           table_type = $3,
+           nickname = $4,
+           status = $5,
            deleted_at = NULL,
            updated_at = timezone('utc'::text, now())
        WHERE id::text = $1
        RETURNING *`,
-      [existingId, code, status]
+      [existingId, code, tableType, nickname, status]
     )
     const t = updateRes.rows[0]
     return {
       id: t.id,
       tenantId: t.tenant_id,
       number: t.table_number,
+      type: (t.table_type || 'MESA') as TableType,
       code: t.qr_code_token,
-      nickname,
+      nickname: t.nickname || defaultName,
       status: t.status,
       total: 0,
       items: [],
@@ -202,18 +230,19 @@ export async function createTable(payload: Partial<RestaurantTable>): Promise<Re
 
   // 2. Insere nova mesa física real com UUID e hash
   const res = await query(
-    `INSERT INTO tables (id, tenant_id, table_number, qr_code_token, status)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO tables (id, tenant_id, table_number, table_type, nickname, qr_code_token, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [id, tenantId, tableNumber, code, status]
+    [id, tenantId, tableNumber, tableType, nickname, code, status]
   )
   const t = res.rows[0]
   return {
     id: t.id,
     tenantId: t.tenant_id,
     number: t.table_number,
+    type: (t.table_type || 'MESA') as TableType,
     code: t.qr_code_token,
-    nickname,
+    nickname: t.nickname || defaultName,
     status: t.status,
     total: 0,
     items: [],
@@ -226,7 +255,8 @@ export async function createBatchTables(
   startNumber: number,
   endNumber: number,
   assignedStaffId?: string,
-  assignedStaffName?: string
+  assignedStaffName?: string,
+  type: TableType = 'MESA'
 ): Promise<RestaurantTable[]> {
   await ensureTablesTable()
   const created: RestaurantTable[] = []
@@ -236,6 +266,7 @@ export async function createBatchTables(
     const table = await createTable({
       tenantId,
       number: num,
+      type,
       code: generateTableHash(num),
       status: 'AVAILABLE',
     })
@@ -250,6 +281,8 @@ export async function updateTable(id: string, payload: Partial<RestaurantTable>)
   const code = payload.code || (tableNumber ? generateTableHash(tableNumber) : null)
   const status = payload.status || null
   const totalAmount = payload.total !== undefined ? payload.total : null
+  const tableType = payload.type || null
+  const nickname = payload.nickname !== undefined ? payload.nickname : null
 
   const res = await query(
     `UPDATE tables 
@@ -257,10 +290,12 @@ export async function updateTable(id: string, payload: Partial<RestaurantTable>)
          qr_code_token = COALESCE($3, qr_code_token),
          status = COALESCE($4, status),
          total_amount = COALESCE($5, total_amount),
+         table_type = COALESCE($6, table_type),
+         nickname = COALESCE($7, nickname),
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING *`,
-    [id, tableNumber, code, status, totalAmount]
+    [id, tableNumber, code, status, totalAmount, tableType, nickname]
   )
 
   if (res.rows?.[0]) return getTableById(id)

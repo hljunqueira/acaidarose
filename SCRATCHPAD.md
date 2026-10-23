@@ -1,5 +1,30 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Correção no Modal de Personalização do Produto: Botão Diminuir (-) de Açaí e Bases [CONCLUÍDO & VALIDADO]**:
+  - **Sintoma Reportado (Print com seta vermelha no - do Açaí Tradicional)**: O cliente/operador não conseguia diminuir a quantidade do Açaí Tradicional de 2 para 1 no modal "Personalize o seu Copo 250gr".
+  - **Causa Raiz**: O handler `updateDynamicOptionQty` continha a trava `if (isAcai && delta < 0) return toast.info(...)`, bloqueando qualquer clique em `-` no Açaí mesmo quando a quantidade era superior a 1 (`currentQty: 2`). Além disso, um `useEffect` forçava a reposição de 1 caso o usuário tentasse zerar para escolher 2 cremes sem açaí.
+  - **Correções Aplicadas**:
+    1. Removida a trava `if (isAcai && delta < 0)` em `CustomerProductDetail.tsx`. Agora o cliente pode diminuir livremente a quantidade (ex: de 2 para 1, ou de 1 para 0 se for montar com 2 cremes).
+    2. Removidas as travas em `toggleDynamicOptionSingle` e `toggleBase`.
+    3. Inicialização no `useState` pré-selecionando 1 Açaí Tradicional apenas 1x na abertura sem forçar em loop de `useEffect`.
+    4. Cálculo de excedentes além de `maxQty` (2 bases inclusas) simplificado conforme regra canônica do `AGENTS.md`: qualquer combinação de até 2 bases inclusas, +2,00 € por base extra a partir da 3ª.
+  - **Validação**: `npx tsc --noEmit` e `npm run build` executados com código 0.
+
+- **Diferenciação Canônica de Mesas vs Esplanada (Imagem 1) [CONCLUÍDO & VALIDADO]**:
+  - Distinção explícita entre **Mesa** (interna, no salão) e **Esplanada** (externa, na rua/calçada).
+  - Tabela `tables` com coluna `table_type VARCHAR(20) DEFAULT 'MESA'`.
+  - Diálogos de criação unitária, criação em lote e edição com seletor `[ Mesa (Salão) ]` vs `[ Esplanada (Rua/Calçada) ]`.
+  - Geração de QR Codes específicos (`MESA XX` vs `ESPLANADA XX`) com identificação clara no cardápio do telemóvel e nos pedidos de cozinha.
+
+- **Segregação de IVA: Custo Fornecedor (com ou sem IVA) vs Venda a Franquias (Sempre c/ IVA) (Imagens 2 e 3) [CONCLUÍDO & VALIDADO]**:
+  - Venda de abastecimento para franquias em Portugal **nunca tem IVA zero** (sempre aplica a alíquota fiscal portuguesa de 6%, 13% ou 23%).
+  - Remoção definitiva da opção `0%` da lista de Classes de IVA de Portugal.
+  - Adicionado toggle específico para compras com fornecedores: `[ Sem IVA (0% na compra) ]` vs `[ Com IVA ]` persistido na coluna `has_purchase_tax`.
+  - Custo de aquisição reflete compra intracomunitária sem IVA sem afetar a venda faturada para as franquias.
+
+- **Ajuste de Estoque: Saída uso diário/semanal (Imagem 4) [CONCLUÍDO & VALIDADO]**:
+  - Adicionada a opção `- Saída uso diário/semanal` no modal de ajuste de saldo (`StockAdjustDialog.tsx`), registrando a dedução direta no saldo e gravando auditoria.
+
 - **Módulo de Suprimentos B2B, Isenção de IVA (0%), Frete Fixo Franquias, Produtos Gráficos, Fornecedores & Certificado QZ Tray [CONCLUÍDO & EM PRODUÇÃO]**:
   - **Solicitações do Usuário Atendidas**:
     1. *Opção Sem IVA / Isento (0%)*: Há produtos em Portugal sem incidência de IVA.

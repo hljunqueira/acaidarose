@@ -31,7 +31,7 @@ export default function StockAdjustDialog({
   item,
   onConfirmAdjust,
 }: StockAdjustDialogProps) {
-  const [adjustType, setAdjustType] = useState<'ENTRY' | 'BREAKAGE' | 'COUNT'>('ENTRY')
+  const [adjustType, setAdjustType] = useState<'ENTRY' | 'BREAKAGE' | 'DAILY_USAGE' | 'COUNT'>('ENTRY')
   const [quantityInput, setQuantityInput] = useState('')
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
@@ -56,6 +56,9 @@ export default function StockAdjustDialog({
   } else if (adjustType === 'BREAKAGE') {
     computedNewQty = Math.max(0, currentQty - inputVal)
     computedDiff = -inputVal
+  } else if (adjustType === 'DAILY_USAGE') {
+    computedNewQty = Math.max(0, currentQty - inputVal)
+    computedDiff = -inputVal
   } else if (adjustType === 'COUNT') {
     computedNewQty = inputVal
     computedDiff = inputVal - currentQty
@@ -70,7 +73,15 @@ export default function StockAdjustDialog({
         itemId: item.id,
         newQuantity: computedNewQty,
         difference: computedDiff,
-        reason: reason || (adjustType === 'ENTRY' ? 'COMPRA_LOCAL_EMERGENCIA' : adjustType === 'BREAKAGE' ? 'QUEBRA_DESCARTE' : 'AJUSTE_INVENTARIO'),
+        reason:
+          reason ||
+          (adjustType === 'ENTRY'
+            ? 'COMPRA_LOCAL_EMERGENCIA'
+            : adjustType === 'BREAKAGE'
+            ? 'QUEBRA_DESCARTE'
+            : adjustType === 'DAILY_USAGE'
+            ? 'USO_DIARIO_SEMANAL'
+            : 'AJUSTE_INVENTARIO'),
       })
       onOpenChange(false)
     } finally {
@@ -97,10 +108,11 @@ export default function StockAdjustDialog({
             <select
               value={adjustType}
               onChange={(e) => setAdjustType(e.target.value as any)}
-              className="w-full h-10 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-[#1f0338] px-3 text-xs font-bold text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+              className="w-full h-10 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-[#1f0338] px-3 text-xs font-bold text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600 cursor-pointer"
             >
               <option value="ENTRY">+ Entrada / Compra Local Emergencial</option>
               <option value="BREAKAGE">- Saída por Quebra / Descarte / Perda</option>
+              <option value="DAILY_USAGE">- Saída uso diário/semanal</option>
               <option value="COUNT">= Correção de Saldo por Contagem Física</option>
             </select>
           </div>
@@ -110,6 +122,7 @@ export default function StockAdjustDialog({
             <Label className="text-xs font-bold text-purple-950 dark:text-white">
               {adjustType === 'ENTRY' && `Quantidade a Adicionar (${item.unit})`}
               {adjustType === 'BREAKAGE' && `Quantidade Descartada / Quebrada (${item.unit})`}
+              {adjustType === 'DAILY_USAGE' && `Quantidade de Saída / Uso Diário ou Semanal (${item.unit})`}
               {adjustType === 'COUNT' && `Nova Quantidade Física Real (${item.unit})`}
             </Label>
             <Input
@@ -128,7 +141,7 @@ export default function StockAdjustDialog({
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-purple-950 dark:text-white">Justificativa / Motivo</Label>
             <Input
-              placeholder="Ex: Compra emergencial Makro, fruta oxidada, conferência..."
+              placeholder="Ex: Uso diário no salão, reposição semanal, quebra, Makro..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs text-purple-950 dark:text-white"

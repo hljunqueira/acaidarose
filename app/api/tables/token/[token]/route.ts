@@ -22,6 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       table: {
         id: table.id,
         number: table.number,
+        type: table.type || 'MESA',
         code: table.code,
         nickname: table.nickname,
         tenantId: table.tenantId || tenant?.id || AVEIRO_HQ_ID,

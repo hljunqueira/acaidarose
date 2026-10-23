@@ -97,8 +97,11 @@ function MenuContent() {
   // Estado dinâmico da mesa e da loja ativa
   const [activeLoja, setActiveLoja] = useState(rawLoja)
   const [currentTableNum, setCurrentTableNum] = useState(paramNumero)
+  const [currentTableType, setCurrentTableType] = useState<string>(
+    paramTipo === 'esplanada' ? 'ESPLANADA' : 'MESA'
+  )
 
-  // Identificação de Balcão vs Esplanada
+  // Identificação de Balcão vs Mesa / Esplanada
   const isBalcao =
     paramTipo === 'balcao' ||
     paramNumero.toLowerCase() === 'balcao' ||
@@ -111,7 +114,7 @@ function MenuContent() {
     if (rawLoja) setActiveLoja(rawLoja)
   }, [rawLoja])
 
-  // Resolução de Mesa e Filial via Token / Hash Criptográfico
+  // Resolução de Mesa/Esplanada e Filial via Token / Hash Criptográfico
   useEffect(() => {
     if (paramToken) {
       fetch(`/api/tables/token/${encodeURIComponent(paramToken)}`)
@@ -121,6 +124,9 @@ function MenuContent() {
             if (data.table.number) {
               const tableNumStr = String(data.table.number).padStart(2, '0')
               setCurrentTableNum(tableNumStr)
+            }
+            if (data.table.type) {
+              setCurrentTableType(data.table.type)
             }
             if (data.table.storeSlug || data.table.tenantId) {
               setActiveLoja(data.table.storeSlug || data.table.tenantId)
@@ -146,9 +152,11 @@ function MenuContent() {
         .then((data) => {
           if (data && Array.isArray(data.tables)) {
             const num = Number(currentTableNum)
-            const exists = data.tables.some((t: any) => Number(t.number) === num || Number(t.tableNumber) === num)
-            if (!exists) {
-              console.warn(`[Menu] Esplanada ${currentTableNum} não registada na loja ${activeLoja}. Redirecionando para Catálogo Digital.`)
+            const matched = data.tables.find((t: any) => Number(t.number) === num || Number(t.tableNumber) === num)
+            if (matched) {
+              if (matched.type) setCurrentTableType(matched.type)
+            } else {
+              console.warn(`[Menu] Mesa/Esplanada ${currentTableNum} não registada na loja ${activeLoja}. Redirecionando para Catálogo Digital.`)
               setCurrentTableNum('')
             }
           }
@@ -181,10 +189,12 @@ function MenuContent() {
   const [waiterModalOpen, setWaiterModalOpen] = useState(false)
   const [switchTableModalOpen, setSwitchTableModalOpen] = useState(false)
 
+  const isOutdoor = currentTableType === 'ESPLANADA' || paramTipo === 'esplanada'
+  const tablePrefix = isOutdoor ? 'Esplanada' : 'Mesa'
   const tableLabel = isBalcao
     ? 'Balcão'
     : isTable
-    ? `Esplanada ${currentTableNum}`
+    ? `${tablePrefix} ${currentTableNum}`
     : 'Catálogo Digital'
   const cartTotal = cart.reduce((acc, item) => acc + (Number(item.lineTotal) || 0), 0)
 
@@ -330,7 +340,7 @@ function MenuContent() {
         <div className="bg-purple-100 text-purple-950 dark:bg-purple-950/80 dark:text-purple-200 border-b border-purple-200 dark:border-purple-800/40 px-4 py-2.5 text-center text-xs flex items-center justify-center gap-2">
           <Info className="h-4 w-4 text-pink-500 shrink-0" />
           <span>
-            <strong>Modo Catálogo Digital:</strong> Para fazer pedidos e pagamentos, faça a leitura do QR Code da sua mesa de esplanada ou da placa do balcão.
+            <strong>Modo Catálogo Digital:</strong> Para fazer pedidos e pagamentos, faça a leitura do QR Code da sua mesa/esplanada ou da placa do balcão.
           </span>
         </div>
       )}
@@ -426,6 +436,7 @@ function MenuContent() {
         isTable={isTable}
         isBalcao={isBalcao}
         tableNumber={isBalcao ? 'Balcão' : currentTableNum}
+        tableLabel={tableLabel}
         qrConfig={qrConfig}
       />
 

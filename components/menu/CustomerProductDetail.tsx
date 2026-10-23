@@ -66,7 +66,6 @@ export default function CustomerProductDetail({
 
   // Suporte a grupos de opções dinâmicos configurados no produto
   const hasDynamicGroups = !!(container.optionGroups && container.optionGroups.length > 0)
-  const [customSelections, setCustomSelections] = useState<Record<string, Record<string, number>>>({})
 
   const isSomenteCreme =
     (container.name || '').toLowerCase().includes('somente creme') ||
@@ -89,37 +88,26 @@ export default function CustomerProductDetail({
   const [notes, setNotes] = useState('')
   const quantity = 1
 
-  // Garante que o Açaí Tradicional esteja pré-marcado obrigatoriamente se for base fixa
-  React.useEffect(() => {
-    if (isBaseFixed) {
-      if (acaiBase && !selectedBases.some((b) => b.id === acaiBase.id)) {
-        setSelectedBases((prev) => [acaiBase, ...prev.filter((b) => b.id !== acaiBase.id)])
-      }
-      if (hasDynamicGroups) {
-        const basesGroup = (container.optionGroups || []).find(
-          (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme')
-        )
-        if (basesGroup) {
-          const acaiOpt = (basesGroup.options || []).find(
+  // Inicializa seleções dinâmicas pré-marcando o Açaí Tradicional inicialmente apenas 1x
+  const [customSelections, setCustomSelections] = useState<Record<string, Record<string, number>>>(() => {
+    const initial: Record<string, Record<string, number>> = {}
+    if (container.optionGroups) {
+      for (const group of container.optionGroups) {
+        const gId = group.id || group.name
+        initial[gId] = {}
+        const isBaseGroup = gId === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
+        if (isBaseGroup && isBaseFixed) {
+          const acaiOpt = (group.options || []).find(
             (o: any) => (o.name || '').toLowerCase().includes('açaí') || (o.name || '').toLowerCase().includes('acai')
           )
           if (acaiOpt) {
-            setCustomSelections((prev) => {
-              const currentGroup = prev[basesGroup.id] || {}
-              if (currentGroup[acaiOpt.id] === 1) return prev
-              return {
-                ...prev,
-                [basesGroup.id]: {
-                  ...currentGroup,
-                  [acaiOpt.id]: 1,
-                },
-              }
-            })
+            initial[gId][acaiOpt.id] = 1
           }
         }
       }
     }
-  }, [isBaseFixed, acaiBase, hasDynamicGroups, container.optionGroups])
+    return initial
+  })
 
   const weight = container.weightGrams || 500
   const isLargeContainer = 
@@ -205,21 +193,6 @@ export default function CustomerProductDetail({
       const groupTotalCount = Object.values(selections).reduce((a, b) => a + b, 0)
       const isBaseGroup = group.id === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
 
-      if (isBaseGroup && isBaseFixed) {
-        const acaiOpt = (group.options || []).find((o: any) => (o.name || '').toLowerCase().includes('açaí') || (o.name || '').toLowerCase().includes('acai'))
-        let cremesCount = 0
-        for (const [optId, qty] of Object.entries(selections)) {
-          if (!acaiOpt || optId !== acaiOpt.id) {
-            cremesCount += Number(qty) || 0
-          }
-        }
-        const maxFree = Number(container.limiteCremes) || 1
-        if (cremesCount > maxFree && groupAddPrice > 0) {
-          sum += (cremesCount - maxFree) * groupAddPrice
-        }
-        continue
-      }
-
       if (group.priceType === 'Individual') {
         for (const opt of group.options || []) {
           const qty = selections[opt.id] || 0
@@ -246,7 +219,7 @@ export default function CustomerProductDetail({
       }
     }
     return sum
-  }, [hasDynamicGroups, container.optionGroups, customSelections, isBaseFixed, container.limiteCremes])
+  }, [hasDynamicGroups, container.optionGroups, customSelections])
 
   const unitTotal = hasDynamicGroups
     ? +(basePrice + dynamicGroupsPrice).toFixed(2)
@@ -255,16 +228,6 @@ export default function CustomerProductDetail({
 
   // Handlers para grupos dinâmicos
   const updateDynamicOptionQty = (groupId: string, optionId: string, delta: number, group: any) => {
-    const isBaseGroup = group.id === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
-    if (isBaseGroup && isBaseFixed) {
-      const opt = (group.options || []).find((o: any) => o.id === optionId)
-      const isAcai = opt && ((opt.name || '').toLowerCase().includes('açaí') || (opt.name || '').toLowerCase().includes('acai'))
-      if (isAcai && delta < 0) {
-        toast.info('O Açaí Tradicional é a base fixa inclusa deste copo.')
-        return
-      }
-    }
-
     const currentGroupSelections = customSelections[groupId] || {}
     const currentQty = currentGroupSelections[optionId] || 0
     const groupTotalQty = Object.values(currentGroupSelections).reduce((a, b) => a + b, 0)
@@ -291,16 +254,6 @@ export default function CustomerProductDetail({
   }
 
   const toggleDynamicOptionSingle = (groupId: string, optionId: string, group: any) => {
-    const isBaseGroup = group.id === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
-    if (isBaseGroup && isBaseFixed) {
-      const opt = (group.options || []).find((o: any) => o.id === optionId)
-      const isAcai = opt && ((opt.name || '').toLowerCase().includes('açaí') || (opt.name || '').toLowerCase().includes('acai'))
-      if (isAcai) {
-        toast.info('O Açaí Tradicional é a base fixa inclusa deste copo.')
-        return
-      }
-    }
-
     const currentGroupSelections = customSelections[groupId] || {}
     const isSelected = (currentGroupSelections[optionId] || 0) > 0
     const groupTotalQty = Object.values(currentGroupSelections).reduce((a, b) => a + b, 0)
@@ -330,14 +283,8 @@ export default function CustomerProductDetail({
   }
 
   const toggleBase = (base: ProductBase) => {
-    const isAcai = (base.name || '').toLowerCase().includes('açaí') || (base.name || '').toLowerCase().includes('acai')
-    if (isBaseFixed && isAcai) {
-      toast.info('O Açaí Tradicional é a base fixa inclusa deste copo.')
-      return
-    }
-
     if (selectedBases.some((b) => b.id === base.id)) {
-      if (selectedBases.length === 1 && !isBaseFixed) {
+      if (selectedBases.length === 1) {
         toast.info('Selecione pelo menos 1 base para o seu pedido')
         return
       }

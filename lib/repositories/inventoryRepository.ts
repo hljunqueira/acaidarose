@@ -21,6 +21,7 @@ export interface InventoryItemRow {
   supplyPriceWithTax?: number
   lastCostPriceWithTax?: number
   taxRate?: number
+  hasPurchaseTax?: boolean
   netWeightKg?: number
   pricePerKg?: number
   currentQuantity: number
@@ -40,6 +41,7 @@ export interface MasterInventoryItem {
   supplyPriceWithTax?: number
   lastCostPriceWithTax?: number
   taxRate?: number
+  hasPurchaseTax?: boolean
   netWeightKg?: number
   pricePerKg?: number
   centralStock: number
@@ -203,6 +205,7 @@ export async function getAllMasterItems(): Promise<MasterInventoryItem[]> {
               central_stock_quantity as "centralStock",
               last_cost_price as "lastCostPrice",
               tax_rate as "taxRate",
+              has_purchase_tax as "hasPurchaseTax",
               net_weight_kg as "netWeightKg",
               price_per_kg as "pricePerKg",
               is_critical_checklist as "isCriticalChecklist",
@@ -214,9 +217,12 @@ export async function getAllMasterItems(): Promise<MasterInventoryItem[]> {
       return res.rows.map((r) => {
         const supplyPrice = Number(r.supplyPrice) || 0
         const lastCostPrice = Number(r.lastCostPrice) || 0
-        const taxRate = r.taxRate !== null && r.taxRate !== undefined ? Number(r.taxRate) : 23.00
+        const taxRate = r.taxRate !== null && r.taxRate !== undefined && Number(r.taxRate) > 0 ? Number(r.taxRate) : 23.00
+        const hasPurchaseTax = r.hasPurchaseTax !== false
         const supplyPriceWithTax = Number((supplyPrice * (1 + taxRate / 100)).toFixed(2))
-        const lastCostPriceWithTax = Number((lastCostPrice * (1 + taxRate / 100)).toFixed(2))
+        const lastCostPriceWithTax = hasPurchaseTax
+          ? Number((lastCostPrice * (1 + taxRate / 100)).toFixed(2))
+          : lastCostPrice
 
         return {
           id: r.id,
@@ -231,6 +237,7 @@ export async function getAllMasterItems(): Promise<MasterInventoryItem[]> {
           lastCostPrice,
           lastCostPriceWithTax,
           taxRate,
+          hasPurchaseTax,
           netWeightKg: r.netWeightKg !== null && r.netWeightKg !== undefined ? Number(r.netWeightKg) : undefined,
           pricePerKg: r.pricePerKg !== null && r.pricePerKg !== undefined ? Number(r.pricePerKg) : undefined,
           isCriticalChecklist: Boolean(r.isCriticalChecklist),
@@ -257,25 +264,28 @@ export async function createMasterItem(data: {
   centralStock?: number
   lastCostPrice?: number
   taxRate?: number
+  hasPurchaseTax?: boolean
   netWeightKg?: number
   pricePerKg?: number
   isCriticalChecklist?: boolean
 }): Promise<MasterInventoryItem> {
   const id = uuidv4()
-  const taxRate = data.taxRate !== undefined ? data.taxRate : 23.00
+  const taxRate = data.taxRate !== undefined && Number(data.taxRate) > 0 ? Number(data.taxRate) : 23.00
+  const hasPurchaseTax = data.hasPurchaseTax ?? true
   const res = await query(
     `INSERT INTO inventory_items (
        id, name, unit, category, supply_code, market_benchmark_price, 
        franchise_supply_price, central_stock_quantity, last_cost_price, 
-       tax_rate, net_weight_kg, price_per_kg, is_critical_checklist
+       tax_rate, has_purchase_tax, net_weight_kg, price_per_kg, is_critical_checklist
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      RETURNING id, name, unit, category, supply_code as "supplyCode",
                market_benchmark_price as "marketPrice", 
                franchise_supply_price as "supplyPrice", 
                central_stock_quantity as "centralStock",
                last_cost_price as "lastCostPrice",
                tax_rate as "taxRate",
+               has_purchase_tax as "hasPurchaseTax",
                net_weight_kg as "netWeightKg",
                price_per_kg as "pricePerKg",
                is_critical_checklist as "isCriticalChecklist",
@@ -291,6 +301,7 @@ export async function createMasterItem(data: {
       data.centralStock ?? 0,
       data.lastCostPrice ?? 0,
       taxRate,
+      hasPurchaseTax,
       data.netWeightKg ?? null,
       data.pricePerKg ?? null,
       data.isCriticalChecklist ?? false,
@@ -300,6 +311,7 @@ export async function createMasterItem(data: {
   const supplyPrice = Number(r.supplyPrice) || 0
   const lastCostPrice = Number(r.lastCostPrice) || 0
   const savedTaxRate = Number(r.taxRate) || 23.00
+  const savedHasPurchaseTax = r.hasPurchaseTax !== false
 
   return {
     id: r.id,
@@ -312,8 +324,11 @@ export async function createMasterItem(data: {
     supplyPriceWithTax: Number((supplyPrice * (1 + savedTaxRate / 100)).toFixed(2)),
     centralStock: Number(r.centralStock) || 0,
     lastCostPrice,
-    lastCostPriceWithTax: Number((lastCostPrice * (1 + savedTaxRate / 100)).toFixed(2)),
+    lastCostPriceWithTax: savedHasPurchaseTax
+      ? Number((lastCostPrice * (1 + savedTaxRate / 100)).toFixed(2))
+      : lastCostPrice,
     taxRate: savedTaxRate,
+    hasPurchaseTax: savedHasPurchaseTax,
     netWeightKg: r.netWeightKg !== null && r.netWeightKg !== undefined ? Number(r.netWeightKg) : undefined,
     pricePerKg: r.pricePerKg !== null && r.pricePerKg !== undefined ? Number(r.pricePerKg) : undefined,
     isCriticalChecklist: Boolean(r.isCriticalChecklist),
@@ -336,11 +351,13 @@ export async function updateMasterItem(
     centralStock?: number
     lastCostPrice?: number
     taxRate?: number
+    hasPurchaseTax?: boolean
     netWeightKg?: number
     pricePerKg?: number
     isCriticalChecklist?: boolean
   }>
 ): Promise<MasterInventoryItem | null> {
+  const taxRate = data.taxRate !== undefined ? (Number(data.taxRate) > 0 ? Number(data.taxRate) : 23.00) : null
   const res = await query(
     `UPDATE inventory_items
      SET name = COALESCE($2, name),
@@ -352,9 +369,10 @@ export async function updateMasterItem(
          central_stock_quantity = COALESCE($8, central_stock_quantity),
          last_cost_price = COALESCE($9, last_cost_price),
          tax_rate = COALESCE($10, tax_rate),
-         net_weight_kg = COALESCE($11, net_weight_kg),
-         price_per_kg = COALESCE($12, price_per_kg),
-         is_critical_checklist = COALESCE($13, is_critical_checklist)
+         has_purchase_tax = COALESCE($11, has_purchase_tax),
+         net_weight_kg = COALESCE($12, net_weight_kg),
+         price_per_kg = COALESCE($13, price_per_kg),
+         is_critical_checklist = COALESCE($14, is_critical_checklist)
      WHERE id = $1
      RETURNING id, name, unit, category, supply_code as "supplyCode",
                market_benchmark_price as "marketPrice", 
@@ -362,6 +380,7 @@ export async function updateMasterItem(
                central_stock_quantity as "centralStock",
                last_cost_price as "lastCostPrice",
                tax_rate as "taxRate",
+               has_purchase_tax as "hasPurchaseTax",
                net_weight_kg as "netWeightKg",
                price_per_kg as "pricePerKg",
                is_critical_checklist as "isCriticalChecklist",
@@ -376,7 +395,8 @@ export async function updateMasterItem(
       data.supplyPrice,
       data.centralStock,
       data.lastCostPrice,
-      data.taxRate,
+      taxRate,
+      data.hasPurchaseTax !== undefined ? data.hasPurchaseTax : null,
       data.netWeightKg,
       data.pricePerKg,
       data.isCriticalChecklist,
@@ -387,6 +407,7 @@ export async function updateMasterItem(
   const supplyPrice = Number(r.supplyPrice) || 0
   const lastCostPrice = Number(r.lastCostPrice) || 0
   const savedTaxRate = Number(r.taxRate) || 23.00
+  const savedHasPurchaseTax = r.hasPurchaseTax !== false
 
   return {
     id: r.id,
@@ -399,8 +420,11 @@ export async function updateMasterItem(
     supplyPriceWithTax: Number((supplyPrice * (1 + savedTaxRate / 100)).toFixed(2)),
     centralStock: Number(r.centralStock) || 0,
     lastCostPrice,
-    lastCostPriceWithTax: Number((lastCostPrice * (1 + savedTaxRate / 100)).toFixed(2)),
+    lastCostPriceWithTax: savedHasPurchaseTax
+      ? Number((lastCostPrice * (1 + savedTaxRate / 100)).toFixed(2))
+      : lastCostPrice,
     taxRate: savedTaxRate,
+    hasPurchaseTax: savedHasPurchaseTax,
     netWeightKg: r.netWeightKg !== null && r.netWeightKg !== undefined ? Number(r.netWeightKg) : undefined,
     pricePerKg: r.pricePerKg !== null && r.pricePerKg !== undefined ? Number(r.pricePerKg) : undefined,
     isCriticalChecklist: Boolean(r.isCriticalChecklist),

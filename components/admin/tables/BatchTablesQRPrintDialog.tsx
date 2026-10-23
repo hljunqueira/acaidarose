@@ -40,7 +40,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
       <html lang="pt">
       <head>
         <meta charset="utf-8" />
-        <title>Placas de Esplanada — Açaí da Rose</title>
+        <title>Placas de Mesas & Esplanadas — Açaí da Rose</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800;900&display=swap" rel="stylesheet">
@@ -155,10 +155,10 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
       <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10">
           <DialogTitle className="text-base font-black text-purple-950 dark:text-white flex items-center gap-2">
-            <span>Folha de Impressão — Placas de Esplanada ({tables.length})</span>
+            <span>Folha de Impressão — Placas de Mesas & Esplanadas ({tables.length})</span>
           </DialogTitle>
           <p className="text-xs text-purple-700/80 dark:text-purple-300/80">
-            Layout em grade A4 otimizado com linhas de corte para tesoura. Cada placa contém QR Code em alta definição e identificação da mesa de esplanada.
+            Layout em grade A4 otimizado com linhas de corte para tesoura. Cada placa contém QR Code em alta definição e identificação correta da mesa de salão ou esplanada.
           </p>
         </DialogHeader>
 
@@ -168,13 +168,15 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-4"
         >
           {tables.map((table) => {
+            const isOutdoor = table.type === 'ESPLANADA'
+            const typeLabel = isOutdoor ? 'ESPLANADA' : 'MESA'
             const storeInfo = getTenant(table.tenantId) || currentTenant
             const lojaSlug = storeInfo?.slug || 'figueira-da-foz'
             const branchLabel = getDisplayStoreLocation(storeInfo, lojaSlug)
             const formattedNum = table.number.toString().padStart(2, '0')
-            const tableUrl = `${baseUrl}/menu?tipo=mesa&numero=${formattedNum}&loja=${lojaSlug}`
+            const tableUrl = `${baseUrl}/menu?tipo=${isOutdoor ? 'esplanada' : 'mesa'}&numero=${formattedNum}&loja=${lojaSlug}&token=${encodeURIComponent(table.code || '')}`
 
-            // Evita duplicar "Esplanada 5" abaixo de "ESPLANADA 05"
+            // Evita duplicar "Esplanada 5" abaixo de "ESPLANADA 05" ou "Mesa 5" abaixo de "MESA 05"
             const isRedundantNickname =
               !table.nickname ||
               /^(mesa|esplanada)\s*\d+$/i.test(table.nickname.trim()) ||
@@ -206,7 +208,7 @@ export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }:
                 </div>
 
                 <div className="table-num text-lg font-black text-purple-950 dark:text-white font-mono tracking-tight">
-                  ESPLANADA {formattedNum}
+                  {typeLabel} {formattedNum}
                 </div>
 
                 {!isRedundantNickname && (

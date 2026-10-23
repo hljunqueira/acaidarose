@@ -42,8 +42,10 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
   const storeInfo = getTenant(effectiveTenantId) || currentTenant
   const lojaSlug = storeInfo?.slug || 'figueira-da-foz'
   const storeTitle = getDisplayStoreLocation(storeInfo, lojaSlug)
+  const isOutdoor = table.type === 'ESPLANADA'
+  const typeTitle = isOutdoor ? 'Esplanada' : 'Mesa'
   const formattedTableNumber = table.number.toString().padStart(2, '0')
-  const tableUrl = `${detectedOrigin}/menu?tipo=mesa&numero=${formattedTableNumber}&loja=${lojaSlug}&token=${encodeURIComponent(table.code || '')}`
+  const tableUrl = `${detectedOrigin}/menu?tipo=${isOutdoor ? 'esplanada' : 'mesa'}&numero=${formattedTableNumber}&loja=${lojaSlug}&token=${encodeURIComponent(table.code || '')}`
 
   const handleCopyLink = async () => {
     try {
@@ -82,10 +84,10 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
 
         const pngFile = canvas.toDataURL('image/png')
         const downloadLink = document.createElement('a')
-        downloadLink.download = `QRCode_Esplanada_${formattedTableNumber}_Acai_da_Rose.png`
+        downloadLink.download = `QRCode_${typeTitle}_${formattedTableNumber}_Acai_da_Rose.png`
         downloadLink.href = pngFile
         downloadLink.click()
-        toast.success(`QR Code da Esplanada ${formattedTableNumber} descarregado com sucesso!`)
+        toast.success(`QR Code da ${typeTitle} ${formattedTableNumber} descarregado com sucesso!`)
       }
 
       img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
@@ -114,7 +116,7 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
       <html lang="pt">
       <head>
         <meta charset="utf-8" />
-        <title>Placa Esplanada ${formattedTableNumber} — Açaí da Rose</title>
+        <title>Placa ${typeTitle} ${formattedTableNumber} — Açaí da Rose</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800;900&display=swap" rel="stylesheet">
@@ -216,10 +218,10 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
       <DialogContent className="w-[95vw] sm:w-full max-w-lg p-5 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-center">
           <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
-            Placa de Esplanada — Esplanada {formattedTableNumber}
+            Placa de {typeTitle} — {typeTitle} {formattedTableNumber}
           </DialogTitle>
           <p className="text-xs text-purple-700/80 dark:text-purple-200/70">
-            {table.nickname || `Esplanada ${formattedTableNumber}`} · {storeTitle}
+            {table.nickname || `${typeTitle} ${formattedTableNumber}`} · {storeTitle}
           </p>
         </DialogHeader>
 
@@ -251,7 +253,7 @@ export default function SingleTableQRDialog({ table, tenantId, open, onOpenChang
             </div>
 
             <div className="text-xl font-black text-purple-950 dark:text-white tracking-tight font-mono">
-              ESPLANADA {formattedTableNumber}
+              {typeTitle.toUpperCase()} {formattedTableNumber}
             </div>
             <p className="text-[10px] text-purple-700/80 dark:text-purple-200/70 font-medium mt-0.5 leading-tight">
               Aponte a câmara do telemóvel para fazer o seu pedido

@@ -26,6 +26,7 @@ export interface InventoryItemFormData {
   centralStock?: number
   lastCostPrice?: number
   taxRate?: number
+  hasPurchaseTax?: boolean
   netWeightKg?: number
   pricePerKg?: number
   minAlertQuantity?: number
@@ -58,6 +59,7 @@ export default function InventoryItemDialog({
   const [centralStock, setCentralStock] = useState(0)
   const [lastCostPrice, setLastCostPrice] = useState(0)
   const [taxRate, setTaxRate] = useState(23)
+  const [hasPurchaseTax, setHasPurchaseTax] = useState(true)
   const [netWeightKg, setNetWeightKg] = useState<number | ''>('')
   const [pricePerKg, setPricePerKg] = useState<number | ''>('')
   const [minAlertQuantity, setMinAlertQuantity] = useState(2)
@@ -100,9 +102,9 @@ export default function InventoryItemDialog({
       setUnit(item.unit || 'Baldes')
       setMarketPrice(item.marketPrice || 0)
       setSupplyPrice(item.supplyPrice || 0)
-      setCentralStock(item.centralStock || 0)
-      setLastCostPrice(item.lastCostPrice || 0)
-      setTaxRate(item.taxRate !== undefined ? Number(item.taxRate) : 23)
+      const itemTax = item.taxRate !== undefined && Number(item.taxRate) > 0 ? Number(item.taxRate) : 23
+      setTaxRate(itemTax)
+      setHasPurchaseTax(item.hasPurchaseTax !== undefined ? item.hasPurchaseTax : true)
       setNetWeightKg(item.netWeightKg !== undefined ? Number(item.netWeightKg) : '')
       setPricePerKg(item.pricePerKg !== undefined ? Number(item.pricePerKg) : '')
       setMinAlertQuantity(item.minAlertQuantity ?? 2)
@@ -117,6 +119,7 @@ export default function InventoryItemDialog({
       setCentralStock(0)
       setLastCostPrice(0)
       setTaxRate(23)
+      setHasPurchaseTax(true)
       setNetWeightKg('')
       setPricePerKg('')
       setMinAlertQuantity(2)
@@ -132,7 +135,9 @@ export default function InventoryItemDialog({
     }
   }
 
-  const costWithTax = Number((lastCostPrice * (1 + taxRate / 100)).toFixed(2))
+  const costWithTax = hasPurchaseTax
+    ? Number((lastCostPrice * (1 + taxRate / 100)).toFixed(2))
+    : lastCostPrice
   const supplyWithTax = Number((supplyPrice * (1 + taxRate / 100)).toFixed(2))
   const netMargin = Math.max(0, supplyPrice - lastCostPrice)
   const marginPercent = supplyPrice > 0 ? ((netMargin / supplyPrice) * 100).toFixed(1) : '0.0'
@@ -152,7 +157,8 @@ export default function InventoryItemDialog({
         supplyPrice: Number(supplyPrice) || 0,
         centralStock: Number(centralStock) || 0,
         lastCostPrice: Number(lastCostPrice) || 0,
-        taxRate: Number(taxRate) || 23,
+        taxRate: Number(taxRate) > 0 ? Number(taxRate) : 23,
+        hasPurchaseTax,
         netWeightKg: netWeightKg !== '' ? Number(netWeightKg) : undefined,
         pricePerKg: pricePerKg !== '' ? Number(pricePerKg) : undefined,
         minAlertQuantity: Number(minAlertQuantity) || 2,
@@ -292,7 +298,6 @@ export default function InventoryItemDialog({
               <Label className="text-xs font-bold text-purple-950 dark:text-white">Classe de IVA (PT)</Label>
               <div className="flex items-center gap-1">
                 {[
-                  { label: '0%', val: 0, desc: 'Sem IVA / Isento (0%)' },
                   { label: '6%', val: 6, desc: 'Reduzido (Leite, Água)' },
                   { label: '13%', val: 13, desc: 'Intermédio (Prontos)' },
                   { label: '23%', val: 23, desc: 'Normal (B2B)' },
@@ -315,10 +320,10 @@ export default function InventoryItemDialog({
                   <Input
                     type="number"
                     step="0.1"
-                    min="0"
+                    min="1"
                     max="100"
                     value={taxRate}
-                    onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setTaxRate(parseFloat(e.target.value) || 23)}
                     className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-[11px] text-purple-950 dark:text-white font-mono text-center px-1"
                     title="Alíquota de IVA personalizada"
                   />
@@ -331,8 +336,8 @@ export default function InventoryItemDialog({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold text-purple-950 dark:text-white">Custo Fornec. (€ s/ IVA)</Label>
-                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-mono">
-                  {formatCurrency(costWithTax)} c/ IVA
+                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-mono font-bold">
+                  {hasPurchaseTax ? `${formatCurrency(costWithTax)} c/ IVA` : `${formatCurrency(lastCostPrice)} (Sem IVA na compra)`}
                 </span>
               </div>
               <Input
@@ -343,6 +348,32 @@ export default function InventoryItemDialog({
                 onChange={(e) => setLastCostPrice(parseFloat(e.target.value) || 0)}
                 className="h-10 rounded-xl border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs text-purple-950 dark:text-white font-mono"
               />
+              {/* Seletor Com / Sem IVA na compra */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] font-bold text-purple-700/80 dark:text-purple-300/80">Compra:</span>
+                <button
+                  type="button"
+                  onClick={() => setHasPurchaseTax(false)}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
+                    !hasPurchaseTax
+                      ? 'bg-purple-800 text-white border-purple-800 shadow-xs'
+                      : 'bg-purple-50/50 dark:bg-white/5 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                  }`}
+                >
+                  Sem IVA (0% na compra)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHasPurchaseTax(true)}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
+                    hasPurchaseTax
+                      ? 'bg-purple-800 text-white border-purple-800 shadow-xs'
+                      : 'bg-purple-50/50 dark:bg-white/5 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-white/10 hover:bg-purple-100'
+                  }`}
+                >
+                  Com IVA ({taxRate}%)
+                </button>
+              </div>
             </div>
 
             {/* Preço de Venda Franquia Líquido (€ s/ IVA) */}

@@ -42,6 +42,7 @@ interface CustomerCartSheetProps {
   isTable?: boolean
   isBalcao?: boolean
   tableNumber?: string | number
+  tableLabel?: string
   qrConfig?: any
 }
 
@@ -61,6 +62,7 @@ export default function CustomerCartSheet({
   isTable,
   isBalcao,
   tableNumber,
+  tableLabel,
   qrConfig,
 }: CustomerCartSheetProps) {
   const { language } = useLanguageStore()
@@ -275,7 +277,7 @@ export default function CustomerCartSheet({
         notes: isBalcao
           ? `Balcão · ${takeawayLabel} · ${paymentLabel}`
           : isTable
-          ? `Esplanada ${tableNumber} · ${takeawayLabel} · ${paymentLabel}`
+          ? `${tableLabel || `Mesa ${tableNumber}`} · ${takeawayLabel} · ${paymentLabel}`
           : `Balcão · ${takeawayLabel} · ${paymentLabel}`,
       }
 

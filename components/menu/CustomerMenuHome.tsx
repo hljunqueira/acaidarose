@@ -19,6 +19,11 @@ interface CustomerMenuHomeProps {
   onAddToCart?: (item: any) => void
   isTable?: boolean
   isCatalogOnly?: boolean
+  isBalcao?: boolean
+  tableNumber?: string | number
+  tableLabel?: string
+  onOpenCart?: () => void
+  cartCount?: number
 }
 
 export function isProductTimeAvailable(availableHours: any): boolean {
