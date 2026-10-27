@@ -104,6 +104,8 @@ export default function InventoryItemDialog({
       setUnit(item.unit || 'Baldes')
       setMarketPrice(item.marketPrice || 0)
       setSupplyPrice(item.supplyPrice || 0)
+      setCentralStock(item.centralStock !== undefined && item.centralStock !== null ? Number(item.centralStock) : 0)
+      setLastCostPrice(item.lastCostPrice !== undefined && item.lastCostPrice !== null ? Number(item.lastCostPrice) : 0)
       const itemTax = item.taxRate !== undefined && item.taxRate !== null ? Number(item.taxRate) : 23
       setTaxRate(itemTax)
       const itemPurchaseTax = item.purchaseTaxRate !== undefined && item.purchaseTaxRate !== null
