@@ -269,10 +269,10 @@ export function announceTVCall(
       activeAudioElement = null
     }
 
-    // Resolve URL garantindo acesso ao endpoint correto da Vercel quando acessado via domínio legado
+    // Resolve URL garantindo acesso ao endpoint correto da aplicação quando acessado via domínio legado
     const origin = window.location.origin || ''
-    const baseUrl = !origin.includes('localhost') && !origin.includes('vercel.app')
-      ? 'https://acaidarose.vercel.app'
+    const baseUrl = !origin.includes('localhost') && !origin.includes('app.acaidarose.pt')
+      ? 'https://app.acaidarose.pt'
       : ''
     const audioUrl = `${baseUrl}/api/tv/voice?text=${encodeURIComponent(textToSpeak)}&lang=pt-PT&gender=${gender}`
 

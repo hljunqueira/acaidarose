@@ -40,7 +40,8 @@ export async function resolveTenantId(identifier?: string | null): Promise<strin
 
 export async function getTenants(): Promise<Tenant[]> {
   const res = await query(
-    `SELECT id, name, slug, nif, address, city, postal_code, phone, mbway_phone, 
+    `SELECT id, name, slug, company_name, nif, address, city, postal_code, phone, mbway_phone, 
+            wifi_network, wifi_password, opening_hours, about_text, instagram_url, google_maps_url,
             currency, royalty_percentage, marketing_fund_percentage, 
             is_headquarters, active, created_at, updated_at, deleted_at
      FROM tenants 
@@ -52,12 +53,19 @@ export async function getTenants(): Promise<Tenant[]> {
     id: t.id,
     name: t.name,
     slug: t.slug,
+    companyName: t.company_name || null,
     nif: t.nif,
     address: t.address,
     city: t.city,
     postalCode: t.postal_code,
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
+    wifiNetwork: t.wifi_network || null,
+    wifiPassword: t.wifi_password || null,
+    openingHours: t.opening_hours || null,
+    aboutText: t.about_text || null,
+    instagramUrl: t.instagram_url || null,
+    googleMapsUrl: t.google_maps_url || null,
     currency: t.currency || 'EUR',
     royaltyPercentage: Number(t.royalty_percentage) || 0,
     marketingFundPercentage: Number(t.marketing_fund_percentage) || 0,
@@ -89,7 +97,8 @@ export async function getTenantByIdOrSlug(identifier: string): Promise<Tenant | 
   }
 
   const res = await query(
-    `SELECT id, name, slug, nif, address, city, postal_code, phone, mbway_phone, 
+    `SELECT id, name, slug, company_name, nif, address, city, postal_code, phone, mbway_phone, 
+            wifi_network, wifi_password, opening_hours, about_text, instagram_url, google_maps_url,
             currency, royalty_percentage, marketing_fund_percentage, 
             is_headquarters, active, created_at, updated_at, deleted_at
      FROM tenants 
@@ -105,12 +114,19 @@ export async function getTenantByIdOrSlug(identifier: string): Promise<Tenant | 
     id: t.id,
     name: t.name,
     slug: t.slug,
+    companyName: t.company_name || null,
     nif: t.nif,
     address: t.address,
     city: t.city,
     postalCode: t.postal_code,
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
+    wifiNetwork: t.wifi_network || null,
+    wifiPassword: t.wifi_password || null,
+    openingHours: t.opening_hours || null,
+    aboutText: t.about_text || null,
+    instagramUrl: t.instagram_url || null,
+    googleMapsUrl: t.google_maps_url || null,
     currency: t.currency || 'EUR',
     royaltyPercentage: Number(t.royalty_percentage) || 0,
     marketingFundPercentage: Number(t.marketing_fund_percentage) || 0,
@@ -268,30 +284,46 @@ export async function createTenant(payload: Partial<Tenant>): Promise<Tenant> {
 }
 
 export async function updateTenant(id: string, payload: Partial<Tenant>): Promise<Tenant | null> {
+  const openingHoursJson = payload.openingHours ? JSON.stringify(payload.openingHours) : null
+
   const res = await query(
     `UPDATE tenants 
      SET name = COALESCE($2, name),
-         nif = COALESCE($3, nif),
-         address = COALESCE($4, address),
-         city = COALESCE($5, city),
-         postal_code = COALESCE($6, postal_code),
-         phone = COALESCE($7, phone),
-         mbway_phone = COALESCE($8, mbway_phone),
-         active = COALESCE($9, active),
-         royalty_percentage = COALESCE($10, royalty_percentage),
-         marketing_fund_percentage = COALESCE($11, marketing_fund_percentage),
+         company_name = COALESCE($3, company_name),
+         nif = COALESCE($4, nif),
+         address = COALESCE($5, address),
+         city = COALESCE($6, city),
+         postal_code = COALESCE($7, postal_code),
+         phone = COALESCE($8, phone),
+         mbway_phone = COALESCE($9, mbway_phone),
+         wifi_network = COALESCE($10, wifi_network),
+         wifi_password = COALESCE($11, wifi_password),
+         opening_hours = CASE WHEN $12::text IS NOT NULL THEN $12::jsonb ELSE opening_hours END,
+         about_text = COALESCE($13, about_text),
+         instagram_url = COALESCE($14, instagram_url),
+         google_maps_url = COALESCE($15, google_maps_url),
+         active = COALESCE($16, active),
+         royalty_percentage = COALESCE($17, royalty_percentage),
+         marketing_fund_percentage = COALESCE($18, marketing_fund_percentage),
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING *`,
     [
       id,
       payload.name || null,
+      payload.companyName || null,
       payload.nif || null,
       payload.address || null,
       payload.city || null,
       payload.postalCode || null,
       payload.phone || null,
       payload.mbwayPhone || null,
+      payload.wifiNetwork || null,
+      payload.wifiPassword || null,
+      openingHoursJson,
+      payload.aboutText || null,
+      payload.instagramUrl || null,
+      payload.googleMapsUrl || null,
       payload.active,
       payload.royaltyPercentage !== undefined ? payload.royaltyPercentage : null,
       payload.marketingFundPercentage !== undefined ? payload.marketingFundPercentage : null,
@@ -305,18 +337,26 @@ export async function updateTenant(id: string, payload: Partial<Tenant>): Promis
     id: t.id,
     name: t.name,
     slug: t.slug,
+    companyName: t.company_name || null,
     nif: t.nif,
     address: t.address,
     city: t.city,
     postalCode: t.postal_code,
     phone: t.phone,
     mbwayPhone: t.mbway_phone,
-    currency: t.currency,
+    wifiNetwork: t.wifi_network || null,
+    wifiPassword: t.wifi_password || null,
+    openingHours: t.opening_hours || null,
+    aboutText: t.about_text || null,
+    instagramUrl: t.instagram_url || null,
+    googleMapsUrl: t.google_maps_url || null,
+    currency: t.currency || 'EUR',
     royaltyPercentage: Number(t.royalty_percentage) || 0,
     marketingFundPercentage: Number(t.marketing_fund_percentage) || 0,
     isHeadquarters: !!t.is_headquarters,
     active: t.active,
     createdAt: t.created_at,
     updatedAt: t.updated_at,
+    deletedAt: t.deleted_at,
   }
 }

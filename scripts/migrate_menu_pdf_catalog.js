@@ -334,7 +334,8 @@ const NEW_PRODUCTS = [
     weight_grams: 600,
     option_groups: MILKSHAKE_OPTION_GROUPS,
     product_type: 'ITEM',
-    video_poster: '/images/official/milkshake_hero.webp',
+    image_url: '/images/official/milkshake_acai.png',
+    video_poster: '/images/official/milkshake_acai.png',
   },
   {
     id: 'ms-nutella-600',
@@ -349,7 +350,8 @@ const NEW_PRODUCTS = [
     weight_grams: 600,
     option_groups: MILKSHAKE_OPTION_GROUPS,
     product_type: 'ITEM',
-    video_poster: '/images/official/milkshake_hero.webp',
+    image_url: '/images/official/milkshake_acai.png',
+    video_poster: '/images/official/milkshake_acai.png',
   },
   {
     id: 'ms-whey-600',
@@ -364,7 +366,8 @@ const NEW_PRODUCTS = [
     weight_grams: 600,
     option_groups: MILKSHAKE_OPTION_GROUPS,
     product_type: 'ITEM',
-    video_poster: '/images/official/milkshake_hero.webp',
+    image_url: '/images/official/milkshake_acai.png',
+    video_poster: '/images/official/milkshake_acai.png',
   },
 
   // --- SUMOS NATURAIS DE POLPA ---

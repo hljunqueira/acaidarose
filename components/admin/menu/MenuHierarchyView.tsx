@@ -128,17 +128,19 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const fetchCatalog = useCallback(async () => {
     setLoading(true)
     try {
-      const [prodRes, catRes, menuRes] = await Promise.all([
+      const [prodRes, catRes, menuRes, modelsRes] = await Promise.all([
         authFetch(`/api/products?tenantId=${encodeURIComponent(tenantId)}`),
         authFetch(`/api/categories?tenantId=${encodeURIComponent(tenantId)}`),
         authFetch(`/api/menus?tenantId=${encodeURIComponent(tenantId)}`),
+        authFetch(`/api/option-models?tenantId=${encodeURIComponent(tenantId)}`),
       ])
 
+      let freshCatalog: CatalogData = { containers: [], bases: [], toppings: [] }
       if (prodRes.ok) {
         const data = await prodRes.json()
         if (data) {
+          freshCatalog = data
           setCatalog(data)
-          setOptionModels((prev) => (prev.length > 0 ? prev : buildDynamicOptionGroups(data)))
         }
       }
       if (catRes.ok) {
@@ -153,18 +155,27 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           setMainMenus(menuData.menus)
         }
       }
+      if (modelsRes.ok) {
+        const modelsData = await modelsRes.json()
+        if (Array.isArray(modelsData)) {
+          const defaultDynamic = buildDynamicOptionGroups(freshCatalog)
+          const merged = [...modelsData]
+          for (const d of defaultDynamic) {
+            if (!merged.some((m) => m.id === d.id || m.name === d.name)) {
+              merged.push(d)
+            }
+          }
+          setOptionModels(merged)
+        }
+      } else {
+        setOptionModels((prev) => (prev.length > 0 ? prev : buildDynamicOptionGroups(freshCatalog)))
+      }
     } catch {
       toast.error('Erro ao carregar cardápio')
     } finally {
       setLoading(false)
     }
   }, [tenantId, authFetch, setCategories, setMainMenus])
-
-  useEffect(() => {
-    if (catalog && (catalog.bases?.length || catalog.toppings?.length)) {
-      setOptionModels((prev) => (prev.length > 0 ? prev : buildDynamicOptionGroups(catalog)))
-    }
-  }, [catalog])
 
   useEffect(() => {
     fetchCatalog()
@@ -1102,6 +1113,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
         catalog={catalog}
         defaultCategoryId={selectedCategory !== 'all_cats' ? selectedCategory : (visibleCategories[0]?.id || undefined)}
         tenantId={tenantId}
+        availableOptionModels={optionModels}
         onSave={handleSaveProduct}
       />
 

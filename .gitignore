@@ -80,4 +80,9 @@ wp-config.php
 # Agentes e caches locais
 .codebase-memory/
 .agents/
+graphify-out/
+.graphifyignore
 
+
+.vercel
+.env*

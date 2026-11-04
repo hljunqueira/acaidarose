@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,6 +10,7 @@ import { Search, Edit2, Copy, Trash2, Eye, EyeOff, SlidersHorizontal } from 'luc
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { usePublishStore } from '@/lib/stores/publishStore'
+import { FIGUEIRA_HQ_ID } from '@/lib/utils/permissions'
 
 interface OptionModelsManagerDialogProps {
   open: boolean
@@ -33,6 +34,53 @@ export default function OptionModelsManagerDialog({
   const [searchTerm, setSearchTerm] = useState('')
   const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
   const [modelFormOpen, setModelFormOpen] = useState(false)
+  const [internalModels, setInternalModels] = useState<OptionModelData[]>(models)
+
+  // Sincroniza sempre que a prop 'models' mudar
+  useEffect(() => {
+    if (models && models.length > 0) {
+      setInternalModels((prev) => {
+        const combined = [...models]
+        for (const p of prev) {
+          if (!combined.some((c) => c.id === p.id || c.name === p.name)) {
+            combined.push(p)
+          }
+        }
+        return combined
+      })
+    }
+  }, [models])
+
+  // Busca modelos persistidos no PostgreSQL
+  const fetchOptionModels = useCallback(async () => {
+    try {
+      const effectiveTenant = tenantId || FIGUEIRA_HQ_ID
+      const res = await authFetch(`/api/option-models?tenantId=${encodeURIComponent(effectiveTenant)}`)
+      if (res.ok) {
+        const dbModels = await res.json()
+        if (Array.isArray(dbModels)) {
+          setInternalModels((prev) => {
+            const combined = [...dbModels]
+            for (const item of (models.length > 0 ? models : prev)) {
+              if (!combined.some((c) => c.id === item.id || c.name === item.name)) {
+                combined.push(item)
+              }
+            }
+            onSaveModels(combined)
+            return combined
+          })
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao buscar modelos de opções do banco:', e)
+    }
+  }, [authFetch, tenantId, models, onSaveModels])
+
+  useEffect(() => {
+    if (open) {
+      fetchOptionModels()
+    }
+  }, [open, fetchOptionModels])
 
   // Estado para confirmação de duplicação
   const [modelToDuplicate, setModelToDuplicate] = useState<OptionModelData | null>(null)
@@ -40,10 +88,10 @@ export default function OptionModelsManagerDialog({
 
   // Filtragem de modelos pela busca
   const filteredModels = useMemo(() => {
-    if (!searchTerm.trim()) return models
+    if (!searchTerm.trim()) return internalModels
     const term = searchTerm.toLowerCase().trim()
-    return models.filter((m) => m.name.toLowerCase().includes(term))
-  }, [models, searchTerm])
+    return internalModels.filter((m) => m.name.toLowerCase().includes(term))
+  }, [internalModels, searchTerm])
 
   const handleOpenCreateModel = () => {
     setEditingModel(null)
@@ -57,44 +105,58 @@ export default function OptionModelsManagerDialog({
 
   const handleSaveModel = async (savedModel: OptionModelData) => {
     const isNew = !savedModel.id || savedModel.id.startsWith('model-')
-    const existingIndex = models.findIndex((m) => m.id === savedModel.id)
+    const effectiveTenant = tenantId || FIGUEIRA_HQ_ID
 
     try {
       if (isNew) {
-        const res = await fetch('/api/option-models', {
+        const res = await authFetch(`/api/option-models?tenantId=${encodeURIComponent(effectiveTenant)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(savedModel),
+          body: JSON.stringify({ ...savedModel, tenantId: effectiveTenant }),
         })
-        if (res.ok) {
-          const created = await res.json()
-          savedModel = { ...savedModel, id: created.id }
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.error || 'Erro ao criar modelo de opção no servidor')
         }
+        const created = await res.json()
+        savedModel = { ...savedModel, id: created.id }
       } else {
-        await fetch(`/api/option-models/${savedModel.id}`, {
+        const res = await authFetch(`/api/option-models/${savedModel.id}?tenantId=${encodeURIComponent(effectiveTenant)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(savedModel),
+          body: JSON.stringify({ ...savedModel, tenantId: effectiveTenant }),
         })
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.error || 'Erro ao atualizar modelo de opção no servidor')
+        }
+        const updatedRes = await res.json()
+        savedModel = { ...savedModel, ...updatedRes }
       }
-    } catch (e) {
-      console.error('Erro ao sincronizar modelo no servidor:', e)
-    }
 
-    let updated: OptionModelData[]
-    if (existingIndex >= 0) {
-      updated = [...models]
-      updated[existingIndex] = savedModel
-      toast.success(`Modelo "${savedModel.name}" atualizado com sucesso!`)
-    } else {
-      updated = [...models, savedModel]
-      toast.success(`Modelo "${savedModel.name}" criado com sucesso!`)
+      toast.success(isNew ? `Modelo "${savedModel.name}" criado com sucesso!` : `Modelo "${savedModel.name}" atualizado com sucesso!`)
+
+      setInternalModels((prev) => {
+        const idx = prev.findIndex((m) => m.id === savedModel.id || m.name === savedModel.name)
+        let nextList: OptionModelData[]
+        if (idx >= 0) {
+          nextList = [...prev]
+          nextList[idx] = savedModel
+        } else {
+          nextList = [...prev, savedModel]
+        }
+        onSaveModels(nextList)
+        return nextList
+      })
+
+      if (tenantId) {
+        markDirty(tenantId, `Modelo de opções "${savedModel.name}" alterado`, authFetch)
+      }
+      setModelFormOpen(false)
+    } catch (e: any) {
+      console.error('Erro ao sincronizar modelo no servidor:', e)
+      toast.error(e.message || 'Erro ao salvar modelo')
     }
-    onSaveModels(updated)
-    if (tenantId) {
-      markDirty(tenantId, `Modelo de opções "${savedModel.name}" alterado`, authFetch)
-    }
-    setModelFormOpen(false)
   }
 
   const handlePromptDuplicate = (model: OptionModelData) => {
@@ -105,8 +167,9 @@ export default function OptionModelsManagerDialog({
   const handleConfirmDuplicate = async () => {
     if (!modelToDuplicate) return
 
+    const effectiveTenant = tenantId || FIGUEIRA_HQ_ID
     const newId = `model-${Date.now()}`
-    const duplicated: OptionModelData = {
+    let duplicated: OptionModelData = {
       ...modelToDuplicate,
       id: newId,
       name: `${modelToDuplicate.name} (Cópia)`,
@@ -117,21 +180,24 @@ export default function OptionModelsManagerDialog({
     }
 
     try {
-      const res = await fetch('/api/option-models', {
+      const res = await authFetch(`/api/option-models?tenantId=${encodeURIComponent(effectiveTenant)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(duplicated),
+        body: JSON.stringify({ ...duplicated, tenantId: effectiveTenant }),
       })
       if (res.ok) {
         const created = await res.json()
-        duplicated.id = created.id
+        duplicated = { ...duplicated, id: created.id }
       }
     } catch (e) {
       console.error('Erro ao persistir duplicação:', e)
     }
 
-    const updated = [...models, duplicated]
-    onSaveModels(updated)
+    setInternalModels((prev) => {
+      const updated = [...prev, duplicated]
+      onSaveModels(updated)
+      return updated
+    })
     if (tenantId) {
       markDirty(tenantId, `Modelo de opções "${duplicated.name}" duplicado`, authFetch)
     }
@@ -142,19 +208,64 @@ export default function OptionModelsManagerDialog({
 
   const handleDeleteModel = async (modelId?: string) => {
     if (!modelId) return
+    const effectiveTenant = tenantId || FIGUEIRA_HQ_ID
     try {
       if (modelId.length === 36) {
-        await fetch(`/api/option-models/${modelId}`, { method: 'DELETE' })
+        const res = await authFetch(`/api/option-models/${modelId}?tenantId=${encodeURIComponent(effectiveTenant)}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.error || 'Erro ao excluir modelo de opção')
+        }
       }
-    } catch (e) {
+      setInternalModels((prev) => {
+        const updated = prev.filter((m) => m.id !== modelId)
+        onSaveModels(updated)
+        return updated
+      })
+      if (tenantId) {
+        markDirty(tenantId, 'Modelo de opções excluído', authFetch)
+      }
+      toast.success('Modelo de opções excluído com sucesso!')
+    } catch (e: any) {
       console.error('Erro ao excluir modelo:', e)
+      toast.error(e.message || 'Erro ao excluir modelo')
     }
-    const updated = models.filter((m) => m.id !== modelId)
-    onSaveModels(updated)
-    if (tenantId) {
-      markDirty(tenantId, 'Modelo de opções excluído', authFetch)
+  }
+
+  const handleToggleModelActive = async (model: OptionModelData) => {
+    const isCurrentlyActive = model.active !== false
+    const nextActive = !isCurrentlyActive
+    const updatedModel: OptionModelData = { ...model, active: nextActive }
+
+    // Atualização otimista
+    setInternalModels((prev) => prev.map((m) => (m.id === model.id ? updatedModel : m)))
+    onSaveModels(internalModels.map((m) => (m.id === model.id ? updatedModel : m)))
+
+    if (model.id && !model.id.startsWith('model-')) {
+      try {
+        const effectiveTenant = tenantId || FIGUEIRA_HQ_ID
+        const res = await authFetch(`/api/option-models/${model.id}?tenantId=${encodeURIComponent(effectiveTenant)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...model, active: nextActive }),
+        })
+        if (!res.ok) {
+          toast.error('Erro ao atualizar visibilidade no servidor')
+          fetchOptionModels()
+        } else {
+          toast.success(nextActive ? `Modelo "${model.name}" agora está visível.` : `Modelo "${model.name}" ocultado (invisível em todos os produtos vinculados).`)
+          if (tenantId) {
+            markDirty(tenantId, `Visibilidade do modelo "${model.name}" alterada`, authFetch)
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao alternar visibilidade do modelo:', e)
+        toast.error('Falha de rede ao alterar visibilidade')
+        fetchOptionModels()
+      }
+    } else {
+      toast.success(nextActive ? `Modelo "${model.name}" visível.` : `Modelo "${model.name}" ocultado.`)
     }
-    toast.success('Modelo de opções excluído com sucesso!')
   }
 
   return (
@@ -197,13 +308,18 @@ export default function OptionModelsManagerDialog({
             ) : (
               filteredModels.map((m) => {
                 const itemCount = (m.options || []).length
+                const isModelActive = m.active !== false
                 return (
                   <div
                     key={m.id || m.name}
-                    className="p-3 px-4 rounded-2xl border border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-300 dark:hover:border-white/20 transition flex items-center justify-between gap-3 shadow-xs"
+                    className={`p-3 px-4 rounded-2xl border transition flex items-center justify-between gap-3 shadow-xs ${
+                      !isModelActive
+                        ? 'border-amber-200/70 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-950/10 opacity-75'
+                        : 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-300 dark:hover:border-white/20'
+                    }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-bold text-xs text-purple-950 dark:text-white truncate">
+                      <div className={`font-bold text-xs truncate ${!isModelActive ? 'line-through text-zinc-500 dark:text-zinc-400' : 'text-purple-950 dark:text-white'}`}>
                         {m.name}
                       </div>
                       <div className="text-[10px] text-purple-600 dark:text-purple-300/70 font-mono mt-0.5">
@@ -212,9 +328,28 @@ export default function OptionModelsManagerDialog({
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
-                        Visível
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleModelActive(m)}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border transition cursor-pointer ${
+                          isModelActive
+                            ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'
+                            : 'bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/30'
+                        }`}
+                        title={isModelActive ? 'Modelo Ativo (Visível nos Produtos) — Clique para Ocultar' : 'Modelo Oculto (Invisível nos Produtos) — Clique para Ativar'}
+                      >
+                        {isModelActive ? (
+                          <>
+                            <Eye className="w-3 h-3" />
+                            <span>Visível</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-3 h-3" />
+                            <span>Invisível</span>
+                          </>
+                        )}
+                      </button>
 
                       {isSuperAdmin && (
                         <>

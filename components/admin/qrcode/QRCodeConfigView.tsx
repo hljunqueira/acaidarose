@@ -36,7 +36,7 @@ export default function QRCodeConfigView({ tenantId }: QRCodeConfigViewProps) {
   const storeSlug = storeInfo?.slug || 'figueira-da-foz'
   const publicUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/menu?loja=${storeSlug}`
-    : `https://acaidarose.vercel.app/menu?loja=${storeSlug}`
+    : `https://app.acaidarose.pt/menu?loja=${storeSlug}`
 
   const fetchConfig = useCallback(async () => {
     setLoading(true)

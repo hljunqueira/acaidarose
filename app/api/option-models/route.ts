@@ -8,9 +8,10 @@ import { AVEIRO_HQ_ID } from '@/lib/repositories/tenantsRepository'
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const tenantId = searchParams.get('tenantId') || AVEIRO_HQ_ID
+  const activeOnly = searchParams.get('activeOnly') === 'true'
 
   try {
-    const models = await getOptionModelsByTenant(tenantId)
+    const models = await getOptionModelsByTenant(tenantId, activeOnly)
     return jsonResponse(models)
   } catch (err: any) {
     return errorResponse(err?.message || 'Erro ao carregar modelos de opções', 500)

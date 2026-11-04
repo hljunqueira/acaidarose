@@ -23,6 +23,7 @@ import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 import OptionModelsManagerDialog from './OptionModelsManagerDialog'
 import FranchiseRequestDialog from './FranchiseRequestDialog'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
+import { FIGUEIRA_HQ_ID } from '@/lib/utils/permissions'
 
 interface ProductEditDialogProps {
   open: boolean
@@ -32,6 +33,7 @@ interface ProductEditDialogProps {
   catalog?: any
   defaultCategoryId?: string
   tenantId?: string
+  availableOptionModels?: OptionModelData[]
   onSave: (collection: string, item: any) => Promise<void>
 }
 
@@ -144,13 +146,41 @@ export default function ProductEditDialog({
   catalog,
   defaultCategoryId,
   tenantId,
+  availableOptionModels,
   onSave,
 }: ProductEditDialogProps) {
-  const { user } = useAuthStore()
+  const { user, authFetch } = useAuthStore()
   const effectiveTenant = tenantId || item?.tenantId || user?.tenantId
   const isSuperAdmin = canManageMasterCatalog(user, effectiveTenant)
   const isPriceEditable = canEditProductPrices(user, effectiveTenant)
   const { categories: storeCategories } = useMenuConfigStore()
+  const [dbOptionModels, setDbOptionModels] = useState<OptionModelData[]>(availableOptionModels || [])
+
+  useEffect(() => {
+    if (availableOptionModels && availableOptionModels.length > 0) {
+      setDbOptionModels(availableOptionModels)
+    }
+  }, [availableOptionModels])
+
+  // Busca modelos persistidos no PostgreSQL ao abrir
+  useEffect(() => {
+    if (open) {
+      const fetchModels = async () => {
+        try {
+          const res = await authFetch(`/api/option-models?tenantId=${encodeURIComponent(effectiveTenant || FIGUEIRA_HQ_ID)}`)
+          if (res.ok) {
+            const data = await res.json()
+            if (Array.isArray(data)) {
+              setDbOptionModels(data)
+            }
+          }
+        } catch (e) {
+          console.error('Erro ao buscar modelos de opções em ProductEditDialog:', e)
+        }
+      }
+      fetchModels()
+    }
+  }, [open, effectiveTenant, authFetch])
 
   // Categorias canônicas dinâmicas direto do catálogo / banco de dados (sem mocks/seeds)
   const allCategories = useMemo(() => {
@@ -168,10 +198,17 @@ export default function ProductEditDialog({
     return map
   }, [catalog?.menus])
 
-  const dynamicAvailableModels = useMemo(
-    () => buildDynamicOptionGroups(catalog, item),
-    [catalog, item]
-  )
+  // Combina modelos do banco com os grupos padrões dinâmicos (sem duplicar)
+  const allAvailableModels = useMemo(() => {
+    const dynamicGroups = buildDynamicOptionGroups(catalog, item)
+    const combined = [...dbOptionModels]
+    for (const dg of dynamicGroups) {
+      if (!combined.some((m) => m.id === dg.id || m.name === dg.name)) {
+        combined.push(dg)
+      }
+    }
+    return combined
+  }, [catalog, item, dbOptionModels])
 
   const [form, setForm] = useState<any>({
     name: '',
@@ -378,13 +415,44 @@ export default function ProductEditDialog({
         payload.category = form.category
         payload.categoryId = form.categoryId
         payload.weightGrams = form.weightGrams ? Number(form.weightGrams) : null
-        payload.productType = form.weightGrams ? 'CONTAINER' : 'ITEM'
+
+        const currentCat = allCategories.find((c: any) => c.id === form.categoryId)
+        const catNameLower = (form.category || currentCat?.name || '').toLowerCase()
+        const prodNameLower = (form.name || '').toLowerCase()
+
+        const isNonAcai =
+          form.categoryId === 'cat-milkshakes' ||
+          catNameLower.includes('shake') ||
+          catNameLower.includes('lanche') ||
+          catNameLower.includes('bebida') ||
+          catNameLower.includes('café') ||
+          catNameLower.includes('chá') ||
+          catNameLower.includes('chocolate') ||
+          prodNameLower.includes('shake') ||
+          prodNameLower.includes('batido')
+
+        const isAcaiContainer = !isNonAcai && (
+          catNameLower.includes('açaí') ||
+          catNameLower.includes('acai') ||
+          catNameLower.includes('copo') ||
+          catNameLower.includes('taça') ||
+          catNameLower.includes('taca') ||
+          catNameLower.includes('tigela')
+        )
+
+        payload.productType = isAcaiContainer ? 'CONTAINER' : 'ITEM'
         payload.optionGroups = linkedOptionGroups
 
-        // Salva as regras de montagem configuradas no produto
-        payload.limiteBases = Number(form.limiteBases ?? 1)
-        payload.limiteFrutas = Number(form.limiteFrutas ?? 2)
-        payload.limiteToppings = Number(form.limiteToppings ?? 3)
+        if (isAcaiContainer) {
+          payload.limiteBases = Number(form.limiteBases ?? 1)
+          payload.limiteFrutas = Number(form.limiteFrutas ?? 2)
+          payload.limiteToppings = Number(form.limiteToppings ?? 3)
+        } else {
+          payload.limiteBases = 0
+          payload.limiteFrutas = 0
+          payload.limiteToppings = 0
+          payload.limiteComplementosGratis = 0
+        }
       }
 
       await onSave(collection, payload)
@@ -409,12 +477,13 @@ export default function ProductEditDialog({
   }
 
   const handleSaveOptionModel = (savedModel: OptionModelData) => {
+    const isModelActive = savedModel.active !== false
     setLinkedOptionGroups((prev) => {
       const exists = prev.find((g) => g.id === savedModel.id || g.name === savedModel.name)
       if (exists) {
-        return prev.map((g) => (g.id === savedModel.id || g.name === savedModel.name ? { ...savedModel, active: true } : g))
+        return prev.map((g) => (g.id === savedModel.id || g.name === savedModel.name ? { ...savedModel, active: isModelActive } : g))
       }
-      return [...prev, { ...savedModel, active: true }]
+      return [...prev, { ...savedModel, active: isModelActive }]
     })
   }
 
@@ -460,10 +529,43 @@ export default function ProductEditDialog({
 
   const handleSelectAndLinkModel = (modelId: string) => {
     if (!isSuperAdmin) return
-    const found = dynamicAvailableModels.find((m: OptionModelData) => m.id === modelId)
+    const found = allAvailableModels.find((m: OptionModelData) => m.id === modelId)
     if (!found) return
     handleSaveOptionModel(found)
     toast.success(`Modelo "${found.name}" vinculado com sucesso!`)
+  }
+
+  // Reordenação de Modelos de Opções (Drag & Drop e Botões de Subir/Descer)
+  const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null)
+
+  const handleDragStartGroup = (e: React.DragEvent, id: string) => {
+    setDraggedGroupId(id)
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDropGroup = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    if (!draggedGroupId || draggedGroupId === targetId) return
+
+    const sourceIndex = linkedOptionGroups.findIndex((g) => (g.id || g.name) === draggedGroupId)
+    const targetIndex = linkedOptionGroups.findIndex((g) => (g.id || g.name) === targetId)
+    if (sourceIndex === -1 || targetIndex === -1) return
+
+    const updated = [...linkedOptionGroups]
+    const [moved] = updated.splice(sourceIndex, 1)
+    updated.splice(targetIndex, 0, moved)
+    setLinkedOptionGroups(updated)
+    setDraggedGroupId(null)
+  }
+
+  const handleMoveGroup = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= linkedOptionGroups.length) return
+    const updated = [...linkedOptionGroups]
+    const [moved] = updated.splice(index, 1)
+    updated.splice(targetIndex, 0, moved)
+    setLinkedOptionGroups(updated)
   }
 
   return (
@@ -736,9 +838,9 @@ export default function ProductEditDialog({
                     <option value="" disabled>
                       Clique para vincular um modelo de opção
                     </option>
-                    {dynamicAvailableModels.map((m: OptionModelData) => (
+                    {allAvailableModels.map((m: OptionModelData) => (
                       <option key={m.id} value={m.id}>
-                        {m.name}
+                        {m.name}{m.active === false ? ' (Invisível)' : ''}
                       </option>
                     ))}
                   </select>
@@ -757,65 +859,104 @@ export default function ProductEditDialog({
                     </p>
                   </div>
                 ) : (
-                  linkedOptionGroups.map((grp) => {
-                  const isGroupActive = grp.active !== false
-                  const groupId = grp.id || grp.name
-                  const optionsList = grp.options || []
+                  linkedOptionGroups.map((grp, idx) => {
+                    const isGroupActive = grp.active !== false
+                    const groupId = grp.id || grp.name
+                    const optionsList = grp.options || []
+                    const isDragging = draggedGroupId === groupId
 
-                  return (
-                    <div
-                      key={groupId}
-                      className={`rounded-xl border transition-all overflow-hidden p-3 flex items-center justify-between select-none ${
-                        isGroupActive
-                          ? 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 shadow-xs'
-                          : 'border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.02] opacity-75'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0 pr-2">
-                        <GripVertical className="h-4 w-4 text-purple-400 dark:text-purple-300/40 shrink-0 cursor-grab" />
-                        <span className={`font-bold text-xs truncate ${isGroupActive ? 'text-purple-950 dark:text-white' : 'line-through text-zinc-400'}`}>
-                          {grp.name}
-                        </span>
-                        <span className="text-[10px] font-mono text-purple-600 dark:text-pink-300 font-bold flex-shrink-0">
-                          ({optionsList.length} itens)
-                        </span>
-                      </div>
+                    return (
+                      <div
+                        key={groupId}
+                        draggable={isSuperAdmin}
+                        onDragStart={(e) => handleDragStartGroup(e, groupId)}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          e.dataTransfer.dropEffect = 'move'
+                        }}
+                        onDragEnd={() => setDraggedGroupId(null)}
+                        onDrop={(e) => handleDropGroup(e, groupId)}
+                        className={`rounded-xl border transition-all overflow-hidden p-3 flex items-center justify-between select-none ${
+                          isDragging
+                            ? 'opacity-40 border-purple-500 border-dashed bg-purple-50/50 dark:bg-purple-950/20'
+                            : isGroupActive
+                              ? 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 shadow-xs hover:border-purple-300 dark:hover:border-white/20'
+                              : 'border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.02] opacity-75'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <div
+                            className="cursor-grab active:cursor-grabbing p-1 text-purple-400 hover:text-purple-700 dark:text-purple-300/40 dark:hover:text-white transition shrink-0"
+                            title="Arrastar para reordenar"
+                          >
+                            <GripVertical className="h-4 w-4 shrink-0" />
+                          </div>
+                          <span className={`font-bold text-xs truncate ${isGroupActive ? 'text-purple-950 dark:text-white' : 'line-through text-zinc-400'}`}>
+                            {grp.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-purple-600 dark:text-pink-300 font-bold flex-shrink-0">
+                            ({optionsList.length} itens)
+                          </span>
+                        </div>
 
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {/* Alternar visibilidade do grupo na loja */}
-                        <button
-                          type="button"
-                          onClick={() => handleToggleGroupActive(grp.id, grp.name)}
-                          className="p-1 rounded-md hover:bg-purple-100/70 dark:hover:bg-white/10 transition cursor-pointer"
-                          title={isGroupActive ? 'Grupo Ativo na Loja' : 'Grupo Oculto na Loja'}
-                        >
-                          {isGroupActive ? (
-                            <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          ) : (
-                            <EyeOff className="h-4 w-4 text-red-500" />
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {isSuperAdmin && (
+                            <div className="flex items-center gap-0.5 mr-1">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveGroup(idx, 'up')}
+                                className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                title="Mover para cima"
+                              >
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === linkedOptionGroups.length - 1}
+                                onClick={() => handleMoveGroup(idx, 'down')}
+                                className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                title="Mover para baixo"
+                              >
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           )}
-                        </button>
 
-                        {isSuperAdmin && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleEditOptionModel(grp)}
-                              className="p-1 text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer transition"
-                              title="Editar Modelo de Opções"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleUnlinkGroup(grp.id, grp.name)}
-                              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md cursor-pointer transition"
-                              title="Desvincular Modelo deste Produto"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
+                          {/* Alternar visibilidade do grupo na loja */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleGroupActive(grp.id, grp.name)}
+                            className="p-1 rounded-md hover:bg-purple-100/70 dark:hover:bg-white/10 transition cursor-pointer"
+                            title={isGroupActive ? 'Grupo Ativo na Loja' : 'Grupo Oculto na Loja'}
+                          >
+                            {isGroupActive ? (
+                              <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            ) : (
+                              <EyeOff className="h-4 w-4 text-red-500" />
+                            )}
+                          </button>
+
+                          {isSuperAdmin && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleEditOptionModel(grp)}
+                                className="p-1 text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer transition"
+                                title="Editar Modelo de Opções"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleUnlinkGroup(grp.id, grp.name)}
+                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md cursor-pointer transition"
+                                title="Desvincular Modelo deste Produto"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
 
                         {!isSuperAdmin && (
                           <span className="text-[10px] text-purple-700 dark:text-purple-300/70 font-bold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-white/5 border border-purple-200 dark:border-white/10">
@@ -888,13 +1029,25 @@ export default function ProductEditDialog({
             open={optionModelOpen}
             onOpenChange={setOptionModelOpen}
             initialModel={editingModel}
-            onSave={handleSaveOptionModel}
+            onSave={(savedModel) => {
+              handleSaveOptionModel(savedModel)
+              setDbOptionModels((prev) => {
+                const idx = prev.findIndex((m) => m.id === savedModel.id || m.name === savedModel.name)
+                if (idx >= 0) {
+                  const copy = [...prev]
+                  copy[idx] = savedModel
+                  return copy
+                }
+                return [...prev, savedModel]
+              })
+            }}
           />
           <OptionModelsManagerDialog
             open={optionModelsManagerOpen}
             onOpenChange={setOptionModelsManagerOpen}
-            models={dynamicAvailableModels}
+            models={allAvailableModels}
             onSaveModels={(updatedModels) => {
+              setDbOptionModels(updatedModels)
               // Se algum modelo atualmente vinculado foi editado, atualiza na lista vinculada
               setLinkedOptionGroups((prev) =>
                 prev.map((grp) => {
@@ -904,6 +1057,7 @@ export default function ProductEditDialog({
               )
             }}
             isSuperAdmin={isSuperAdmin}
+            tenantId={effectiveTenant}
           />
         </>
       )}

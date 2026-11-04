@@ -67,7 +67,7 @@ Este documento consolida e detalha todas as atualizações de arquitetura, banco
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
   );
   ```
-- **Benefício**: Configurações salvas no painel pelo operador ficam permanentemente gravadas no PostgreSQL (eliminando perdas por reciclagem de instâncias serverless no Vercel).
+- **Benefício**: Configurações salvas no painel pelo operador ficam permanentemente gravadas no PostgreSQL (eliminando perdas por volatilidade de memória ou reinicialização de serviços).
 
 ### 3.2. Aplicação Dinâmica no Checkout do Cliente
 - **Arquivos**: `app/menu/page.tsx`, `components/menu/CustomerCartSheet.tsx`

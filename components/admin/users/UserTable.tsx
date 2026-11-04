@@ -5,7 +5,7 @@ import { User } from '@/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, KeyRound, UserCheck, ShieldCheck, Shield } from 'lucide-react'
+import { Pencil, Trash2, KeyRound, UserCheck, Building2 } from 'lucide-react'
 
 interface UserTableProps {
   users: User[]
@@ -13,6 +13,7 @@ interface UserTableProps {
   onEdit: (user: User) => void
   onChangePassword: (user: User) => void
   onDelete: (id: string) => void
+  storeNamesMap?: Record<string, string>
 }
 
 export default function UserTable({
@@ -21,7 +22,9 @@ export default function UserTable({
   onEdit,
   onChangePassword,
   onDelete,
+  storeNamesMap = {},
 }: UserTableProps) {
+  const isHenrique = currentUser?.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN'
 
   const getBadge = (role: string) => {
@@ -29,6 +32,13 @@ export default function UserTable({
       return (
         <Badge className="bg-purple-900 dark:bg-pink-600 text-white text-[10px] font-bold border-0">
           SUPER_ADMIN (Holding)
+        </Badge>
+      )
+    }
+    if (role === 'FRANCHISOR_ADMIN') {
+      return (
+        <Badge className="bg-indigo-900 dark:bg-indigo-700 text-white text-[10px] font-bold border-0">
+          ADMIN FRANQUEADORA
         </Badge>
       )
     }
@@ -50,6 +60,9 @@ export default function UserTable({
     if (role === 'SUPER_ADMIN') {
       return 'Acesso total: Franquias, Deliberações, Preços Globais, Configurações e Finanças.'
     }
+    if (role === 'FRANCHISOR_ADMIN') {
+      return 'Acesso Corporativo: Gestão de Franquias, Deliberações e Supervisão da Rede.'
+    }
     if (role === 'TENANT_ADMIN') {
       return 'Acesso à Loja: Atendimento & Salão, Cardápio & Preços, Configurações e Relatórios da Unidade.'
     }
@@ -60,9 +73,23 @@ export default function UserTable({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {users.map((u) => {
         const isSelf = u.id === currentUser?.id
+        const isTargetHenrique = u.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
         const isTargetAdmin = u.role === 'SUPER_ADMIN' || u.role === 'TENANT_ADMIN'
-        const canDelete = isSuperAdmin && !isSelf
+        const canDelete = isSuperAdmin && !isSelf && !isTargetHenrique
         const canEditFull = isSuperAdmin || (!isTargetAdmin && currentUser?.role === 'TENANT_ADMIN')
+
+        // Henrique pode alterar a senha de qualquer um;
+        // SUPER_ADMIN pode alterar senhas de lojas franqueadas e a sua própria;
+        // Os demais não têm permissão.
+        const canChangePassword =
+          isHenrique ||
+          (isSuperAdmin && !isTargetHenrique) ||
+          isSelf
+
+        const storeLabel =
+          u.tenantName ||
+          (u.tenantId ? storeNamesMap[u.tenantId] : null) ||
+          (u.role === 'SUPER_ADMIN' || u.role === 'FRANCHISOR_ADMIN' ? 'Holding / Rede Global' : 'Loja Não Vinculada')
 
         return (
           <Card
@@ -87,8 +114,14 @@ export default function UserTable({
                 {getBadge(u.role)}
               </div>
 
+              {/* Loja / Unidade Vinculada */}
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-900 dark:text-purple-200 bg-purple-50/80 dark:bg-white/5 px-2.5 py-1.5 rounded-xl border border-purple-100 dark:border-white/10">
+                <Building2 className="h-3.5 w-3.5 text-purple-600 dark:text-pink-400 shrink-0" />
+                <span className="truncate">{storeLabel}</span>
+              </div>
+
               {/* Descrição dos Acessos */}
-              <div className="p-2.5 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-[11px] text-purple-900/80 dark:text-purple-200/80">
+              <div className="p-2.5 rounded-xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-[11px] text-purple-900/80 dark:text-purple-200/80">
                 {getPermissionsText(u.role)}
               </div>
             </div>
@@ -99,16 +132,18 @@ export default function UserTable({
               </span>
 
               <div className="flex items-center gap-1.5">
-                {/* Alterar Senha (Permitido para todos os perfis autorizados) */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onChangePassword(u)}
-                  className="h-7 px-2 text-[10px] font-bold border-purple-200 dark:border-white/15 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 rounded-lg cursor-pointer flex items-center gap-1"
-                >
-                  <KeyRound className="h-3 w-3 text-pink-600" />
-                  <span>Senha</span>
-                </Button>
+                {/* Alterar Senha */}
+                {canChangePassword && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onChangePassword(u)}
+                    className="h-7 px-2 text-[10px] font-bold border-purple-200 dark:border-white/15 text-purple-950 dark:text-white hover:bg-purple-50 dark:hover:bg-white/10 rounded-lg cursor-pointer flex items-center gap-1"
+                  >
+                    <KeyRound className="h-3 w-3 text-pink-600" />
+                    <span>Senha</span>
+                  </Button>
+                )}
 
                 {/* Editar Dados / Cargo */}
                 {canEditFull && (

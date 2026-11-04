@@ -64,7 +64,7 @@ export default function DevMasterView() {
                 Status & Integridade VPS
               </h1>
               <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 font-medium">
-                Telemetria do PostgreSQL 16 na VPS, Vercel Edge, gateways de pagamento e integridade do KDS
+                Telemetria do PostgreSQL 16 na VPS, Node.js Standalone (app.acaidarose.pt), gateways de pagamento e integridade do KDS
               </p>
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function DevMasterView() {
                 Score de Integridade Operacional: EXCELENTE
               </div>
               <p className="text-xs text-emerald-800 dark:text-emerald-400/80 mt-0.5 font-medium">
-                Conexões ativas e pool de dados estável na VPS e Vercel Edge. Latência TCP abaixo de 100ms.
+                Conexões ativas e pool de dados estável na VPS dedicada. Latência TCP local ultra baixa.
               </p>
             </div>
           </div>
@@ -124,7 +124,7 @@ export default function DevMasterView() {
               </div>
             </div>
             <p className="text-[11px] text-purple-700/80 dark:text-purple-300/60 font-medium mt-1">
-              Vercel Edge & VPS Operacional
+              VPS & Node.js Standalone Operacional
             </p>
           </CardContent>
         </Card>
@@ -267,7 +267,7 @@ export default function DevMasterView() {
             <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-white/5 border border-purple-150 dark:border-white/10 flex items-center justify-between">
               <div>
                 <div className="font-bold text-xs text-purple-950 dark:text-white">Frontend & API Gateway</div>
-                <div className="text-[11px] text-purple-700/80 dark:text-purple-300/70">Vercel Edge Network (Next.js 15 App Router)</div>
+                <div className="text-[11px] text-purple-700/80 dark:text-purple-300/70">VPS Dedicada Nginx / Node.js (app.acaidarose.pt)</div>
               </div>
               <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
                 Online

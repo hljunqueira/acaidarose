@@ -3,6 +3,7 @@ export type UserRole = 'SUPER_ADMIN' | 'FRANCHISOR_ADMIN' | 'TENANT_ADMIN' | 'CA
 export interface User {
   id: string
   tenantId?: string | null
+  tenantName?: string | null
   email: string
   name: string
   role: UserRole

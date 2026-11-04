@@ -24,15 +24,14 @@ import { useFranchiseStore, getDisplayStoreLocation } from '@/lib/stores/franchi
 
 export default function SingleTableQRDialog({ table, tenantId, open, onOpenChange }: SingleTableQRDialogProps) {
   const [copied, setCopied] = useState(false)
-  const [detectedOrigin, setDetectedOrigin] = useState('https://acaidarose.vercel.app')
+  const [detectedOrigin, setDetectedOrigin] = useState('https://app.acaidarose.pt')
   const { currentTenant, getTenant } = useFranchiseStore()
   const qrRef = useRef<SVGSVGElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      setDetectedOrigin(isLocal ? window.location.origin : 'https://acaidarose.vercel.app')
+      setDetectedOrigin(window.location.origin)
     }
   }, [])
 

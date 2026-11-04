@@ -1,19 +1,49 @@
 import { User, UserRole } from '@/types'
 import { query } from '@/lib/db/postgres'
 import { v4 as uuidv4 } from 'uuid'
+import bcrypt from 'bcryptjs'
+
+export async function getUserById(id: string): Promise<User | null> {
+  const res = await query(
+    `SELECT u.id, u.email, u.name, u.role, u.tenant_id, u.active, u.created_at, u.updated_at, u.deleted_at,
+            t.name as tenant_name
+     FROM users u
+     LEFT JOIN tenants t ON u.tenant_id = t.id
+     WHERE u.id::text = $1 AND u.deleted_at IS NULL
+     LIMIT 1`,
+    [id]
+  )
+
+  if (!res.rows || res.rows.length === 0) return null
+  const u = res.rows[0]
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    role: u.role as UserRole,
+    tenantId: u.tenant_id,
+    tenantName: u.tenant_name || null,
+    active: u.active,
+    createdAt: u.created_at,
+    updatedAt: u.updated_at,
+    deletedAt: u.deleted_at,
+  }
+}
 
 export async function getUsersByTenant(tenantId?: string | null): Promise<User[]> {
-  let sql = `SELECT id, email, name, role, tenant_id, active, created_at, updated_at, deleted_at 
-             FROM users 
-             WHERE deleted_at IS NULL`
+  let sql = `SELECT u.id, u.email, u.name, u.role, u.tenant_id, u.active, u.created_at, u.updated_at, u.deleted_at,
+                    t.name as tenant_name
+             FROM users u
+             LEFT JOIN tenants t ON u.tenant_id = t.id
+             WHERE u.deleted_at IS NULL`
   const params: any[] = []
 
-  if (tenantId) {
-    sql += ` AND tenant_id::text = $1`
+  if (tenantId && tenantId !== 'all') {
+    sql += ` AND u.tenant_id::text = $1`
     params.push(tenantId)
   }
 
-  sql += ` ORDER BY created_at ASC`
+  sql += ` ORDER BY u.created_at ASC`
 
   const res = await query(sql, params)
 
@@ -23,6 +53,7 @@ export async function getUsersByTenant(tenantId?: string | null): Promise<User[]
     name: u.name,
     role: u.role as UserRole,
     tenantId: u.tenant_id,
+    tenantName: u.tenant_name || null,
     active: u.active,
     createdAt: u.created_at,
     updatedAt: u.updated_at,
@@ -54,9 +85,13 @@ export async function createUser(payload: any): Promise<User> {
     }
   }
 
+  if (!payload.password || !String(payload.password).trim()) {
+    throw new Error('A palavra-passe deve ser informada explicitamente pelo administrador.')
+  }
+
   const id = uuidv4()
   const cleanEmail = String(payload.email).toLowerCase().trim()
-  const passwordHash = payload.password || '123456'
+  const passwordHash = bcrypt.hashSync(String(payload.password).trim(), 10)
 
   const res = await query(
     `INSERT INTO users (id, email, name, password_hash, role, tenant_id, active)
@@ -79,12 +114,18 @@ export async function createUser(payload: any): Promise<User> {
 }
 
 export async function updateUser(id: string, payload: any): Promise<User | null> {
+  let passwordHash: string | null = null
+  if (payload.password && String(payload.password).trim()) {
+    passwordHash = bcrypt.hashSync(String(payload.password).trim(), 10)
+  }
+
   const res = await query(
     `UPDATE users 
      SET name = COALESCE($2, name),
          role = COALESCE($3, role),
          active = COALESCE($4, active),
          password_hash = CASE WHEN $5::text IS NOT NULL THEN $5 ELSE password_hash END,
+         tenant_id = CASE WHEN $6::text IS NOT NULL THEN $6::uuid ELSE tenant_id END,
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING id, email, name, role, tenant_id, active, created_at, updated_at`,
@@ -92,8 +133,9 @@ export async function updateUser(id: string, payload: any): Promise<User | null>
       id,
       payload.name || null,
       payload.role || null,
-      payload.active,
-      payload.password || null,
+      payload.active !== undefined ? payload.active : null,
+      passwordHash,
+      payload.tenantId || null,
     ]
   )
 

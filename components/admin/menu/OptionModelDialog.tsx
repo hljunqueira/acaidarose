@@ -11,6 +11,7 @@ import { formatCurrency } from '@/lib/i18n/formatters'
 import {
   GripVertical,
   Eye,
+  EyeOff,
   Trash2,
   HelpCircle,
   Camera,
@@ -18,6 +19,8 @@ import {
   Plus,
   Search,
   Info,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react'
 
 export interface OptionItem {
@@ -41,6 +44,7 @@ export interface OptionModelData {
   isRequired: boolean
   showDetailed?: boolean
   isBaseFixed?: boolean
+  active?: boolean
   options: OptionItem[]
 }
 
@@ -59,11 +63,11 @@ export default function OptionModelDialog({
 }: OptionModelDialogProps) {
   const [name, setName] = useState('')
   const [priceType, setPriceType] = useState<'Gratis' | 'Individual'>('Individual')
-  const [additionalPrice, setAdditionalPrice] = useState<number | string>(0.50)
-  const [minQty, setMinQty] = useState<number>(1)
+  const [additionalPrice, setAdditionalPrice] = useState<number | string>('')
+  const [minQty, setMinQty] = useState<number>(0)
   const [maxQty, setMaxQty] = useState<number>(1)
   const [allowItemQuantity, setAllowItemQuantity] = useState<boolean>(true)
-  const [isRequired, setIsRequired] = useState<boolean>(true)
+  const [isRequired, setIsRequired] = useState<boolean>(false)
   const [showDetailed, setShowDetailed] = useState<boolean>(false)
   const [options, setOptions] = useState<OptionItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -74,36 +78,38 @@ export default function OptionModelDialog({
       if (initialModel) {
         setName(initialModel.name || '')
         setPriceType(initialModel.priceType || 'Individual')
-        setAdditionalPrice(initialModel.additionalPrice !== undefined ? initialModel.additionalPrice : (initialModel.priceType === 'Individual' ? 0.50 : 0.00))
-        setMinQty(initialModel.minQty ?? 1)
+        setAdditionalPrice(initialModel.additionalPrice !== undefined && initialModel.additionalPrice !== null ? initialModel.additionalPrice : '')
+        setMinQty(initialModel.minQty ?? 0)
         setMaxQty(initialModel.maxQty ?? 1)
         setAllowItemQuantity(initialModel.allowItemQuantity ?? true)
-        setIsRequired(initialModel.isRequired ?? true)
+        setIsRequired(initialModel.isRequired ?? false)
         setShowDetailed(initialModel.showDetailed ?? false)
         setOptions(
-          initialModel.options && initialModel.options.length > 0
+          initialModel.options && Array.isArray(initialModel.options)
             ? initialModel.options
-            : [{ id: `opt-${Date.now()}`, name: '', code: '101', price: initialModel.additionalPrice || 0.0, description: '', active: true }]
+            : []
         )
       } else {
         setName('')
         setPriceType('Individual')
-        setAdditionalPrice(0.50)
-        setMinQty(1)
+        setAdditionalPrice('')
+        setMinQty(0)
         setMaxQty(1)
         setAllowItemQuantity(true)
-        setIsRequired(true)
-        setOptions([{ id: `opt-${Date.now()}`, name: '', code: 'TOP-001', price: 0.50, description: '', active: true }])
+        setIsRequired(false)
+        setShowDetailed(false)
+        setOptions([])
       }
     }
   }, [open, initialModel])
 
   const getNextCode = (currentList: typeof options) => {
     const lower = (name || '').toLowerCase()
-    let prefix = 'TOP'
+    let prefix = 'OPT'
     if (lower.includes('base') || lower.includes('creme')) prefix = 'BAS'
     else if (lower.includes('fruta')) prefix = 'FRU'
     else if (lower.includes('calda') || lower.includes('adicional')) prefix = 'CAL'
+    else if (lower.includes('topping')) prefix = 'TOP'
 
     let maxNum = currentList.length
     for (const opt of currentList) {
@@ -191,6 +197,15 @@ export default function OptionModelDialog({
     setDraggedOptionId(null)
   }
 
+  const handleMoveOption = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= options.length) return
+    const updated = [...options]
+    const [moved] = updated.splice(index, 1)
+    updated.splice(targetIndex, 0, moved)
+    setOptions(updated)
+  }
+
   const handleSave = () => {
     if (!name.trim()) {
       toast.error('Informe o nome do modelo de opções.')
@@ -209,6 +224,7 @@ export default function OptionModelDialog({
       allowItemQuantity,
       isRequired,
       showDetailed,
+      active: initialModel?.active !== undefined ? initialModel.active : true,
       options: filteredOptions.length > 0 ? filteredOptions : options,
     }
 
@@ -255,7 +271,7 @@ export default function OptionModelDialog({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Escolha os sabores da sua taça"
+                placeholder="Ex: Tipo de Leite, Ponto da Textura, Caldas Nobres..."
                 className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-bold"
               />
             </div>
@@ -309,7 +325,7 @@ export default function OptionModelDialog({
                   min="0"
                   value={additionalPrice}
                   onChange={(e) => setAdditionalPrice(e.target.value)}
-                  placeholder="0.50"
+                  placeholder="0.00"
                   className="h-10 pl-7 text-xs font-mono font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/10 text-purple-950 dark:text-white w-full"
                 />
               </div>
@@ -526,13 +542,15 @@ export default function OptionModelDialog({
 
               {/* Simulação visual dos itens */}
               <div className="pt-1">
-                {options.length === 0 ? (
+                {options.filter((o) => o.active !== false).length === 0 ? (
                   <p className="text-xs text-slate-400 dark:text-zinc-500 italic py-2">
-                    Nenhum item adicionado a este grupo ainda. Adicione itens abaixo para visualizar a prévia.
+                    {options.length > 0 
+                      ? 'Todos os itens deste modelo estão marcados como invisíveis (ocultos).' 
+                      : 'Nenhum item adicionado a este grupo ainda. Adicione itens abaixo para visualizar a prévia.'}
                   </p>
                 ) : showDetailed ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {options.slice(0, 2).map((opt: any, idx: number) => (
+                    {options.filter((o) => o.active !== false).slice(0, 2).map((opt: any, idx: number) => (
                       <div key={opt.id || idx} className="p-2 rounded-xl border border-purple-150 dark:border-white/10 bg-purple-50/40 dark:bg-white/5 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="h-7 w-7 rounded-lg bg-purple-200/50 dark:bg-white/10 flex items-center justify-center text-purple-500 flex-shrink-0">
@@ -565,7 +583,7 @@ export default function OptionModelDialog({
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                    {options.slice(0, 3).map((opt: any, idx: number) => (
+                    {options.filter((o) => o.active !== false).slice(0, 3).map((opt: any, idx: number) => (
                       <div key={opt.id || idx} className="p-2 rounded-lg border border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 flex items-center justify-between text-xs">
                         <span className="truncate font-semibold text-slate-800 dark:text-purple-200">
                           {opt.name || `Opção ${idx + 1}`}
@@ -646,7 +664,7 @@ export default function OptionModelDialog({
               <div className="flex-1 min-w-[140px]">Nome</div>
               <div className="w-24 flex-shrink-0">Código</div>
               <div className="w-20 flex-shrink-0 text-right">Valor (€)</div>
-              <div className="w-8 flex-shrink-0" /> {/* Alinhamento Lixeira */}
+              <div className="w-24 flex-shrink-0 text-right pr-1">Ações</div> {/* Olho, Reordenar, Lixeira */}
             </div>
 
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -662,15 +680,24 @@ export default function OptionModelDialog({
                 })
                 .map((opt, idx) => {
                 const isDragging = draggedOptionId === opt.id
+                const isOptionActive = opt.active !== false
                 return (
                   <div
                     key={opt.id}
                     draggable
                     onDragStart={(e) => handleDragStartOption(e, opt.id)}
-                    onDragOver={(e) => e.preventDefault()}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                    }}
+                    onDragEnd={() => setDraggedOptionId(null)}
                     onDrop={(e) => handleDropOption(e, opt.id)}
-                    className={`p-2 border rounded-xl bg-white dark:bg-white/5 transition flex items-center gap-2 shadow-xs ${
-                      isDragging ? 'opacity-40 border-purple-500 border-dashed' : 'border-purple-150 dark:border-white/10 hover:border-purple-300 dark:hover:border-white/20'
+                    className={`p-2 border rounded-xl transition flex items-center gap-2 shadow-xs ${
+                      isDragging
+                        ? 'opacity-40 border-purple-500 border-dashed bg-white dark:bg-white/5'
+                        : !isOptionActive
+                        ? 'border-amber-200/70 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-950/10 opacity-70'
+                        : 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-300 dark:hover:border-white/20'
                     }`}
                   >
                     <div className="cursor-grab active:cursor-grabbing p-1 text-purple-400 hover:text-purple-700 dark:hover:text-white transition flex-shrink-0" title="Arrastar para reordenar">
@@ -683,13 +710,20 @@ export default function OptionModelDialog({
                     </div>
 
                     {/* Nome do Item */}
-                    <div className="flex-1 min-w-[140px]">
+                    <div className="flex-1 min-w-[140px] relative">
                       <Input
                         value={opt.name}
                         onChange={(e) => handleUpdateOption(opt.id, 'name', e.target.value)}
                         placeholder={`Nome da opção ${idx + 1}`}
-                        className="h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40 w-full"
+                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40 w-full ${
+                          !isOptionActive ? 'line-through text-zinc-400 dark:text-zinc-500' : ''
+                        }`}
                       />
+                      {!isOptionActive && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 rounded pointer-events-none">
+                          Invisível
+                        </span>
+                      )}
                     </div>
 
                     {/* Código ERP */}
@@ -697,7 +731,9 @@ export default function OptionModelDialog({
                       <Input
                         value={opt.code}
                         onChange={(e) => handleUpdateOption(opt.id, 'code', e.target.value)}
-                        className="h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-mono font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white w-full"
+                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-mono font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white w-full ${
+                          !isOptionActive ? 'opacity-60' : ''
+                        }`}
                       />
                     </div>
 
@@ -708,12 +744,52 @@ export default function OptionModelDialog({
                         step="0.01"
                         value={opt.price}
                         onChange={(e) => handleUpdateOption(opt.id, 'price', Number(e.target.value))}
-                        className="h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-mono font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white w-full text-right"
+                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-mono font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white w-full text-right ${
+                          !isOptionActive ? 'opacity-60' : ''
+                        }`}
                       />
                     </div>
 
                     {/* Ações */}
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      {/* Botão Olhinho (Visibilidade da Opção) */}
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateOption(opt.id, 'active', !isOptionActive)}
+                        className={`p-1.5 rounded-lg cursor-pointer transition ${
+                          !isOptionActive
+                            ? 'text-amber-600 hover:text-amber-800 bg-amber-100/70 dark:bg-amber-500/20'
+                            : 'text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10'
+                        }`}
+                        title={!isOptionActive ? 'Opção Oculta (Invisível no Cardápio) — Clique para Ativar' : 'Opção Visível no Cardápio — Clique para Ocultar'}
+                      >
+                        {!isOptionActive ? (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+
+                      <div className="flex items-center gap-0.5 mr-0.5">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveOption(idx, 'up')}
+                          className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
+                          title="Mover para cima"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === options.length - 1}
+                          onClick={() => handleMoveOption(idx, 'down')}
+                          className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
+                          title="Mover para baixo"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveOption(opt.id)}

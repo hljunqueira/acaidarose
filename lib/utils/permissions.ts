@@ -8,12 +8,9 @@ export const AVEIRO_HQ_ID = FIGUEIRA_HQ_ID // retrocompatibilidade temporária
  */
 export function canManageMasterCatalog(user: any, tenantId?: string | null): boolean {
   if (!user) return false
+  // Franqueadora Master (SUPER_ADMIN ou FRANCHISOR_ADMIN) possui gestão total em todas as lojas
   if (user.role === 'SUPER_ADMIN' || user.role === 'FRANCHISOR_ADMIN') {
-    // Se for Super Admin, tem permissão mestre desde que a loja ativa seja a Matriz ou global
-    const current = tenantId || user.tenantId
-    if (!current || current === FIGUEIRA_HQ_ID || current === 'figueira-da-foz' || current === '1') {
-      return true
-    }
+    return true
   }
 
   const currentTenant = tenantId || user.tenantId
@@ -30,12 +27,14 @@ export function canManageMasterCatalog(user: any, tenantId?: string | null): boo
 
 /**
  * Verifica se o usuário tem permissão para alterar PREÇOS de venda de produtos e adicionais:
- * - EXCLUSIVO da Matriz (Figueira da Foz / Super Admin da Matriz).
- * - Em qualquer filial (Torres Novas) ou franquia (Aveiro), retorna FALSE (preços travados para leitura).
+ * - Franqueadora Master (SUPER_ADMIN ou FRANCHISOR_ADMIN): permissão irrestrita em toda a rede.
+ * - Em filiais e franquias para operadores locais (TENANT_ADMIN / CASHIER): preços travados para leitura.
  */
 export function canEditProductPrices(user: any, tenantId?: string | null): boolean {
   if (!user) return false
-  if (user.role !== 'SUPER_ADMIN' && user.role !== 'FRANCHISOR_ADMIN') return false
+  if (user.role === 'SUPER_ADMIN' || user.role === 'FRANCHISOR_ADMIN') {
+    return true
+  }
 
   const current = tenantId || user.tenantId
   return (

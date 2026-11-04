@@ -113,25 +113,44 @@ export default function ProductRowItem({
             </div>
           )}
 
-          <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden bg-purple-50 dark:bg-white/5 shrink-0 border border-purple-150 dark:border-white/10 relative">
-            {product.videoUrl ? (
-              <video
-                src={product.videoUrl}
-                autoPlay
-                muted
-                loop
-                playsInline
-                poster={product.videoPoster || product.image || undefined}
-                className="w-full h-full object-cover"
-              />
-            ) : (product.image || product.videoPoster) ? (
-              <img src={product.image || product.videoPoster} alt={product.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center text-xs font-bold text-purple-700 dark:text-pink-300">
-                {product.name.slice(0, 2)}
+          {/* Miniatura / Vídeo / Imagem com fallback oficial */}
+          {(() => {
+            const isMilkShake =
+              product.categoryId === 'cat-milkshakes' ||
+              product.name?.toLowerCase().includes('shake') ||
+              product.name?.toLowerCase().includes('batido') ||
+              product.categoryName?.toLowerCase().includes('shake')
+
+            const rawImg = product.image || product.videoPoster
+            const isBrokenHero = rawImg?.includes('milkshake_hero.webp')
+            const effectiveImage = (!isBrokenHero && rawImg)
+              ? rawImg
+              : isMilkShake
+                ? '/images/official/milkshake_acai.png'
+                : null
+
+            return (
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden bg-purple-50 dark:bg-white/5 shrink-0 border border-purple-150 dark:border-white/10 relative">
+                {product.videoUrl ? (
+                  <video
+                    src={product.videoUrl}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    poster={effectiveImage || undefined}
+                    className="w-full h-full object-cover"
+                  />
+                ) : effectiveImage ? (
+                  <img src={effectiveImage} alt={product.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-xs font-bold text-purple-700 dark:text-pink-300">
+                    {product.name.slice(0, 2)}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            )
+          })()}
 
           <div className="min-w-0 flex-1">
             <h4 className="font-extrabold text-sm text-purple-950 dark:text-white leading-tight truncate">
@@ -157,19 +176,24 @@ export default function ProductRowItem({
       <div className="hidden lg:block flex-1 px-3 text-[11px] text-purple-900/80 dark:text-purple-200/80 font-medium space-y-0.5 max-w-sm">
         {categoryType === 'containers' ? (
           (() => {
-            const isItem = product.productType === 'ITEM' || (!product.weightGrams && !product.limiteBases)
+            const isNonAcai =
+              product.productType === 'ITEM' ||
+              product.categoryId === 'cat-milkshakes' ||
+              product.name?.toLowerCase().includes('shake') ||
+              product.name?.toLowerCase().includes('batido') ||
+              product.categoryName?.toLowerCase().includes('shake') ||
+              product.categoryName?.toLowerCase().includes('lanche') ||
+              product.categoryName?.toLowerCase().includes('bebida') ||
+              product.categoryName?.toLowerCase().includes('café') ||
+              product.categoryName?.toLowerCase().includes('chá') ||
+              product.categoryName?.toLowerCase().includes('chocolate')
+
+            const isItem = isNonAcai || (!product.weightGrams && !product.limiteBases)
             if (isItem) {
               return (
-                <>
-                  <div className="text-purple-950 dark:text-white font-bold truncate">
-                    {product.categoryName || 'Item Individual'}
-                  </div>
-                  <div className="text-purple-700 dark:text-purple-300/80 truncate text-[10px]">
-                    {product.optionGroups && product.optionGroups.length > 0
-                      ? `${product.optionGroups.length} modelo(s) de opções vinculado(s)`
-                      : 'Pronto para consumo / Sem montagem'}
-                  </div>
-                </>
+                <div className="text-purple-950 dark:text-white font-bold truncate">
+                  {product.categoryName || 'Item Individual'}
+                </div>
               )
             }
             const weight = product.weightGrams || 500

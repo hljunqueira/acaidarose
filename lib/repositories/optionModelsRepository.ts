@@ -21,13 +21,14 @@ export interface OptionModelRecord {
   updatedAt?: string
 }
 
-export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<OptionModelRecord[]> {
+export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID, activeOnly: boolean = false): Promise<OptionModelRecord[]> {
   try {
+    const activeFilter = activeOnly ? 'AND active = true' : ''
     const res = await query(
       `SELECT id, tenant_id, name, price_type, additional_price, min_qty, max_qty, 
               allow_item_quantity, is_required, show_detailed, options, active, display_order, created_at, updated_at
        FROM product_option_models
-       WHERE (tenant_id = $1 OR tenant_id = $2 OR tenant_id IS NULL) AND active = true
+       WHERE (tenant_id = $1 OR tenant_id = $2 OR tenant_id IS NULL) ${activeFilter}
        ORDER BY display_order ASC, created_at ASC`,
       [tenantId, AVEIRO_HQ_ID]
     )
@@ -141,6 +142,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
   const showDetailed = !!modelData.showDetailed
   const options = Array.isArray(modelData.options) ? modelData.options : []
   const displayOrder = Number(modelData.displayOrder || 0)
+  const activeParam = modelData.active !== undefined ? Boolean(modelData.active) : null
 
   const res = await query(
     `UPDATE product_option_models
@@ -154,6 +156,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
          show_detailed = $9,
          options = $10::jsonb,
          display_order = COALESCE($11, display_order),
+         active = COALESCE($12, active),
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1
      RETURNING *`,
@@ -168,12 +171,55 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
       isRequired,
       showDetailed,
       JSON.stringify(options),
-      displayOrder
+      displayOrder,
+      activeParam,
     ]
   )
 
   if (!res.rows || res.rows.length === 0) return null
   const updated = res.rows[0]
+
+  // Sincroniza em todos os recipientes/produtos vinculados
+  try {
+    const containersRes = await query(
+      `SELECT id, option_groups FROM product_containers 
+       WHERE option_groups IS NOT NULL AND jsonb_array_length(option_groups) > 0`
+    )
+    for (const row of containersRes.rows || []) {
+      const groups = Array.isArray(row.option_groups) ? row.option_groups : []
+      let modified = false
+      const newGroups = groups.map((g: any) => {
+        if (g.id === id || (g.name && updated.name && g.name.toLowerCase() === updated.name.toLowerCase())) {
+          modified = true
+          return {
+            ...g,
+            id: updated.id,
+            name: updated.name,
+            priceType: updated.price_type,
+            additionalPrice: Number(updated.additional_price || 0),
+            minQty: Number(updated.min_qty || 0),
+            maxQty: Number(updated.max_qty || 1),
+            allowItemQuantity: !!updated.allow_item_quantity,
+            isRequired: !!updated.is_required,
+            showDetailed: !!updated.show_detailed,
+            options: updated.options || [],
+            active: updated.active !== false,
+          }
+        }
+        return g
+      })
+      if (modified) {
+        await query(
+          `UPDATE product_containers 
+           SET option_groups = $1::jsonb, updated_at = timezone('utc'::text, now()) 
+           WHERE id = $2`,
+          [JSON.stringify(newGroups), row.id]
+        )
+      }
+    }
+  } catch (syncErr) {
+    console.error('Erro ao sincronizar modelo atualizado nos recipientes:', syncErr)
+  }
 
   // Log para o TI
   await recordAuditLog({
@@ -193,6 +239,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
       minQty,
       maxQty,
       optionsCount: options.length,
+      active: updated.active,
     },
   })
 
@@ -223,6 +270,38 @@ export async function deleteOptionModel(id: string, tenantId: string = AVEIRO_HQ
   )
 
   const deletedName = res.rows?.[0]?.name || id
+
+  // Sincroniza desativação em todos os recipientes vinculados
+  try {
+    const containersRes = await query(
+      `SELECT id, option_groups FROM product_containers 
+       WHERE option_groups IS NOT NULL AND jsonb_array_length(option_groups) > 0`
+    )
+    for (const row of containersRes.rows || []) {
+      const groups = Array.isArray(row.option_groups) ? row.option_groups : []
+      let modified = false
+      const newGroups = groups.map((g: any) => {
+        if (g.id === id || (g.name && deletedName && g.name.toLowerCase() === deletedName.toLowerCase())) {
+          modified = true
+          return {
+            ...g,
+            active: false,
+          }
+        }
+        return g
+      })
+      if (modified) {
+        await query(
+          `UPDATE product_containers 
+           SET option_groups = $1::jsonb, updated_at = timezone('utc'::text, now()) 
+           WHERE id = $2`,
+          [JSON.stringify(newGroups), row.id]
+        )
+      }
+    }
+  } catch (syncErr) {
+    console.error('Erro ao sincronizar modelo desativado nos recipientes:', syncErr)
+  }
 
   // Log para o TI
   await recordAuditLog({

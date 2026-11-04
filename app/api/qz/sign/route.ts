@@ -1,16 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import fs from 'fs'
+import path from 'path'
+
+function getPrivateKey(): string | null {
+  let privateKey = process.env.QZ_PRIVATE_KEY
+  if (!privateKey) {
+    try {
+      const keyPath = path.join(process.cwd(), 'certificates', 'qz-private-key.pem')
+      if (fs.existsSync(keyPath)) {
+        privateKey = fs.readFileSync(keyPath, 'utf8')
+      }
+    } catch (err) {
+      console.warn('[QZ Sign] Falha ao carregar chave do disco:', err)
+    }
+  }
+  return privateKey ? privateKey.replace(/\\n/g, '\n').trim() : null
+}
 
 /**
- * Assina digitalmente as requisições do QZ Tray usando RSA SHA-256.
+ * Assina digitalmente as requisições do QZ Tray usando RSA SHA-512.
  * Isso silencia os diálogos de confirmação de segurança do QZ Tray.
  */
 export async function POST(request: NextRequest) {
   try {
     const requestText = await request.text()
-    const privateKey = process.env.QZ_PRIVATE_KEY
+    const formattedKey = getPrivateKey()
 
-    if (!privateKey) {
+    if (!formattedKey) {
       // Se não houver chave privada configurada, retorna texto simples
       return new NextResponse('KEY_NOT_CONFIGURED', {
         status: 200,
@@ -18,7 +35,6 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const formattedKey = privateKey.replace(/\\n/g, '\n').trim()
     const signer = crypto.createSign('SHA512')
     signer.update(requestText)
     signer.end()
@@ -39,9 +55,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const requestString = request.nextUrl.searchParams.get('request') || ''
-  const privateKey = process.env.QZ_PRIVATE_KEY
+  const formattedKey = getPrivateKey()
 
-  if (!privateKey || !requestString) {
+  if (!formattedKey || !requestString) {
     return new NextResponse('', {
       status: 200,
       headers: { 'Content-Type': 'text/plain' },
@@ -49,7 +65,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const formattedKey = privateKey.replace(/\\n/g, '\n').trim()
     const signer = crypto.createSign('SHA512')
     signer.update(requestString)
     signer.end()

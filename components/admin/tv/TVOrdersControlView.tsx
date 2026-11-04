@@ -532,7 +532,7 @@ export default function TVOrdersControlView({ tenantId }: TVOrdersControlViewPro
             type="button"
             size="sm"
             onClick={() => {
-              const origin = typeof window !== 'undefined' && window.location.origin.includes('localhost') ? window.location.origin : 'https://acaidarose.vercel.app'
+              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.acaidarose.pt'
               window.open(`${origin}/tv/${storeSlug}`, '_blank')
             }}
             className="h-8 px-3 rounded-xl text-xs font-bold bg-[#7C3AED] hover:bg-[#6D28D9] text-white shadow-xs cursor-pointer transition-all shrink-0"

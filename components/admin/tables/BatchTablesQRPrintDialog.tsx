@@ -18,7 +18,7 @@ interface BatchTablesQRPrintDialogProps {
 export default function BatchTablesQRPrintDialog({ tables, open, onOpenChange }: BatchTablesQRPrintDialogProps) {
   const { getTenant, currentTenant } = useFranchiseStore()
   const containerRef = useRef<HTMLDivElement>(null)
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://acaidarose.vercel.app'
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.acaidarose.pt'
 
   const handlePrint = () => {
     if (!containerRef.current) {

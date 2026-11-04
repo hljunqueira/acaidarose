@@ -29,8 +29,8 @@ function getToppingItemPrice(topping: ProductTopping, weightGrams?: number): num
   if (nameLower.includes('pistache')) {
     return isLarge ? 4.0 : 2.0
   }
-  // Creme de Ninho / Nutella: +1€ até 500g / +2€ acima de 500g
-  if (nameLower.includes('ninho') || nameLower.includes('nutella')) {
+  // Creme de Leite em pó / Nutella: +1€ até 500g / +2€ acima de 500g
+  if (nameLower.includes('leite em p') || nameLower.includes('ninho') || nameLower.includes('nutella')) {
     return isLarge ? 2.0 : 1.0
   }
 
@@ -92,12 +92,12 @@ export default function CustomerProductDetail({
   const [customSelections, setCustomSelections] = useState<Record<string, Record<string, number>>>(() => {
     const initial: Record<string, Record<string, number>> = {}
     if (container.optionGroups) {
-      for (const group of container.optionGroups) {
+      for (const group of container.optionGroups.filter((g) => g.active !== false)) {
         const gId = group.id || group.name
         initial[gId] = {}
         const isBaseGroup = gId === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
         if (isBaseGroup && isBaseFixed) {
-          const acaiOpt = (group.options || []).find(
+          const acaiOpt = (group.options || []).filter((o: any) => o.active !== false).find(
             (o: any) => (o.name || '').toLowerCase().includes('açaí') || (o.name || '').toLowerCase().includes('acai')
           )
           if (acaiOpt) {
@@ -187,14 +187,14 @@ export default function CustomerProductDetail({
   const dynamicGroupsPrice = useMemo(() => {
     if (!hasDynamicGroups) return 0
     let sum = 0
-    for (const group of (container.optionGroups || [])) {
+    for (const group of (container.optionGroups || []).filter((g) => g.active !== false)) {
       const selections = customSelections[group.id || group.name] || {}
       const groupAddPrice = Number(group.additionalPrice || 0)
       const groupTotalCount = Object.values(selections).reduce((a, b) => a + b, 0)
       const isBaseGroup = group.id === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
 
       if (group.priceType === 'Individual') {
-        for (const opt of group.options || []) {
+        for (const opt of (group.options || []).filter((o: any) => o.active !== false)) {
           const qty = selections[opt.id] || 0
           if (qty > 0) {
             const optPrice = opt.price !== undefined && Number(opt.price) > 0 ? Number(opt.price) : groupAddPrice
@@ -204,7 +204,7 @@ export default function CustomerProductDetail({
       } else {
         // Grupo Incluso / Grátis
         // 1. Itens com sobrepreço avulso individual (ex: premium)
-        for (const opt of group.options || []) {
+        for (const opt of (group.options || []).filter((o: any) => o.active !== false)) {
           const qty = selections[opt.id] || 0
           if (qty > 0 && opt.price && Number(opt.price) > 0) {
             sum += Number(opt.price) * qty
@@ -346,7 +346,9 @@ export default function CustomerProductDetail({
     }
 
     if (hasDynamicGroups) {
-      for (const group of (container.optionGroups || [])) {
+      for (const group of (container.optionGroups || []).filter((g) => g.active !== false)) {
+        const activeOptions = (group.options || []).filter((o: any) => o.active !== false)
+        if (activeOptions.length === 0) continue // grupo sem itens ativos não bloqueia o pedido
         const selections = customSelections[group.id || group.name] || {}
         const totalQty = Object.values(selections).reduce((a, b) => a + b, 0)
         const minRequired = group.isRequired ? Math.max(1, group.minQty || 1) : (group.minQty || 0)
@@ -360,13 +362,13 @@ export default function CustomerProductDetail({
       const flatBases: any[] = []
       const flatToppings: any[] = []
 
-      for (const group of (container.optionGroups || [])) {
+      for (const group of (container.optionGroups || []).filter((g) => g.active !== false)) {
         const groupId = group.id || group.name
         const selections = customSelections[groupId] || {}
         const gNameLower = (group.name || '').toLowerCase()
         const isBaseGroup = gNameLower.includes('base') || gNameLower.includes('creme')
 
-        for (const opt of group.options || []) {
+        for (const opt of (group.options || []).filter((o: any) => o.active !== false)) {
           const qty = selections[opt.id] || 0
           if (qty > 0) {
             for (let i = 0; i < qty; i++) {
@@ -495,11 +497,17 @@ export default function CustomerProductDetail({
                   {formatCurrency(container.precoBase)}
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-purple-200/70 leading-relaxed font-medium">
-                {isUnlimited
-                  ? 'Frutas frescas e acompanhamentos tradicionais à vontade.'
-                  : `Inclui até ${maxFrutas} frutas e até ${maxToppingsGratis} acompanhamentos.`}
-              </p>
+              {container.description && container.description.trim() ? (
+                <p className="text-xs text-slate-600 dark:text-purple-200/70 leading-relaxed font-medium">
+                  {container.description.trim()}
+                </p>
+              ) : !hasDynamicGroups && !isSomenteCreme ? (
+                <p className="text-xs text-slate-600 dark:text-purple-200/70 leading-relaxed font-medium">
+                  {isUnlimited
+                    ? 'Frutas frescas e acompanhamentos tradicionais à vontade.'
+                    : `Inclui até ${maxFrutas} frutas e até ${maxToppingsGratis} acompanhamentos.`}
+                </p>
+              ) : null}
             </div>
 
             {/* Resumo da Composição e Acréscimos em Tempo Real */}
@@ -609,7 +617,9 @@ export default function CustomerProductDetail({
             )}
 
             {hasDynamicGroups ? (
-              container.optionGroups!.map((group, groupIdx) => {
+              container.optionGroups!
+                .filter((g) => g.active !== false && (g.options || []).some((o: any) => o.active !== false))
+                .map((group, groupIdx) => {
                 const groupId = group.id || group.name
                 const groupSelections = customSelections[groupId] || {}
                 const groupTotalCount = Object.values(groupSelections).reduce((a, b) => a + b, 0)
@@ -661,7 +671,7 @@ export default function CustomerProductDetail({
                     {isDetailed ? (
                       /* Grid Detalhado com Imagem / Card */
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {(group.options || []).map((opt: any) => {
+                        {(group.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
                           const currentQty = groupSelections[opt.id] || 0
                           const isSelected = currentQty > 0
                           return (
@@ -731,7 +741,7 @@ export default function CustomerProductDetail({
                     ) : (
                       /* Linhas Compactas (showDetailed === false) */
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {(group.options || []).map((opt: any) => {
+                        {(group.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
                           const currentQty = groupSelections[opt.id] || 0
                           const isSelected = currentQty > 0
                           return (

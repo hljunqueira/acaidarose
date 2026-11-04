@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User } from '@/types'
+import { User, Tenant, UserRole } from '@/types'
 import { KeyRound, User as UserIcon, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -15,6 +15,7 @@ interface UserEditDialogProps {
   user: any
   currentUser?: User
   tenantId?: string
+  tenants?: Tenant[]
   mode?: 'EDIT' | 'PASSWORD_ONLY'
   onSave: (user: any) => Promise<void>
 }
@@ -24,7 +25,8 @@ export default function UserEditDialog({
   onOpenChange,
   user,
   currentUser,
-  tenantId = 'tenant-torres-novas',
+  tenantId = '',
+  tenants = [],
   mode = 'EDIT',
   onSave,
 }: UserEditDialogProps) {
@@ -32,7 +34,8 @@ export default function UserEditDialog({
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState<'SUPER_ADMIN' | 'FRANCHISEE_ADMIN' | 'CASHIER' | 'KITCHEN'>('CASHIER')
+  const [role, setRole] = useState<UserRole>('CASHIER')
+  const [userTenantId, setUserTenantId] = useState<string>(tenantId)
   const [saving, setSaving] = useState(false)
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN'
@@ -45,14 +48,16 @@ export default function UserEditDialog({
       setPassword('')
       setConfirmPassword('')
       setRole(user.role || 'CASHIER')
+      setUserTenantId(user.tenantId || tenantId || '')
     } else {
       setName('')
       setEmail('')
       setPassword('')
       setConfirmPassword('')
       setRole('CASHIER')
+      setUserTenantId(tenantId || (tenants.length > 0 ? tenants[0].id : ''))
     }
-  }, [user, open])
+  }, [user, open, tenantId, tenants])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,7 +76,7 @@ export default function UserEditDialog({
           name,
           email,
           role: isSuperAdmin ? role : (user ? user.role : 'CASHIER'),
-          tenantId: user?.tenantId || tenantId,
+          tenantId: isSuperAdmin ? (userTenantId || null) : (user?.tenantId || tenantId),
           ...(password ? { password } : {}),
         })
       }
@@ -99,7 +104,7 @@ export default function UserEditDialog({
             ) : (
               <>
                 <Shield className="h-4 w-4 text-emerald-600" />
-                Novo Utilizador da Loja
+                Novo Utilizador da Rede
               </>
             )}
           </DialogTitle>
@@ -146,7 +151,26 @@ export default function UserEditDialog({
                   >
                     <option value="CASHIER">CASHIER (Operador de Caixa / Salão)</option>
                     <option value="TENANT_ADMIN">TENANT_ADMIN (Gerente de Loja)</option>
-                    <option value="SUPER_ADMIN">SUPER_ADMIN (Franqueadora Matriz)</option>
+                    <option value="FRANCHISOR_ADMIN">FRANCHISOR_ADMIN (Administrador da Franqueadora)</option>
+                    <option value="SUPER_ADMIN">SUPER_ADMIN (Franqueadora Matriz / Holding)</option>
+                  </select>
+                </div>
+              )}
+
+              {isSuperAdmin && tenants.length > 0 && (
+                <div>
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">Unidade / Loja Vinculada:</Label>
+                  <select
+                    value={userTenantId}
+                    onChange={(e) => setUserTenantId(e.target.value)}
+                    className="w-full h-9 text-xs mt-1 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-purple-950 dark:text-white px-3 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 dark:focus:ring-pink-500 [&>option]:bg-white dark:[&>option]:bg-[#160228]"
+                  >
+                    <option value="">Holding / Franqueadora Geral (Sem Loja Fixa)</option>
+                    {tenants.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}

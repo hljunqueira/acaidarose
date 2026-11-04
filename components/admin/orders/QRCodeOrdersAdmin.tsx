@@ -177,14 +177,25 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       const res = await authFetch(`/api/tenants/${encodeURIComponent(tenantId)}/printers`)
       if (res.ok) {
         const data = await res.json()
-        setStorePrinters(data.printers || [])
+        const list: StorePrinterSetting[] = data.printers || []
+        setStorePrinters(list)
+        if (list.some((p) => p.isActive !== false && p.connectionType === 'QZ_TRAY')) {
+          try {
+            const conn = await connectQZ()
+            setQzOnline(conn.connected)
+          } catch {
+            setQzOnline(false)
+          }
+        } else {
+          setQzOnline(false)
+        }
       }
     } catch {
       // silencia erro de rede inicial
     }
   }, [tenantId, authFetch])
 
-  // Verifica conexão com QZ Tray local
+  // Verifica conexão com QZ Tray local manualmente sob demanda
   const checkQzConnection = useCallback(async () => {
     try {
       const conn = await connectQZ()
@@ -196,7 +207,6 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
 
   React.useEffect(() => {
     fetchStorePrinters()
-    checkQzConnection()
 
     const onPrintersUpdated = () => {
       fetchStorePrinters()

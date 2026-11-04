@@ -83,8 +83,8 @@ export async function connectQZ(): Promise<QZConnectionStatus> {
     await qz.websocket.connect({
       usingSecure: isHttps,
       keepAlive: 60,
-      retries: 2,
-      delay: 1,
+      retries: 0,
+      delay: 0,
     })
 
     const version = qz.version || 'v2.2+'

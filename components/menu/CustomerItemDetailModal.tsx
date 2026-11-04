@@ -34,12 +34,13 @@ export default function CustomerItemDetailModal({
     const map: Record<string, string[]> = {}
     if (!product || !Array.isArray(product.optionGroups)) return map
 
-    for (const grp of product.optionGroups) {
-      const defaultOpts = (grp.options || []).filter((o: any) => o.default).map((o: any) => o.id)
+    for (const grp of product.optionGroups.filter((g: any) => g.active !== false)) {
+      const activeOptions = (grp.options || []).filter((o: any) => o.active !== false)
+      const defaultOpts = activeOptions.filter((o: any) => o.default).map((o: any) => o.id)
       if (defaultOpts.length > 0) {
         map[grp.id] = defaultOpts
-      } else if (grp.required && (grp.min || 1) === 1 && grp.options && grp.options.length > 0) {
-        map[grp.id] = [grp.options[0].id]
+      } else if (grp.required && (grp.min || 1) === 1 && activeOptions.length > 0) {
+        map[grp.id] = [activeOptions[0].id]
       } else {
         map[grp.id] = []
       }
@@ -65,10 +66,10 @@ export default function CustomerItemDetailModal({
   // Calcula total adicional dos modificadores selecionados
   let optionsPriceSum = 0
   if (Array.isArray(product.optionGroups)) {
-    for (const grp of product.optionGroups) {
+    for (const grp of product.optionGroups.filter((g: any) => g.active !== false)) {
       const selectedIds = selectedOptionsMap[grp.id] || []
       for (const optId of selectedIds) {
-        const opt = (grp.options || []).find((o: any) => o.id === optId)
+        const opt = (grp.options || []).filter((o: any) => o.active !== false).find((o: any) => o.id === optId)
         if (opt && typeof opt.price === 'number') {
           optionsPriceSum += opt.price
         }
@@ -112,7 +113,9 @@ export default function CustomerItemDetailModal({
   const handleConfirm = () => {
     // Validação de grupos obrigatórios
     if (Array.isArray(product.optionGroups)) {
-      for (const grp of product.optionGroups) {
+      for (const grp of product.optionGroups.filter((g: any) => g.active !== false)) {
+        const activeOptions = (grp.options || []).filter((o: any) => o.active !== false)
+        if (activeOptions.length === 0) continue // Grupo sem itens ativos não bloqueia o pedido
         const selected = selectedOptionsMap[grp.id] || []
         const min = grp.min !== undefined ? grp.min : grp.required ? 1 : 0
         if (min > 0 && selected.length < min) {
@@ -130,10 +133,10 @@ export default function CustomerItemDetailModal({
 
     const selectedOptionsList: any[] = []
     if (Array.isArray(product.optionGroups)) {
-      for (const grp of product.optionGroups) {
+      for (const grp of product.optionGroups.filter((g: any) => g.active !== false)) {
         const selectedIds = selectedOptionsMap[grp.id] || []
         for (const optId of selectedIds) {
-          const opt = (grp.options || []).find((o: any) => o.id === optId)
+          const opt = (grp.options || []).filter((o: any) => o.active !== false).find((o: any) => o.id === optId)
           if (opt) {
             selectedOptionsList.push({
               groupId: grp.id,
@@ -222,9 +225,9 @@ export default function CustomerItemDetailModal({
           ) : null}
 
           {/* GRUPOS DE OPÇÕES / MODIFICADORES (Leite, Textura, Coberturas, etc.) */}
-          {Array.isArray(product.optionGroups) && product.optionGroups.length > 0 && (
+          {Array.isArray(product.optionGroups) && product.optionGroups.some((g: any) => g.active !== false && (g.options || []).some((o: any) => o.active !== false)) && (
             <div className="space-y-4 pt-1">
-              {product.optionGroups.map((grp: any) => {
+              {product.optionGroups.filter((g: any) => g.active !== false && (g.options || []).some((o: any) => o.active !== false)).map((grp: any) => {
                 const selected = selectedOptionsMap[grp.id] || []
                 const max = grp.max || 1
                 const isRequired = grp.required || (grp.min && grp.min > 0)
@@ -259,7 +262,7 @@ export default function CustomerItemDetailModal({
                     </div>
 
                     <div className="space-y-1.5 pt-1">
-                      {(grp.options || []).map((opt: any) => {
+                      {(grp.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
                         const isSelected = selected.includes(opt.id)
                         return (
                           <div

@@ -1,5 +1,77 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Visibilidade Global de Utilizadores da Rede para o Super Admin (Henrique) [CONCLUÍDO & EM PRODUÇÃO]**:
+  - **Solicitação do Usuário**: *"Não esta aparecendo todos os usuarios para mim Henrique"*.
+  - **Causa Raiz Identificada**:
+    - Na tela `Configurações da Unidade > Utilizadores & Permissões`, a busca de usuários filtrava estritamente pela loja ativa na sessão (`tenantId = 11111111-1111-1111-1111-111111111111`), exibindo apenas os 5 usuários de Figueira da Foz e ocultando os operadores e gerentes de Torres Novas e Aveiro.
+    - O mapeamento de nomes de lojas no componente `UsersAdmin.tsx` continha um dicionário estático arcaico (`STORE_NAMES`), violando o padrão multi-tenant dinâmico.
+  - **Ações Executadas**:
+    1. *Backend (`usersRepository.ts` & `app/api/users/route.ts`)*:
+       - Adicionado `LEFT JOIN tenants t ON u.tenant_id = t.id` para retornar `tenant_name` dinamicamente para cada utilizador.
+       - Quando a requisição for feita por `SUPER_ADMIN` ou `FRANCHISOR_ADMIN` sem filtro específico ou com `tenantId=all`, o sistema retorna **todos os utilizadores cadastrados em todas as lojas da rede**.
+       - Adicionada função `getUserById(id)` e suporte à alteração de `tenant_id` em `updateUser`.
+    2. *Regras de Permissão de Senha (`app/api/users/[id]/route.ts` & `UserTable.tsx`)*:
+       - Henrique (`henriquelinharesjunqueira@gmail.com`) tem permissão irrestrita para definir ou alterar a palavra-passe de qualquer utilizador da rede.
+       - Outros perfis `SUPER_ADMIN` podem alterar de lojas franqueadas e da sua própria conta, mas são impedidos de sobrescrever as credenciais de Henrique.
+       - Gerentes e operadores de caixa não possuem essa função.
+    3. *Frontend Dinâmico (`UsersAdmin.tsx`, `UserTable.tsx`, `UserEditDialog.tsx`)*:
+       - Eliminado o dicionário fixo `STORE_NAMES`, substituído pela consulta dinâmica de lojas via `useFranchiseStore`.
+       - Para o `SUPER_ADMIN`, o filtro padrão ao entrar na tela é **"Todas as Lojas (Rede Global)"**, exibindo imediatamente todos os 9 utilizadores da rede.
+       - Adicionado seletor de filtros com botões em tempo real (`Todas as Lojas`, `Loja 1 - Figueira da Foz`, `Loja 2 - Torres Novas`, `Loja 3 - Aveiro`, etc.).
+       - Cada card de utilizador agora exibe a tag da unidade a que pertence com ícone corporativo.
+       - No modal de criação/edição de usuário (`UserEditDialog`), adicionado seletor de loja para que o Super Admin possa associar o usuário à unidade desejada.
+  - **Deploy & Validação**:
+    - `npm run build` executado com 0 erros de TypeScript em todas as 42 rotas.
+    - Deploy automatizado executado com sucesso na VPS (`198.50.117.110`).
+    - Testado endpoint em produção: `curl -s -H "x-auth-token: ..." https://app.acaidarose.pt/api/users` retornando os 9 usuários ativos de toda a rede com nomes de lojas dinâmicos.
+
+
+- **Gestão de Palavras-passe Exclusiva para Super Admin & Remoção de Valores Padrão [CONCLUÍDO & EM PRODUÇÃO]**:
+  - **Solicitação do Usuário**:
+    1. Apenas Henrique (`SUPER_ADMIN`) pode alterar e definir a palavra-passe de qualquer utilizador (incluindo lojas franqueadas); os demais utilizadores (gerentes, caixas) não têm essa permissão.
+    2. Eliminar qualquer palavra-passe padrão ("default" ou "initial") do sistema.
+    3. Resolver acesso do e-mail `valdair@acaidarose.pt`.
+  - **Ações Executadas**:
+    1. *Permissão Estrita de Senha*:
+       - `UserTable.tsx`: O botão `[ 🔑 Senha ]` agora é renderizado **exclusivamente** quando `isSuperAdmin` for verdadeiro. Gerentes e operadores de loja não visualizam o botão de alterar senha de outros usuários.
+       - `app/api/users/[id]/route.ts`: Backend valida se `user?.role === 'SUPER_ADMIN'` sempre que `body.password` for enviado, retornando erro 403 para qualquer outro perfil.
+       - `app/api/users/route.ts`: Criação de novos utilizadores com definição de senha restrita exclusivamente ao `SUPER_ADMIN`.
+    2. *Remoção de Senhas Padrão*:
+       - `usersRepository.ts`: Removido o fallback `'123456'` de `createUser`. A palavra-passe agora é obrigatória e deve ser informada explicitamente pelo administrador. Criptografia automática com `bcryptjs` antes de persistir no PostgreSQL.
+       - `CreateStoreDialog.tsx`: Removido o valor inicial `'Rose2026!'` do formulário de criação de gerentes de novas lojas.
+       - `UserEditDialog.tsx`: Placeholders limpos e validação obrigatória sem pré-preenchimento.
+    3. *Correção de Perfil Visual*:
+       - `UserTable.tsx`: Adicionado suporte ao badge `ADMIN FRANQUEADORA` e permissões corporativas para `FRANCHISOR_ADMIN` (antes caía incorretamente como "OPERADOR DE CAIXA").
+    4. *Acesso do Valdair*:
+       - A palavra-passe de `valdair@acaidarose.pt` foi atualizada com o hash bcrypt oficial de `AcaiRose2026!`.
+       - Teste de login autenticado via endpoint `/api/auth/login` validado com sucesso (`HTTP 200 - Sessão iniciada com sucesso`).
+  - **Deploy & Validação**: Compilado e enviado para a VPS via `npm run deploy` com código 0. Testado em produção em `https://app.acaidarose.pt`.
+
+- **Migração da Plataforma Next.js 15 para VPS Standalone (`app.acaidarose.pt`) & Remoção da Vercel [CONCLUÍDO & EM PRODUÇÃO]**:
+  - **Motivo**: Esgotamento do plano gratuito da Vercel e alto consumo de largura de banda/edge invocations.
+  - **Decisão Arquitetural**: Manter o site legado intacto em `acaidarose.pt` (servido pelo Nginx) e hospedar a aplicação/plataforma Next.js 15 Standalone sob o subdomínio definitivo `https://app.acaidarose.pt`.
+  - **Ações Executadas**:
+    1. *DNS no Cloudflare*: Criado registro tipo `A` para `app.acaidarose.pt` apontando para a VPS `198.50.117.110` (Proxy ativado).
+    2. *Nginx na VPS*:
+       - Criado `/etc/icontainer/apps/nginx/nginx/conf/conf.d/app.acaidarose.pt.conf` com proxy reverso HTTP 1.1 para `http://127.0.0.1:3000`.
+       - Atualizado `/etc/icontainer/apps/nginx/nginx/conf/conf.d/api.acaidarose.pt.conf` para redirecionar tráfego REST diretamente para a porta local `3000`.
+       - Testado e recarregado o Nginx com sucesso.
+    3. *Container Docker Next.js*: Criado e ativado o container `acaidarose-app` (Node.js 20 Alpine) rodando com rede host, consumindo ~120MB de RAM e comunicando-se com o PostgreSQL local com latência de ~1ms.
+    4. *Ajuste de Código*:
+       - Eliminados todos os fallbacks hardcoded de `https://acaidarose.vercel.app` em componentes de QR Codes, PDV, TV e franquias (`SingleTableQRDialog`, `CounterQRView`, `BatchTablesQRPrintDialog`, `QRCodeConfigView`, `StoreMetricsCard`, `TVOrdersControlView`, `soundNotification`, etc.), substituídos por resolução dinâmica de origem e `https://app.acaidarose.pt`.
+    5. *Variáveis de Ambiente & Scripts*:
+       - Atualizados `.env.local`, `.env.example`, `.env.production.local`.
+       - Criado script unificado `scripts/deploy-app.js` e atualizados `scripts/deploy-plataforma.js` e `package.json` (`npm run deploy`, `npm run deploy-acaidarose-app`).
+    6. *Documentações Atualizadas*:
+       - `docs/GUIA_DE_APONTAMENTOS_DNS_E_DOMINIOS.md`
+       - `docs/ARQUITETURA_INFRAESTRUTURA_E_DOMINIOS.md`
+       - `docs/MANUAL_DE_DEPLOY_AUTOMATIZADO_E_OPCOES_DINAMICAS.md`
+       - `docs/ADR_AVALIACAO_COOLIFY_E_PAAS_SELF_HOSTED.md`
+       - `docs/DOCUMENTACAO_ULTIMAS_ATUALIZACOES.md`
+       - `docs/ESPECIFICACAO_IMPRESSAO_AUTOMATICA_QZ_TRAY.md`
+       - `docs/PLAN_FLUXO_PAGAMENTO_BALCAO_E_QZ_TRAY_MULTI_IMPRESSORAS.md`
+  - **Validação**: Build Next.js compilado com 42 rotas dinâmicas/estáticas; container Docker em execução na VPS; endpoints `/api/health` respondendo `HTTP 200 OK` (latência do banco: 1ms); site legado em `acaidarose.pt` 100% preservado.
+
 - **Correção no Modal de Personalização do Produto: Botão Diminuir (-) de Açaí e Bases [CONCLUÍDO & VALIDADO]**:
   - **Sintoma Reportado (Print com seta vermelha no - do Açaí Tradicional)**: O cliente/operador não conseguia diminuir a quantidade do Açaí Tradicional de 2 para 1 no modal "Personalize o seu Copo 250gr".
   - **Causa Raiz**: O handler `updateDynamicOptionQty` continha a trava `if (isAcai && delta < 0) return toast.info(...)`, bloqueando qualquer clique em `-` no Açaí mesmo quando a quantidade era superior a 1 (`currentQty: 2`). Além disso, um `useEffect` forçava a reposição de 1 caso o usuário tentasse zerar para escolher 2 cremes sem açaí.

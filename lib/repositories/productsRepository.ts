@@ -135,7 +135,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
   const categoriesList: any[] = []
 
   try {
-    const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes, menusRes] = await Promise.all([
+    const [containersRes, basesRes, toppingsRes, priceOverridesRes, availabilityOverridesRes, categoriesRes, menusRes, optionModelsRes] = await Promise.all([
       query(`SELECT id, name, name_en, name_es, description, description_en, description_es, weight_grams, preco_base, limite_bases, limite_complementos_gratis, image_url, video_url, video_poster, available_hours, display_order, active, option_groups, category_id, product_type FROM product_containers WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT id, name, name_en, name_es, description, description_en, description_es, image_url, video_url, video_poster, available_hours, display_order, active FROM product_bases WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
       query(`SELECT id, name, name_en, name_es, description, description_en, description_es, category, is_premium, preco_extra, image_url, video_url, video_poster, available_hours, display_order, active FROM product_toppings WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY display_order ASC`, [tenantId]),
@@ -143,7 +143,17 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       query(`SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT id, name, name_en, name_es, slug, menu_id, description, description_en, description_es, display_order, active, default_price, weight_grams FROM categories WHERE active = true ORDER BY display_order ASC`),
       query(`SELECT id, name, name_en, name_es, code, description, description_en, description_es, display_order, active FROM menus WHERE active = true ORDER BY display_order ASC`),
+      query(`SELECT id, name, price_type, additional_price, min_qty, max_qty, allow_item_quantity, is_required, show_detailed, options, active FROM product_option_models`),
     ])
+
+    const optionModelsByIdMap = new Map<string, any>()
+    const optionModelsByNameMap = new Map<string, any>()
+    if (optionModelsRes && optionModelsRes.rows) {
+      optionModelsRes.rows.forEach((m: any) => {
+        if (m.id) optionModelsByIdMap.set(m.id, m)
+        if (m.name) optionModelsByNameMap.set(m.name.toLowerCase().trim(), m)
+      })
+    }
 
     const priceMap = new Map<string, number>()
     if (priceOverridesRes && priceOverridesRes.rows) {
@@ -290,7 +300,28 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         // Produtos unitários prontos (lanches) não usam construtor de taça de açaí
         let optionGroups: any[] = []
         if (row.option_groups && Array.isArray(row.option_groups) && row.option_groups.length > 0) {
-          optionGroups = row.option_groups
+          optionGroups = row.option_groups.map((g: any) => {
+            const canonicalModel =
+              (g.id && optionModelsByIdMap.get(g.id)) ||
+              (g.name && optionModelsByNameMap.get(g.name.toLowerCase().trim()))
+            if (canonicalModel) {
+              return {
+                ...g,
+                id: canonicalModel.id,
+                name: canonicalModel.name || g.name,
+                priceType: canonicalModel.price_type || g.priceType,
+                additionalPrice: Number(canonicalModel.additional_price ?? g.additionalPrice ?? 0),
+                minQty: Number(canonicalModel.min_qty ?? g.minQty ?? 0),
+                maxQty: Number(canonicalModel.max_qty ?? g.maxQty ?? 1),
+                allowItemQuantity: canonicalModel.allow_item_quantity !== undefined ? !!canonicalModel.allow_item_quantity : !!g.allowItemQuantity,
+                isRequired: canonicalModel.is_required !== undefined ? !!canonicalModel.is_required : !!g.isRequired,
+                showDetailed: canonicalModel.show_detailed !== undefined ? !!canonicalModel.show_detailed : !!g.showDetailed,
+                options: Array.isArray(canonicalModel.options) && canonicalModel.options.length > 0 ? canonicalModel.options : (g.options || []),
+                active: canonicalModel.active !== false && g.active !== false,
+              }
+            }
+            return g
+          })
         } else if (!isItem && weight) {
           optionGroups = buildDefaultOptionGroupsForContainer(weight, bases, toppings, isBaseFixedDefault)
         }

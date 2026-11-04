@@ -92,7 +92,7 @@ export default function CreateStoreDialog({
   // 4. Gestor da Loja
   const [managerName, setManagerName] = useState('')
   const [managerEmail, setManagerEmail] = useState('')
-  const [managerPassword, setManagerPassword] = useState('Rose2026!')
+  const [managerPassword, setManagerPassword] = useState('')
 
   const handleNameChange = (val: string) => {
     setName(val)
@@ -516,10 +516,12 @@ export default function CreateStoreDialog({
 
               <div className="space-y-1">
                 <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">
-                  Palavra-Passe Inicial:
+                  Palavra-Passe do Gerente:
                 </Label>
                 <Input
                   type="text"
+                  required
+                  placeholder="Defina a palavra-passe obrigatória (sem padrão)"
                   value={managerPassword}
                   onChange={(e) => setManagerPassword(e.target.value)}
                   className="h-9 text-xs rounded-xl bg-purple-50/50 dark:bg-white/5 border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-mono font-bold"

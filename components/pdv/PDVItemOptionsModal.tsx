@@ -37,12 +37,13 @@ export default function PDVItemOptionsModal({
     const map: Record<string, string[]> = {}
     if (!product || !Array.isArray(product.optionGroups)) return map
 
-    for (const grp of product.optionGroups) {
-      const defaultOpts = (grp.options || []).filter((o: any) => o.default).map((o: any) => o.id)
+    for (const grp of product.optionGroups.filter((g: any) => g.active !== false)) {
+      const activeOptions = (grp.options || []).filter((o: any) => o.active !== false)
+      const defaultOpts = activeOptions.filter((o: any) => o.default).map((o: any) => o.id)
       if (defaultOpts.length > 0) {
         map[grp.id] = defaultOpts
-      } else if (grp.required && (grp.min || 1) === 1 && grp.options && grp.options.length > 0) {
-        map[grp.id] = [grp.options[0].id]
+      } else if (grp.required && (grp.min || 1) === 1 && activeOptions.length > 0) {
+        map[grp.id] = [activeOptions[0].id]
       } else {
         map[grp.id] = []
       }
@@ -67,10 +68,10 @@ export default function PDVItemOptionsModal({
   // Soma dos opcionais
   let optionsSum = 0
   if (Array.isArray(product.optionGroups)) {
-    for (const grp of product.optionGroups) {
+    for (const grp of product.optionGroups.filter((g: any) => g.active !== false)) {
       const ids = selectedMap[grp.id] || []
       for (const optId of ids) {
-        const opt = (grp.options || []).find((o: any) => o.id === optId)
+        const opt = (grp.options || []).filter((o: any) => o.active !== false).find((o: any) => o.id === optId)
         if (opt && typeof opt.price === 'number') {
           optionsSum += opt.price
         }
@@ -106,7 +107,9 @@ export default function PDVItemOptionsModal({
   const handleSave = () => {
     // Validação
     if (Array.isArray(product.optionGroups)) {
-      for (const grp of product.optionGroups) {
+      for (const grp of product.optionGroups.filter((g: any) => g.active !== false)) {
+        const activeOptions = (grp.options || []).filter((o: any) => o.active !== false)
+        if (activeOptions.length === 0) continue // grupo sem itens ativos não bloqueia
         const selected = selectedMap[grp.id] || []
         const min = grp.min !== undefined ? grp.min : grp.required ? 1 : 0
         if (min > 0 && selected.length < min) {
@@ -118,10 +121,10 @@ export default function PDVItemOptionsModal({
 
     const selectedOptionsList: any[] = []
     if (Array.isArray(product.optionGroups)) {
-      for (const grp of product.optionGroups) {
+      for (const grp of product.optionGroups.filter((g: any) => g.active !== false)) {
         const ids = selectedMap[grp.id] || []
         for (const optId of ids) {
-          const opt = (grp.options || []).find((o: any) => o.id === optId)
+          const opt = (grp.options || []).filter((o: any) => o.active !== false).find((o: any) => o.id === optId)
           if (opt) {
             selectedOptionsList.push({
               groupId: grp.id,
@@ -161,8 +164,8 @@ export default function PDVItemOptionsModal({
 
         <div className="space-y-4 py-2">
           {/* GRUPOS DE OPÇÕES (MODIFICADORES) */}
-          {Array.isArray(product.optionGroups) && product.optionGroups.length > 0 ? (
-            product.optionGroups.map((grp: any) => {
+          {Array.isArray(product.optionGroups) && product.optionGroups.some((g: any) => g.active !== false && (g.options || []).some((o: any) => o.active !== false)) ? (
+            product.optionGroups.filter((g: any) => g.active !== false && (g.options || []).some((o: any) => o.active !== false)).map((grp: any) => {
               const selected = selectedMap[grp.id] || []
               const max = grp.max || 1
               const isRequired = grp.required || (grp.min && grp.min > 0)
@@ -191,7 +194,7 @@ export default function PDVItemOptionsModal({
                   </div>
 
                   <div className="grid grid-cols-1 gap-1.5 pt-1">
-                    {(grp.options || []).map((opt: any) => {
+                    {(grp.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
                       const isSelected = selected.includes(opt.id)
                       return (
                         <div
