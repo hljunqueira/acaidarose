@@ -688,7 +688,7 @@ export default function CustomerProductDetail({
                                   <img src={opt.image} alt={opt.name} className="h-10 w-10 rounded-xl object-cover flex-shrink-0" />
                                 ) : null}
                                 <div className="min-w-0 flex-1">
-                                  <div className="font-bold text-[11px] sm:text-xs text-purple-950 dark:text-white line-clamp-2 leading-tight break-words">
+                                  <div className="font-bold text-[11px] sm:text-xs text-purple-950 dark:text-white whitespace-normal break-words leading-snug">
                                     {opt.name}
                                   </div>
                                   {group.priceType === 'Individual' && Number(opt.price) > 0 && (
@@ -748,14 +748,14 @@ export default function CustomerProductDetail({
                             <div
                               key={opt.id}
                               onClick={() => !group.allowItemQuantity && toggleDynamicOptionSingle(groupId, opt.id, group)}
-                              className={`p-2 sm:p-2.5 min-h-[58px] sm:min-h-[56px] rounded-xl border transition flex items-center justify-between gap-1.5 cursor-pointer select-none ${
+                              className={`p-2.5 sm:p-3 min-h-[52px] h-auto rounded-xl border transition flex items-center justify-between gap-2 cursor-pointer select-none ${
                                 isSelected
                                   ? 'bg-purple-700 border-purple-700 text-white shadow-sm dark:bg-purple-700 dark:border-fuchsia-400'
                                   : 'bg-white dark:bg-white/5 border-purple-150 dark:border-white/10 hover:border-purple-300 dark:hover:border-white/20 text-slate-800 dark:text-purple-200'
                               }`}
                             >
                               <div className="flex-1 min-w-0 pr-1 text-left">
-                                <div className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-2 break-words">
+                                <div className="text-[11px] sm:text-xs font-semibold leading-snug whitespace-normal break-words">
                                   {opt.name}
                                 </div>
                                 {group.priceType === 'Individual' && Number(opt.price) > 0 && (
@@ -855,7 +855,7 @@ export default function CustomerProductDetail({
                           }`}
                         >
                           <div className="min-w-0 flex-1 pr-1">
-                            <span className="line-clamp-2 leading-tight text-[11px] sm:text-xs break-words">{base.name}</span>
+                            <span className="whitespace-normal break-words leading-snug text-[11px] sm:text-xs">{base.name}</span>
                             {isExtra && isAvailable && (
                               <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">+€ 2,00</div>
                             )}
@@ -903,7 +903,7 @@ export default function CustomerProductDetail({
                               : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                           }`}
                         >
-                          <span className="line-clamp-2 leading-tight flex-1 pr-1 text-[11px] sm:text-xs break-words">{fruta.name}</span>
+                          <span className="whitespace-normal break-words leading-snug flex-1 pr-1 text-[11px] sm:text-xs">{fruta.name}</span>
                           {isSelected ? (
                             <Check className="h-3.5 w-3.5 text-white dark:text-emerald-400 flex-shrink-0 ml-1" />
                           ) : !isAvailable ? (
@@ -947,7 +947,7 @@ export default function CustomerProductDetail({
                               : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
                           }`}
                         >
-                          <span className="line-clamp-2 leading-tight flex-1 pr-1 text-[11px] sm:text-xs break-words">{top.name}</span>
+                          <span className="whitespace-normal break-words leading-snug flex-1 pr-1 text-[11px] sm:text-xs">{top.name}</span>
                           {isSelected ? (
                             <Check className="h-3 w-3 text-white dark:text-emerald-400 flex-shrink-0 ml-1" />
                           ) : !isAvailable ? (
@@ -993,7 +993,7 @@ export default function CustomerProductDetail({
                           }`}
                         >
                           <div className="flex-1 min-w-0 pr-1">
-                            <div className="line-clamp-2 leading-tight font-bold text-[11px] sm:text-xs break-words">{add.name}</div>
+                            <div className="whitespace-normal break-words leading-snug font-bold text-[11px] sm:text-xs">{add.name}</div>
                             <div className={`text-[10px] font-mono font-bold mt-0.5 ${isSelected ? 'text-amber-300' : 'text-amber-800 dark:text-amber-300'}`}>
                               +{formatCurrency(dynamicPrice)}
                             </div>

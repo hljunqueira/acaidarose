@@ -284,7 +284,7 @@ export default function CustomerItemDetailModal({
                               >
                                 {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
                               </div>
-                              <span>{opt.name}</span>
+                              <span className="whitespace-normal break-words leading-snug">{opt.name}</span>
                             </div>
                             {typeof opt.price === 'number' && opt.price > 0 && (
                               <span className={`font-mono text-[11px] font-bold ${isSelected ? 'text-pink-200' : 'text-purple-700 dark:text-pink-400'}`}>

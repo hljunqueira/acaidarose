@@ -188,8 +188,29 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
     for (const row of containersRes.rows || []) {
       const groups = Array.isArray(row.option_groups) ? row.option_groups : []
       let modified = false
+      const isBaseModel = id === 'ddcec6eb-6a9d-4266-93b2-954dfba2e75a' || 
+        (updated.name && (updated.name.toLowerCase().includes('creme') || updated.name.toLowerCase().includes('base')))
+      const isFrutaModel = id === 'b1111111-2222-3333-4444-555555555551' || 
+        (updated.name && updated.name.toLowerCase().includes('fruta'))
+      const isToppingModel = id === 'b2222222-3333-4444-5555-666666666662' || 
+        (updated.name && (updated.name.toLowerCase().includes('acompanhamento') || updated.name.toLowerCase().includes('topping')))
+      const isCaldaModel = id === 'b3333333-4444-5555-6666-777777777773' || 
+        (updated.name && (updated.name.toLowerCase().includes('calda') || updated.name.toLowerCase().includes('especia')))
+
       const newGroups = groups.map((g: any) => {
-        if (g.id === id || (g.name && updated.name && g.name.toLowerCase() === updated.name.toLowerCase())) {
+        const isBaseGroup = g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))
+        const isFrutaGroup = g.id === 'model-frutas' || (g.name && g.name.toLowerCase().includes('fruta'))
+        const isToppingGroup = g.id === 'model-toppings' || (g.name && (g.name.toLowerCase().includes('acompanhamento') || g.name.toLowerCase().includes('topping')))
+        const isCaldaGroup = g.id === 'model-caldas' || (g.name && (g.name.toLowerCase().includes('calda') || g.name.toLowerCase().includes('especia')))
+
+        const matches = g.id === id || 
+          (g.name && updated.name && g.name.toLowerCase().trim() === updated.name.toLowerCase().trim()) ||
+          (isBaseModel && isBaseGroup) ||
+          (isFrutaModel && isFrutaGroup) ||
+          (isToppingModel && isToppingGroup) ||
+          (isCaldaModel && isCaldaGroup)
+
+        if (matches) {
           modified = true
           return {
             ...g,
@@ -198,7 +219,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
             priceType: updated.price_type,
             additionalPrice: Number(updated.additional_price || 0),
             minQty: Number(updated.min_qty || 0),
-            maxQty: Number(updated.max_qty || 1),
+            maxQty: Number(g.maxQty ?? updated.max_qty ?? 1),
             allowItemQuantity: !!updated.allow_item_quantity,
             isRequired: !!updated.is_required,
             showDetailed: !!updated.show_detailed,
@@ -280,8 +301,29 @@ export async function deleteOptionModel(id: string, tenantId: string = AVEIRO_HQ
     for (const row of containersRes.rows || []) {
       const groups = Array.isArray(row.option_groups) ? row.option_groups : []
       let modified = false
+      const isBaseModel = id === 'ddcec6eb-6a9d-4266-93b2-954dfba2e75a' || 
+        (deletedName && (deletedName.toLowerCase().includes('creme') || deletedName.toLowerCase().includes('base')))
+      const isFrutaModel = id === 'b1111111-2222-3333-4444-555555555551' || 
+        (deletedName && deletedName.toLowerCase().includes('fruta'))
+      const isToppingModel = id === 'b2222222-3333-4444-5555-666666666662' || 
+        (deletedName && (deletedName.toLowerCase().includes('acompanhamento') || deletedName.toLowerCase().includes('topping')))
+      const isCaldaModel = id === 'b3333333-4444-5555-6666-777777777773' || 
+        (deletedName && (deletedName.toLowerCase().includes('calda') || deletedName.toLowerCase().includes('especia')))
+
       const newGroups = groups.map((g: any) => {
-        if (g.id === id || (g.name && deletedName && g.name.toLowerCase() === deletedName.toLowerCase())) {
+        const isBaseGroup = g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))
+        const isFrutaGroup = g.id === 'model-frutas' || (g.name && g.name.toLowerCase().includes('fruta'))
+        const isToppingGroup = g.id === 'model-toppings' || (g.name && (g.name.toLowerCase().includes('acompanhamento') || g.name.toLowerCase().includes('topping')))
+        const isCaldaGroup = g.id === 'model-caldas' || (g.name && (g.name.toLowerCase().includes('calda') || g.name.toLowerCase().includes('especia')))
+
+        const matches = g.id === id || 
+          (g.name && deletedName && g.name.toLowerCase().trim() === deletedName.toLowerCase().trim()) ||
+          (isBaseModel && isBaseGroup) ||
+          (isFrutaModel && isFrutaGroup) ||
+          (isToppingModel && isToppingGroup) ||
+          (isCaldaModel && isCaldaGroup)
+
+        if (matches) {
           modified = true
           return {
             ...g,

@@ -23,7 +23,7 @@ import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 import OptionModelsManagerDialog from './OptionModelsManagerDialog'
 import FranchiseRequestDialog from './FranchiseRequestDialog'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
-import { FIGUEIRA_HQ_ID } from '@/lib/utils/permissions'
+import { FIGUEIRA_HQ_ID, canManageMasterCatalog, canEditProductPrices } from '@/lib/utils/permissions'
 
 interface ProductEditDialogProps {
   open: boolean
@@ -36,107 +36,6 @@ interface ProductEditDialogProps {
   availableOptionModels?: OptionModelData[]
   onSave: (collection: string, item: any) => Promise<void>
 }
-
-// Monta os modelos de opções dinamicamente a partir dos itens reais do PostgreSQL (sem seeds/mocks)
-export function buildDynamicOptionGroups(catalog?: any, item?: any): (OptionModelData & { active?: boolean })[] {
-  const bases = catalog?.bases || []
-  const toppings = catalog?.toppings || []
-  const weight = item?.weightGrams || 500
-
-  const isSomenteCreme = (item?.name || '').toLowerCase().includes('somente creme') || (item?.name || '').toLowerCase().includes('apenas creme')
-  const isBaseFixed = item?.isBaseFixed !== undefined ? item.isBaseFixed : !isSomenteCreme
-
-  const basesMax = item?.limiteBases !== undefined && item?.limiteBases !== null 
-    ? Number(item.limiteBases) 
-    : (isBaseFixed ? 1 : 2)
-  const frutasMax = item?.limiteFrutas !== undefined && item?.limiteFrutas !== null 
-    ? Number(item.limiteFrutas) 
-    : (weight >= 500 ? 999 : weight === 250 ? 2 : 3)
-  const toppingsMax = item?.limiteToppings !== undefined && item?.limiteToppings !== null 
-    ? Number(item.limiteToppings) 
-    : (weight >= 500 ? 999 : weight === 250 ? 3 : 4)
-
-  return [
-    {
-      id: 'model-bases',
-      name: isBaseFixed ? 'Cremes Gelados Inclusos' : 'Escolha seu creme ou base gelada',
-      priceType: 'Gratis',
-      minQty: item?.minBases ?? 1,
-      maxQty: basesMax,
-      additionalPrice: 2.0,
-      isBaseFixed,
-      isRequired: true,
-      active: true,
-      options: bases.map((b: any) => ({
-        id: b.id,
-        name: b.name,
-        code: b.code || '',
-        price: 0,
-        description: b.description || '',
-        active: b.active !== false && b.isAvailableInStore !== false,
-      })),
-    },
-    {
-      id: 'model-frutas',
-      name: 'Frutas Frescas Selecionadas',
-      priceType: 'Gratis',
-      minQty: item?.minFrutas ?? 0,
-      maxQty: frutasMax,
-      isRequired: (item?.minFrutas ?? 0) > 0,
-      active: true,
-      options: toppings
-        .filter((t: any) => t.category === 'Frutas')
-        .map((f: any) => ({
-          id: f.id,
-          name: f.name,
-          code: f.code || '',
-          price: f.precoExtra || 0,
-          description: f.description || '',
-          active: f.active !== false && f.isAvailableInStore !== false,
-        })),
-    },
-    {
-      id: 'model-toppings',
-      name: 'Toppings & Crocantes Tradicionais',
-      priceType: 'Gratis',
-      minQty: item?.minToppings ?? 0,
-      maxQty: toppingsMax,
-      isRequired: (item?.minToppings ?? 0) > 0,
-      active: true,
-      options: toppings
-        .filter((t: any) => t.category === 'Toppings' || t.category === 'Cereais')
-        .map((t: any) => ({
-          id: t.id,
-          name: t.name,
-          code: t.code || '',
-          price: t.precoExtra || 0,
-          description: t.description || '',
-          active: t.active !== false && t.isAvailableInStore !== false,
-        })),
-    },
-    {
-      id: 'model-caldas',
-      name: 'Caldas Nobres & Premium',
-      priceType: 'Individual',
-      minQty: item?.minCaldas ?? 0,
-      maxQty: item?.maxCaldas ?? 10,
-      isRequired: false,
-      active: true,
-      options: toppings
-        .filter((t: any) => t.isPremium || t.category === 'Adicionais' || t.category === 'Doces' || t.category === 'Premium')
-        .map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          code: c.code || '',
-          price: c.precoExtra || c.price || 1.5,
-          description: c.description || '',
-          active: c.active !== false && c.isAvailableInStore !== false,
-        })),
-    },
-  ]
-}
-
-import { canManageMasterCatalog, canEditProductPrices } from '@/lib/utils/permissions'
 
 export default function ProductEditDialog({
   open,
@@ -198,17 +97,10 @@ export default function ProductEditDialog({
     return map
   }, [catalog?.menus])
 
-  // Combina modelos do banco com os grupos padrões dinâmicos (sem duplicar)
+  // Modelos de opções configurados no banco de dados pela Franqueadora
   const allAvailableModels = useMemo(() => {
-    const dynamicGroups = buildDynamicOptionGroups(catalog, item)
-    const combined = [...dbOptionModels]
-    for (const dg of dynamicGroups) {
-      if (!combined.some((m) => m.id === dg.id || m.name === dg.name)) {
-        combined.push(dg)
-      }
-    }
-    return combined
-  }, [catalog, item, dbOptionModels])
+    return dbOptionModels
+  }, [dbOptionModels])
 
   const [form, setForm] = useState<any>({
     name: '',

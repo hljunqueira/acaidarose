@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import StoreQuickHoursModal from './StoreQuickHoursModal'
 import ProductRowItem from './ProductRowItem'
-import ProductEditDialog, { buildDynamicOptionGroups } from './ProductEditDialog'
+import ProductEditDialog from './ProductEditDialog'
 import FranchiseRequestDialog from './FranchiseRequestDialog'
 import ContainerAssemblyRulesDialog from './ContainerAssemblyRulesDialog'
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
@@ -158,17 +158,8 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       if (modelsRes.ok) {
         const modelsData = await modelsRes.json()
         if (Array.isArray(modelsData)) {
-          const defaultDynamic = buildDynamicOptionGroups(freshCatalog)
-          const merged = [...modelsData]
-          for (const d of defaultDynamic) {
-            if (!merged.some((m) => m.id === d.id || m.name === d.name)) {
-              merged.push(d)
-            }
-          }
-          setOptionModels(merged)
+          setOptionModels(modelsData)
         }
-      } else {
-        setOptionModels((prev) => (prev.length > 0 ? prev : buildDynamicOptionGroups(freshCatalog)))
       }
     } catch {
       toast.error('Erro ao carregar cardápio')
@@ -1133,7 +1124,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       <OptionModelsManagerDialog
         open={optionModelOpen}
         onOpenChange={setOptionModelOpen}
-        models={optionModels.length > 0 ? optionModels : buildDynamicOptionGroups(catalog)}
+        models={optionModels}
         onSaveModels={setOptionModels}
         isSuperAdmin={isSuperAdmin}
         tenantId={tenantId}

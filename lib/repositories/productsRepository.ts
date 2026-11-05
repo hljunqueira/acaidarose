@@ -30,103 +30,6 @@ export async function bumpStoreCatalogVersion(targetTenantIds?: string[]): Promi
 }
 
 
-export function buildDefaultOptionGroupsForContainer(
-  weight: number,
-  basesList: ProductBase[],
-  toppingsList: ProductTopping[],
-  isBaseFixed: boolean = true
-) {
-  const defaultBasesMax = isBaseFixed ? 1 : 2
-  const defaultFrutasMax = weight >= 500 ? 999 : weight === 250 ? 2 : 3
-  const defaultToppingsMax = weight >= 500 ? 999 : weight === 250 ? 3 : 4
-
-  return [
-    {
-      id: 'model-bases',
-      name: isBaseFixed ? 'Cremes Gelados Inclusos' : 'Escolha seu creme ou base gelada',
-      priceType: 'Gratis' as const,
-      additionalPrice: 2.00,
-      minQty: 1,
-      maxQty: defaultBasesMax,
-      isBaseFixed,
-      isRequired: true,
-      active: true,
-      allowItemQuantity: true,
-      options: basesList.map((b) => ({
-        id: b.id,
-        name: b.name,
-        code: (b as any).code || '',
-        price: 0,
-        description: b.description || '',
-        active: b.active !== false && b.isAvailableInStore !== false,
-      })),
-    },
-    {
-      id: 'model-frutas',
-      name: 'Frutas Frescas Selecionadas',
-      priceType: 'Gratis' as const,
-      additionalPrice: 0.50,
-      minQty: 0,
-      maxQty: defaultFrutasMax,
-      isRequired: false,
-      active: true,
-      allowItemQuantity: true,
-      options: toppingsList
-        .filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f)))
-        .map((f) => ({
-          id: f.id,
-          name: f.name,
-          code: (f as any).code || '',
-          price: f.precoExtra || 0,
-          description: f.description || '',
-          active: f.active !== false && f.isAvailableInStore !== false,
-        })),
-    },
-    {
-      id: 'model-toppings',
-      name: 'Acompanhamentos Tradicionais',
-      priceType: 'Gratis' as const,
-      additionalPrice: 0.50,
-      minQty: 0,
-      maxQty: defaultToppingsMax,
-      isRequired: false,
-      active: true,
-      allowItemQuantity: true,
-      options: toppingsList
-        .filter((t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f)))
-        .map((t) => ({
-          id: t.id,
-          name: t.name,
-          code: (t as any).code || '',
-          price: t.precoExtra || 0,
-          description: t.description || '',
-          active: t.active !== false && t.isAvailableInStore !== false,
-        })),
-    },
-    {
-      id: 'model-caldas',
-      name: 'Caldas Nobres & Especiais',
-      priceType: 'Individual' as const,
-      additionalPrice: 1.50,
-      minQty: 0,
-      maxQty: 10,
-      isRequired: false,
-      active: true,
-      allowItemQuantity: true,
-      options: toppingsList
-        .filter((t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0))
-        .map((c) => ({
-          id: c.id,
-          name: c.name,
-          code: (c as any).code || '',
-          price: c.precoExtra || c.price || 1.5,
-          description: c.description || '',
-          active: c.active !== false && c.isAvailableInStore !== false,
-        })),
-    },
-  ]
-}
-
 export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<CatalogData> {
   const containers: ProductContainer[] = []
   const bases: ProductBase[] = []
@@ -148,10 +51,30 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
 
     const optionModelsByIdMap = new Map<string, any>()
     const optionModelsByNameMap = new Map<string, any>()
+    let cremesOptionModel: any = null
+    let frutasOptionModel: any = null
+    let toppingsOptionModel: any = null
+    let caldasOptionModel: any = null
+
     if (optionModelsRes && optionModelsRes.rows) {
       optionModelsRes.rows.forEach((m: any) => {
         if (m.id) optionModelsByIdMap.set(m.id, m)
-        if (m.name) optionModelsByNameMap.set(m.name.toLowerCase().trim(), m)
+        if (m.name) {
+          const lower = m.name.toLowerCase().trim()
+          optionModelsByNameMap.set(lower, m)
+          if (!cremesOptionModel && (lower.includes('creme') || lower.includes('base') || m.id === 'ddcec6eb-6a9d-4266-93b2-954dfba2e75a')) {
+            cremesOptionModel = m
+          }
+          if (!frutasOptionModel && lower.includes('fruta')) {
+            frutasOptionModel = m
+          }
+          if (!toppingsOptionModel && (lower.includes('acompanhamento') || lower.includes('topping'))) {
+            toppingsOptionModel = m
+          }
+          if (!caldasOptionModel && (lower.includes('calda') || lower.includes('especia'))) {
+            caldasOptionModel = m
+          }
+        }
       })
     }
 
@@ -301,9 +224,19 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         let optionGroups: any[] = []
         if (row.option_groups && Array.isArray(row.option_groups) && row.option_groups.length > 0) {
           optionGroups = row.option_groups.map((g: any) => {
+            const isBaseMatch = g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme')
+            const isFrutaMatch = g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta')
+            const isToppingMatch = g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping')
+            const isCaldaMatch = g.id === 'model-caldas' || g.name?.toLowerCase().includes('calda')
+
             const canonicalModel =
               (g.id && optionModelsByIdMap.get(g.id)) ||
-              (g.name && optionModelsByNameMap.get(g.name.toLowerCase().trim()))
+              (g.name && optionModelsByNameMap.get(g.name.toLowerCase().trim())) ||
+              (isBaseMatch ? cremesOptionModel : null) ||
+              (isFrutaMatch && frutasOptionModel ? frutasOptionModel : null) ||
+              (isToppingMatch && toppingsOptionModel ? toppingsOptionModel : null) ||
+              (isCaldaMatch && caldasOptionModel ? caldasOptionModel : null)
+
             if (canonicalModel) {
               return {
                 ...g,
@@ -312,7 +245,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                 priceType: canonicalModel.price_type || g.priceType,
                 additionalPrice: Number(canonicalModel.additional_price ?? g.additionalPrice ?? 0),
                 minQty: Number(canonicalModel.min_qty ?? g.minQty ?? 0),
-                maxQty: Number(canonicalModel.max_qty ?? g.maxQty ?? 1),
+                maxQty: Number(g.maxQty ?? canonicalModel.max_qty ?? 1),
                 allowItemQuantity: canonicalModel.allow_item_quantity !== undefined ? !!canonicalModel.allow_item_quantity : !!g.allowItemQuantity,
                 isRequired: canonicalModel.is_required !== undefined ? !!canonicalModel.is_required : !!g.isRequired,
                 showDetailed: canonicalModel.show_detailed !== undefined ? !!canonicalModel.show_detailed : !!g.showDetailed,
@@ -322,8 +255,6 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
             }
             return g
           })
-        } else if (!isItem && weight) {
-          optionGroups = buildDefaultOptionGroupsForContainer(weight, bases, toppings, isBaseFixedDefault)
         }
 
         const basesGroup = optionGroups.find(
