@@ -60,6 +60,7 @@ yarn-error.log*
 *.log
 *.exe
 !public/downloads/*.exe
+public/downloads/acaidarose-servidor-impressao/
 
 # .NET Build Artifacts
 tools/print-agent/bin/

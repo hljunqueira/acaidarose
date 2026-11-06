@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Printer,
   Download,
@@ -19,6 +19,9 @@ import {
   Copy,
   CheckCheck,
   Server,
+  Eye,
+  Code2,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,10 +37,17 @@ import {
   configureAgentStoreToken,
   AgentStatus,
 } from '@/lib/printers/windowsPrintAgentClient'
-import { buildTestEscPosReceipt, ESC_POS_COMMANDS } from '@/lib/printers/escposBuilder'
+import {
+  buildTestEscPosReceipt,
+  buildFullOrderEscPosReceipt,
+  buildOrderKitchenEscPosReceipt,
+  buildTicketOnlyEscPosReceipt,
+  ESC_POS_COMMANDS,
+} from '@/lib/printers/escposBuilder'
 import { THERMAL_LOGO_BASE64 } from '@/lib/printers/logoData'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
 import { useAuthStore } from '@/lib/stores/authStore'
+import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 
 interface PrinterSettingsViewProps {
   tenantId?: string
@@ -89,6 +99,167 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
 
   // Teste de Impressão
   const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null)
+
+  // Estados de Pré-visualização do Talão / Código Renderizado
+  const [previewPrinter, setPreviewPrinter] = useState<StorePrinterSetting | null>(null)
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [previewTab, setPreviewTab] = useState<'THERMAL' | 'CODE'>('THERMAL')
+  const [previewLayoutOverride, setPreviewLayoutOverride] = useState<PrintLayout | null>(null)
+  const [previewCopied, setPreviewCopied] = useState(false)
+
+  const { getTenant, currentTenant } = useFranchiseStore()
+  const activeTenantObj = getTenant ? getTenant(activeTenantId) : currentTenant
+  const storeDisplayInfo = useMemo(() => ({
+    name: activeTenantObj?.name || 'Açaí da Rose',
+    nif: (activeTenantObj as any)?.nif || '518 293 847',
+    address: (activeTenantObj as any)?.address || (activeTenantObj as any)?.morada || 'Figueira da Foz, Portugal',
+    phone: (activeTenantObj as any)?.phone || (activeTenantObj as any)?.telefone || '+351 912 345 678',
+  }), [activeTenantObj])
+
+  // Pedido demonstrativo para simulação
+  const sampleOrder = useMemo(() => {
+    const acaiCatId = effectiveCategories.find((c) =>
+      (c.name || '').toLowerCase().includes('açaí') || (c.name || '').toLowerCase().includes('copo') || (c.name || '').toLowerCase().includes('taça')
+    )?.id || 'cat-acai'
+
+    const lancheCatId = effectiveCategories.find((c) =>
+      (c.name || '').toLowerCase().includes('lanche') || (c.name || '').toLowerCase().includes('tosta') || (c.name || '').toLowerCase().includes('salgado')
+    )?.id || 'cat-lanches'
+
+    const bebidaCatId = effectiveCategories.find((c) =>
+      (c.name || '').toLowerCase().includes('bebida') || (c.name || '').toLowerCase().includes('sumo')
+    )?.id || 'cat-bebidas'
+
+    return {
+      id: 'demo-order-042',
+      orderNumber: '042',
+      daily_order_seq: 42,
+      createdAt: new Date().toISOString(),
+      customerName: 'Henrique Silva',
+      customerPhone: '912 345 678',
+      tableNumber: '04',
+      consumptionType: 'DINE_IN',
+      paymentMethod: 'MBWAY',
+      paymentStatus: 'PAID',
+      status: 'PAID',
+      total: 12.50,
+      notes: 'Caprichar no creme de ninho e tosta bem quente!',
+      bagQuantity: 0,
+      items: [
+        {
+          id: 'item-acai-500',
+          containerId: 'acai-500g',
+          containerName: 'Copo 500gr',
+          containerFormat: 'Copo',
+          packagingType: 'COPO',
+          categoryId: acaiCatId,
+          quantity: 1,
+          containerPrice: 7.50,
+          lineTotal: 7.50,
+          bases: ['Açaí Tradicional', 'Creme de Ninho'],
+          toppings: [
+            { name: 'Banana', isPaid: false, quantity: 1 },
+            { name: 'Morango', isPaid: false, quantity: 1 },
+            { name: 'Leite Ninho', isPaid: false, quantity: 2 },
+            { name: 'Granola Tradicional', isPaid: false, quantity: 1 },
+            { name: 'Nutella Pura', isPaid: true, precoCobrado: 1.50, isPremium: true, quantity: 1 },
+          ],
+        },
+        {
+          id: 'item-tosta-mista',
+          containerId: 'tosta-mista',
+          containerName: 'Tosta Mista da Rose',
+          containerFormat: 'Pão Rústico',
+          packagingType: 'LANCHE',
+          categoryId: lancheCatId,
+          quantity: 1,
+          containerPrice: 3.50,
+          lineTotal: 3.50,
+          selectedOptions: [
+            { groupName: 'Pão', name: 'Rústico Alentejano', price: 0 },
+            { groupName: 'Recheio', name: 'Queijo da Serra & Fiambre', price: 0 },
+          ],
+          notes: 'Bem tostadinha',
+        },
+        {
+          id: 'item-sumo-laranja',
+          containerId: 'sumo-laranja',
+          containerName: 'Sumo de Laranja Natural',
+          containerFormat: 'Copo 300ml',
+          packagingType: 'BEBIDA',
+          categoryId: bebidaCatId,
+          quantity: 1,
+          containerPrice: 1.50,
+          lineTotal: 1.50,
+        },
+      ],
+    }
+  }, [effectiveCategories])
+
+  // Geração do código renderizado da pré-visualização
+  const renderedPreview = useMemo(() => {
+    if (!previewPrinter) return { raw: '', clean: '', layout: 'FULL_RECEIPT' as PrintLayout }
+    const layout = (previewLayoutOverride || previewPrinter.printLayout || 'FULL_RECEIPT') as PrintLayout
+
+    let raw = ''
+    if (layout === 'KITCHEN_SLIP') {
+      raw = buildOrderKitchenEscPosReceipt(sampleOrder, {
+        storeName: storeDisplayInfo.name,
+        printerTitle: previewPrinter.name,
+        categoryFilter: previewPrinter.categories,
+        productFilter: previewPrinter.products,
+        totalCopies: previewPrinter.copies || 1,
+        omitInit: true,
+        omitCut: false,
+      })
+    } else if (layout === 'TICKET_ONLY') {
+      raw = buildTicketOnlyEscPosReceipt(sampleOrder, {
+        storeName: storeDisplayInfo.name,
+        omitInit: true,
+        omitCut: false,
+      })
+    } else {
+      raw = buildFullOrderEscPosReceipt(sampleOrder, {
+        storeInfo: storeDisplayInfo,
+        printerTitle: previewPrinter.name,
+        highlightCustomer: previewPrinter.highlightCustomer !== false,
+        categoryFilter: previewPrinter.categories,
+        productFilter: previewPrinter.products,
+        totalCopies: previewPrinter.copies || 1,
+        omitInit: true,
+        omitCut: false,
+      })
+    }
+
+    // Limpeza de bytes de controle binários para renderizar visualmente como papel térmico
+    const clean = raw
+      .replace(/\x1b@/g, '')
+      .replace(/\x1bt[\x00-\xFF]/g, '')
+      .replace(/\x1ba[\x00\x01\x02]/g, '')
+      .replace(/\x1bE[\x00\x01]/g, '')
+      .replace(/\x1d![\x00-\x7F]/g, '')
+      .replace(/\x1b![\x00-\x7F]/g, '')
+      .replace(/\x1dV[\x00\x01]/g, '\n[=== CORTE DE GUILHOTINA ===]\n')
+      .replace(/[\x00-\x09\x0B-\x1F]/g, '')
+
+    return { raw, clean, layout }
+  }, [previewPrinter, previewLayoutOverride, sampleOrder, storeDisplayInfo])
+
+  const handleOpenPreviewModal = (printer: StorePrinterSetting) => {
+    setPreviewPrinter(printer)
+    setPreviewLayoutOverride(null)
+    setPreviewTab('THERMAL')
+    setPreviewCopied(false)
+    setPreviewModalOpen(true)
+  }
+
+  const handleCopyPreviewCode = () => {
+    if (!renderedPreview.clean) return
+    navigator.clipboard.writeText(renderedPreview.clean)
+    setPreviewCopied(true)
+    toast.success('Código da comanda copiado para a área de transferência!')
+    setTimeout(() => setPreviewCopied(false), 2500)
+  }
 
   // 1. Carrega impressoras, produtos e categorias da loja via API
   const fetchPrinters = useCallback(async () => {
@@ -751,17 +922,31 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
 
                   {/* Ações do Card */}
                   <div className="pt-3 border-t border-purple-100/60 dark:border-white/5 flex items-center justify-between gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={testingPrinterId === printer.id}
-                      onClick={() => handleTestPrint(printer)}
-                      className="h-8 px-2.5 rounded-lg border-purple-200 dark:border-white/15 text-[11px] font-semibold"
-                    >
-                      <Scissors className="h-3 w-3 mr-1 text-purple-600" />
-                      {testingPrinterId === printer.id ? 'A imprimir...' : 'Testar Corte'}
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenPreviewModal(printer)}
+                        className="h-8 px-2.5 rounded-lg border-purple-200 dark:border-white/15 text-[11px] font-semibold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer"
+                        title="Ver layout simulado e código ESC/POS renderizado"
+                      >
+                        <Eye className="h-3 w-3 mr-1 text-purple-600 dark:text-purple-400" />
+                        Pré-visualizar
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={testingPrinterId === printer.id}
+                        onClick={() => handleTestPrint(printer)}
+                        className="h-8 px-2.5 rounded-lg border-purple-200 dark:border-white/15 text-[11px] font-semibold cursor-pointer"
+                      >
+                        <Scissors className="h-3 w-3 mr-1 text-purple-600" />
+                        {testingPrinterId === printer.id ? 'A imprimir...' : 'Testar Corte'}
+                      </Button>
+                    </div>
 
                     <div className="flex items-center gap-1">
                       <Button
@@ -769,7 +954,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                         variant="ghost"
                         size="sm"
                         onClick={() => handleOpenEditModal(printer)}
-                        className="h-8 w-8 p-0 text-slate-600 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white"
+                        className="h-8 w-8 p-0 text-slate-600 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white cursor-pointer"
                         title="Editar Impressora"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
@@ -780,7 +965,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeletePrinter(printer)}
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
                         title="Remover Impressora"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1165,6 +1350,205 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 5. MODAL DE PRÉ-VISUALIZAÇÃO DA COMANDA E CÓDIGO RENDERIZADO */}
+      <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+        <DialogContent className="max-w-4xl w-[95vw] rounded-3xl p-5 md:p-6 max-h-[92vh] overflow-y-auto bg-slate-50 dark:bg-[#120224] border border-purple-200 dark:border-white/10">
+          <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <DialogTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  Pré-visualização do Talão · {previewPrinter?.name || 'Impressora'}
+                </DialogTitle>
+                <p className="text-xs text-slate-500 dark:text-purple-300/70 mt-0.5">
+                  Driver: <span className="font-mono text-purple-700 dark:text-purple-300 font-semibold">{previewPrinter?.driverName}</span> · {previewPrinter?.copies || 1} via(s) · {storeDisplayInfo.name}
+                </p>
+              </div>
+
+              {/* Botão Copiar Código */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyPreviewCode}
+                className="h-8 px-3 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 font-bold text-xs shadow-xs hover:bg-purple-50 dark:hover:bg-white/10 cursor-pointer self-start sm:self-auto"
+              >
+                {previewCopied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />
+                    Código Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5 mr-1.5 text-purple-600 dark:text-purple-400" />
+                    Copiar Código
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogHeader>
+
+          {/* Barra de Controles: Alternador de Modelo e Alternador de Visão */}
+          <div className="py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-purple-100 dark:border-white/10">
+            {/* Seletor de Modelo de Impressão */}
+            <div className="flex items-center gap-1 bg-purple-100/70 dark:bg-white/5 p-1 rounded-xl text-xs font-semibold">
+              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-purple-300 px-1.5 hidden sm:inline">
+                Modelo:
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewLayoutOverride('KITCHEN_SLIP')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer text-xs ${renderedPreview.layout === 'KITCHEN_SLIP'
+                    ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white font-bold shadow-xs'
+                    : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
+                  }`}
+              >
+                Comanda Cozinha (Foto 1)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewLayoutOverride('FULL_RECEIPT')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer text-xs ${renderedPreview.layout === 'FULL_RECEIPT'
+                    ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white font-bold shadow-xs'
+                    : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
+                  }`}
+              >
+                Talão Caixa (Foto 2)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewLayoutOverride('TICKET_ONLY')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer text-xs ${renderedPreview.layout === 'TICKET_ONLY'
+                    ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white font-bold shadow-xs'
+                    : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
+                  }`}
+              >
+                Ticket Senha
+              </button>
+            </div>
+
+            {/* Alternador Visual: Papel Térmico vs Código Puro */}
+            <div className="flex items-center gap-1 bg-purple-100/70 dark:bg-white/5 p-1 rounded-xl text-xs font-semibold self-end md:self-auto">
+              <button
+                type="button"
+                onClick={() => setPreviewTab('THERMAL')}
+                className={`px-3 py-1 rounded-lg transition cursor-pointer text-xs flex items-center gap-1.5 ${previewTab === 'THERMAL'
+                    ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white font-bold shadow-xs'
+                    : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
+                  }`}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Papel Térmico (80mm)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewTab('CODE')}
+                className={`px-3 py-1 rounded-lg transition cursor-pointer text-xs flex items-center gap-1.5 ${previewTab === 'CODE'
+                    ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white font-bold shadow-xs'
+                    : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
+                  }`}
+              >
+                <Code2 className="h-3.5 w-3.5" />
+                Código Renderizado
+              </button>
+            </div>
+          </div>
+
+          {/* Área Central de Conteúdo */}
+          <div className="py-4">
+            {previewTab === 'THERMAL' ? (
+              /* ABA 1: SIMULAÇÃO REALISTA DA BOBINA DE PAPEL TÉRMICO (80MM / 40 COLUNAS) */
+              <div className="flex flex-col items-center">
+                <div className="w-full max-w-[420px] bg-[#fbf9f4] dark:bg-[#1a1224] text-slate-900 dark:text-slate-100 p-5 rounded-2xl shadow-lg border border-amber-900/10 dark:border-purple-500/20 relative">
+                  {/* Indicador de Topo Serrilhado */}
+                  <div className="text-center text-[10px] text-slate-400 dark:text-purple-300/40 tracking-widest pb-3 font-mono border-b border-dashed border-slate-300 dark:border-white/10 mb-3">
+                    - - - - CORTE SUPERIOR DA BOBINA - - - -
+                  </div>
+
+                  {/* Corpo Formatado em Monospaced Estrito */}
+                  <pre className="font-mono text-[12px] leading-[18px] whitespace-pre overflow-x-auto select-text scrollbar-thin">
+                    {renderedPreview.clean}
+                  </pre>
+
+                  {/* Indicador de Guilhotina Inferior */}
+                  <div className="text-center text-[10px] text-slate-400 dark:text-purple-300/40 tracking-widest pt-3 font-mono border-t border-dashed border-slate-300 dark:border-white/10 mt-3">
+                    - - - - CORTE DA GUILHOTINA (ESC/POS) - - - -
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-purple-300/70 mt-3 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  Simulação exata de 40 colunas monospaçadas com acentuação PT-PT e símbolo € (Windows-1252).
+                </p>
+              </div>
+            ) : (
+              /* ABA 2: CÓDIGO FONTE RENDERIZADO & METADADOS TÉCNICOS */
+              <div className="space-y-3">
+                {/* Metadados Técnicos da Impressão */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-purple-100 dark:border-white/10">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-purple-300/60">Protocolo</div>
+                    <div className="font-bold text-purple-950 dark:text-white mt-0.5">ESC/POS Nativo</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-purple-100 dark:border-white/10">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-purple-300/60">Tabela de Caracteres</div>
+                    <div className="font-bold text-purple-950 dark:text-white mt-0.5">Windows-1252 (€)</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-purple-100 dark:border-white/10">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-purple-300/60">Volume de Dados</div>
+                    <div className="font-bold text-purple-950 dark:text-white mt-0.5">~{renderedPreview.raw.length} bytes</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-purple-100 dark:border-white/10">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-purple-300/60">Total de Linhas</div>
+                    <div className="font-bold text-purple-950 dark:text-white mt-0.5">{renderedPreview.clean.split('\n').length} linhas</div>
+                  </div>
+                </div>
+
+                {/* Bloco de Código ESC/POS Renderizado */}
+                <div className="rounded-2xl border border-slate-800 bg-[#0c0517] p-4 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[460px] shadow-inner relative">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10 text-[11px] text-purple-300/70">
+                    <span>// Saída bruta formatada para envio ao Spooler Win32 ({previewPrinter?.driverName})</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyPreviewCode}
+                      className="text-purple-300 hover:text-white underline cursor-pointer"
+                    >
+                      Copiar Tudo
+                    </button>
+                  </div>
+                  <pre className="whitespace-pre font-mono leading-relaxed select-text">
+                    {renderedPreview.clean}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-3 border-t border-purple-100 dark:border-white/10 flex flex-row items-center justify-between sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => previewPrinter && handleTestPrint(previewPrinter)}
+              className="text-xs font-semibold border-purple-200 dark:border-white/15"
+            >
+              <Scissors className="h-3.5 w-3.5 mr-1.5 text-purple-600" />
+              Disparar Teste Físico
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setPreviewModalOpen(false)}
+              className="text-xs font-bold"
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
