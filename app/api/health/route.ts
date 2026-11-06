@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
+import { getAgentHeartbeats } from '@/lib/printers/agentHeartbeatStore'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,7 @@ export async function GET() {
         version: row?.pg_version?.split(' ')[0] + ' ' + row?.pg_version?.split(' ')[1],
         tenantsCount: parseInt(row?.tenants_count || '0', 10),
       },
+      printAgents: getAgentHeartbeats(),
       timestamp: new Date().toISOString(),
     })
   } catch (err: any) {

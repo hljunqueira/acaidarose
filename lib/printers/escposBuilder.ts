@@ -127,14 +127,14 @@ export function buildTestEscPosReceipt(storeName: string, printerName: string): 
   out += ESC_POS_COMMANDS.BOLD_ON
   out += `${storeName.toUpperCase()}\n`
   out += ESC_POS_COMMANDS.BOLD_OFF
-  out += `TESTE DE IMPRESSORA - QZ TRAY\n`
+  out += `TESTE DE IMPRESSORA - SERVIDOR WINDOWS\n`
   out += `${dateStr}\n`
   out += SEP
 
   // Corpo do Teste
   out += ESC_POS_COMMANDS.ALIGN_LEFT
   out += `Impressora: ${printerName}\n`
-  out += `Status: Conectado via QZ Tray (Porta 8182)\n`
+  out += `Status: Conectado via Servidor Local (Porta 4040)\n`
   out += `Protocolo: ESC/POS Direto\n`
   out += `Acentuacao: Açaí, Família, Sensação, Taça\n`
   out += `Moeda: € 6,50 (Windows-1252)\n`

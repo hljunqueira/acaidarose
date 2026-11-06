@@ -1,13 +1,14 @@
 /**
  * lib/printers/autoPrintService.ts
  * 
- * Serviço central de impressão automática e direta de pedidos via QZ Tray e ESC/POS.
- * Roteia itens por categorias e setores de produção (copa/cozinha/balcão) e evita duplicidades.
+ * Serviço central de impressão automática e direta de pedidos.
+ * Opera exclusivamente com o Servidor de Impressão Windows Local (.EXE)
+ * e fila de impressão autônoma por Token da Loja.
  */
 
 import { Order } from '@/types'
 import { StorePrinterSetting } from '@/types/printer'
-import { connectQZ, printRawData } from './qzClient'
+import { checkAgentStatus, printViaAgent } from './windowsPrintAgentClient'
 import {
   buildOrderKitchenEscPosReceipt,
   buildFullOrderEscPosReceipt,
@@ -23,6 +24,7 @@ export interface PrintOrderResult {
   printedCount: number
   printersNames: string[]
   errors: string[]
+  usedEngine?: 'WINDOWS_AGENT' | 'CLOUD_QUEUE'
 }
 
 export interface AutoPrintOptions {
@@ -59,7 +61,9 @@ export function orderHasItemsForPrinter(order: Order, printer: StorePrinterSetti
 }
 
 /**
- * Envia o pedido para todas as impressoras ativas configuradas para a loja via QZ Tray
+ * Envia o pedido para todas as impressoras ativas configuradas para a loja.
+ * Comunica diretamente com o Servidor de Impressão Windows (Porta 4040 - Zero Popups).
+ * Se o executável estiver fechado, enfileira automaticamente na nuvem para o token da loja.
  */
 export async function printOrderDirectly(
   order: Order,
@@ -84,12 +88,9 @@ export async function printOrderDirectly(
     return result
   }
 
-  // Garante conexão ativa com o QZ Tray
-  const conn = await connectQZ()
-  if (!conn.connected) {
-    result.errors.push(conn.error || 'QZ Tray não está aberto no computador local.')
-    return result
-  }
+  // 1. Verifica se o Servidor de Impressão Windows Local está rodando
+  const agentStatus = await checkAgentStatus()
+  const useAgent = agentStatus.online
 
   // Prepara o QR Code da comanda se houver ID de pedido
   let qrCodeBase64 = ''
@@ -104,11 +105,9 @@ export async function printOrderDirectly(
 
   for (const printer of activePrinters) {
     if (printer.connectionType === 'NATIVE_PRINT') {
-      // Impressoras nativas usam diálogo do navegador (não recomendado para auto-impressão silenciosa)
       continue
     }
 
-    // Verifica se há itens para esta impressora
     if (!orderHasItemsForPrinter(order, printer)) {
       continue
     }
@@ -116,7 +115,6 @@ export async function printOrderDirectly(
     try {
       let textPayload = ''
       const layout = printer.printLayout || 'FULL_RECEIPT'
-      const shouldPrintLogo = printer.printLogo !== false
       const shouldPrintQrCode = layout !== 'KITCHEN_SLIP' && printer.printQrCode !== false
 
       if (layout === 'KITCHEN_SLIP') {
@@ -136,7 +134,6 @@ export async function printOrderDirectly(
           omitCut: true,
         })
       } else {
-        // FULL_RECEIPT (Padrão e recomendado para o Caixa - Foto 2)
         textPayload = buildFullOrderEscPosReceipt(order, {
           storeInfo,
           printerTitle: printer.name,
@@ -149,113 +146,97 @@ export async function printOrderDirectly(
         })
       }
 
-      // Se a saída estiver vazia de itens, ignora
       if (textPayload.includes('(Nenhum item desta secao para impressao)')) {
         continue
       }
 
-      // Monta os blocos de impressão (Logomarca + ESC/POS + QR Code + Corte)
-      const qzData: any[] = []
-      qzData.push(ESC_POS_COMMANDS.INIT)
-      qzData.push(ESC_POS_COMMANDS.CODE_PAGE_WPC1252)
-
-      // 1. Logomarca Monocromática Oficial
-      if (shouldPrintLogo && THERMAL_LOGO_BASE64) {
-        qzData.push(ESC_POS_COMMANDS.ALIGN_CENTER)
-        qzData.push({
-          type: 'raw',
-          format: 'image',
-          flavor: 'base64',
-          data: THERMAL_LOGO_BASE64,
-          options: { language: 'ESCPOS', dotDensity: 'double' },
-        })
-        qzData.push('\n')
-      }
-
-      // 2. Conteúdo em texto do Talão
-      qzData.push(textPayload)
-
-      // 3. QR Code da Comanda no Rodapé
-      if (shouldPrintQrCode && qrCodeBase64) {
-        qzData.push(ESC_POS_COMMANDS.ALIGN_CENTER)
-        const qrHeader = 'Consulte ou avalie o seu pedido:\n'
-        qzData.push(qrHeader)
-        qzData.push({
-          type: 'raw',
-          format: 'image',
-          flavor: 'base64',
-          data: qrCodeBase64,
-          options: { language: 'ESCPOS', dotDensity: 'single' },
-        })
-        qzData.push(ESC_POS_COMMANDS.FEED_3_LINES)
-      } else {
-        qzData.push(ESC_POS_COMMANDS.FEED_4_LINES)
-      }
-
-      // 4. Corte Guilhotina
-      qzData.push(ESC_POS_COMMANDS.CUT_FULL)
-
       const copies = Math.max(1, printer.copies || 1)
-      for (let c = 1; c <= copies; c++) {
-        await printRawData(printer.driverName, qzData)
+      const ticketNum = String(order.orderNumber || (order as any).daily_order_seq || '001').padStart(3, '0')
+
+      // Monta o payload ESC/POS completo
+      let fullPayload = ESC_POS_COMMANDS.INIT + ESC_POS_COMMANDS.CODE_PAGE_WPC1252 + textPayload
+      if (shouldPrintQrCode && qrCodeBase64) {
+        fullPayload += ESC_POS_COMMANDS.ALIGN_CENTER + '\nConsulte ou avalie o seu pedido:\n' + ESC_POS_COMMANDS.FEED_3_LINES
+      } else {
+        fullPayload += ESC_POS_COMMANDS.FEED_4_LINES
+      }
+      fullPayload += ESC_POS_COMMANDS.CUT_FULL
+
+      // ESTRATÉGIA A: IMPRESSÃO DIRETA VIA SERVIDOR LOCAL (ZERO POPUPS)
+      if (useAgent) {
+        const printRes = await printViaAgent({
+          printerName: printer.driverName,
+          rawText: fullPayload,
+          copies,
+          docName: `Pedido #${ticketNum} (${order.customerName || 'Cliente'})`,
+        })
+
+        if (printRes.success) {
+          result.printedCount++
+          result.printersNames.push(printer.name)
+          result.usedEngine = 'WINDOWS_AGENT'
+
+          recordPrintAudit(order, ticketNum, printer, layout, copies, 'WINDOWS_PRINT_AGENT')
+          continue
+        } else {
+          console.warn(`[AutoPrint] Servidor Local falhou para "${printer.name}":`, printRes.error)
+        }
       }
 
-      result.printedCount++
-      result.printersNames.push(printer.name)
-
-      // Registra evento no Log de Auditoria TI de Henrique
-      if (typeof window !== 'undefined') {
-        const ticketNum = String(order.orderNumber || (order as any).daily_order_seq || '001').padStart(3, '0')
-        fetch('/api/dev/audit-logs', {
+      // ESTRATÉGIA B: ENFILEIRA NA FILA EM NUVEM PARA O SERVIDOR WINDOWS DA LOJA
+      try {
+        await fetch('/api/printers/agent/jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tenantId: order.tenantId,
-            action: 'ORDER_AUTO_PRINTED',
-            entity: 'IMPRESSORAS_QZ',
-            entityId: order.id,
-            message: `Comanda #${ticketNum} (${order.customerName || 'Cliente'}) impressa via QZ Tray em "${printer.name}" (${printer.driverName}) · Modelo: ${layout}`,
-            level: 'INFO',
-            metadata: {
-              orderId: order.id,
-              orderNumber: order.orderNumber,
-              customerName: order.customerName,
-              printerName: printer.name,
-              driverName: printer.driverName,
-              layout,
-              copies,
-            },
+            orderId: order.id,
+            orderNumber: ticketNum,
+            printerName: printer.driverName,
+            docName: `Pedido #${ticketNum} (${order.customerName || 'Cliente'})`,
+            payloadText: fullPayload,
+            copies,
           }),
-        }).catch(() => {})
+        })
+
+        result.printedCount++
+        result.printersNames.push(printer.name)
+        result.usedEngine = 'CLOUD_QUEUE'
+      } catch (err: any) {
+        result.errors.push(`${printer.name}: Falha de comunicação com o servidor de impressão.`)
       }
     } catch (err: any) {
       console.error(`[AutoPrint] Erro ao imprimir na impressora "${printer.name}":`, err)
       result.errors.push(`${printer.name}: ${err?.message || 'Falha de comunicação'}`)
-
-      // Registra erro no Log de Auditoria TI de Henrique
-      if (typeof window !== 'undefined') {
-        const ticketNum = String(order.orderNumber || (order as any).daily_order_seq || '001').padStart(3, '0')
-        fetch('/api/dev/audit-logs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tenantId: order.tenantId,
-            action: 'ORDER_PRINT_ERROR',
-            entity: 'IMPRESSORAS_QZ',
-            entityId: order.id,
-            message: `Falha ao imprimir Comanda #${ticketNum} na impressora "${printer.name}": ${err?.message || 'Erro de comunicação'}`,
-            level: 'ERROR',
-            metadata: {
-              orderId: order.id,
-              printerName: printer.name,
-              error: err?.message,
-            },
-          }),
-        }).catch(() => {})
-      }
     }
   }
 
   result.success = result.printedCount > 0
   return result
+}
+
+function recordPrintAudit(order: Order, ticketNum: string, printer: StorePrinterSetting, layout: string, copies: number, engine: string) {
+  if (typeof window === 'undefined') return
+  fetch('/api/dev/audit-logs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tenantId: order.tenantId,
+      action: 'ORDER_AUTO_PRINTED',
+      entity: engine,
+      entityId: order.id,
+      message: `Comanda #${ticketNum} (${order.customerName || 'Cliente'}) impressa via ${engine} em "${printer.name}" (${printer.driverName}) · Modelo: ${layout}`,
+      level: 'INFO',
+      metadata: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        printerName: printer.name,
+        driverName: printer.driverName,
+        layout,
+        copies,
+        engine,
+      },
+    }),
+  }).catch(() => {})
 }

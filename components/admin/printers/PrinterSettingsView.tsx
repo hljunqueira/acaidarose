@@ -16,6 +16,9 @@ import {
   Power,
   Sliders,
   Scissors,
+  Copy,
+  CheckCheck,
+  Server,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +27,13 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { StorePrinterSetting, PrinterType, PrinterConnectionType, PrintLayout } from '@/types/printer'
-import { connectQZ, getInstalledPrinters, printRawData } from '@/lib/printers/qzClient'
+import {
+  checkAgentStatus,
+  getAgentPrinters,
+  printViaAgent,
+  configureAgentStoreToken,
+  AgentStatus,
+} from '@/lib/printers/windowsPrintAgentClient'
 import { buildTestEscPosReceipt, ESC_POS_COMMANDS } from '@/lib/printers/escposBuilder'
 import { THERMAL_LOGO_BASE64 } from '@/lib/printers/logoData'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
@@ -45,13 +54,13 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
   const [printers, setPrinters] = useState<StorePrinterSetting[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Status de conexão com o QZ Tray
-  const [qzConnected, setQzConnected] = useState(false)
-  const [qzVersion, setQzVersion] = useState<string | null>(null)
-  const [qzChecking, setQzChecking] = useState(false)
-  const [qzError, setQzError] = useState<string | null>(null)
+  // Status de conexão com o Servidor de Impressão Windows Local
+  const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
+  const [agentChecking, setAgentChecking] = useState(false)
+  const [linkingAgent, setLinkingAgent] = useState(false)
+  const [copiedToken, setCopiedToken] = useState(false)
 
-  // Drivers do Sistema Operacional detectados pelo QZ Tray
+  // Drivers do Sistema Operacional detectados pelo Servidor de Impressão
   const [osDrivers, setOsDrivers] = useState<string[]>([])
 
   // Estado do Modal de Criar/Editar
@@ -64,7 +73,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
   const [driverName, setDriverName] = useState('')
   const [customDriver, setCustomDriver] = useState('')
   const [printerType, setPrinterType] = useState<PrinterType>('EPSON_ESC_POS')
-  const [connectionType, setConnectionType] = useState<PrinterConnectionType>('QZ_TRAY')
+  const [connectionType, setConnectionType] = useState<PrinterConnectionType>('WINDOWS_AGENT')
   const [printLayout, setPrintLayout] = useState<PrintLayout>('FULL_RECEIPT')
   const [highlightCustomer, setHighlightCustomer] = useState<boolean>(true)
   const [printLogo, setPrintLogo] = useState<boolean>(true)
@@ -123,45 +132,68 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
     }
   }, [activeTenantId, authFetch])
 
-  // 2. Conexão e teste com o QZ Tray
-  const checkQZConnection = useCallback(async () => {
-    setQzChecking(true)
-    setQzError(null)
+  // 2. Conexão e teste com o Servidor de Impressão Windows Local
+  const checkAgentConnection = useCallback(async () => {
+    setAgentChecking(true)
     try {
-      const status = await connectQZ()
-      if (status.connected) {
-        setQzConnected(true)
-        setQzVersion(status.version || 'v2.2+')
-        const drivers = await getInstalledPrinters()
-        // Prioriza impressoras térmicas físicas (ex: MP-4200 TH, EPSON, POS) no topo
-        const sorted = [...drivers].sort((a, b) => {
-          const aThermal = /mp|th|pos|epson|bema|daruma|tm|thermal|receipt/i.test(a)
-          const bThermal = /mp|th|pos|epson|bema|daruma|tm|thermal|receipt/i.test(b)
-          const aVirtual = /xps|pdf|fax|onenote|root/i.test(a)
-          const bVirtual = /xps|pdf|fax|onenote|root/i.test(b)
-          if (aThermal && !bThermal) return -1
-          if (!aThermal && bThermal) return 1
-          if (!aVirtual && bVirtual) return -1
-          if (aVirtual && !bVirtual) return 1
-          return a.localeCompare(b)
-        })
-        setOsDrivers(sorted)
-      } else {
-        setQzConnected(false)
-        setQzError(status.error || 'QZ Tray não responde')
+      const agent = await checkAgentStatus()
+      setAgentStatus(agent)
+
+      if (agent.online) {
+        const agentDrivers = await getAgentPrinters()
+        if (agentDrivers.length > 0) {
+          const sorted = [...agentDrivers].sort((a, b) => {
+            const aThermal = /mp|th|pos|epson|bema|daruma|tm|thermal|receipt/i.test(a)
+            const bThermal = /mp|th|pos|epson|bema|daruma|tm|thermal|receipt/i.test(b)
+            const aVirtual = /xps|pdf|fax|onenote|root/i.test(a)
+            const bVirtual = /xps|pdf|fax|onenote|root/i.test(b)
+            if (aThermal && !bThermal) return -1
+            if (!aThermal && bThermal) return 1
+            if (!aVirtual && bVirtual) return -1
+            if (aVirtual && !bVirtual) return 1
+            return a.localeCompare(b)
+          })
+          setOsDrivers(sorted)
+        }
       }
     } catch (err: any) {
-      setQzConnected(false)
-      setQzError(err?.message || 'Falha na conexão')
+      console.warn('Falha ao verificar Servidor de Impressão:', err)
     } finally {
-      setQzChecking(false)
+      setAgentChecking(false)
     }
   }, [])
 
+  const handleCopyToken = () => {
+    if (typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(activeTenantId)
+      setCopiedToken(true)
+      toast.success('Token de integração da loja copiado!')
+      setTimeout(() => setCopiedToken(false), 2500)
+    }
+  }
+
+  const handleLinkAgent = async () => {
+    setLinkingAgent(true)
+    try {
+      const res = await configureAgentStoreToken(activeTenantId)
+      if (res.success) {
+        toast.success(`Servidor Windows vinculado com sucesso à loja! (${res.storeName || 'Loja Conectada'})`)
+        const updated = await checkAgentStatus()
+        setAgentStatus(updated)
+      } else {
+        toast.error(`Falha ao vincular: ${res.error}`)
+      }
+    } catch (err: any) {
+      toast.error(`Erro ao vincular: ${err?.message || 'Servidor offline'}`)
+    } finally {
+      setLinkingAgent(false)
+    }
+  }
+
   useEffect(() => {
     fetchPrinters()
-    checkQZConnection()
-  }, [fetchPrinters, checkQZConnection])
+    checkAgentConnection()
+  }, [fetchPrinters, checkAgentConnection])
 
   // Abrir modal de nova impressora
   const handleOpenCreateModal = () => {
@@ -175,7 +207,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
     setDriverName(preferred)
     setCustomDriver('')
     setPrinterType('EPSON_ESC_POS')
-    setConnectionType('QZ_TRAY')
+    setConnectionType('WINDOWS_AGENT')
     setPrintLayout('FULL_RECEIPT')
     setHighlightCustomer(true)
     setPrintLogo(true)
@@ -348,49 +380,45 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
         return
       }
 
-      if (!qzConnected) {
-        const conn = await connectQZ()
-        if (!conn.connected) {
-          toast.error('O QZ Tray não está aberto no computador. Inicie o QZ Tray para imprimir.')
-          return
-        }
+      if (!agentStatus?.online) {
+        toast.error('O Servidor de Impressão Windows não está em execução nesta máquina. Inicie o acaidarose-print-agent.exe.')
+        return
       }
 
       const testPayload = buildTestEscPosReceipt('AÇAÍ DA ROSE', printer.name)
-      const qzData: any[] = []
-      qzData.push(ESC_POS_COMMANDS.INIT)
-      qzData.push(ESC_POS_COMMANDS.CODE_PAGE_WPC1252)
+      const fullPayload =
+        ESC_POS_COMMANDS.INIT +
+        ESC_POS_COMMANDS.CODE_PAGE_WPC1252 +
+        testPayload +
+        ESC_POS_COMMANDS.FEED_4_LINES +
+        ESC_POS_COMMANDS.CUT_FULL
 
-      if (printer.printLogo !== false && THERMAL_LOGO_BASE64) {
-        qzData.push(ESC_POS_COMMANDS.ALIGN_CENTER)
-        qzData.push({
-          type: 'raw',
-          format: 'image',
-          flavor: 'base64',
-          data: THERMAL_LOGO_BASE64,
-          options: { language: 'ESCPOS', dotDensity: 'double' },
-        })
-        qzData.push('\n')
+      const agentRes = await printViaAgent({
+        printerName: printer.driverName,
+        rawText: fullPayload,
+        copies: 1,
+        docName: `Teste - ${printer.name}`,
+      })
+
+      if (agentRes.success) {
+        toast.success(`Teste térmico impresso com sucesso em ${printer.name}!`)
+
+        fetch('/api/dev/audit-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenantId: activeTenantId,
+            action: 'TEST_PRINT_DISPATCHED',
+            entity: 'WINDOWS_PRINT_AGENT',
+            entityId: printer.id,
+            message: `Teste térmico enviado para "${printer.name}" (${printer.driverName}) via Servidor Windows`,
+            level: 'INFO',
+            metadata: { printerId: printer.id, driver: printer.driverName },
+          }),
+        }).catch(() => {})
+      } else {
+        toast.error(`Falha ao imprimir teste: ${agentRes.error}`)
       }
-
-      qzData.push(testPayload)
-      await printRawData(printer.driverName, qzData)
-      toast.success(`Teste enviado com sucesso para ${printer.name}!`)
-
-      // Registra evento no Log de Auditoria TI de Henrique
-      fetch('/api/dev/audit-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenantId: activeTenantId,
-          action: 'TEST_PRINT_DISPATCHED',
-          entity: 'IMPRESSORAS_QZ',
-          entityId: printer.id,
-          message: `Teste de corte e comunicação térmico enviado para "${printer.name}" (${printer.driverName}) via QZ Tray`,
-          level: 'INFO',
-          metadata: { printerId: printer.id, driver: printer.driverName },
-        }),
-      }).catch(() => {})
     } catch (err: any) {
       toast.error(`Falha no teste: ${err?.message || 'Erro de comunicação'}`)
 
@@ -401,13 +429,13 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
         body: JSON.stringify({
           tenantId: activeTenantId,
           action: 'TEST_PRINT_ERROR',
-          entity: 'IMPRESSORAS_QZ',
+          entity: 'WINDOWS_PRINT_AGENT',
           entityId: printer.id,
           message: `Falha no teste de impressão para "${printer.name}" (${printer.driverName}): ${err?.message || 'Erro de comunicação'}`,
           level: 'ERROR',
           metadata: { printerId: printer.id, driver: printer.driverName, error: err?.message },
         }),
-      }).catch(() => {})
+      }).catch(() => { })
     } finally {
       setTestingPrinterId(null)
     }
@@ -420,10 +448,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Printer className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            Impressoras Térmicas & QZ Tray
+            Central de Impressão Térmica
           </h2>
           <p className="text-xs text-slate-500 dark:text-purple-200/70 mt-0.5">
-            Roteamento por categorias, corte com guilhotina e impressão automática sem diálogo na copa e balcão.
+            Servidor de impressão local para Windows, corte mecânico e roteamento por setor.
           </p>
         </div>
 
@@ -432,12 +460,12 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
             type="button"
             variant="outline"
             size="sm"
-            onClick={checkQZConnection}
-            disabled={qzChecking}
+            onClick={checkAgentConnection}
+            disabled={agentChecking}
             className="h-9 px-3 rounded-xl border-purple-200 dark:border-white/15 text-xs font-semibold"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${qzChecking ? 'animate-spin' : ''}`} />
-            Verificar QZ Tray
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${agentChecking ? 'animate-spin' : ''}`} />
+            Verificar Servidor
           </Button>
 
           <Button
@@ -452,121 +480,111 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
         </div>
       </div>
 
-      {/* 2. CARD DE DOWNLOAD E STATUS DO QZ TRAY */}
-      <div className="p-5 rounded-2xl border border-purple-100 dark:border-white/10 bg-gradient-to-br from-purple-50/70 via-white to-pink-50/50 dark:from-white/5 dark:via-white/[0.02] dark:to-purple-950/20 shadow-sm space-y-4">
+      {/* 2. SERVIDOR DE IMPRESSÃO WINDOWS LOCAL */}
+      <div className="p-5 rounded-2xl border border-purple-200 dark:border-purple-800/40 bg-gradient-to-br from-purple-50 via-white to-pink-50/40 dark:from-purple-950/20 dark:via-white/[0.02] dark:to-purple-900/10 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className={`p-2.5 rounded-xl shrink-0 mt-0.5 ${qzConnected ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-300'}`}>
-              <Laptop className="h-5 w-5" />
+            <div className={`p-2.5 rounded-xl shrink-0 mt-0.5 ${agentStatus?.online ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-300' : 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300 border border-slate-300'}`}>
+              <Server className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Status do Serviço QZ Tray Local
+                  Servidor de Impressão Windows Local
                 </h3>
-                {qzConnected ? (
+                {agentStatus?.online ? (
                   <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Online ({qzVersion})
+                    Online (Porta 4040 · {agentStatus.version || 'v1.0.0'})
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400 text-[10px] font-bold">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    Offline / Não Detectado
+                  <Badge variant="outline" className="border-slate-300 text-slate-600 dark:text-slate-400 text-[10px] font-bold">
+                    Desconectado / Fechado
+                  </Badge>
+                )}
+                {agentStatus?.online && agentStatus.storeToken === activeTenantId && (
+                  <Badge className="bg-purple-600 text-white text-[10px] font-semibold">
+                    Loja Vinculada
                   </Badge>
                 )}
               </div>
               <p className="text-xs text-slate-600 dark:text-purple-200/80 mt-1">
-                {qzConnected
-                  ? `Comunicação ativa via QZ Tray. Foram detectados ${osDrivers.length} driver(s) térmico(s) instalado(s) no sistema operacional.`
-                  : (qzError || 'O aplicativo QZ Tray precisa estar em execução no computador do caixa para permitir o envio silencioso de comandas com corte de papel.')}
+                {agentStatus?.online
+                  ? `Comunicação direta ativa com o Windows Spooler. Zero popups de permissão. ${osDrivers.length} impressora(s) detectada(s).`
+                  : 'Execute o aplicativo acaidarose-print-agent.exe no computador do balcão para impressão 100% silenciosa e sem confirmações na tela.'}
               </p>
             </div>
           </div>
 
-          {/* Botões Oficiais de Download */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {agentStatus?.online && agentStatus.storeToken !== activeTenantId && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleLinkAgent}
+                disabled={linkingAgent}
+                className="h-9 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                <Check className="h-3.5 w-3.5 mr-1.5" />
+                {linkingAgent ? 'Vinculando...' : 'Vincular a Esta Loja'}
+              </Button>
+            )}
+
             <a
-              href="https://qz.io/download/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center h-9 px-3.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white font-bold text-xs border border-purple-200 dark:border-white/15 transition shadow-xs"
+              href="/downloads/acaidarose-servidor-impressao.zip"
+              download="acaidarose-servidor-impressao.zip"
+              className="inline-flex items-center justify-center h-9 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition"
+              title="Baixar pacote completo com instalador automático no Windows"
             >
-              <Download className="h-3.5 w-3.5 mr-1.5 text-purple-600 dark:text-purple-400" />
-              Descarregar QZ Tray Oficial
-              <ExternalLink className="h-3 w-3 ml-1.5 opacity-60" />
+              <Download className="h-3.5 w-3.5 mr-1.5 text-white" />
+              Baixar Pacote Completo (.zip)
             </a>
 
             <a
-              href="https://github.com/qzind/tray/releases/latest/download/qz-tray-x86_64.exe"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center h-9 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-purple-900 dark:hover:bg-purple-800 text-xs font-semibold shadow-xs"
+              href="/downloads/acaidarose-print-agent.exe"
+              download="acaidarose-print-agent.exe"
+              className="inline-flex items-center justify-center h-9 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-purple-950 dark:hover:bg-purple-900 font-bold text-xs shadow-xs transition"
+              title="Baixar apenas o arquivo executável"
             >
-              Instalador Windows (.exe)
+              <Download className="h-3.5 w-3.5 mr-1.5 text-purple-400" />
+              Executável (.exe)
             </a>
           </div>
         </div>
 
-        {/* Guia Rápido de Instalação em 3 Passos */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-purple-100/80 dark:border-white/5 text-xs">
-          <div className="p-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-purple-50 dark:border-white/5">
-            <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-purple-200 dark:bg-purple-800 text-[10px] font-mono flex items-center justify-center text-purple-950 dark:text-white">1</span>
-              Instalar o QZ Tray
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-purple-200/70 mt-1 leading-relaxed">
-              Descarregue e instale a versão recomendada (v2.2+). Conclua a instalação padrão do Windows.
+        {/* Bloco de Token da Loja */}
+        <div className="p-3 rounded-xl bg-white/90 dark:bg-white/5 border border-purple-100 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="space-y-0.5">
+            <span className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+              Token de Integração desta Loja:
+            </span>
+            <p className="text-[11px] text-slate-500 dark:text-purple-200/60 font-mono">
+              {activeTenantId}
             </p>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-purple-50 dark:border-white/5">
-            <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-purple-200 dark:bg-purple-800 text-[10px] font-mono flex items-center justify-center text-purple-950 dark:text-white">2</span>
-              Manter Ativo no Turno
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-purple-200/70 mt-1 leading-relaxed">
-              O ícone verde do QZ Tray fica fixo na barra de tarefas junto ao relógio do Windows durante as vendas.
-            </p>
-          </div>
-
-          <div className="p-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-purple-50 dark:border-white/5">
-            <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-purple-200 dark:bg-purple-800 text-[10px] font-mono flex items-center justify-center text-purple-950 dark:text-white">3</span>
-              Mapear Categorias
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-purple-200/70 mt-1 leading-relaxed">
-              Vincule Açaí no Copo para a Copa e Lanches para a Cozinha para separação automática e corte de papel.
-            </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopyToken}
+              className="h-8 px-3 rounded-lg border-purple-200 dark:border-white/15 text-[11px] font-semibold"
+            >
+              {copiedToken ? (
+                <>
+                  <CheckCheck className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                  Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5 mr-1" />
+                  Copiar Token
+                </>
+              )}
+            </Button>
           </div>
         </div>
-
-        {/* Dica de Resolução Imediata se Offline */}
-        {!qzConnected && (
-          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <span>O QZ Tray já está instalado mas o navegador ainda não reconheceu? Siga estes 2 passos:</span>
-            </div>
-            <ol className="list-decimal list-inside space-y-1.5 text-slate-700 dark:text-amber-200/90 pl-1">
-              <li>
-                <strong>Autorizar o certificado seguro local (necessário em HTTPS / Produção):</strong>{' '}
-                <a
-                  href="https://localhost:8181"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold underline text-purple-700 dark:text-purple-300 hover:text-purple-900"
-                >
-                  Abrir https://localhost:8181 numa nova aba
-                </a>
-                . Se o Google Chrome exibir <em>&quot;A sua ligação não é privada&quot;</em>, clique em <em>Avançado</em> e depois em <em>Ir para localhost (não seguro)</em>. Feche essa aba e clique no botão <strong>Verificar QZ Tray</strong> acima.
-              </li>
-              <li>
-                <strong>Permissão de Rede Local no Chrome:</strong> Se surgir uma mensagem no navegador ou no ícone de configurações ao lado da URL perguntando se deseja permitir acesso à rede local, selecione <em>Permitir</em>.
-              </li>
-            </ol>
-          </div>
-        )}
       </div>
 
       {/* 3. LISTAGEM DE IMPRESSORAS DA UNIDADE */}
@@ -617,11 +635,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
               return (
                 <div
                   key={printer.id}
-                  className={`p-4 rounded-2xl border transition shadow-xs flex flex-col justify-between gap-3 ${
-                    printer.isActive
+                  className={`p-4 rounded-2xl border transition shadow-xs flex flex-col justify-between gap-3 ${printer.isActive
                       ? 'bg-white border-purple-100 dark:bg-white/5 dark:border-white/10'
                       : 'bg-slate-50/70 border-slate-200 dark:bg-white/[0.02] dark:border-white/5 opacity-75'
-                  }`}
+                    }`}
                 >
                   <div className="space-y-2.5">
                     {/* Linha Superior: Nome e Status */}
@@ -643,11 +660,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                       </div>
 
                       <Badge
-                        className={`text-[10px] font-bold ${
-                          printer.isActive
+                        className={`text-[10px] font-bold ${printer.isActive
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300'
                             : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400'
-                        }`}
+                          }`}
                       >
                         {printer.isActive ? 'Ativa' : 'Pausada'}
                       </Badge>
@@ -687,7 +703,9 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                       </span>
 
                       <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-white/5 text-purple-900 dark:text-purple-200 font-medium border border-purple-100 dark:border-white/5">
-                        {printer.connectionType === 'QZ_TRAY' ? 'QZ Tray (Silencioso)' : 'Diálogo Nativo'}
+                        {printer.connectionType === 'NATIVE_PRINT'
+                          ? 'Diálogo do Navegador'
+                          : 'Servidor Windows (Silencioso)'}
                       </span>
                     </div>
 
@@ -813,9 +831,9 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                   <Label className="text-xs font-bold text-slate-700 dark:text-purple-200">
                     Driver do Sistema Operacional:
                   </Label>
-                  {qzConnected && (
+                  {agentStatus?.online && (
                     <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                      <Check className="h-3 w-3" /> QZ Tray Online
+                      <Check className="h-3 w-3" /> Servidor Windows Online
                     </span>
                   )}
                 </div>
@@ -903,8 +921,8 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                   {printLayout === 'FULL_RECEIPT'
                     ? 'Imprime cabeçalho fiscal (NIF, Morada, Tel), itens com bases e acompanhamentos Grátis, subtotais e totais.'
                     : printLayout === 'KITCHEN_SLIP'
-                    ? 'Imprime comanda operacional enxuta para a bancada de montagem dos açaís.'
-                    : 'Imprime ticket econômico com senha gigante para entregar ao cliente.'}
+                      ? 'Imprime comanda operacional enxuta para a bancada de montagem dos açaís.'
+                      : 'Imprime ticket econômico com senha gigante para entregar ao cliente.'}
                 </p>
               </div>
 
@@ -966,22 +984,20 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                   <button
                     type="button"
                     onClick={() => setRoutingTab('CATEGORIES')}
-                    className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                      routingTab === 'CATEGORIES'
+                    className={`px-2.5 py-1 rounded-md transition cursor-pointer ${routingTab === 'CATEGORIES'
                         ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white shadow-xs'
                         : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
-                    }`}
+                      }`}
                   >
                     Por Categorias ({selectedCategories.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setRoutingTab('PRODUCTS')}
-                    className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                      routingTab === 'PRODUCTS'
+                    className={`px-2.5 py-1 rounded-md transition cursor-pointer ${routingTab === 'PRODUCTS'
                         ? 'bg-white dark:bg-purple-900 text-purple-950 dark:text-white shadow-xs'
                         : 'text-slate-600 dark:text-purple-200 hover:text-purple-950'
-                    }`}
+                      }`}
                   >
                     Por Itens / Produtos ({selectedProducts.length})
                   </button>
@@ -1026,11 +1042,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                             key={cat.id}
                             type="button"
                             onClick={() => toggleCategory(cat.id)}
-                            className={`px-2 py-1.5 rounded-lg border text-[10.5px] font-medium text-left transition flex items-center justify-between gap-1 cursor-pointer truncate ${
-                              isChecked
+                            className={`px-2 py-1.5 rounded-lg border text-[10.5px] font-medium text-left transition flex items-center justify-between gap-1 cursor-pointer truncate ${isChecked
                                 ? 'bg-purple-100 border-purple-400 text-purple-950 dark:bg-purple-900/40 dark:border-purple-400 dark:text-white shadow-xs'
                                 : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50/60 dark:bg-white/5 dark:border-white/5 dark:text-purple-200/70'
-                            }`}
+                              }`}
                             title={cat.name}
                           >
                             <span className="truncate">{cat.name}</span>
@@ -1089,11 +1104,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                             key={prod.id}
                             type="button"
                             onClick={() => toggleProduct(prod.id)}
-                            className={`px-2 py-1.5 rounded-lg border text-[10.5px] font-medium text-left transition flex items-center justify-between gap-1 cursor-pointer truncate ${
-                              isChecked
+                            className={`px-2 py-1.5 rounded-lg border text-[10.5px] font-medium text-left transition flex items-center justify-between gap-1 cursor-pointer truncate ${isChecked
                                 ? 'bg-pink-100 border-pink-400 text-pink-950 dark:bg-pink-900/40 dark:border-pink-400 dark:text-white shadow-xs'
                                 : 'bg-white border-purple-100 text-slate-600 hover:bg-purple-50/60 dark:bg-white/5 dark:border-white/5 dark:text-purple-200/70'
-                            }`}
+                              }`}
                             title={prod.name}
                           >
                             <span className="truncate">{prod.name}</span>

@@ -59,6 +59,13 @@ yarn-error.log*
 .pnpm-debug.log*
 *.log
 *.exe
+!public/downloads/*.exe
+
+# .NET Build Artifacts
+tools/print-agent/bin/
+tools/print-agent/obj/
+**/bin/
+**/obj/
 
 # Arquivos de Sistema e IDEs
 .DS_Store

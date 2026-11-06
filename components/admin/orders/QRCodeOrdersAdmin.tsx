@@ -44,7 +44,7 @@ import OrderItemsModal from './OrderItemsModal'
 import KitchenOrderPrintModal from './KitchenOrderPrintModal'
 import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 import { StorePrinterSetting } from '@/types/printer'
-import { connectQZ } from '@/lib/printers/qzClient'
+import { checkAgentStatus } from '@/lib/printers/windowsPrintAgentClient'
 import { printOrderDirectly } from '@/lib/printers/autoPrintService'
 
 interface QRCodeOrdersAdminProps {
@@ -150,9 +150,9 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   const [cancelLoading, setCancelLoading] = useState(false)
   const [orderForKitchenPrint, setOrderForKitchenPrint] = useState<Order | null>(null)
 
-  // Estado e Controle de Impressão Térmica Automática via QZ Tray
+  // Estado e Controle de Impressão Térmica Automática via Servidor Windows
   const [storePrinters, setStorePrinters] = useState<StorePrinterSetting[]>([])
-  const [qzOnline, setQzOnline] = useState(false)
+  const [agentOnline, setAgentOnline] = useState(false)
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(true)
 
   const printedOrdersSetRef = React.useRef<Set<string>>(new Set())
@@ -171,7 +171,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   const { authFetch } = useAuthStore()
   const { currentTenant } = useFranchiseStore()
 
-  // Carrega configuração de impressoras da loja
+  // Carrega configuração de impressoras da loja e verifica o Servidor de Impressão Windows
   const fetchStorePrinters = useCallback(async () => {
     try {
       const res = await authFetch(`/api/tenants/${encodeURIComponent(tenantId)}/printers`)
@@ -179,15 +179,11 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
         const data = await res.json()
         const list: StorePrinterSetting[] = data.printers || []
         setStorePrinters(list)
-        if (list.some((p) => p.isActive !== false && p.connectionType === 'QZ_TRAY')) {
-          try {
-            const conn = await connectQZ()
-            setQzOnline(conn.connected)
-          } catch {
-            setQzOnline(false)
-          }
-        } else {
-          setQzOnline(false)
+        try {
+          const agent = await checkAgentStatus()
+          setAgentOnline(agent.online)
+        } catch {
+          setAgentOnline(false)
         }
       }
     } catch {
@@ -195,13 +191,13 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     }
   }, [tenantId, authFetch])
 
-  // Verifica conexão com QZ Tray local manualmente sob demanda
-  const checkQzConnection = useCallback(async () => {
+  // Verifica conexão com Servidor de Impressão Windows localmente sob demanda
+  const checkAgentConnection = useCallback(async () => {
     try {
-      const conn = await connectQZ()
-      setQzOnline(conn.connected)
+      const agent = await checkAgentStatus()
+      setAgentOnline(agent.online)
     } catch {
-      setQzOnline(false)
+      setAgentOnline(false)
     }
   }, [])
 
@@ -224,7 +220,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       }
       clearInterval(interval)
     }
-  }, [fetchStorePrinters, checkQzConnection])
+  }, [fetchStorePrinters, checkAgentConnection])
 
   const loadOrders = useCallback(async () => {
     try {
@@ -241,12 +237,13 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
           newOrders.forEach((o) => printedOrdersSetRef.current.add(o.id))
           isFirstLoadRef.current = false
         } else {
-          // Nas consultas seguintes, detecta novos pedidos QR Code que ainda não foram impressos
+          // Nas consultas seguintes, detecta pedidos pagos (online via MB WAY ou pré-pago) que ainda não foram impressos
           const incomingOrders = newOrders.filter(
             (o) =>
               !printedOrdersSetRef.current.has(o.id) &&
               o.status !== 'CANCELLED' &&
-              (o.isQRCode || o.channel === 'QR_CODE' || o.isTableOrder)
+              (o.isQRCode || o.channel === 'QR_CODE' || o.isTableOrder) &&
+              (o.paymentStatus === 'PAID' || o.status === 'PAID' || o.status === 'PREPARING' || o.status === 'READY')
           )
 
           for (const order of incomingOrders) {
@@ -378,11 +375,11 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     }
   }
 
-  // Impressão da comanda de montagem para a cozinha (Silenciosa via QZ Tray ou fallback nativo)
+  // Impressão da comanda de montagem para a cozinha (Silenciosa via Servidor Windows ou modal manual)
   const handlePrintOrder = async (e: React.MouseEvent | null, order: Order) => {
     if (e) e.stopPropagation()
     const activePrinters = storePrinters.filter((p) => p.isActive)
-    if (activePrinters.length > 0 && qzOnline) {
+    if (activePrinters.length > 0 && agentOnline) {
       try {
         const res = await printOrderDirectly(order, activePrinters, {
           storeInfo: {
@@ -397,7 +394,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
           return
         }
       } catch (err: any) {
-        console.warn('Falha na impressão direta via QZ Tray:', err)
+        console.warn('Falha na impressão direta via Servidor Windows:', err)
       }
     }
     setOrderForKitchenPrint(order)
@@ -452,15 +449,45 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
         }),
       })
       if (!res.ok) throw new Error('Falha ao registrar pagamento')
+
+      const updatedOrder: Order = {
+        ...order,
+        paymentStatus: 'PAID',
+        paymentMethod: 'CASH',
+        status: 'PREPARING',
+      }
+
       setOrders((prev) =>
-        prev.map((o) =>
-          o.id === order.id
-            ? { ...o, paymentStatus: 'PAID', paymentMethod: 'CASH', status: 'PREPARING' }
-            : o
-        )
+        prev.map((o) => (o.id === order.id ? updatedOrder : o))
       )
       setSelectedOrderForItems(null)
       toast.success(`✓ Pagamento do Ticket #${order.orderNumber || 100} (${order.customerName || 'Cliente'}) confirmado no caixa! Pedido em Preparação.`)
+
+      // Marca o pedido como impresso para evitar duplicidade de envio na busca do polling subsequente
+      printedOrdersSetRef.current.add(order.id)
+
+      // Dispara a impressão automática no Servidor Windows logo após a confirmação do pagamento
+      const activePrinters = storePrintersRef.current.filter((p) => p.isActive)
+      if (activePrinters.length > 0 && autoPrintEnabledRef.current) {
+        printOrderDirectly(updatedOrder, activePrinters, {
+          storeInfo: {
+            name: currentTenant?.name || 'Açaí da Rose',
+            nif: currentTenant?.nif || '',
+            address: currentTenant?.address || '',
+            phone: currentTenant?.phone || '',
+          },
+        })
+          .then((printRes) => {
+            if (printRes.success) {
+              toast.success(
+                `Pedido #${String(order.orderNumber || 1).padStart(3, '0')} impresso automaticamente em: ${printRes.printersNames.join(', ')}`
+              )
+            }
+          })
+          .catch((printErr) => {
+            console.warn('[AutoPrint Balcão] Erro ao imprimir após pagamento:', printErr)
+          })
+      }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao confirmar pagamento')
     }
@@ -729,7 +756,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
               setAutoPrintEnabled(nextVal)
               toast.info(nextVal ? 'Impressão automática ativada!' : 'Impressão automática pausada.')
             }}
-            title={autoPrintEnabled ? 'Impressão automática QZ Tray ativa' : 'Impressão automática pausada'}
+            title={autoPrintEnabled ? 'Impressão automática ativa' : 'Impressão automática pausada'}
             className={`h-8 px-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center gap-1.5 ${
               autoPrintEnabled
                 ? 'border-purple-300 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-950/40 text-purple-950 dark:text-purple-200'
@@ -740,9 +767,9 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
             <span className="hidden sm:inline">Auto-Imprimir: {autoPrintEnabled ? 'ON' : 'OFF'}</span>
             <span
               className={`h-2 w-2 rounded-full ${
-                qzOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
+                agentOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
               }`}
-              title={qzOnline ? 'QZ Tray Conectado' : 'QZ Tray Desconectado'}
+              title={agentOnline ? 'Servidor de Impressão Conectado' : 'Servidor de Impressão Desconectado'}
             />
           </Button>
 

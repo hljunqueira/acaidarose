@@ -50,7 +50,7 @@ export default function AuditLogsView() {
   const [autoRefresh, setAutoRefresh] = useState(false)
 
   const SCOPE_ALIASES: Record<string, string[]> = {
-    IMPRESSORAS_QZ: ['IMPRESSORA', 'QZ', 'PRINT'],
+    IMPRESSORAS_QZ: ['IMPRESSORA', 'QZ', 'PRINT', 'WINDOWS', 'SPOOL', 'PRINT_AGENT'],
     PRODUTOS_CATALOGO: ['PRODUTO', 'CATALOG', 'CARDAPIO', 'MENU', 'CATEGORIA'],
     ESTOQUE_SUPPLY: ['ESTOQUE', 'SUPPLY', 'INVENTORY', 'INSUMO'],
     MESAS_QR_SECURITY: ['MESA', 'TABLE', 'QR_SECURITY'],

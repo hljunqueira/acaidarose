@@ -1,5 +1,5 @@
 export type PrinterType = 'EPSON_ESC_POS' | 'GENERIC_ESC_POS' | 'HTML_WINDOW'
-export type PrinterConnectionType = 'QZ_TRAY' | 'NATIVE_PRINT'
+export type PrinterConnectionType = 'WINDOWS_AGENT' | 'QZ_TRAY' | 'NATIVE_PRINT'
 
 export type PrintLayout = 'FULL_RECEIPT' | 'KITCHEN_SLIP' | 'TICKET_ONLY'
 

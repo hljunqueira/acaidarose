@@ -1,0 +1,32 @@
+=============================================================
+   A Ç A Í   D A   R O S E   —   SERVIDOR DE IMPRESSÃO
+=============================================================
+
+Instruções Rápidas de Instalação para o Caixa / Loja:
+
+1. Extraia todos os arquivos desta pasta em um local definitivo
+   no computador do caixa (exemplo: C:\AcaidaRose-PrintAgent).
+
+2. Dê dois cliques em "instalar-inicializacao.bat"
+   Isso configurará o servidor para iniciar automaticamente
+   sempre que o Windows ligar.
+
+3. Abra o executável "acaidarose-print-agent.exe":
+   - Cole o Token de Integração da sua loja (coluna 1).
+   - Clique em "Conectar Loja" (coluna 2). A URL é 100% automática!
+   - Selecione a sua impressora térmica (coluna 3).
+   - Clique em "Testar Impressão" (coluna 4).
+
+4. Ao fechar a janela, o servidor continua trabalhando silenciosamente
+   na bandeja do Windows (ao lado do relógio).
+
+5. Logs e Auditoria:
+   - Um arquivo de log diário é gerado em "logs/print-agent-YYYY-MM-DD.log".
+   - Os eventos de impressão são transmitidos em tempo real para o
+     painel do Dev Master (TI de Henrique).
+   - Você pode abrir a pasta de logs a qualquer momento pelo botão
+     "Abrir Pasta de Logs" no cabeçalho do terminal.
+
+Pronto! Todos os pedidos pagos no balcão e no QR Code serão
+impressos de forma 100% automática e direta.
+=============================================================

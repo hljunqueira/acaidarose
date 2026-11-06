@@ -17,6 +17,8 @@ import {
   Lock,
   CheckCircle2,
   Tv,
+  Printer,
+  Download,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -185,14 +187,14 @@ export default function DevMasterView() {
       </div>
 
       {/* Grid de Monitores de Integridade Proativa */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Monitor 1: Gateway MB WAY */}
         <Card className="border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] shadow-xs rounded-3xl">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-purple-600 dark:text-pink-400" />
-                Gateway MB WAY (Ifthenpay)
+                Gateway MB WAY
               </CardTitle>
               <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border-emerald-500/30">
                 100% Ativo
@@ -200,9 +202,9 @@ export default function DevMasterView() {
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-1 text-xs text-purple-700/80 dark:text-purple-300/70 space-y-1 font-medium">
-            <p>Nenhuma anomalia de timeout ou rejeição de webhook detectada.</p>
+            <p>Ifthenpay: nenhuma anomalia de webhook ou rejeição detectada.</p>
             <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">
-              Confirmação instantânea de pagamento
+              Confirmação instantânea
             </div>
           </CardContent>
         </Card>
@@ -242,9 +244,37 @@ export default function DevMasterView() {
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-1 text-xs text-purple-700/80 dark:text-purple-300/70 space-y-1 font-medium">
-            <p>Tabelas de pedidos, catálogo canônico e configurações com chaves consistentes.</p>
+            <p>Tabelas de pedidos, catálogo canônico e configurações consistentes.</p>
             <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">
               Zero divergência de dados
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Monitor 4: Servidores de Impressão Windows */}
+        <Card className="border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] shadow-xs rounded-3xl">
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Printer className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+                Impressão Windows
+              </CardTitle>
+              <Badge variant="outline" className={`${healthData?.printAgents?.length > 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/30'} text-[10px] font-bold`}>
+                {healthData?.printAgents?.length > 0 ? `${healthData.printAgents.length} Loja(s)` : 'Porta 4040'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-1 text-xs text-purple-700/80 dark:text-purple-300/70 space-y-1 font-medium">
+            <p>Spooler nativo Windows com corte automático e zero popups.</p>
+            <div className="flex items-center justify-between pt-1">
+              <a
+                href="/downloads/acaidarose-servidor-impressao.zip"
+                download
+                className="text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-pink-400 flex items-center gap-1 transition"
+              >
+                <Download className="h-3 w-3" />
+                Baixar Pacote TI (.zip)
+              </a>
             </div>
           </CardContent>
         </Card>
