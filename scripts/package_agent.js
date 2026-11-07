@@ -26,8 +26,12 @@ const defaultConfig = {
 };
 fs.writeFileSync(path.join(distDir, 'config.json'), JSON.stringify(defaultConfig, null, 2));
 
-fs.copyFileSync('tools/print-agent/instalar-inicializacao.bat', path.join(distDir, 'instalar-inicializacao.bat'));
-fs.copyFileSync('tools/print-agent/LEIA-ME.txt', path.join(distDir, 'LEIA-ME.txt'));
+if (fs.existsSync('tools/print-agent/instalar-inicializacao.bat')) {
+  fs.copyFileSync('tools/print-agent/instalar-inicializacao.bat', path.join(distDir, 'instalar-inicializacao.bat'));
+}
+if (fs.existsSync('tools/print-agent/LEIA-ME.txt')) {
+  fs.copyFileSync('tools/print-agent/LEIA-ME.txt', path.join(distDir, 'LEIA-ME.txt'));
+}
 
 if (fs.existsSync(path.join(distDir, 'acaidarose-print-agent.exe'))) {
   fs.copyFileSync(path.join(distDir, 'acaidarose-print-agent.exe'), 'public/downloads/acaidarose-print-agent.exe');
@@ -35,12 +39,19 @@ if (fs.existsSync(path.join(distDir, 'acaidarose-print-agent.exe'))) {
 
 const zipPath = path.resolve('public/downloads/acaidarose-servidor-impressao.zip');
 if (fs.existsSync(zipPath)) {
-  fs.unlinkSync(zipPath);
+  try { fs.unlinkSync(zipPath); } catch {}
 }
 
 // Compacta mantendo a estrutura completa (executável, config.json, pasta logs, script de inicialização)
-const distPath = path.resolve('dist/print-agent/*');
-execSync(`powershell -NoProfile -Command "$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path '${distPath}' -DestinationPath '${zipPath}' -Force"`);
-
-const stats = fs.statSync(zipPath);
-console.log(`Package created: ${zipPath} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+try {
+  if (process.platform === 'win32') {
+    const distPath = path.resolve('dist/print-agent/*');
+    execSync(`powershell -NoProfile -Command "$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path '${distPath}' -DestinationPath '${zipPath}' -Force"`);
+  } else {
+    execSync(`cd "${distDir}" && zip -r "${zipPath}" . -q`);
+  }
+  const stats = fs.statSync(zipPath);
+  console.log(`Package created: ${zipPath} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+} catch (err) {
+  console.warn('Erro ao criar arquivo ZIP do servidor:', err.message);
+}

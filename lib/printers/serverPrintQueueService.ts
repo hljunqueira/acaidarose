@@ -21,7 +21,11 @@ import { orderHasItemsForPrinter } from './autoPrintService'
 import { StorePrinterSetting } from '@/types/printer'
 import { Order } from '@/types'
 
-export async function enqueueOrderPrintJobs(orderId: string, customTenantId?: string): Promise<{ success: boolean; enqueuedCount: number; errors: string[] }> {
+export async function enqueueOrderPrintJobs(
+  orderId: string,
+  customTenantId?: string,
+  options?: { forceReprint?: boolean }
+): Promise<{ success: boolean; enqueuedCount: number; errors: string[] }> {
   const result = { success: false, enqueuedCount: 0, errors: [] as string[] }
 
   try {
@@ -133,6 +137,7 @@ export async function enqueueOrderPrintJobs(orderId: string, customTenantId?: st
         textPayload = buildOrderKitchenEscPosReceipt(orderObj, {
           storeName: storeInfo.name,
           printerTitle: printer.name,
+          printLogo: printer.printLogo !== false,
           categoryFilter: printer.categories,
           productFilter: printer.products,
           totalCopies: printer.copies || 1,
@@ -150,6 +155,7 @@ export async function enqueueOrderPrintJobs(orderId: string, customTenantId?: st
           storeInfo,
           printerTitle: printer.name,
           highlightCustomer: printer.highlightCustomer !== false,
+          printLogo: printer.printLogo !== false,
           categoryFilter: printer.categories,
           productFilter: printer.products,
           totalCopies: printer.copies || 1,
@@ -166,6 +172,21 @@ export async function enqueueOrderPrintJobs(orderId: string, customTenantId?: st
       const copies = Math.max(1, printer.copies || 1)
       const docName = `Pedido #${ticketNum} (${orderObj.customerName || 'Cliente'})`
       const payloadBase64 = Buffer.from(fullPayload, 'binary').toString('base64')
+
+      // Proteção de Idempotência: Evita enfileirar o mesmo pedido para a mesma impressora se já estiver pendente ou foi impresso recentemente
+      if (!options?.forceReprint) {
+        const existingJob = await query(
+          `SELECT id FROM store_print_jobs 
+           WHERE order_id = $1 AND printer_name = $2 
+             AND (status = 'PENDING' OR (status = 'PRINTED' AND created_at > NOW() - INTERVAL '15 minutes'))
+           LIMIT 1`,
+          [orderObj.id, printer.driverName]
+        )
+        if (existingJob.rows && existingJob.rows.length > 0) {
+          console.log(`[AutoPrint Server] Pedido #${ticketNum} já possui comanda para '${printer.driverName}'. Ignorando duplicata automática.`)
+          continue
+        }
+      }
 
       await query(
         `INSERT INTO store_print_jobs (

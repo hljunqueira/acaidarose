@@ -33,6 +33,7 @@ export interface AgentPrintPayload {
   rawText?: string
   copies?: number
   docName?: string
+  forceReprint?: boolean
 }
 
 /**
@@ -199,6 +200,7 @@ export async function printViaAgent(payload: AgentPrintPayload): Promise<{ succe
         payloadText: payload.rawText,
         payloadBase64: payload.rawBase64,
         copies: payload.copies || 1,
+        forceReprint: payload.forceReprint,
       }),
     })
 

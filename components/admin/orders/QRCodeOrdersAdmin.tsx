@@ -381,6 +381,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     if (activePrinters.length > 0) {
       try {
         const res = await printOrderDirectly(order, activePrinters, {
+          forceReprint: true,
           storeInfo: {
             name: currentTenant?.name || 'Açaí da Rose',
             nif: currentTenant?.nif || '',

@@ -19,6 +19,7 @@ namespace AcaiDaRose.PrintAgent;
 
 public static class Program
 {
+    public const string CURRENT_VERSION = "1.0.1";
     private static AgentConfig _config = null!;
     private static string _configPath = "";
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
@@ -82,7 +83,7 @@ public static class Program
         {
             status = "online",
             service = "Açaí da Rose Print Agent",
-            version = "1.0.0",
+            version = CURRENT_VERSION,
             machine = Environment.MachineName,
             storeToken = _config.StoreToken,
             storeName = _currentStoreName,
@@ -263,6 +264,9 @@ public static class Program
         // 5. Inicia Polling de Fila de Impressão na Nuvem em Background
         StartCloudPollingLoop();
 
+        // 5.1 Inicia Verificação de Atualização Automática e Silenciosa (Dev Master)
+        StartAutoUpdateLoop();
+
         // 6. Instancia Formulário Principal com Design System Açaí da Rose
         _mainForm = new MainForm(
             _config,
@@ -424,6 +428,124 @@ public static class Program
                 await Task.Delay(Math.Max(1500, _config.PollIntervalMs));
             }
         });
+    }
+
+    private static void StartAutoUpdateLoop()
+    {
+        _ = Task.Run(async () =>
+        {
+            // Aguarda 10 segundos antes do primeiro check para permitir conexão inicial estável
+            await Task.Delay(10000);
+
+            while (true)
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(_config.ApiUrl))
+                    {
+                        string versionUrl = $"{_config.ApiUrl.TrimEnd('/')}/api/printers/agent/version";
+                        var response = await _httpClient.GetFromJsonAsync<RemoteVersionResponse>(versionUrl);
+
+                        if (response != null && !string.IsNullOrWhiteSpace(response.Version))
+                        {
+                            if (IsNewerVersion(response.Version, CURRENT_VERSION))
+                            {
+                                LogMessage($"[AUTO-UPDATE] Nova versão v{response.Version} disponível (Atual: v{CURRENT_VERSION}). Iniciando download silencioso...", "INFO", Color.FromArgb(236, 72, 153), "AUTO_UPDATE_FOUND", new { remote = response.Version, local = CURRENT_VERSION });
+
+                                string downloadUrl = response.DownloadUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                                    ? response.DownloadUrl
+                                    : $"{_config.ApiUrl.TrimEnd('/')}/{response.DownloadUrl.TrimStart('/')}";
+
+                                bool updated = await PerformSilentUpdateAsync(downloadUrl, response.Version);
+                                if (updated)
+                                {
+                                    // Processo será encerrado pelo script de atualização
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Falhas de rede transitórias são ignoradas silenciosamente
+                }
+
+                // Checa atualizações a cada 15 minutos
+                await Task.Delay(TimeSpan.FromMinutes(15));
+            }
+        });
+    }
+
+    private static bool IsNewerVersion(string remote, string local)
+    {
+        try
+        {
+            var rParts = remote.Split('.').Select(int.Parse).ToArray();
+            var lParts = local.Split('.').Select(int.Parse).ToArray();
+            for (int i = 0; i < Math.Min(rParts.Length, lParts.Length); i++)
+            {
+                if (rParts[i] > lParts[i]) return true;
+                if (rParts[i] < lParts[i]) return false;
+            }
+            return rParts.Length > lParts.Length;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<bool> PerformSilentUpdateAsync(string downloadUrl, string newVersion)
+    {
+        try
+        {
+            string currentExePath = Environment.ProcessPath ?? Application.ExecutablePath;
+            string currentDir = Path.GetDirectoryName(currentExePath)!;
+            string tempExePath = Path.Combine(currentDir, "acaidarose-print-agent.new.exe");
+
+            var bytes = await _httpClient.GetByteArrayAsync(downloadUrl);
+            if (bytes.Length < 50000 || bytes[0] != 0x4D || bytes[1] != 0x5A)
+            {
+                LogMessage("[AUTO-UPDATE FALHOU] Binário baixado inválido ou corrompido.", "ERROR", Color.Red, "UPDATE_DOWNLOAD_INVALID");
+                return false;
+            }
+
+            await File.WriteAllBytesAsync(tempExePath, bytes);
+
+            // Cria o script batch temporário que substitui o executável e reinicia o processo
+            string updaterBatPath = Path.Combine(currentDir, "silent-updater.bat");
+            int currentPid = Environment.ProcessId;
+
+            string batContent = $@"@echo off
+timeout /t 2 /nobreak >nul
+taskkill /F /PID {currentPid} >nul 2>&1
+move /Y ""{Path.GetFileName(tempExePath)}"" ""{Path.GetFileName(currentExePath)}"" >nul
+start """" ""{Path.GetFileName(currentExePath)}"" --minimized
+del ""%~f0""
+";
+            await File.WriteAllTextAsync(updaterBatPath, batContent);
+
+            LogMessage($"[AUTO-UPDATE] Reiniciando processo para aplicar v{newVersion}...", "INFO", Color.FromArgb(16, 185, 129), "UPDATE_APPLYING");
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = updaterBatPath,
+                WorkingDirectory = currentDir,
+                UseShellExecute = true,
+                CreateNoWindow = true,
+                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
+            };
+
+            System.Diagnostics.Process.Start(psi);
+            Environment.Exit(0);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"[AUTO-UPDATE ERRO] {ex.Message}", "ERROR", Color.Red, "UPDATE_ERROR", new { error = ex.Message });
+            return false;
+        }
     }
 
     private static void DoTestPrint(string printerName)
@@ -731,4 +853,16 @@ public class PrintJobDto
 
     [JsonPropertyName("docName")]
     public string DocName { get; set; } = "Açaí da Rose - Cupom";
+}
+
+public class RemoteVersionResponse
+{
+    [JsonPropertyName("version")]
+    public string Version { get; set; } = "";
+
+    [JsonPropertyName("downloadUrl")]
+    public string DownloadUrl { get; set; } = "";
+
+    [JsonPropertyName("releaseNotes")]
+    public string ReleaseNotes { get; set; } = "";
 }

@@ -5,6 +5,8 @@
  * Suporte a corte de papel (guilhotina), negrito, texto expandido e PT-PT.
  */
 
+import { getEscPosLogoRasterCommand } from '@/lib/printers/logoRasterData'
+
 // Comandos ESC/POS padrão
 const ESC = '\x1b'
 const GS = '\x1d'
@@ -157,21 +159,28 @@ export function buildTestEscPosReceipt(storeName: string, printerName: string): 
 /**
  * Formata um pedido em comando ESC/POS para produção na copa / cozinha
  */
+export interface KitchenReceiptOptions {
+  storeName?: string
+  printerTitle?: string
+  printLogo?: boolean
+  copyIndex?: number
+  totalCopies?: number
+  categoryFilter?: string[]
+  productFilter?: string[]
+  omitInit?: boolean
+  omitCut?: boolean
+}
+
+/**
+ * Formata um pedido em comando ESC/POS para produção na copa / cozinha
+ * Layout rico padronizado 1:1 com o modal operacional (comanda de produção)
+ */
 export function buildOrderKitchenEscPosReceipt(
   order: any,
-  options?: {
-    storeName?: string
-    printerTitle?: string
-    copyIndex?: number
-    totalCopies?: number
-    categoryFilter?: string[]
-    productFilter?: string[]
-    omitInit?: boolean
-    omitCut?: boolean
-  }
+  options?: KitchenReceiptOptions
 ): string {
-  const storeName = options?.storeName || 'AÇAÍ DA ROSE'
-  const printerTitle = options?.printerTitle || 'COPA / PRODUÇÃO'
+  const storeName = options?.storeName || 'Açaí da Rose'
+  const printerTitle = options?.printerTitle || 'COZINHA'
   const copyIndex = options?.copyIndex || 1
   const totalCopies = options?.totalCopies || 1
   const categoryFilter = options?.categoryFilter || []
@@ -183,10 +192,21 @@ export function buildOrderKitchenEscPosReceipt(
 
   const dateStr = new Date(order.createdAt || Date.now()).toLocaleString('pt-PT')
   const ticketNumber = String(order.orderNumber || order.daily_order_seq || order.id?.slice(-3) || '001').padStart(3, '0')
-  const isTable = Boolean(order.tableNumber)
-  const tableName = order.tableNumber ? `MESA ${order.tableNumber}` : 'BALCÃO / TAKEAWAY'
-  const customerName = order.customerName ? order.customerName.toUpperCase() : 'CLIENTE'
-  const SEP = '------------------------------------------\n'
+  const isTable = Boolean(order.tableNumber) && String(order.tableNumber).toLowerCase() !== 'balcão' && String(order.tableNumber).toLowerCase() !== 'balcao'
+  const isTakeaway = Boolean(order.isTakeaway || order.consumptionType === 'TAKEAWAY')
+  const customerName = order.customerName ? String(order.customerName).trim().toUpperCase() : 'CLIENTE'
+  const isPaid = order.paymentStatus === 'PAID' || order.status === 'PAID'
+  const payMethod = order.paymentMethod === 'MBWAY'
+    ? 'PAGO VIA MB WAY'
+    : (order.paymentMethod === 'CARD' || order.paymentMethod === 'MULTIBANCO')
+    ? 'PAGO VIA MULTIBANCO'
+    : 'PAGO'
+
+  const bagQty = typeof order.bagQuantity === 'number' ? order.bagQuantity : (order.needBag ? 1 : 0)
+  const bagTotalFee = order.bagFee ? Number(order.bagFee).toFixed(2) : (bagQty * 0.10).toFixed(2)
+
+  const LINE_DOUBLE = '==========================================\n'
+  const LINE_SINGLE = '------------------------------------------\n'
 
   let out = ''
   if (!options?.omitInit) {
@@ -194,38 +214,58 @@ export function buildOrderKitchenEscPosReceipt(
   }
   out += ESC_POS_COMMANDS.CODE_PAGE_WPC1252
 
+  // 0. Logotipo Oficial Monocromático (se habilitado)
+  if (options?.printLogo !== false) {
+    out += ESC_POS_COMMANDS.ALIGN_CENTER
+    out += getEscPosLogoRasterCommand()
+    out += '\n'
+  }
+
   // 1. Cabeçalho da Unidade e Rota
   out += ESC_POS_COMMANDS.ALIGN_CENTER
   out += ESC_POS_COMMANDS.BOLD_ON
-  out += `${storeName.toUpperCase()}\n`
+  out += `${storeName.toUpperCase()} · PORTUGAL 🇵🇹\n`
   out += ESC_POS_COMMANDS.BOLD_OFF
-  out += `VIA DE ${printerTitle.toUpperCase()}${totalCopies > 1 ? ` (${copyIndex}/${totalCopies})` : ''}\n`
+  out += `*** COMANDA DE ${printerTitle.toUpperCase()}${totalCopies > 1 ? ` (${copyIndex}/${totalCopies})` : ''} ***\n`
   out += `${dateStr}\n`
-  out += SEP
+  out += LINE_DOUBLE
 
   // 2. Ticket / Senha em Destaque Gigante
   out += ESC_POS_COMMANDS.ALIGN_CENTER
   out += ESC_POS_COMMANDS.DOUBLE_SIZE
   out += `#${ticketNumber}\n`
   out += ESC_POS_COMMANDS.NORMAL_SIZE
+
+  // 3. Destino em Destaque
   out += ESC_POS_COMMANDS.BOLD_ON
-  out += `${tableName} - ${customerName}\n`
+  if (isTakeaway) {
+    out += `>>> PARA LEVAR (TAKEAWAY) <<<\n`
+  } else if (isTable) {
+    out += `>>> CONSUMO NO LOCAL (ESPLANADA / MESA ${order.tableNumber}) <<<\n`
+  } else {
+    out += `>>> CONSUMO NO LOCAL (BALCÃO) <<<\n`
+  }
   out += ESC_POS_COMMANDS.BOLD_OFF
 
-  if (order.consumptionType === 'TAKEAWAY') {
-    out += `[ PARA LEVAR / TAKEAWAY ]\n`
+  // 4. Saco de Transporte
+  if (bagQty > 0) {
+    out += `SACO DE TRANSPORTE: ${bagQty}X (${bagTotalFee}€) · [✓ DISPENSAR ${bagQty} UNID.]\n`
   } else {
-    out += `[ CONSUMO NO LOCAL ]\n`
+    out += `SACO: NÃO DISPENSADO (0 UNID.)\n`
   }
-  if (order.bagQuantity && order.bagQuantity > 0) {
-    out += `SACO DE TRANSPORTE: ${order.bagQuantity}X [DISPENSAR]\n`
-  }
-  out += SEP
+  out += LINE_SINGLE
 
-  // 3. Itens do Pedido (Filtrados por categoria ou produto se a impressora for especializada)
+  // 5. Cliente, Contacto e Pagamento
   out += ESC_POS_COMMANDS.ALIGN_LEFT
-  const items = Array.isArray(order.items) ? order.items : []
+  out += `CLIENTE: ${customerName}\n`
+  if (order.customerPhone) {
+    out += `CONTACTO: ${order.customerPhone}\n`
+  }
+  out += `PAGAMENTO: ${isPaid ? `[✓ ${payMethod}]` : '[⏳ A PAGAR NO BALCÃO]'}\n`
+  out += LINE_DOUBLE
 
+  // 6. Itens do Pedido (Filtrados por setor/categoria)
+  const items = Array.isArray(order.items) ? order.items : []
   const filteredItems = items.filter((item: any) => {
     if (!hasAnyFilter) return true
     const itemCat = item.categoryId || item.category_id || item.category
@@ -237,39 +277,76 @@ export function buildOrderKitchenEscPosReceipt(
     return matchCategory || matchProduct
   })
 
-  if (filteredItems.length === 0) {
-    out += `(Nenhum item desta secao para impressao)\n`
+  const foodItems = filteredItems.filter((it: any) => !it.isBagItem && it.id !== 'bag-item' && it.containerId !== 'saco-transporte')
+
+  out += ESC_POS_COMMANDS.BOLD_ON
+  out += `ITENS PARA PREPARAÇÃO (QTD: ${foodItems.length})\n`
+  out += ESC_POS_COMMANDS.BOLD_OFF
+  out += LINE_SINGLE
+
+  if (foodItems.length === 0) {
+    out += `(Nenhum item desta seção para preparação)\n`
   } else {
-    filteredItems.forEach((item: any, idx: number) => {
+    foodItems.forEach((item: any, idx: number) => {
       const qty = item.quantity || 1
       const name = item.name || item.containerName || item.productName || 'Item'
-      const format = item.containerFormat || item.packagingType || ''
-      const formatLabel = format ? ` [${format}]` : ''
+
+      // Determina Badge do Formato
+      const isCaixa = isTakeaway || (item.packagingType === 'CAIXA' || item.containerFormat === 'CAIXA' || (name || '').toLowerCase().includes('caixa'))
+      const isTaca = (item.packagingType === 'TACA' || item.containerFormat === 'TACA' || ((item.containerPrice ?? 0) >= 9.5) || (name || '').toLowerCase().includes('sensação') || (name || '').toLowerCase().includes('família') || (name || '').toLowerCase().includes('1kg')) && !isCaixa
+      const isCopo = (item.containerFormat === 'Copo' || item.packagingType === 'COPO' || (name || '').toLowerCase().includes('copo')) && !isCaixa && !isTaca
+
+      let badge = ''
+      if (isCaixa) badge = ' [CAIXA TAKEAWAY]'
+      else if (isTaca) badge = ' [TAÇA]'
+      else if (isCopo) badge = ' [COPO]'
+      else if (item.containerFormat) badge = ` [${item.containerFormat}]`
 
       out += ESC_POS_COMMANDS.BOLD_ON
-      out += `${qty}x ${name.toUpperCase()}${formatLabel}\n`
+      out += `${qty}x ${name.toUpperCase()}${badge}\n`
       out += ESC_POS_COMMANDS.BOLD_OFF
 
       // Detalhes de Bases
       if (Array.isArray(item.bases) && item.bases.length > 0) {
-        const basesText = item.bases.map((b: any) => typeof b === 'string' ? b : (b.name || b.title)).join(' + ')
-        out += `  Bases: ${basesText}\n`
+        const groupedBases: { name: string; count: number }[] = []
+        for (const b of item.bases) {
+          const bName = typeof b === 'string' ? b : (b.name || b.title || 'Base')
+          const bQty = typeof b === 'object' && b.quantity ? Number(b.quantity) : 1
+          const existing = groupedBases.find((gb) => gb.name.toLowerCase() === bName.toLowerCase())
+          if (existing) {
+            existing.count += bQty
+          } else {
+            groupedBases.push({ name: bName, count: bQty })
+          }
+        }
+        const basesText = groupedBases.map((b) => `${b.name}${b.count > 1 ? ` (${b.count}x)` : ''}`).join(' + ')
+        out += `  BASES: ${basesText}\n`
       }
 
-      // Detalhes de Acompanhamentos / Frutas / Toppings em formato Checklist de Cozinha
+      // Detalhes de Acompanhamentos em formato Checklist [ ]
       if (Array.isArray(item.toppings) && item.toppings.length > 0) {
-        out += `  Acompanhamentos:\n`
-        item.toppings.forEach((t: any) => {
+        const groupedToppings: { name: string; count: number }[] = []
+        for (const t of item.toppings) {
           const tName = typeof t === 'string' ? t : (t.name || t.title || 'Item')
-          const tQty = typeof t === 'object' && t.quantity && t.quantity > 1 ? ` (${t.quantity}x)` : ''
-          out += `   [ ] ${tName}${tQty}\n`
+          const tQty = typeof t === 'object' && t.quantity ? Number(t.quantity) : 1
+          const existing = groupedToppings.find((gt) => gt.name.toLowerCase() === tName.toLowerCase())
+          if (existing) {
+            existing.count += tQty
+          } else {
+            groupedToppings.push({ name: tName, count: tQty })
+          }
+        }
+        out += `  ACOMPANHAMENTOS:\n`
+        groupedToppings.forEach((gt) => {
+          const qtyText = gt.count > 1 ? ` (${gt.count}x)` : ''
+          out += `   [ ] ${gt.name}${qtyText}\n`
         })
       }
 
-      // Modificadores / Opções do item
+      // Modificadores / Opções do item em formato Checklist [ ]
       const optionsList = item.selectedOptions || item.options
       if (Array.isArray(optionsList) && optionsList.length > 0) {
-        out += `  Opcoes:\n`
+        out += `  MODIFICADORES / OPÇÕES:\n`
         optionsList.forEach((opt: any) => {
           const optLabel = typeof opt === 'string' ? opt : opt.groupName ? `${opt.groupName}: ${opt.name}` : opt.name
           out += `   [ ] ${optLabel}\n`
@@ -277,31 +354,33 @@ export function buildOrderKitchenEscPosReceipt(
       }
 
       // Observações do item
-      if (item.notes) {
-        out += `  Obs: ${item.notes}\n`
+      if (item.notes || item.observations) {
+        out += `  >> OBS: ${item.notes || item.observations}\n`
       }
 
-      if (idx < filteredItems.length - 1) {
+      if (idx < foodItems.length - 1) {
         out += '\n'
       }
     })
   }
 
-  out += SEP
+  out += LINE_SINGLE
 
-  // 4. Observações Gerais do Pedido
+  // 7. Observações Gerais do Pedido
   if (order.notes) {
     out += ESC_POS_COMMANDS.ALIGN_LEFT
-    out += `OBSERVACOES GERAIS:\n${order.notes}\n`
-    out += SEP
+    out += `*** OBSERVAÇÃO GERAL DO PEDIDO ***\n`
+    out += `${order.notes}\n`
+    out += LINE_SINGLE
   }
 
-  // 5. Rodapé
+  // 8. Rodapé
   out += ESC_POS_COMMANDS.ALIGN_CENTER
   out += `Total do Pedido: ${formatReceiptCurrency(order.total)}\n`
-  out += `Pagamento: ${formatPaymentMethodPT(order.paymentMethod)} · Estado: ${formatOrderStatusPT(order.paymentStatus || order.status)}\n`
+  out += `--- FIM DO PEDIDO #${ticketNumber} ---\n`
+  out += `Açaí da Rose · Sistema de Produção\n`
 
-  // 6. Avanço e Guilhotina
+  // 9. Avanço e Guilhotina
   if (!options?.omitCut) {
     out += ESC_POS_COMMANDS.FEED_4_LINES
     out += ESC_POS_COMMANDS.CUT_FULL
@@ -319,6 +398,7 @@ export interface FullOrderReceiptOptions {
   }
   printerTitle?: string
   highlightCustomer?: boolean
+  printLogo?: boolean
   copyIndex?: number
   totalCopies?: number
   categoryFilter?: string[]
@@ -359,6 +439,13 @@ export function buildFullOrderEscPosReceipt(
     out += ESC_POS_COMMANDS.INIT
   }
   out += ESC_POS_COMMANDS.CODE_PAGE_WPC1252
+
+  // 0. Logotipo Oficial Monocromático (se habilitado)
+  if (options?.printLogo !== false) {
+    out += ESC_POS_COMMANDS.ALIGN_CENTER
+    out += getEscPosLogoRasterCommand()
+    out += '\n'
+  }
 
   // 0. Destaque Especial de Senha e Cliente para o Caixa / Atendimento
   if (options?.highlightCustomer !== false) {

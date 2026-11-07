@@ -206,6 +206,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
       raw = buildOrderKitchenEscPosReceipt(sampleOrder, {
         storeName: storeDisplayInfo.name,
         printerTitle: previewPrinter.name,
+        printLogo: previewPrinter.printLogo !== false,
         categoryFilter: previewPrinter.categories,
         productFilter: previewPrinter.products,
         totalCopies: previewPrinter.copies || 1,
@@ -223,6 +224,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
         storeInfo: storeDisplayInfo,
         printerTitle: previewPrinter.name,
         highlightCustomer: previewPrinter.highlightCustomer !== false,
+        printLogo: previewPrinter.printLogo !== false,
         categoryFilter: previewPrinter.categories,
         productFilter: previewPrinter.products,
         totalCopies: previewPrinter.copies || 1,
@@ -233,6 +235,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
 
     // Limpeza de bytes de controle binários para renderizar visualmente como papel térmico
     const clean = raw
+      .replace(/\x1d\x76\x30[\s\S]{13588}/g, '')
       .replace(/\x1b@/g, '')
       .replace(/\x1bt[\x00-\xFF]/g, '')
       .replace(/\x1ba[\x00\x01\x02]/g, '')
@@ -1454,6 +1457,17 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                   <div className="text-center text-[10px] text-slate-400 dark:text-purple-300/40 tracking-widest pb-3 font-mono border-b border-dashed border-slate-300 dark:border-white/10 mb-3">
                     - - - - CORTE SUPERIOR DA BOBINA - - - -
                   </div>
+
+                  {/* Logotipo Oficial da Marca na Bobina Térmica */}
+                  {previewPrinter?.printLogo !== false && (
+                    <div className="flex flex-col items-center justify-center my-2 pb-2">
+                      <img
+                        src="/logo-oficial-1.png"
+                        alt="Açaí da Rose"
+                        className="h-10 w-auto object-contain filter contrast-125 dark:brightness-110"
+                      />
+                    </div>
+                  )}
 
                   {/* Corpo Formatado em Monospaced Estrito */}
                   <pre className="font-mono text-[12px] leading-[18px] whitespace-pre overflow-x-auto select-text scrollbar-thin">

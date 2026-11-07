@@ -66,6 +66,25 @@ export async function POST(request: NextRequest) {
     const finalBase64 = payloadBase64 || (payloadText ? Buffer.from(payloadText, 'binary').toString('base64') : null)
     const sanitizedText = payloadText ? payloadText.replace(/\0/g, '') : null
 
+    // Proteção de Idempotência: Se não for reimpressão forçada, não duplica job do mesmo pedido nos últimos 15 min
+    if (orderId && !body.forceReprint) {
+      const existing = await query(
+        `SELECT id FROM store_print_jobs
+         WHERE order_id = $1 AND printer_name = $2
+           AND (status = 'PENDING' OR (status = 'PRINTED' AND created_at > NOW() - INTERVAL '15 minutes'))
+         LIMIT 1`,
+        [orderId, printerName]
+      )
+      if (existing.rows && existing.rows.length > 0) {
+        return NextResponse.json({
+          success: true,
+          jobId: existing.rows[0].id,
+          duplicateIgnored: true,
+          message: 'Job já existente e processado nos últimos 15 minutos.'
+        })
+      }
+    }
+
     const sql = `
       INSERT INTO store_print_jobs (
         tenant_id, order_id, order_number, printer_name, doc_name,

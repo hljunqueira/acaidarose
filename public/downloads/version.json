@@ -1,0 +1,8 @@
+{
+  "version": "1.0.1",
+  "minVersion": "1.0.0",
+  "downloadUrl": "/downloads/acaidarose-print-agent.exe",
+  "zipUrl": "/downloads/acaidarose-servidor-impressao.zip",
+  "releaseDate": "2026-11-07",
+  "releaseNotes": "Atualização automática e silenciosa, proteção contra loops e duplicidades, suporte ESC/POS Base64 e layout 1:1 com logotipo oficial."
+}

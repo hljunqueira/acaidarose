@@ -34,6 +34,7 @@ export interface AutoPrintOptions {
     address?: string
     phone?: string
   }
+  forceReprint?: boolean
 }
 
 /**
@@ -121,6 +122,7 @@ export async function printOrderDirectly(
         textPayload = buildOrderKitchenEscPosReceipt(order, {
           storeName: storeInfo.name,
           printerTitle: printer.name,
+          printLogo: printer.printLogo !== false,
           categoryFilter: printer.categories,
           productFilter: printer.products,
           totalCopies: printer.copies || 1,
@@ -138,6 +140,7 @@ export async function printOrderDirectly(
           storeInfo,
           printerTitle: printer.name,
           highlightCustomer: printer.highlightCustomer !== false,
+          printLogo: printer.printLogo !== false,
           categoryFilter: printer.categories,
           productFilter: printer.products,
           totalCopies: printer.copies || 1,
@@ -163,6 +166,7 @@ export async function printOrderDirectly(
       fullPayload += ESC_POS_COMMANDS.CUT_FULL
 
       // DISPACHO INTELIGENTE (LOCAL PORTA 4040 OU ENFILEIRAMENTO EM NUVEM)
+      const forceReprint = typeof storeNameOrOptions === 'object' ? Boolean(storeNameOrOptions?.forceReprint) : false
       const printRes = await printViaAgent({
         tenantId: order.tenantId,
         orderId: order.id,
@@ -171,6 +175,7 @@ export async function printOrderDirectly(
         rawText: fullPayload,
         copies,
         docName: `Pedido #${ticketNum} (${order.customerName || 'Cliente'})`,
+        forceReprint,
       })
 
       if (printRes.success) {

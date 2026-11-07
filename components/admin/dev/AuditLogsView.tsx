@@ -158,11 +158,10 @@ export default function AuditLogsView() {
             size="sm"
             variant="outline"
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`h-9 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-              autoRefresh
+            className={`h-9 rounded-xl border text-xs font-bold transition-all cursor-pointer ${autoRefresh
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-600/40 text-emerald-700 dark:text-emerald-400'
                 : 'border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white'
-            }`}
+              }`}
           >
             <span className={`inline-block h-2 w-2 rounded-full mr-1.5 ${autoRefresh ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
             <span>{autoRefresh ? 'Ao Vivo (10s)' : 'Auto-Sync: Desligado'}</span>
@@ -214,19 +213,17 @@ export default function AuditLogsView() {
                 key={scope.id}
                 type="button"
                 onClick={() => setFilterScope(scope.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                  filterScope === scope.id
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${filterScope === scope.id
                     ? 'bg-purple-700 dark:bg-pink-600 text-white shadow-xs'
                     : 'bg-white dark:bg-white/5 text-purple-900 dark:text-purple-200 border border-purple-150 dark:border-white/10 hover:bg-purple-50'
-                }`}
+                  }`}
               >
                 <span>{scope.label}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    filterScope === scope.id
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${filterScope === scope.id
                       ? 'bg-white/20 text-white'
                       : 'bg-purple-100 dark:bg-white/10 text-purple-800 dark:text-purple-300'
-                  }`}
+                    }`}
                 >
                   {count}
                 </span>
@@ -242,15 +239,14 @@ export default function AuditLogsView() {
               key={lvl}
               type="button"
               onClick={() => setFilterLevel(lvl)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                filterLevel === lvl
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterLevel === lvl
                   ? lvl === 'ERROR'
                     ? 'bg-rose-600 text-white'
                     : lvl === 'WARN'
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-purple-900 dark:bg-purple-700 text-white'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-purple-900 dark:bg-purple-700 text-white'
                   : 'text-purple-900 dark:text-purple-200 hover:text-purple-950'
-              }`}
+                }`}
             >
               {lvl === 'ALL' ? 'Nível: Todos' : lvl}
             </button>
@@ -292,15 +288,14 @@ export default function AuditLogsView() {
                 title="Clique para ver os detalhes da alteração"
               >
                 <span className="text-slate-500 text-[11px] shrink-0 font-mono">[{log.timestamp}]</span>
-                
+
                 <span
-                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0 self-start lg:self-auto ${
-                    log.level === 'WARN'
+                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0 self-start lg:self-auto ${log.level === 'WARN'
                       ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                       : log.level === 'ERROR'
-                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  }`}
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    }`}
                 >
                   {log.level}
                 </span>

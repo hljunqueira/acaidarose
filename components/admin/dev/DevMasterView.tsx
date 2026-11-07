@@ -19,6 +19,9 @@ import {
   Tv,
   Printer,
   Download,
+  ArrowUpCircle,
+  UploadCloud,
+  FileCode,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -26,6 +29,63 @@ export default function DevMasterView() {
   const [loading, setLoading] = useState(false)
   const [healthData, setHealthData] = useState<any>(null)
   const [lastCheck, setLastCheck] = useState<Date>(new Date())
+
+  // Gestão de Versões do Servidor de Impressão Windows
+  const [agentVersionInfo, setAgentVersionInfo] = useState<any>(null)
+  const [newVersionInput, setNewVersionInput] = useState('')
+  const [releaseNotesInput, setReleaseNotesInput] = useState('')
+  const [selectedExeFile, setSelectedExeFile] = useState<File | null>(null)
+  const [uploadingVersion, setUploadingVersion] = useState(false)
+
+  const fetchAgentVersion = async () => {
+    try {
+      const res = await fetch('/api/printers/agent/version')
+      if (res.ok) {
+        const data = await res.json()
+        setAgentVersionInfo(data)
+      }
+    } catch {}
+  }
+
+  const handlePublishNewVersion = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedExeFile) {
+      toast.error('Selecione o arquivo .exe compilado do servidor de impressão')
+      return
+    }
+    if (!newVersionInput.trim()) {
+      toast.error('Informe o número da versão (ex: 1.0.2)')
+      return
+    }
+
+    setUploadingVersion(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedExeFile)
+      formData.append('version', newVersionInput.trim())
+      formData.append('releaseNotes', releaseNotesInput.trim())
+
+      const res = await fetch('/api/printers/agent/version', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success(`Versão ${data.version} publicada com sucesso! O pacote .zip foi atualizado e os agentes em loja atualizarão automaticamente.`)
+        setSelectedExeFile(null)
+        setNewVersionInput('')
+        setReleaseNotesInput('')
+        fetchAgentVersion()
+      } else {
+        toast.error(data.error || 'Falha ao publicar versão.')
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar versão.')
+    } finally {
+      setUploadingVersion(false)
+    }
+  }
 
   const fetchHealth = async (isManual = false) => {
     setLoading(true)
@@ -48,6 +108,7 @@ export default function DevMasterView() {
 
   useEffect(() => {
     fetchHealth(false)
+    fetchAgentVersion()
   }, [])
 
   const latency = healthData?.database?.latencyMs || 84
@@ -279,6 +340,126 @@ export default function DevMasterView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Bloco de Distribuição & Auto-Update do Servidor Windows */}
+      <Card className="border border-purple-200 dark:border-white/15 bg-gradient-to-br from-white via-purple-50/20 to-pink-50/20 dark:from-[#160228] dark:to-[#1a0a2e] shadow-xs rounded-3xl overflow-hidden">
+        <CardHeader className="p-5 pb-3 border-b border-purple-100 dark:border-white/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-pink-400">
+                <ArrowUpCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-black text-purple-950 dark:text-white flex items-center gap-2">
+                  Lançamento de Versão & Auto-Update do Servidor Windows
+                  <Badge className="bg-pink-600 text-white text-[10px] font-bold">
+                    Automático e Silencioso
+                  </Badge>
+                </CardTitle>
+                <p className="text-xs text-purple-700/80 dark:text-purple-200/70 font-medium">
+                  Suba o binário <code className="font-mono">acaidarose-print-agent.exe</code> compilado. Todas as instâncias em loja atualizarão silenciosamente em segundo plano via polling periódico.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Badge variant="outline" className="text-xs font-mono font-bold bg-white/80 dark:bg-white/5 border-purple-200 dark:border-white/20 px-3 py-1">
+                Versão em Produção: <span className="text-pink-600 dark:text-pink-400 ml-1 font-black">{agentVersionInfo?.version ? `v${agentVersionInfo.version}` : 'v1.0.1'}</span>
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 space-y-4">
+          <form onSubmit={handlePublishNewVersion} className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-end">
+            <div className="md:col-span-3 space-y-1.5">
+              <label className="text-xs font-bold text-purple-950 dark:text-purple-200">
+                Nova Versão Semântica
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: 1.0.2"
+                value={newVersionInput}
+                onChange={(e) => setNewVersionInput(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl border border-purple-200 dark:border-white/20 bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div className="md:col-span-5 space-y-1.5">
+              <label className="text-xs font-bold text-purple-950 dark:text-purple-200">
+                Notas do Lançamento (Changelog)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Correção de corte térmico, proteção anti-duplicidade e logo"
+                value={releaseNotesInput}
+                onChange={(e) => setReleaseNotesInput(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-purple-200 dark:border-white/20 bg-white dark:bg-white/5 text-purple-950 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div className="md:col-span-4 space-y-1.5">
+              <label className="text-xs font-bold text-purple-950 dark:text-purple-200">
+                Executável (.exe)
+              </label>
+              <div className="flex items-center gap-2">
+                <label className="flex-1 cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 border border-dashed border-purple-300 dark:border-white/30 rounded-xl bg-white/60 dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 transition text-xs font-medium text-purple-900 dark:text-purple-200 truncate">
+                  <UploadCloud className="h-4 w-4 text-purple-600 dark:text-pink-400 shrink-0" />
+                  <span className="truncate">{selectedExeFile ? selectedExeFile.name : 'Selecionar .exe...'}</span>
+                  <input
+                    type="file"
+                    accept=".exe"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setSelectedExeFile(e.target.files[0])
+                      }
+                    }}
+                  />
+                </label>
+
+                <Button
+                  type="submit"
+                  disabled={uploadingVersion}
+                  className="bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs rounded-xl px-4 py-2 h-9 cursor-pointer shadow-md shadow-purple-900/20 shrink-0"
+                >
+                  {uploadingVersion ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <span>Publicar Versão</span>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </form>
+
+          {agentVersionInfo && (
+            <div className="pt-2 border-t border-purple-100 dark:border-white/10 flex flex-wrap items-center justify-between text-[11px] text-purple-700/80 dark:text-purple-300/70 gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Último deploy: <strong>{agentVersionInfo.releaseDate || 'Recente'}</strong> — <em>{agentVersionInfo.releaseNotes}</em></span>
+              </div>
+              <div className="flex items-center gap-3">
+                <a
+                  href="/downloads/acaidarose-print-agent.exe"
+                  download
+                  className="font-bold text-purple-700 dark:text-pink-400 hover:underline flex items-center gap-1"
+                >
+                  <Download className="h-3 w-3" />
+                  Executável (.exe)
+                </a>
+                <a
+                  href="/downloads/acaidarose-servidor-impressao.zip"
+                  download
+                  className="font-bold text-purple-700 dark:text-pink-400 hover:underline flex items-center gap-1"
+                >
+                  <Download className="h-3 w-3" />
+                  Pacote ZIP Completo
+                </a>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Grid de 2 Blocos: Arquitetura & Parâmetros */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
