@@ -88,8 +88,8 @@ export async function printOrderDirectly(
     return result
   }
 
-  // 1. Verifica se o Servidor de Impressão Windows Local está rodando
-  const agentStatus = await checkAgentStatus()
+  // 1. Verifica se o Servidor de Impressão Windows Local ou Nuvem está conectado
+  const agentStatus = await checkAgentStatus(order.tenantId)
   const useAgent = agentStatus.online
 
   // Prepara o QR Code da comanda se houver ID de pedido
@@ -162,48 +162,25 @@ export async function printOrderDirectly(
       }
       fullPayload += ESC_POS_COMMANDS.CUT_FULL
 
-      // ESTRATÉGIA A: IMPRESSÃO DIRETA VIA SERVIDOR LOCAL (ZERO POPUPS)
-      if (useAgent) {
-        const printRes = await printViaAgent({
-          printerName: printer.driverName,
-          rawText: fullPayload,
-          copies,
-          docName: `Pedido #${ticketNum} (${order.customerName || 'Cliente'})`,
-        })
+      // DISPACHO INTELIGENTE (LOCAL PORTA 4040 OU ENFILEIRAMENTO EM NUVEM)
+      const printRes = await printViaAgent({
+        tenantId: order.tenantId,
+        orderId: order.id,
+        orderNumber: ticketNum,
+        printerName: printer.driverName,
+        rawText: fullPayload,
+        copies,
+        docName: `Pedido #${ticketNum} (${order.customerName || 'Cliente'})`,
+      })
 
-        if (printRes.success) {
-          result.printedCount++
-          result.printersNames.push(printer.name)
-          result.usedEngine = 'WINDOWS_AGENT'
-
-          recordPrintAudit(order, ticketNum, printer, layout, copies, 'WINDOWS_PRINT_AGENT')
-          continue
-        } else {
-          console.warn(`[AutoPrint] Servidor Local falhou para "${printer.name}":`, printRes.error)
-        }
-      }
-
-      // ESTRATÉGIA B: ENFILEIRA NA FILA EM NUVEM PARA O SERVIDOR WINDOWS DA LOJA
-      try {
-        await fetch('/api/printers/agent/jobs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tenantId: order.tenantId,
-            orderId: order.id,
-            orderNumber: ticketNum,
-            printerName: printer.driverName,
-            docName: `Pedido #${ticketNum} (${order.customerName || 'Cliente'})`,
-            payloadText: fullPayload,
-            copies,
-          }),
-        })
-
+      if (printRes.success) {
         result.printedCount++
         result.printersNames.push(printer.name)
-        result.usedEngine = 'CLOUD_QUEUE'
-      } catch (err: any) {
-        result.errors.push(`${printer.name}: Falha de comunicação com o servidor de impressão.`)
+        result.usedEngine = (printRes.usedEngine as any) || 'CLOUD_QUEUE'
+        recordPrintAudit(order, ticketNum, printer, layout, copies, printRes.usedEngine || 'WINDOWS_AGENT')
+        continue
+      } else {
+        result.errors.push(`${printer.name}: ${printRes.error || 'Falha de comunicação com o servidor de impressão.'}`)
       }
     } catch (err: any) {
       console.error(`[AutoPrint] Erro ao imprimir na impressora "${printer.name}":`, err)

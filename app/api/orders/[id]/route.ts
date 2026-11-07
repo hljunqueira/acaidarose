@@ -103,6 +103,14 @@ export async function PUT(
       })
     } catch {}
 
+    // Se o pedido passou a estar pago ou em preparo, enfileira automaticamente para as impressoras da loja
+    if (updatedRow.status === 'PAID' || updatedRow.status === 'PREPARING' || updatedRow.payment_status === 'PAID') {
+      try {
+        const { enqueueOrderPrintJobs } = await import('@/lib/printers/serverPrintQueueService')
+        await enqueueOrderPrintJobs(id, updatedRow.tenant_id).catch((e) => console.warn('[AutoPrint Server] Falha:', e))
+      } catch {}
+    }
+
     const updated = await getOrderById(id)
     return jsonResponse({ order: updated, message: 'Pedido e auditoria atualizados com sucesso' })
   } catch (err: any) {

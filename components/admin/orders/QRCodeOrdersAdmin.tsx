@@ -180,7 +180,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
         const list: StorePrinterSetting[] = data.printers || []
         setStorePrinters(list)
         try {
-          const agent = await checkAgentStatus()
+          const agent = await checkAgentStatus(tenantId)
           setAgentOnline(agent.online)
         } catch {
           setAgentOnline(false)
@@ -191,15 +191,15 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     }
   }, [tenantId, authFetch])
 
-  // Verifica conexão com Servidor de Impressão Windows localmente sob demanda
+  // Verifica conexão com Servidor de Impressão Windows localmente ou via nuvem sob demanda
   const checkAgentConnection = useCallback(async () => {
     try {
-      const agent = await checkAgentStatus()
+      const agent = await checkAgentStatus(tenantId)
       setAgentOnline(agent.online)
     } catch {
       setAgentOnline(false)
     }
-  }, [])
+  }, [tenantId])
 
   React.useEffect(() => {
     fetchStorePrinters()
@@ -237,12 +237,11 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
           newOrders.forEach((o) => printedOrdersSetRef.current.add(o.id))
           isFirstLoadRef.current = false
         } else {
-          // Nas consultas seguintes, detecta pedidos pagos (online via MB WAY ou pré-pago) que ainda não foram impressos
+          // Nas consultas seguintes, detecta pedidos pagos (online via MB WAY ou balcão) que ainda não foram impressos
           const incomingOrders = newOrders.filter(
             (o) =>
               !printedOrdersSetRef.current.has(o.id) &&
               o.status !== 'CANCELLED' &&
-              (o.isQRCode || o.channel === 'QR_CODE' || o.isTableOrder) &&
               (o.paymentStatus === 'PAID' || o.status === 'PAID' || o.status === 'PREPARING' || o.status === 'READY')
           )
 
@@ -379,7 +378,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   const handlePrintOrder = async (e: React.MouseEvent | null, order: Order) => {
     if (e) e.stopPropagation()
     const activePrinters = storePrinters.filter((p) => p.isActive)
-    if (activePrinters.length > 0 && agentOnline) {
+    if (activePrinters.length > 0) {
       try {
         const res = await printOrderDirectly(order, activePrinters, {
           storeInfo: {
@@ -390,11 +389,11 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
           },
         })
         if (res.success) {
-          toast.success(`Comanda #${String(order.orderNumber || 1).padStart(3, '0')} impressa em: ${res.printersNames.join(', ')}`)
+          toast.success(`Comanda #${String(order.orderNumber || 1).padStart(3, '0')} enviada para impressão (${res.printersNames.join(', ')})`)
           return
         }
       } catch (err: any) {
-        console.warn('Falha na impressão direta via Servidor Windows:', err)
+        console.warn('Falha na impressão via Servidor Windows:', err)
       }
     }
     setOrderForKitchenPrint(order)

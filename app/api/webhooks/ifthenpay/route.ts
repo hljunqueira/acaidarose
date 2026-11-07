@@ -65,6 +65,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Despacha automaticamente para as impressoras da loja via fila server-side
+      try {
+        const { enqueueOrderPrintJobs } = await import('@/lib/printers/serverPrintQueueService')
+        await enqueueOrderPrintJobs(order.id, order.tenant_id).catch((e) => console.warn('[AutoPrint Webhook] Falha:', e))
+      } catch {}
+
       return NextResponse.json({
         success: true,
         message: 'Pagamento MB WAY confirmado e comanda despachada para a cozinha.',

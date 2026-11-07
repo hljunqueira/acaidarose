@@ -307,11 +307,11 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
   const checkAgentConnection = useCallback(async () => {
     setAgentChecking(true)
     try {
-      const agent = await checkAgentStatus()
+      const agent = await checkAgentStatus(activeTenantId)
       setAgentStatus(agent)
 
       if (agent.online) {
-        const agentDrivers = await getAgentPrinters()
+        const agentDrivers = await getAgentPrinters(activeTenantId)
         if (agentDrivers.length > 0) {
           const sorted = [...agentDrivers].sort((a, b) => {
             const aThermal = /mp|th|pos|epson|bema|daruma|tm|thermal|receipt/i.test(a)
@@ -332,7 +332,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
     } finally {
       setAgentChecking(false)
     }
-  }, [])
+  }, [activeTenantId])
 
   const handleCopyToken = () => {
     if (typeof window !== 'undefined' && navigator.clipboard) {
@@ -666,14 +666,16 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                 {agentStatus?.online ? (
                   <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Online (Porta 4040 · {agentStatus.version || 'v1.0.0'})
+                    {agentStatus.source === 'CLOUD_HEARTBEAT'
+                      ? `Conectado (Servidor Windows Ativo · ${agentStatus.diffSeconds !== undefined ? `Ping ${agentStatus.diffSeconds}s` : 'Nuvem'})`
+                      : `Online (Porta 4040 · ${agentStatus.version || 'v1.0.0'})`}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="border-slate-300 text-slate-600 dark:text-slate-400 text-[10px] font-bold">
                     Desconectado / Fechado
                   </Badge>
                 )}
-                {agentStatus?.online && agentStatus.storeToken === activeTenantId && (
+                {agentStatus?.online && (agentStatus.storeToken === activeTenantId || agentStatus.source === 'CLOUD_HEARTBEAT') && (
                   <Badge className="bg-purple-600 text-white text-[10px] font-semibold">
                     Loja Vinculada
                   </Badge>
@@ -681,7 +683,7 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
               </div>
               <p className="text-xs text-slate-600 dark:text-purple-200/80 mt-1">
                 {agentStatus?.online
-                  ? `Comunicação direta ativa com o Windows Spooler. Zero popups de permissão. ${osDrivers.length} impressora(s) detectada(s).`
+                  ? `Comunicação ativa com o Windows Spooler (${agentStatus.storeName || 'Loja'}). Impressão silenciosa sem confirmações de tela.`
                   : 'Execute o aplicativo acaidarose-print-agent.exe no computador do balcão para impressão 100% silenciosa e sem confirmações na tela.'}
               </p>
             </div>

@@ -155,6 +155,17 @@ export async function POST(request: NextRequest) {
     }
 
     const order = await createOrder(payload)
+
+    // Se o pedido já nasceu pago / em preparo (ex: PDV balcão ou pagamento no ato), enfileira para as impressoras da loja
+    if (order.id && (order.paymentStatus === 'PAID' || order.status === 'PAID' || order.status === 'PREPARING')) {
+      try {
+        const { enqueueOrderPrintJobs } = await import('@/lib/printers/serverPrintQueueService')
+        await enqueueOrderPrintJobs(order.id, tenantId).catch((e) => console.warn('[AutoPrint Server] Falha:', e))
+      } catch (printErr) {
+        console.warn('[AutoPrint Server] Erro ao carregar serviço:', printErr)
+      }
+    }
+
     return NextResponse.json(order, { status: 201 })
   } catch (error: any) {
     return NextResponse.json(
