@@ -46,17 +46,16 @@ export async function enqueueOrderPrintJobs(
     const row = orderRes.rows[0]
     const tenantId = customTenantId || row.tenant_id
 
-    // Só enfileira se o pedido estiver com pagamento confirmado ou em preparo
-    const isPaid = Boolean(
+    // Só enfileira automaticamente se o pedido estiver com pagamento confirmado ou em preparação inicial
+    // Pedidos já prontos (READY) ou finalizados (COMPLETED) NUNCA disparam impressão automática
+    const isEligibleForAutoPrint = Boolean(
       row.payment_status === 'PAID' ||
       row.status === 'PAID' ||
-      row.status === 'PREPARING' ||
-      row.status === 'READY' ||
-      row.status === 'COMPLETED'
+      row.status === 'PREPARING'
     )
 
-    if (!isPaid) {
-      result.errors.push(`Pedido #${row.order_number} ainda não está pago (Status: ${row.status}, Pagamento: ${row.payment_status}). Impressão ignorada.`)
+    if (!isEligibleForAutoPrint && !options?.forceReprint) {
+      result.errors.push(`Pedido #${row.order_number} com status '${row.status}'. Impressão automática não aplicável.`)
       return result
     }
 

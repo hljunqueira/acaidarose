@@ -103,8 +103,12 @@ export async function PUT(
       })
     } catch {}
 
-    // Se o pedido passou a estar pago ou em preparo, enfileira automaticamente para as impressoras da loja
-    if (updatedRow.status === 'PAID' || updatedRow.status === 'PREPARING' || updatedRow.payment_status === 'PAID') {
+    // O fluxo automático de impressão ocorre estritamente quando o pedido entra em preparação ou tem pagamento confirmado.
+    // Movimentações operacionais subsequentes (Pronto/Chamada na TV ou Finalização/Entregue) NUNCA disparam impressão.
+    const isFinishingOrCalling = body.status === 'READY' || body.status === 'COMPLETED' || body.status === 'CALLED'
+    const isEnteringPreparation = (body.status === 'PREPARING' || body.status === 'PAID' || body.paymentStatus === 'PAID') && !isFinishingOrCalling
+
+    if (isEnteringPreparation) {
       try {
         const { enqueueOrderPrintJobs } = await import('@/lib/printers/serverPrintQueueService')
         await enqueueOrderPrintJobs(id, updatedRow.tenant_id).catch((e) => console.warn('[AutoPrint Server] Falha:', e))

@@ -232,42 +232,13 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
           (o) => o.status === 'NEW' || !o.status || o.status === 'WAITING_PAYMENT' || o.status === 'AWAITING_PAYMENT' || o.status === 'PENDING' || o.status === 'OPEN'
         ).length
 
-        // Na primeira carga após abrir a tela, apenas memorizamos os IDs já existentes no banco para não disparar impressão de pedidos antigos
+        // Na primeira carga após abrir a tela, memorizamos os IDs já existentes no banco
         if (isFirstLoadRef.current) {
           newOrders.forEach((o) => printedOrdersSetRef.current.add(o.id))
           isFirstLoadRef.current = false
         } else {
-          // Nas consultas seguintes, detecta pedidos pagos (online via MB WAY ou balcão) que ainda não foram impressos
-          const incomingOrders = newOrders.filter(
-            (o) =>
-              !printedOrdersSetRef.current.has(o.id) &&
-              o.status !== 'CANCELLED' &&
-              (o.paymentStatus === 'PAID' || o.status === 'PAID' || o.status === 'PREPARING' || o.status === 'READY')
-          )
-
-          for (const order of incomingOrders) {
-            printedOrdersSetRef.current.add(order.id)
-            if (autoPrintEnabledRef.current) {
-              printOrderDirectly(order, storePrintersRef.current, {
-                storeInfo: {
-                  name: currentTenant?.name || 'Açaí da Rose',
-                  nif: currentTenant?.nif || '',
-                  address: currentTenant?.address || '',
-                  phone: currentTenant?.phone || '',
-                },
-              })
-                .then((res) => {
-                  if (res.success) {
-                    toast.success(
-                      `Pedido #${String(order.orderNumber || 1).padStart(3, '0')} impresso automaticamente em: ${res.printersNames.join(', ')}`
-                    )
-                  }
-                })
-                .catch((err) => {
-                  console.warn('[AutoPrint] Erro:', err)
-                })
-            }
-          }
+          // Nas consultas seguintes, memoriza novos pedidos (o servidor já enfileira a impressão automaticamente no backend)
+          newOrders.forEach((o) => printedOrdersSetRef.current.add(o.id))
         }
 
         if (newCount > prevCount && prevCount > 0 && soundEnabled) {
@@ -463,31 +434,8 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       setSelectedOrderForItems(null)
       toast.success(`✓ Pagamento do Ticket #${order.orderNumber || 100} (${order.customerName || 'Cliente'}) confirmado no caixa! Pedido em Preparação.`)
 
-      // Marca o pedido como impresso para evitar duplicidade de envio na busca do polling subsequente
+      // Marca o pedido como impresso
       printedOrdersSetRef.current.add(order.id)
-
-      // Dispara a impressão automática no Servidor Windows logo após a confirmação do pagamento
-      const activePrinters = storePrintersRef.current.filter((p) => p.isActive)
-      if (activePrinters.length > 0 && autoPrintEnabledRef.current) {
-        printOrderDirectly(updatedOrder, activePrinters, {
-          storeInfo: {
-            name: currentTenant?.name || 'Açaí da Rose',
-            nif: currentTenant?.nif || '',
-            address: currentTenant?.address || '',
-            phone: currentTenant?.phone || '',
-          },
-        })
-          .then((printRes) => {
-            if (printRes.success) {
-              toast.success(
-                `Pedido #${String(order.orderNumber || 1).padStart(3, '0')} impresso automaticamente em: ${printRes.printersNames.join(', ')}`
-              )
-            }
-          })
-          .catch((printErr) => {
-            console.warn('[AutoPrint Balcão] Erro ao imprimir após pagamento:', printErr)
-          })
-      }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao confirmar pagamento')
     }
