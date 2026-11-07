@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       SET 
         status = $1,
         error_message = $2,
-        printed_at = CASE WHEN $1 = 'PRINTED' THEN NOW() ELSE NULL END
+        printed_at = CASE WHEN $1::text = 'PRINTED' THEN NOW() ELSE NULL END
       WHERE id = $3 AND tenant_id = $4
       RETURNING *;
     `

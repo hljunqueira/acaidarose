@@ -199,7 +199,7 @@ export default function AuditLogsView() {
         <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           {[
             { id: 'ALL', label: 'Todos' },
-            { id: 'IMPRESSORAS_QZ', label: 'Impressoras & QZ Tray' },
+            { id: 'IMPRESSORAS_QZ', label: 'Impressoras Térmicas' },
             { id: 'PRODUTOS_CATALOGO', label: 'Produtos & Cardápio' },
             { id: 'ESTOQUE_SUPPLY', label: 'Estoque & B2B' },
             { id: 'MESAS_QR_SECURITY', label: 'Hashes das Mesas' },

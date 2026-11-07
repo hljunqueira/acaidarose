@@ -165,13 +165,14 @@ export async function enqueueOrderPrintJobs(orderId: string, customTenantId?: st
       let fullPayload = ESC_POS_COMMANDS.INIT + ESC_POS_COMMANDS.CODE_PAGE_WPC1252 + textPayload + ESC_POS_COMMANDS.FEED_4_LINES + ESC_POS_COMMANDS.CUT_FULL
       const copies = Math.max(1, printer.copies || 1)
       const docName = `Pedido #${ticketNum} (${orderObj.customerName || 'Cliente'})`
+      const payloadBase64 = Buffer.from(fullPayload, 'binary').toString('base64')
 
       await query(
         `INSERT INTO store_print_jobs (
           tenant_id, order_id, order_number, printer_name, doc_name,
-          payload_text, copies, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')`,
-        [tenantId, orderObj.id, ticketNum, printer.driverName, docName, fullPayload, copies]
+          payload_base64, payload_text, copies, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, 'PENDING')`,
+        [tenantId, orderObj.id, ticketNum, printer.driverName, docName, payloadBase64, copies]
       )
 
       result.enqueuedCount++

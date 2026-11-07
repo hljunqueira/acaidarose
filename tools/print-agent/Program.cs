@@ -27,6 +27,7 @@ public static class Program
     private static string _currentStoreName = "Não vinculada";
     private static readonly object _logFileLock = new();
     private static string _logFilePath = "";
+    private static readonly ConcurrentDictionary<string, DateTime> _printedJobIds = new();
 
     [STAThread]
     public static void Main(string[] args)
@@ -343,6 +344,20 @@ public static class Program
                             {
                                 foreach (var job in result.Jobs)
                                 {
+                                    // Proteção contra duplicação/loop: se o mesmo job já foi impresso nesta sessão nos últimos 15 min, pula a impressão
+                                    if (_printedJobIds.TryGetValue(job.Id, out var printedTime) && (DateTime.UtcNow - printedTime).TotalMinutes < 15)
+                                    {
+                                        LogMessage($"[DUPLICADO IGNORADO] Comanda #{job.OrderNumber} ({job.Id}) já impressa recentemente. Reenviando confirmação...", "WARN", Color.FromArgb(251, 191, 36), "JOB_DUPLICATE_IGNORED", new { order = job.OrderNumber, jobId = job.Id });
+                                        string ackUrlDup = $"{_config.ApiUrl.TrimEnd('/')}/api/printers/agent/ack?token={Uri.EscapeDataString(_config.StoreToken)}";
+                                        await _httpClient.PostAsJsonAsync(ackUrlDup, new
+                                        {
+                                            jobId = job.Id,
+                                            status = "PRINTED",
+                                            error = (string?)null
+                                        });
+                                        continue;
+                                    }
+
                                     LogMessage($"[NOVO PEDIDO NUVEM] Comanda #{job.OrderNumber} para '{job.PrinterName}'...", "INFO", Color.FromArgb(216, 180, 254), "JOB_DISPATCHED", new { order = job.OrderNumber, printer = job.PrinterName });
 
                                     byte[] bytes = Array.Empty<byte>();
@@ -373,6 +388,11 @@ public static class Program
                                                 Thread.Sleep(30);
                                             }
                                         }
+                                    }
+
+                                    if (printOk)
+                                    {
+                                        _printedJobIds[job.Id] = DateTime.UtcNow;
                                     }
 
                                     string ackUrl = $"{_config.ApiUrl.TrimEnd('/')}/api/printers/agent/ack?token={Uri.EscapeDataString(_config.StoreToken)}";

@@ -652,10 +652,10 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
       </div>
 
       {/* 2. SERVIDOR DE IMPRESSÃO WINDOWS LOCAL */}
-      <div className="p-5 rounded-2xl border border-purple-200 dark:border-purple-800/40 bg-gradient-to-br from-purple-50 via-white to-pink-50/40 dark:from-purple-950/20 dark:via-white/[0.02] dark:to-purple-900/10 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className={`p-2.5 rounded-xl shrink-0 mt-0.5 ${agentStatus?.online ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-300' : 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300 border border-slate-300'}`}>
+      <div className="p-4 rounded-2xl border border-purple-200 dark:border-purple-800/40 bg-gradient-to-br from-purple-50 via-white to-pink-50/40 dark:from-purple-950/20 dark:via-white/[0.02] dark:to-purple-900/10 shadow-sm space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl shrink-0 ${agentStatus?.online ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-300' : 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300 border border-slate-300'}`}>
               <Server className="h-5 w-5" />
             </div>
             <div>
@@ -681,11 +681,6 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-600 dark:text-purple-200/80 mt-1">
-                {agentStatus?.online
-                  ? `Comunicação ativa com o Windows Spooler (${agentStatus.storeName || 'Loja'}). Impressão silenciosa sem confirmações de tela.`
-                  : 'Execute o aplicativo acaidarose-print-agent.exe no computador do balcão para impressão 100% silenciosa e sem confirmações na tela.'}
-              </p>
             </div>
           </div>
 
@@ -706,21 +701,11 @@ export default function PrinterSettingsView({ tenantId }: PrinterSettingsViewPro
             <a
               href="/downloads/acaidarose-servidor-impressao.zip"
               download="acaidarose-servidor-impressao.zip"
-              className="inline-flex items-center justify-center h-9 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition"
-              title="Baixar pacote completo com instalador automático no Windows"
+              className="inline-flex items-center justify-center h-9 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+              title="Baixar pacote do Servidor Windows com executável, configurações e logs"
             >
               <Download className="h-3.5 w-3.5 mr-1.5 text-white" />
-              Baixar Pacote Completo (.zip)
-            </a>
-
-            <a
-              href="/downloads/acaidarose-print-agent.exe"
-              download="acaidarose-print-agent.exe"
-              className="inline-flex items-center justify-center h-9 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-purple-950 dark:hover:bg-purple-900 font-bold text-xs shadow-xs transition"
-              title="Baixar apenas o arquivo executável"
-            >
-              <Download className="h-3.5 w-3.5 mr-1.5 text-purple-400" />
-              Executável (.exe)
+              Baixar Servidor Windows (.zip)
             </a>
           </div>
         </div>

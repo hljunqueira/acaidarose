@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Loja não encontrada.' }, { status: 404 })
     }
 
+    const finalBase64 = payloadBase64 || (payloadText ? Buffer.from(payloadText, 'binary').toString('base64') : null)
+    const sanitizedText = payloadText ? payloadText.replace(/\0/g, '') : null
+
     const sql = `
       INSERT INTO store_print_jobs (
         tenant_id, order_id, order_number, printer_name, doc_name,
@@ -76,8 +79,8 @@ export async function POST(request: NextRequest) {
       orderNumber ? String(orderNumber) : null,
       printerName,
       docName || 'Açaí da Rose - Cupom',
-      payloadBase64 || null,
-      payloadText || null,
+      finalBase64 || null,
+      sanitizedText || null,
       Math.max(1, Number(copies) || 1),
     ])
 
