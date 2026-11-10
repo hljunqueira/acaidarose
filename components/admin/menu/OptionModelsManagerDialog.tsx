@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { Search, Edit2, Copy, Trash2, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
+import { Search, Edit2, Copy, Trash2, Eye, EyeOff, SlidersHorizontal, Building2 } from 'lucide-react'
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
+import FranchiseRequestDialog from './FranchiseRequestDialog'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { usePublishStore } from '@/lib/stores/publishStore'
 import { FIGUEIRA_HQ_ID } from '@/lib/utils/permissions'
@@ -34,6 +35,8 @@ export default function OptionModelsManagerDialog({
   const [searchTerm, setSearchTerm] = useState('')
   const [editingModel, setEditingModel] = useState<OptionModelData | null>(null)
   const [modelFormOpen, setModelFormOpen] = useState(false)
+  const [franchiseRequestOpen, setFranchiseRequestOpen] = useState(false)
+  const [requestTargetModel, setRequestTargetModel] = useState<OptionModelData | null>(null)
   const [internalModels, setInternalModels] = useState<OptionModelData[]>(models)
 
   // Sincroniza sempre que a prop 'models' mudar
@@ -312,11 +315,10 @@ export default function OptionModelsManagerDialog({
                 return (
                   <div
                     key={m.id || m.name}
-                    className={`p-3 px-4 rounded-2xl border transition flex items-center justify-between gap-3 shadow-xs ${
-                      !isModelActive
+                    className={`p-3 px-4 rounded-2xl border transition flex items-center justify-between gap-3 shadow-xs ${!isModelActive
                         ? 'border-amber-200/70 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-950/10 opacity-75'
                         : 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-300 dark:hover:border-white/20'
-                    }`}
+                      }`}
                   >
                     <div className="min-w-0 flex-1">
                       <div className={`font-bold text-xs truncate ${!isModelActive ? 'line-through text-zinc-500 dark:text-zinc-400' : 'text-purple-950 dark:text-white'}`}>
@@ -328,31 +330,30 @@ export default function OptionModelsManagerDialog({
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleModelActive(m)}
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border transition cursor-pointer ${
-                          isModelActive
-                            ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'
-                            : 'bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/30'
-                        }`}
-                        title={isModelActive ? 'Modelo Ativo (Visível nos Produtos) — Clique para Ocultar' : 'Modelo Oculto (Invisível nos Produtos) — Clique para Ativar'}
-                      >
-                        {isModelActive ? (
-                          <>
-                            <Eye className="w-3 h-3" />
-                            <span>Visível</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff className="w-3 h-3" />
-                            <span>Invisível</span>
-                          </>
-                        )}
-                      </button>
-
-                      {isSuperAdmin && (
+                      {isSuperAdmin ? (
                         <>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleModelActive(m)}
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border transition cursor-pointer ${isModelActive
+                                ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'
+                                : 'bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/30'
+                              }`}
+                            title={isModelActive ? 'Modelo Ativo (Visível nos Produtos) — Clique para Ocultar' : 'Modelo Oculto (Invisível nos Produtos) — Clique para Ativar'}
+                          >
+                            {isModelActive ? (
+                              <>
+                                <Eye className="w-3 h-3" />
+                                <span>Visível</span>
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="w-3 h-3" />
+                                <span>Invisível</span>
+                              </>
+                            )}
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleOpenEditModel(m)}
@@ -380,6 +381,22 @@ export default function OptionModelsManagerDialog({
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRequestTargetModel(m)
+                            setFranchiseRequestOpen(true)
+                          }}
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold flex items-center gap-1 border transition cursor-pointer shadow-xs ${isModelActive
+                              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-500/30'
+                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30'
+                            }`}
+                          title={isModelActive ? 'Solicitar à Franqueadora Master a desativação deste opcional na sua loja' : 'Solicitar à Franqueadora Master a reativação deste opcional na sua loja'}
+                        >
+                          <Building2 className="w-3 h-3" />
+                          <span>{isModelActive ? 'Solicitar Desativação' : 'Solicitar Reativação'}</span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -451,6 +468,20 @@ export default function OptionModelsManagerDialog({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Solicitação da Franquia à Franqueadora */}
+      {franchiseRequestOpen && (
+        <FranchiseRequestDialog
+          open={franchiseRequestOpen}
+          onOpenChange={setFranchiseRequestOpen}
+          tenantId={tenantId || ''}
+          initialType="ITEM_AVAILABILITY"
+          initialItem={{
+            id: requestTargetModel?.id,
+            name: requestTargetModel?.name,
+          }}
+        />
+      )}
     </>
   )
 }

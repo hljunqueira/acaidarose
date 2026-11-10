@@ -110,12 +110,12 @@ export default function CustomerProductDetail({
   })
 
   const weight = container.weightGrams || 500
-  const isLargeContainer = 
-    weight === 750 || 
-    weight === 1000 || 
+  const isLargeContainer =
+    weight === 750 ||
+    weight === 1000 ||
     (container.name && (
-      container.name.includes('750') || 
-      container.name.includes('1kg') || 
+      container.name.includes('750') ||
+      container.name.includes('1kg') ||
       container.name.includes('1 kg') ||
       container.name.toLowerCase().includes('sensação') ||
       container.name.toLowerCase().includes('família') ||
@@ -127,25 +127,25 @@ export default function CustomerProductDetail({
   const maxToppingsGratis = container.limiteToppings || (isUnlimited ? 999 : weight === 350 ? 4 : 3)
 
   const frutas = useMemo(() => {
-    return allToppings.filter((t) => 
-      t.category === 'Frutas' || 
+    return allToppings.filter((t) =>
+      t.category === 'Frutas' ||
       ['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f))
     )
   }, [allToppings])
 
   const toppingsTradicionais = useMemo(() => {
-    return allToppings.filter((t) => 
-      !t.isPremium && 
-      t.category !== 'Frutas' && 
-      t.category !== 'Adicionais' && 
+    return allToppings.filter((t) =>
+      !t.isPremium &&
+      t.category !== 'Frutas' &&
+      t.category !== 'Adicionais' &&
       !['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f))
     )
   }, [allToppings])
 
   const caldasPremium = useMemo(() => {
-    return allToppings.filter((t) => 
-      t.isPremium || 
-      t.category === 'Adicionais' || 
+    return allToppings.filter((t) =>
+      t.isPremium ||
+      t.category === 'Adicionais' ||
       (t.precoExtra && t.precoExtra > 0)
     )
   }, [allToppings])
@@ -580,11 +580,10 @@ export default function CustomerProductDetail({
                   <button
                     type="button"
                     onClick={() => setContainerFormat('TACA')}
-                    className={`p-3.5 rounded-2xl border-2 text-left transition flex flex-col justify-between cursor-pointer ${
-                      containerFormat === 'TACA'
+                    className={`p-3.5 rounded-2xl border-2 text-left transition flex flex-col justify-between cursor-pointer ${containerFormat === 'TACA'
                         ? 'border-purple-600 bg-purple-600/15 dark:border-pink-500 dark:bg-purple-900/40 shadow-sm'
                         : 'border-purple-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-400'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-black text-sm text-slate-900 dark:text-white">Taça</span>
@@ -598,11 +597,10 @@ export default function CustomerProductDetail({
                   <button
                     type="button"
                     onClick={() => setContainerFormat('CAIXA')}
-                    className={`p-3.5 rounded-2xl border-2 text-left transition flex flex-col justify-between cursor-pointer ${
-                      containerFormat === 'CAIXA'
+                    className={`p-3.5 rounded-2xl border-2 text-left transition flex flex-col justify-between cursor-pointer ${containerFormat === 'CAIXA'
                         ? 'border-purple-600 bg-purple-600/15 dark:border-pink-500 dark:bg-purple-900/40 shadow-sm'
                         : 'border-purple-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-400'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-black text-sm text-slate-900 dark:text-white">Caixinha Plástica</span>
@@ -620,190 +618,217 @@ export default function CustomerProductDetail({
               container.optionGroups!
                 .filter((g) => g.active !== false && (g.options || []).some((o: any) => o.active !== false))
                 .map((group, groupIdx) => {
-                const groupId = group.id || group.name
-                const groupSelections = customSelections[groupId] || {}
-                const groupTotalCount = Object.values(groupSelections).reduce((a, b) => a + b, 0)
-                const isObligatory = group.isRequired || (group.minQty && group.minQty > 0)
-                const isDetailed = !!group.showDetailed
+                  const groupId = group.id || group.name
+                  const groupSelections = customSelections[groupId] || {}
+                  const groupTotalCount = Object.values(groupSelections).reduce((a, b) => a + b, 0)
+                  const isObligatory = group.isRequired || (group.minQty && group.minQty > 0)
+                  const isDetailed = !!group.showDetailed
 
-                const isBaseGroup = groupId === 'model-bases' || (group.name || '').toLowerCase().includes('base') || (group.name || '').toLowerCase().includes('creme')
-                const isAcaiCopo = !isSomenteCreme && isBaseGroup
+                  const isBaseGroup = groupId === 'model-bases' || (group.name || '').toLowerCase().includes('base') || (group.name || '').toLowerCase().includes('creme')
+                  const isAcaiCopo = !isSomenteCreme && isBaseGroup
+                  const addPrice = Number(group.additionalPrice || 0)
+                  const maxFree = Number(group.maxQty) || 0
+                  const hasAddCharge = addPrice > 0
+                  const isPartialQuota = group.priceType === 'Gratis' && hasAddCharge && !!group.allowItemQuantity
+                  const isUnlimitedCounter = isPartialQuota || (group.priceType === 'Individual' && !!group.allowItemQuantity)
 
-                return (
-                  <div key={groupId || groupIdx} className="space-y-2.5 p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10">
-                    <div className="flex items-center justify-between flex-wrap gap-1.5">
-                      <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                        <span>{group.name}</span>
-                        <span className="text-purple-700 dark:text-purple-300 font-bold">
-                          ({groupTotalCount}{group.maxQty ? `/${group.maxQty}` : ''})
-                        </span>
-                        {group.priceType === 'Gratis' && group.maxQty && groupTotalCount > group.maxQty && (
-                          <span className="text-[10px] text-pink-600 dark:text-pink-400 font-bold bg-pink-100 dark:bg-pink-950/40 px-1.5 py-0.5 rounded-md">
-                            +{groupTotalCount - group.maxQty} extra
+                  const visualSubtitle = (() => {
+                    if (group.subtitle && typeof group.subtitle === 'string' && group.subtitle.trim()) {
+                      return group.subtitle.trim()
+                    }
+                    if (group.customLabel && typeof group.customLabel === 'string' && group.customLabel.trim()) {
+                      return group.customLabel.trim()
+                    }
+                    if (isAcaiCopo) {
+                      return hasAddCharge ? `Creme extra +${formatCurrency(addPrice)}` : 'Incluso'
+                    }
+                    if (group.priceType === 'Individual') {
+                      return hasAddCharge ? `+${formatCurrency(addPrice)}/un.` : 'Valor por item'
+                    }
+                    if (hasAddCharge) {
+                      if (maxFree > 1) return `+${formatCurrency(addPrice)} a partir da ${maxFree + 1}ª un.`
+                      if (maxFree === 1) return `+${formatCurrency(addPrice)} a partir da 2ª un.`
+                      return `+${formatCurrency(addPrice)}/un.`
+                    }
+                    return 'Incluso'
+                  })()
+
+                  return (
+                    <div key={groupId || groupIdx} className="space-y-2.5 p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10">
+                      <div className="flex items-center justify-between flex-wrap gap-1.5">
+                        <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                          <span>{group.name}</span>
+                          <span className="text-purple-700 dark:text-purple-300 font-bold">
+                            ({groupTotalCount}{isUnlimitedCounter ? '' : (group.maxQty ? `/${group.maxQty}` : '')})
                           </span>
-                        )}
-                      </label>
+                          {group.priceType === 'Gratis' && maxFree > 0 && groupTotalCount > maxFree && hasAddCharge && (
+                            <span className="text-[10px] text-pink-600 dark:text-pink-400 font-bold bg-pink-100 dark:bg-pink-950/40 px-1.5 py-0.5 rounded-md">
+                              +{groupTotalCount - maxFree} extra (+{formatCurrency((groupTotalCount - maxFree) * addPrice)})
+                            </span>
+                          )}
+                          {group.priceType === 'Individual' && groupTotalCount > 0 && hasAddCharge && (
+                            <span className="text-[10px] text-pink-600 dark:text-pink-400 font-bold bg-pink-100 dark:bg-pink-950/40 px-1.5 py-0.5 rounded-md">
+                              +{formatCurrency(groupTotalCount * addPrice)}
+                            </span>
+                          )}
+                          {isPartialQuota && groupTotalCount > 0 && groupTotalCount <= maxFree && (
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
+                              Incluso
+                            </span>
+                          )}
+                        </label>
 
-                      <div className="flex items-center gap-1.5">
-                        {isAcaiCopo ? (
-                          <Badge className="bg-purple-100 text-purple-900 border border-purple-200 dark:bg-white/10 dark:text-purple-200 font-bold text-[9px] py-0 px-1.5">
-                            Opcional
-                          </Badge>
-                        ) : isObligatory ? (
-                          <Badge className="bg-purple-700 text-white font-bold text-[9px] py-0 px-1.5">
-                            Obrigatório {group.minQty ? `(Mín: ${group.minQty})` : ''}
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-purple-100 text-purple-900 border border-purple-200 dark:bg-white/10 dark:text-purple-200 font-bold text-[9px] py-0 px-1.5">
-                            Opcional
-                          </Badge>
-                        )}
-                        <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold">
-                          {isAcaiCopo
-                            ? `1 creme opcional incluído (creme extra +${formatCurrency(Number(group.additionalPrice || 2.0))})`
-                            : group.priceType === 'Individual'
-                            ? (group.additionalPrice && Number(group.additionalPrice) > 0 ? `+${formatCurrency(Number(group.additionalPrice))}/un.` : 'Valor por item')
-                            : (group.additionalPrice && Number(group.additionalPrice) > 0 ? `Até ${group.maxQty || 1} opções incluídas (extra +${formatCurrency(Number(group.additionalPrice))})` : 'Incluso')}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {isAcaiCopo ? (
+                            <Badge className="bg-purple-100 text-purple-900 border border-purple-200 dark:bg-white/10 dark:text-purple-200 font-bold text-[9px] py-0 px-1.5">
+                              Opcional
+                            </Badge>
+                          ) : isObligatory ? (
+                            <Badge className="bg-purple-700 text-white font-bold text-[9px] py-0 px-1.5">
+                              Obrigatório {group.minQty ? `(Mín: ${group.minQty})` : ''}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-purple-100 text-purple-900 border border-purple-200 dark:bg-white/10 dark:text-purple-200 font-bold text-[9px] py-0 px-1.5">
+                              Opcional
+                            </Badge>
+                          )}
+                          <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold">
+                            {visualSubtitle}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    {isDetailed ? (
-                      /* Grid Detalhado com Imagem / Card */
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {(group.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
-                          const currentQty = groupSelections[opt.id] || 0
-                          const isSelected = currentQty > 0
-                          return (
-                            <div
-                              key={opt.id}
-                              className={`p-3 min-h-[58px] rounded-2xl border transition flex items-center justify-between gap-3 ${
-                                isSelected
-                                  ? 'bg-purple-700/10 border-purple-600 dark:bg-purple-600/20 dark:border-pink-500'
-                                  : 'bg-white dark:bg-white/5 border-purple-150 dark:border-white/10 hover:border-purple-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                {opt.image ? (
-                                  <img src={opt.image} alt={opt.name} className="h-10 w-10 rounded-xl object-cover flex-shrink-0" />
-                                ) : null}
-                                <div className="min-w-0 flex-1">
-                                  <div className="font-bold text-[11px] sm:text-xs text-purple-950 dark:text-white whitespace-normal break-words leading-snug">
+                      {isDetailed ? (
+                        /* Grid Detalhado com Imagem / Card */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {(group.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
+                            const currentQty = groupSelections[opt.id] || 0
+                            const isSelected = currentQty > 0
+                            return (
+                              <div
+                                key={opt.id}
+                                className={`p-3 min-h-[58px] rounded-2xl border transition flex items-center justify-between gap-3 ${isSelected
+                                    ? 'bg-purple-700/10 border-purple-600 dark:bg-purple-600/20 dark:border-pink-500'
+                                    : 'bg-white dark:bg-white/5 border-purple-150 dark:border-white/10 hover:border-purple-300'
+                                  }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                  {opt.image ? (
+                                    <img src={opt.image} alt={opt.name} className="h-10 w-10 rounded-xl object-cover flex-shrink-0" />
+                                  ) : null}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-bold text-[11px] sm:text-xs text-purple-950 dark:text-white whitespace-normal break-words leading-snug">
+                                      {opt.name}
+                                    </div>
+                                    {group.priceType === 'Individual' && Number(opt.price) > 0 && (
+                                      <div className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        +{formatCurrency(Number(opt.price))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {group.allowItemQuantity ? (
+                                  <div className="flex items-center gap-2 flex-shrink-0 bg-purple-50 dark:bg-white/10 p-1 rounded-xl border border-purple-200 dark:border-white/15">
+                                    <button
+                                      type="button"
+                                      disabled={currentQty <= 0}
+                                      onClick={() => updateDynamicOptionQty(groupId, opt.id, -1, group)}
+                                      className="h-6 w-6 rounded-lg flex items-center justify-center text-purple-700 dark:text-purple-300 hover:bg-white dark:hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </button>
+                                    <span className="font-mono font-bold text-xs w-4 text-center text-purple-950 dark:text-white">
+                                      {currentQty}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateDynamicOptionQty(groupId, opt.id, 1, group)}
+                                      className="h-6 w-6 rounded-lg flex items-center justify-center bg-purple-700 text-white hover:bg-purple-800 cursor-pointer shadow-xs"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleDynamicOptionSingle(groupId, opt.id, group)}
+                                    className={`h-7 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${isSelected
+                                        ? 'bg-purple-700 text-white shadow-xs'
+                                        : 'bg-purple-100/70 text-purple-900 hover:bg-purple-200 dark:bg-white/10 dark:text-purple-200'
+                                      }`}
+                                  >
+                                    {isSelected && <Check className="h-3.5 w-3.5" />}
+                                    <span>{isSelected ? 'Selecionado' : 'Escolher'}</span>
+                                  </button>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        /* Linhas Compactas (showDetailed === false) */
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {(group.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
+                            const currentQty = groupSelections[opt.id] || 0
+                            const isSelected = currentQty > 0
+                            return (
+                              <div
+                                key={opt.id}
+                                onClick={() => !group.allowItemQuantity && toggleDynamicOptionSingle(groupId, opt.id, group)}
+                                className={`p-2.5 sm:p-3 min-h-[52px] h-auto rounded-xl border transition flex items-center justify-between gap-2 cursor-pointer select-none ${isSelected
+                                    ? 'bg-purple-700 border-purple-700 text-white shadow-sm dark:bg-purple-700 dark:border-fuchsia-400'
+                                    : 'bg-white dark:bg-white/5 border-purple-150 dark:border-white/10 hover:border-purple-300 dark:hover:border-white/20 text-slate-800 dark:text-purple-200'
+                                  }`}
+                              >
+                                <div className="flex-1 min-w-0 pr-1 text-left">
+                                  <div className="text-[11px] sm:text-xs font-semibold leading-snug whitespace-normal break-words">
                                     {opt.name}
                                   </div>
                                   {group.priceType === 'Individual' && Number(opt.price) > 0 && (
-                                    <div className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                    <div className={`text-[10px] font-mono font-bold leading-none mt-0.5 ${isSelected ? 'text-pink-200' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                       +{formatCurrency(Number(opt.price))}
                                     </div>
                                   )}
                                 </div>
-                              </div>
 
-                              {group.allowItemQuantity ? (
-                                <div className="flex items-center gap-2 flex-shrink-0 bg-purple-50 dark:bg-white/10 p-1 rounded-xl border border-purple-200 dark:border-white/15">
-                                  <button
-                                    type="button"
-                                    disabled={currentQty <= 0}
-                                    onClick={() => updateDynamicOptionQty(groupId, opt.id, -1, group)}
-                                    className="h-6 w-6 rounded-lg flex items-center justify-center text-purple-700 dark:text-purple-300 hover:bg-white dark:hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+                                {group.allowItemQuantity ? (
+                                  <div
+                                    className="flex items-center gap-1 flex-shrink-0"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Minus className="h-3 w-3" />
-                                  </button>
-                                  <span className="font-mono font-bold text-xs w-4 text-center text-purple-950 dark:text-white">
-                                    {currentQty}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateDynamicOptionQty(groupId, opt.id, 1, group)}
-                                    className="h-6 w-6 rounded-lg flex items-center justify-center bg-purple-700 text-white hover:bg-purple-800 cursor-pointer shadow-xs"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleDynamicOptionSingle(groupId, opt.id, group)}
-                                  className={`h-7 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                                    isSelected
-                                      ? 'bg-purple-700 text-white shadow-xs'
-                                      : 'bg-purple-100/70 text-purple-900 hover:bg-purple-200 dark:bg-white/10 dark:text-purple-200'
-                                  }`}
-                                >
-                                  {isSelected && <Check className="h-3.5 w-3.5" />}
-                                  <span>{isSelected ? 'Selecionado' : 'Escolher'}</span>
-                                </button>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      /* Linhas Compactas (showDetailed === false) */
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {(group.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
-                          const currentQty = groupSelections[opt.id] || 0
-                          const isSelected = currentQty > 0
-                          return (
-                            <div
-                              key={opt.id}
-                              onClick={() => !group.allowItemQuantity && toggleDynamicOptionSingle(groupId, opt.id, group)}
-                              className={`p-2.5 sm:p-3 min-h-[52px] h-auto rounded-xl border transition flex items-center justify-between gap-2 cursor-pointer select-none ${
-                                isSelected
-                                  ? 'bg-purple-700 border-purple-700 text-white shadow-sm dark:bg-purple-700 dark:border-fuchsia-400'
-                                  : 'bg-white dark:bg-white/5 border-purple-150 dark:border-white/10 hover:border-purple-300 dark:hover:border-white/20 text-slate-800 dark:text-purple-200'
-                              }`}
-                            >
-                              <div className="flex-1 min-w-0 pr-1 text-left">
-                                <div className="text-[11px] sm:text-xs font-semibold leading-snug whitespace-normal break-words">
-                                  {opt.name}
-                                </div>
-                                {group.priceType === 'Individual' && Number(opt.price) > 0 && (
-                                  <div className={`text-[10px] font-mono font-bold leading-none mt-0.5 ${isSelected ? 'text-pink-200' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                    +{formatCurrency(Number(opt.price))}
+                                    <button
+                                      type="button"
+                                      disabled={currentQty <= 0}
+                                      onClick={() => updateDynamicOptionQty(groupId, opt.id, -1, group)}
+                                      className={`h-6 w-6 rounded-md flex items-center justify-center cursor-pointer transition-colors ${isSelected ? 'text-white hover:bg-white/20' : 'text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-white/10'
+                                        } disabled:opacity-20`}
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </button>
+                                    <span className="font-mono font-bold text-xs w-3 text-center">
+                                      {currentQty}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateDynamicOptionQty(groupId, opt.id, 1, group)}
+                                      className={`h-6 w-6 rounded-md flex items-center justify-center cursor-pointer transition-colors ${isSelected ? 'bg-white text-purple-900 shadow-xs' : 'bg-purple-700 text-white hover:bg-purple-800'
+                                        }`}
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </button>
                                   </div>
+                                ) : (
+                                  isSelected && <Check className="h-3.5 w-3.5 flex-shrink-0 text-white" />
                                 )}
                               </div>
-
-                              {group.allowItemQuantity ? (
-                                <div
-                                  className="flex items-center gap-1 flex-shrink-0"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <button
-                                    type="button"
-                                    disabled={currentQty <= 0}
-                                    onClick={() => updateDynamicOptionQty(groupId, opt.id, -1, group)}
-                                    className={`h-6 w-6 rounded-md flex items-center justify-center cursor-pointer transition-colors ${
-                                      isSelected ? 'text-white hover:bg-white/20' : 'text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-white/10'
-                                    } disabled:opacity-20`}
-                                  >
-                                    <Minus className="h-3 w-3" />
-                                  </button>
-                                  <span className="font-mono font-bold text-xs w-3 text-center">
-                                    {currentQty}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateDynamicOptionQty(groupId, opt.id, 1, group)}
-                                    className={`h-6 w-6 rounded-md flex items-center justify-center cursor-pointer transition-colors ${
-                                      isSelected ? 'bg-white text-purple-900 shadow-xs' : 'bg-purple-700 text-white hover:bg-purple-800'
-                                    }`}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                isSelected && <Check className="h-3.5 w-3.5 flex-shrink-0 text-white" />
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
             ) : (
               /* Fallback Tradicional de Açaí */
               <>
@@ -815,7 +840,7 @@ export default function CustomerProductDetail({
                       <span className="text-purple-700 dark:text-purple-400 font-bold">({selectedBases.length})</span>
                     </label>
                     <span className="text-[11px] text-purple-700 dark:text-purple-400 font-bold">
-                      {isBaseFixed ? 'Açaí fixo incluso + 1 creme grátis (extra +€ 2,00)' : '2 opções inclusas (extra +€ 2,00)'}
+                      {isBaseFixed ? 'Base inclusa (creme extra +2,00 €)' : '2 opções inclusas (extra +2,00 €)'}
                     </span>
                   </div>
 
@@ -846,13 +871,12 @@ export default function CustomerProductDetail({
                           type="button"
                           disabled={!isAvailable}
                           onClick={() => isAvailable && toggleBase(base)}
-                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
-                            !isAvailable
+                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${!isAvailable
                               ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                               : isSelected
-                              ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
-                              : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
-                          }`}
+                                ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
+                                : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
+                            }`}
                         >
                           <div className="min-w-0 flex-1 pr-1">
                             <span className="whitespace-normal break-words leading-snug text-[11px] sm:text-xs">{base.name}</span>
@@ -895,13 +919,12 @@ export default function CustomerProductDetail({
                           type="button"
                           disabled={!isAvailable}
                           onClick={() => isAvailable && toggleFruta(fruta)}
-                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
-                            !isAvailable
+                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${!isAvailable
                               ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                               : isSelected
-                              ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
-                              : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
-                          }`}
+                                ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
+                                : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
+                            }`}
                         >
                           <span className="whitespace-normal break-words leading-snug flex-1 pr-1 text-[11px] sm:text-xs">{fruta.name}</span>
                           {isSelected ? (
@@ -939,13 +962,12 @@ export default function CustomerProductDetail({
                           type="button"
                           disabled={!isAvailable}
                           onClick={() => isAvailable && toggleTopping(top)}
-                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-[11px] font-semibold transition flex items-center justify-between border cursor-pointer ${
-                            !isAvailable
+                          className={`p-2 sm:p-2.5 min-h-[54px] rounded-2xl text-left text-[11px] font-semibold transition flex items-center justify-between border cursor-pointer ${!isAvailable
                               ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500'
                               : isSelected
-                              ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
-                              : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
-                          }`}
+                                ? 'bg-purple-700 border-purple-700 text-white shadow-md dark:bg-purple-700 dark:border-fuchsia-400'
+                                : 'bg-purple-50/60 border-purple-200/80 text-slate-800 hover:bg-purple-100 hover:border-purple-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
+                            }`}
                         >
                           <span className="whitespace-normal break-words leading-snug flex-1 pr-1 text-[11px] sm:text-xs">{top.name}</span>
                           {isSelected ? (
@@ -984,13 +1006,12 @@ export default function CustomerProductDetail({
                           type="button"
                           disabled={!isAvailable}
                           onClick={() => isAvailable && togglePremium(add)}
-                          className={`p-2.5 sm:p-3 min-h-[58px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${
-                            !isAvailable
+                          className={`p-2.5 sm:p-3 min-h-[58px] rounded-2xl text-left text-xs font-semibold transition flex items-center justify-between border cursor-pointer ${!isAvailable
                               ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 cursor-not-allowed text-slate-400'
                               : isSelected
-                              ? 'bg-gradient-to-r from-purple-800 to-amber-900 border-amber-400 text-white shadow-lg dark:from-fuchsia-900 dark:to-purple-900 dark:border-amber-400'
-                              : 'bg-amber-50/70 border-amber-200/80 text-slate-900 hover:bg-amber-100 hover:border-amber-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
-                          }`}
+                                ? 'bg-gradient-to-r from-purple-800 to-amber-900 border-amber-400 text-white shadow-lg dark:from-fuchsia-900 dark:to-purple-900 dark:border-amber-400'
+                                : 'bg-amber-50/70 border-amber-200/80 text-slate-900 hover:bg-amber-100 hover:border-amber-300 dark:bg-white/5 dark:border-white/10 dark:text-purple-200/90 dark:hover:bg-white/10'
+                            }`}
                         >
                           <div className="flex-1 min-w-0 pr-1">
                             <div className="whitespace-normal break-words leading-snug font-bold text-[11px] sm:text-xs">{add.name}</div>

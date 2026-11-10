@@ -17,6 +17,7 @@ export interface OptionModelRecord {
   options: any[]
   active: boolean
   displayOrder?: number
+  subtitle?: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -26,7 +27,7 @@ export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID, a
     const activeFilter = activeOnly ? 'AND active = true' : ''
     const res = await query(
       `SELECT id, tenant_id, name, price_type, additional_price, min_qty, max_qty, 
-              allow_item_quantity, is_required, show_detailed, options, active, display_order, created_at, updated_at
+              allow_item_quantity, is_required, show_detailed, options, active, display_order, subtitle, created_at, updated_at
        FROM product_option_models
        WHERE (tenant_id = $1 OR tenant_id = $2 OR tenant_id IS NULL) ${activeFilter}
        ORDER BY display_order ASC, created_at ASC`,
@@ -47,6 +48,7 @@ export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID, a
       options: Array.isArray(r.options) ? r.options : [],
       active: r.active !== false,
       displayOrder: Number(r.display_order || 0),
+      subtitle: r.subtitle || null,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }))
@@ -67,12 +69,13 @@ export async function createOptionModel(tenantId: string = AVEIRO_HQ_ID, modelDa
   const showDetailed = !!modelData.showDetailed
   const options = Array.isArray(modelData.options) ? modelData.options : []
   const displayOrder = Number(modelData.displayOrder || 0)
+  const subtitle = modelData.subtitle !== undefined ? (modelData.subtitle ? String(modelData.subtitle).trim() : null) : null
 
   const res = await query(
     `INSERT INTO product_option_models (
       id, tenant_id, name, price_type, additional_price, min_qty, max_qty, 
-      allow_item_quantity, is_required, show_detailed, options, active, display_order
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, true, $12)
+      allow_item_quantity, is_required, show_detailed, options, active, display_order, subtitle
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, true, $12, $13)
     RETURNING *`,
     [
       id,
@@ -86,7 +89,8 @@ export async function createOptionModel(tenantId: string = AVEIRO_HQ_ID, modelDa
       isRequired,
       showDetailed,
       JSON.stringify(options),
-      displayOrder
+      displayOrder,
+      subtitle,
     ]
   )
 
@@ -129,6 +133,7 @@ export async function createOptionModel(tenantId: string = AVEIRO_HQ_ID, modelDa
     options: created.options || [],
     active: created.active,
     displayOrder: created.display_order,
+    subtitle: created.subtitle || null,
   }
 }
 
@@ -143,6 +148,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
   const options = Array.isArray(modelData.options) ? modelData.options : []
   const displayOrder = Number(modelData.displayOrder || 0)
   const activeParam = modelData.active !== undefined ? Boolean(modelData.active) : null
+  const subtitle = modelData.subtitle !== undefined ? (modelData.subtitle ? String(modelData.subtitle).trim() : null) : null
 
   const res = await query(
     `UPDATE product_option_models
@@ -157,6 +163,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
          options = $10::jsonb,
          display_order = COALESCE($11, display_order),
          active = COALESCE($12, active),
+         subtitle = CASE WHEN $13::boolean THEN $14 ELSE subtitle END,
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1
      RETURNING *`,
@@ -173,6 +180,8 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
       JSON.stringify(options),
       displayOrder,
       activeParam,
+      modelData.subtitle !== undefined,
+      subtitle,
     ]
   )
 
@@ -225,6 +234,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
             showDetailed: !!updated.show_detailed,
             options: updated.options || [],
             active: updated.active !== false,
+            subtitle: updated.subtitle || g.subtitle || undefined,
           }
         }
         return g
@@ -261,6 +271,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
       maxQty,
       optionsCount: options.length,
       active: updated.active,
+      subtitle: updated.subtitle || null,
     },
   })
 
@@ -278,6 +289,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
     options: updated.options || [],
     active: updated.active,
     displayOrder: updated.display_order,
+    subtitle: updated.subtitle || null,
   }
 }
 

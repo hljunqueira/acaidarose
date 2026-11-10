@@ -45,6 +45,7 @@ export interface OptionModelData {
   showDetailed?: boolean
   isBaseFixed?: boolean
   active?: boolean
+  subtitle?: string
   options: OptionItem[]
 }
 
@@ -62,6 +63,7 @@ export default function OptionModelDialog({
   onSave,
 }: OptionModelDialogProps) {
   const [name, setName] = useState('')
+  const [subtitle, setSubtitle] = useState('')
   const [priceType, setPriceType] = useState<'Gratis' | 'Individual'>('Individual')
   const [additionalPrice, setAdditionalPrice] = useState<number | string>('')
   const [minQty, setMinQty] = useState<number>(0)
@@ -77,6 +79,7 @@ export default function OptionModelDialog({
       setSearchTerm('')
       if (initialModel) {
         setName(initialModel.name || '')
+        setSubtitle(initialModel.subtitle || '')
         setPriceType(initialModel.priceType || 'Individual')
         setAdditionalPrice(initialModel.additionalPrice !== undefined && initialModel.additionalPrice !== null ? initialModel.additionalPrice : '')
         setMinQty(initialModel.minQty ?? 0)
@@ -91,6 +94,7 @@ export default function OptionModelDialog({
         )
       } else {
         setName('')
+        setSubtitle('')
         setPriceType('Individual')
         setAdditionalPrice('')
         setMinQty(0)
@@ -217,6 +221,7 @@ export default function OptionModelDialog({
     const savedModel: OptionModelData = {
       id: initialModel?.id || `model-${Date.now()}`,
       name: name.trim(),
+      subtitle: subtitle.trim() || undefined,
       priceType,
       additionalPrice: Number(additionalPrice) || 0,
       minQty,
@@ -273,6 +278,26 @@ export default function OptionModelDialog({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Tipo de Leite, Ponto da Textura, Caldas Nobres..."
                 className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-bold"
+              />
+            </div>
+          </div>
+
+          {/* Subtítulo / Legenda Visual Configurável */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 items-center">
+            <div className="flex items-center gap-1.5 sm:col-span-1">
+              <Label className="text-xs font-bold text-purple-950 dark:text-purple-200">
+                Subtítulo Visual:
+              </Label>
+              <span title="Texto exibido ao lado do título no cardápio. Deixe vazio para exibição automática elegante." className="cursor-help">
+                <Info className="h-3.5 w-3.5 text-purple-400 hover:text-purple-600 dark:hover:text-purple-200" />
+              </span>
+            </div>
+            <div className="sm:col-span-3">
+              <Input
+                value={subtitle}
+                onChange={(e) => setSubtitle(e.target.value)}
+                placeholder="Ex: +0,10 € a partir da 2ª un. (deixe vazio para automático)"
+                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
               />
             </div>
           </div>

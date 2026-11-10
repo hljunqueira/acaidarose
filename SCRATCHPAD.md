@@ -1,5 +1,109 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Opcional "Quer talher extra?" & Botões de Desativação para Franquias/Franqueadora [CONCLUÍDO & TESTADO]**:
+  - **Solicitação do Usuário**:
+    1. Opcional como extra puro: `"Quer talher extra?"` sem conceder 1 grátis (pois 1 colher já acompanha o copo por padrão).
+    2. Cada colher extra custa 0,10 € (cálculo Individual: 1 un. = +0,10 €, 2 un. = +0,20 €, etc.).
+    3. Para as franquias, disponibilizar um botão para solicitar a desativação do opcional e, para a franqueadora, um botão direto para aprovar a desativação daquele opcional na filial.
+  - **Ações Executadas**:
+    1. *PostgreSQL & Catálogo*:
+       - Atualizado o modelo `c7777777-1111-2222-3333-444444444444` para `name: 'Quer talher extra?'`, `price_type: 'Individual'`, `additional_price: 0.10`, `subtitle: '+0,10 € cada un. extra'`, com item `Colher descartável extra` a 0,10 €.
+       - Propagado para os 30 recipientes de açaí (Copos 250g, 350g, 500g e Taças/Caixas 750g, 1kg) nas 3 lojas ativas.
+    2. *Interface do Cliente (`CustomerProductDetail.tsx`)*:
+       - Para `priceType === 'Individual'` com quantidade livre, contador limpo `(0)`, `(1)` e badge `+0,10 €` / `+0,20 €`.
+       - Subtítulo visual limpo `+0,10 € cada un. extra` sem nenhuma menção a "grátis".
+    3. *Botão nas Franquias (`OptionModelsManagerDialog.tsx`)*:
+       - Para usuários franqueados (`!isSuperAdmin`), cada opcional exibe o botão direto `[ Solicitar Desativação ]` ou `[ Solicitar Reativação ]`.
+       - Ao clicar, abre o `FranchiseRequestDialog` já pré-configurado para `ITEM_AVAILABILITY` com o opcional selecionado.
+    4. *Botão na Franqueadora (`StoreRequestsView.tsx`)*:
+       - Na listagem de solicitações, adicionado botão contextual `[ Aprovar Desativação ]` / `[ Aprovar Reativação ]` com notas automáticas.
+       - No modal de deliberação, botão de ação direto `[ Confirmar Desativação na Loja ]` aplicando instantaneamente em `store_product_overrides`.
+    5. *Validação*:
+       - `npm run build` executado com 0 erros de compilação em todas as 45 rotas.
+       - Banco de dados PostgreSQL verificado com 30 recipientes sincronizados.
+
+- **Planeamento: Adicional "Quer talheres?" & Revisão Completa das Solicitações de Franquia [EM ANÁLISE / PLANO APROVADO]**:
+  - **Solicitação do Usuário**:
+    1. Criar nos copos de açaí (250g, 350g, 500g) e taças (750g, 1kg) o opcional/adicional "Quer talheres".
+    2. Regra de preço e cotas: 1ª unidade é gratuita (0,00 €); a partir da 2ª unidade, cobra 0,10 € por unidade.
+    3. Franqueados devem poder solicitar ajustes nos opcionais ou a opção de desativá-los na sua respectiva unidade.
+    4. Análise e revisão profunda do fluxo de solicitações das franquias para a franqueadora e sua sincronização, eliminando qualquer valor default ou mock em rotas/telas.
+  - **Diagnóstico da Arquitetura & Mocks Encontrados**:
+    1. *Rotas e APIs (`/api/franchise-requests`)*:
+       - No `GET`: Existia ternário estático de nomes de lojas (`r.tenant_id === '11111111...' ? 'Loja 1...' : ...`) e preços mockados (`12.90`, `13.50`, `cnt-500`).
+       - No `POST`: Não havia suporte explícito para requisições de disponibilidade/ajuste de opcionais (`ITEM_AVAILABILITY`).
+       - No `PATCH`: Ao aprovar uma requisição, o sistema tratava apenas reajuste de preço e nome de produto; não sincronizava `ITEM_AVAILABILITY` com a tabela `store_product_overrides`.
+    2. *Frontend da Franquia (`FranchiseRequestDialog.tsx`)*:
+       - Existia um dicionário estático arcaico `STORE_NAMES` com lojas e slugs fictícios (`tenant-aveiro`, `tenant-lisboa`, `tenant-santarem`), violando o padrão multi-tenant dinâmico.
+       - Apenas possuía duas abas (`PRICE_CHANGE` e `NEW_PRODUCT`), sem suporte a opcionais ou desativação de itens.
+    3. *Frontend da Franqueadora (`StoreRequestsView.tsx`)*:
+       - Não exibia nem tratava deliberação de solicitações de disponibilidade de opcionais.
+    4. *Motor de Catálogo (`productsRepository.ts` - `getCatalogByTenant`)*:
+       - A tabela `store_product_overrides` é consultada para recipientes, bases e toppings, mas os `option_groups` dos produtos não verificavam `availabilityMap`, impedindo que uma filial pause um grupo de opcionais localmente de forma isolada.
+    5. *Motor de Cálculo do Construtor de Produtos (`CustomerProductDetail.tsx`)*:
+       - Já possui nativamente a regra para grupos `priceType: 'Gratis'`: `(groupTotalCount - maxFree) * additionalPrice`.
+       - Com `maxQty: 1` e `additionalPrice: 0.10`, selecionar 1 colher resulta em 0,00 € e a partir da 2ª colher soma 0,10 € por unidade.
+  - **Plano de Execução**:
+    - **Fase 1**: Criação do modelo canónico de opcional no PostgreSQL `product_option_models` e vinculação aos 30 recipientes de Açaí da rede.
+    - **Fase 2**: Ajuste no `productsRepository.ts` para que `getCatalogByTenant` respeite `store_product_overrides` nos grupos de opcionais (`option_groups`).
+    - **Fase 3**: Refatoração de `/api/franchise-requests` eliminando todos os ternários e mocks; integração com `tenants` via `LEFT JOIN` e aplicação automática de `store_product_overrides` no `PATCH`.
+    - **Fase 4**: Atualização do `FranchiseRequestDialog.tsx` (removendo `STORE_NAMES` e adicionando solicitação de opcionais) e do `StoreRequestsView.tsx` (deliberação de opcionais).
+    - **Fase 5**: Ajuste na interface do cliente (`CustomerProductDetail.tsx` e `CustomerCartSheet.tsx`) e verificação completa com `npm run build`.
+
+- **Planeamento e Especificação Técnica do App Mobile Oficial (Substituição S2 Cashback) [CONCLUÍDO & REFINADO COMPLETO]**:
+  - **Solicitação do Usuário**:
+    1. Nome oficial do app mantido estritamente como **"Açaí da Rose Cashback"** (preservando o reconhecimento e ASO das lojas).
+    2. Nomenclatura oficial de marca para moeda e carteira: **"Açaí da Rose Cash"** (saldo de cashback em Euro) e **"Açaí da Rose Cash Wallet"** (carteira digital do cliente), eliminando abreviações informais ("Rose Cash" / "Rose Cash Wallet") para proteger a consistência da marca.
+    3. **Franquias Não-Participantes**: Especificar o comportamento para unidades que não aderem ao cashback (bloqueio no PDV, aviso elegante no app e saldo do cliente protegido e utilizável nas lojas aderentes).
+    4. **Resgate Cruzado em Outra Loja (Cross-Store Redemption)**: Definir a câmara de compensação financeira (*Clearing House*), reembolso de descontos em dinheiro, ressarcimento de insumos físicos (CMV padrão) e liquidação líquida mensal integrada à fatura de insumos mestre da Franqueadora.
+    5. **Passes Digitais Nativos**: Incorporar exclusivamente **Apple Wallet e Google Wallet** com geofencing das lojas físicas e atualização de saldo em tempo real via APNs/Google API.
+    6. **Sistema de Notificações Push**: Especificar mensageria transacional, retenção de ciclo de vida, geofencing com limite anti-spam e Central de Notificações no app em conformidade com o RGPD.
+    7. **Detalhamento Extensivo de Telas**: Documentar minuciosamente os wireframes, estados e regras de negócio das 4 telas principais e dos modais operacionais (Identificação no Caixa, Scanner de Mesa, Construtor de Açaí, Tracking de Pedido KDS).
+    8. Adicionar na central web a **Gestão de Clientes & Validação de Pontos** (busca por telemóvel, histórico e ajuste manual de pontos com justificativa obrigatória).
+    9. Adicionar **Painel de Auditoria para DEV Master (Henrique)** com trilha forense imutável (`audit_logs`) e monitor anti-fraude.
+    10. Adicionar o módulo de **Retail Media Network (Roadmap Futuro)** para parcerias patrocinadas com marcas parceiras (granola, toppings, academias).
+    11. **Campos nos Produtos**: Adicionar e detalhar no PDR os campos nativos de **Cashback Ativo/Desativo** (`cashback_enabled`) e **Número de Pontos para Resgate** (`points_cost`) nos produtos (`product_containers` e `product_toppings`), integrados ao `ProductEditDialog` e à vitrine de resgate do app.
+    12. **Conformidade Regulatória nas Lojas (Google Play e Apple App Store)**:
+       - Documentado que o modelo é **100% pagamento no balcão físico** (sem pagamentos financeiros ou assinaturas dentro do app).
+       - Declaração de In-App Purchases marcada como **NÃO** (isenção de taxas de 15-30% da Apple/Google).
+       - Declaração mandatória de Comerciante da UE (**Lei DSA — Trader Status Declaration**) com dados comerciais da loja física.
+       - Esteira de aprovação rápida (Fast-Track) em menos de 24h a 48h.
+    13. Iniciação 100% zerada e CRUD completo sem nenhum default.
+  - **Ações Executadas no PDR**:
+    1. *Padronização Canónica da Marca*:
+       - App nas Lojas: **"Açaí da Rose Cashback"**.
+       - Saldo / Cashback em Euro: **"Açaí da Rose Cash"**.
+       - Carteira Digital: **"Açaí da Rose Cash Wallet"**.
+       - Pontos do Programa: **"Pontos Açaí da Rose"**.
+       - Clube de Vantagens: **"Clube Açaí da Rose"**.
+       - Todos os diagramas limpos de emojis e ajustados para a estética corporativa minimalista.
+    2. *Governança de Lojas Não-Aderentes (Seção 3.4 & Item 11 Seção 6.1)*:
+       - Flag `tenants.cashback_program_enabled`.
+       - PDV bloqueia acúmulo e resgates protegendo o fluxo de caixa do franqueado.
+       - App informa status com transparência e mantém saldo do cliente intacto para uso nas unidades aderentes.
+    3. *Resgate Cruzado & Câmara de Compensação (Seção 4.14, Aba 5 & Item 8 Seção 6.1)*:
+       - Rastreabilidade de `issuing_tenant_id` vs `redeeming_tenant_id`.
+       - Modalidade A (Desconto em Euro): Ressarcimento euro a euro da loja devedora para a credora.
+       - Modalidade B (Prémio Físico): Tabela canónica de reembolso de custo CMV (Copo 250g = 2,20 €, Copo 350g = 2,80 €, etc.) para repor os insumos gastos da loja que entregou o produto.
+       - Liquidação Líquida Mensal (*Net Settlement*): Abatimento e acréscimo automático na fatura mensal de insumos mestre comprados da Franqueadora, com zero transferências manuais entre franqueados.
+    4. *Passes Digitais (Seção 4.12)*:
+       - Geração de `.pkpass` para Apple Wallet e `LoyaltyObject` para Google Wallet.
+       - Push silencioso para atualização instantânea do saldo sem abrir o app.
+       - Geofencing GPS das lojas ativas projetando o passe na tela de bloqueio ao se aproximar da unidade.
+    5. *Sistema de Notificações Push & Central de Mensagens (Seção 4.13)*:
+       - Transacionais críticas (cashback ganho, pedido pronto na copa).
+       - Retenção programada (expiração de pontos em 30 e 7 dias, churn preventivo, aniversário, subida de nível VIP).
+       - Limite anti-spam de 1 push de proximidade a cada 7 dias por utilizador.
+       - Central de Notificações interna no app e conformidade RGPD com gestão granular de consentimento.
+    6. *Detalhamento Arquitetural das Telas (Seção 5.2 e 5.3)*:
+       - Tela 1 (Início & Wallet): Wireframe ASCII, Seletor Dinâmico de Loja, Card da Carteira, botões Apple/Google Wallet, Ações Rápidas, Carrossel Editorial.
+       - Tela 2 (Cardápio & Construtor de Açaí): Segmented control canónico (`Açaí da Rose` / `Lanches`), fluxo 4 passos (Copo vs Taça/Caixinha, 2 cremes inclusos e adicionais a +2,00 €, frutas/acompanhamentos ilimitados para $\ge$ 500g e cotas em 250g/350g, saco de transporte +0,10 €).
+       - Tela 3 (Clube Açaí da Rose): Barra de progresso do nível VIP em Euro, vitrine de prémios resgatáveis por pontos, emissão de voucher QR de 30 dias, extrato com download de talão fiscal.
+       - Tela 4 (Perfil, Carteiras & Configurações): Telemóvel universal, NIF facultativo, gestão de passes, Central de Notificações, canal "Seja um Franqueado" e exclusão de conta em conformidade com a Apple.
+       - Modais Operacionais (Seção 5.3): Modal de identificação no caixa com brilho 100%, Scanner de QR de mesa, Checkout com abatimento de cashback e Tracking do KDS em tempo real.
+    7. *Artefato Atualizado*:
+       - Arquivo [`mobile/PDR.md`](file:///c:/Users/Henrique%20-%20PC/Desktop/Projetos%20Dev/acaidarose/mobile/PDR.md) devidamente atualizado (103KB). Pasta `mobile/` contendo estritamente apenas `PDR.md`.
+
 - **Visibilidade Global de Utilizadores da Rede para o Super Admin (Henrique) [CONCLUÍDO & EM PRODUÇÃO]**:
   - **Solicitação do Usuário**: *"Não esta aparecendo todos os usuarios para mim Henrique"*.
   - **Causa Raiz Identificada**:
@@ -1031,3 +1135,13 @@ O usuário solicitou: *"e o Qr code balcao pode separar uma aba dentro do gestor
 
 
 
+
+## 2026-11-07 — Esboços visuais mobile (sem implementação)
+- Escopo corrigido pelo utilizador: apenas esboços das telas; não implementar app/backend.
+- Navegação: Início, Cardápio, Resgate de pontos, Perfil. Cashback em euros separado de pontos.
+- Criados 4 painéis PNG em mobile/esbocos, com 24 telas/estados: splash, boas-vindas, login, cadastro, recuperação, verificação/redefinição; início, seleção de loja, cardápio, resgate, detalhe do prémio, identificação no caixa; personalização, pedido, scanner de mesa, acompanhamento, voucher, extrato; perfil, notificações, carteiras digitais, privacidade, termos, eliminação de conta.
+- Referências: public/logo-oficial.png e fotografias de public/images/official. Imagens geradas a partir dos ficheiros locais; não são composição pixel-exata dos originais.
+- Ruling: recuperação por SMS é proposta visual, não integração aprovada/implementada. Termos e privacidade são estruturas com conteúdo jurídico a validar.
+- Pagamento no balcão; sem saldos, custos de pontos ou lojas fictícias como dados de produção.
+- Validação: inspeção visual dos 4 painéis; corrigida miniatura de taça indevida na linha Copo 500gr do cardápio. Sem código de produto alterado; build/testes não aplicáveis a PNG.
+- Complementos possíveis para próxima revisão: ecrãs próprios de convite de amigos, candidatura de franquia, apoio/FAQ, detalhes do movimento e estados de erro/offline/carregamento.

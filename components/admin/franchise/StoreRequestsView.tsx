@@ -32,7 +32,8 @@ export interface FranchisePriceRequest {
   tenantId: string
   storeName: string
   managerName: string
-  type: 'PRICE_CHANGE' | 'NEW_PRODUCT' | 'SPECIAL_PROMO'
+  type: 'PRICE_CHANGE' | 'NEW_PRODUCT' | 'NEW_ITEM_PROPOSAL' | 'SPECIAL_PROMO' | 'ITEM_AVAILABILITY'
+  actionRequested?: 'DISABLE' | 'ENABLE'
   productId: string
   productName: string
   productImage: string
@@ -230,7 +231,11 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
 
       toast.success(
         deliberateAction === 'APPROVE'
-          ? 'Solicitação aprovada e publicada nos Destaques da Rede!'
+          ? (selectedRequest.type === 'ITEM_AVAILABILITY'
+            ? 'Solicitação de opcional aprovada e sincronizada na loja!'
+            : selectedRequest.type === 'SPECIAL_PROMO'
+              ? 'Solicitação aprovada e publicada nos Destaques da Rede!'
+              : 'Solicitação aprovada e sincronizada no cardápio da filial!')
           : 'Solicitação recusada.'
       )
       setDeliberateModalOpen(false)
@@ -350,13 +355,22 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
                       <td className="py-3.5 px-4 font-bold text-purple-900 dark:text-purple-200">
                         <div className="flex items-center gap-1.5">
                           <Badge
-                            className={`text-[9px] font-extrabold ${
-                              req.type === 'SPECIAL_PROMO'
-                                ? 'bg-pink-600 text-white'
-                                : 'bg-purple-600 text-white'
-                            }`}
+                            className={`text-[9px] font-extrabold ${req.type === 'ITEM_AVAILABILITY'
+                                ? req.actionRequested === 'ENABLE' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                                : req.type === 'SPECIAL_PROMO'
+                                  ? 'bg-pink-600 text-white'
+                                  : req.type === 'NEW_ITEM_PROPOSAL' || req.type === 'NEW_PRODUCT'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-purple-600 text-white'
+                              }`}
                           >
-                            {req.type === 'SPECIAL_PROMO' ? 'Destaque Sugerido' : 'Alteração Preço'}
+                            {req.type === 'ITEM_AVAILABILITY'
+                              ? (req.actionRequested === 'ENABLE' ? 'Reativar Opcional' : 'Desativar Opcional')
+                              : req.type === 'SPECIAL_PROMO'
+                                ? 'Destaque Sugerido'
+                                : req.type === 'NEW_ITEM_PROPOSAL' || req.type === 'NEW_PRODUCT'
+                                  ? 'Novo Produto'
+                                  : 'Alteração Preço'}
                           </Badge>
                           <span>{req.productName}</span>
                         </div>
@@ -386,19 +400,38 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         {req.status === 'PENDING' ? (
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1.5">
                             <Button
                               size="sm"
                               onClick={() => {
                                 setSelectedRequest(req)
                                 setDeliberateAction('APPROVE')
-                                setDeliberateNotes('Aprovado e publicado nos destaques da rede.')
+                                setDeliberateNotes(
+                                  req.type === 'ITEM_AVAILABILITY'
+                                    ? req.actionRequested === 'ENABLE'
+                                      ? 'Aprovada reativação do opcional para a loja conforme solicitado.'
+                                      : 'Aprovada desativação do opcional para a loja conforme solicitado.'
+                                    : req.type === 'SPECIAL_PROMO'
+                                      ? 'Aprovado e publicado nos destaques da rede.'
+                                      : 'Aprovado para a filial conforme solicitado.'
+                                )
                                 setDeliberateModalOpen(true)
                               }}
-                              className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg cursor-pointer shadow-xs"
+                              className={`h-7 px-2.5 text-white text-[11px] font-bold rounded-lg cursor-pointer shadow-xs ${req.type === 'ITEM_AVAILABILITY' && req.actionRequested !== 'ENABLE'
+                                  ? 'bg-rose-600 hover:bg-rose-700'
+                                  : 'bg-emerald-600 hover:bg-emerald-700'
+                                }`}
                             >
                               <Check className="h-3 w-3 mr-1" />
-                              <span>Aprovar & Publicar</span>
+                              <span>
+                                {req.type === 'ITEM_AVAILABILITY'
+                                  ? req.actionRequested === 'ENABLE'
+                                    ? 'Aprovar Reativação'
+                                    : 'Aprovar Desativação'
+                                  : req.type === 'SPECIAL_PROMO'
+                                    ? 'Aprovar & Publicar'
+                                    : 'Aprovar'}
+                              </span>
                             </Button>
                             <Button
                               size="sm"
@@ -406,7 +439,7 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
                               onClick={() => {
                                 setSelectedRequest(req)
                                 setDeliberateAction('REJECT')
-                                setDeliberateNotes('Sugestão fora do padrão da rede.')
+                                setDeliberateNotes('Solicitação recusada pela Franqueadora Master.')
                                 setDeliberateModalOpen(true)
                               }}
                               className="h-7 px-2.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-[11px] font-bold rounded-lg cursor-pointer"
@@ -508,18 +541,16 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
                   <button
                     type="button"
                     onClick={() => setMediaMode('UPLOAD')}
-                    className={`px-2 py-0.5 rounded-lg ${
-                      mediaMode === 'UPLOAD' ? 'bg-purple-700 text-white' : 'text-purple-900 dark:text-purple-200'
-                    }`}
+                    className={`px-2 py-0.5 rounded-lg ${mediaMode === 'UPLOAD' ? 'bg-purple-700 text-white' : 'text-purple-900 dark:text-purple-200'
+                      }`}
                   >
                     Upload Local
                   </button>
                   <button
                     type="button"
                     onClick={() => setMediaMode('URL')}
-                    className={`px-2 py-0.5 rounded-lg ${
-                      mediaMode === 'URL' ? 'bg-purple-700 text-white' : 'text-purple-900 dark:text-purple-200'
-                    }`}
+                    className={`px-2 py-0.5 rounded-lg ${mediaMode === 'URL' ? 'bg-purple-700 text-white' : 'text-purple-900 dark:text-purple-200'
+                      }`}
                   >
                     URL
                   </button>
@@ -617,7 +648,13 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
                     Tipo
                   </span>
                   <span className="font-bold text-purple-950 dark:text-white text-xs">
-                    {selectedRequest.type === 'SPECIAL_PROMO' ? 'Destaque / Story' : 'Alteração Preço'}
+                    {selectedRequest.type === 'ITEM_AVAILABILITY'
+                      ? (selectedRequest.actionRequested === 'ENABLE' ? 'Reativar Opcional' : 'Desativar Opcional')
+                      : selectedRequest.type === 'SPECIAL_PROMO'
+                        ? 'Destaque / Story'
+                        : selectedRequest.type === 'NEW_ITEM_PROPOSAL' || selectedRequest.type === 'NEW_PRODUCT'
+                          ? 'Novo Produto'
+                          : 'Alteração Preço'}
                   </span>
                 </div>
               </div>
@@ -648,15 +685,22 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
                 type="button"
                 onClick={handleDeliberate}
                 disabled={actionLoading}
-                className={`rounded-xl font-bold text-xs text-white shadow-xs cursor-pointer ${
-                  deliberateAction === 'APPROVE' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
-                }`}
+                className={`rounded-xl font-bold text-xs text-white shadow-xs cursor-pointer ${deliberateAction === 'APPROVE'
+                    ? selectedRequest?.type === 'ITEM_AVAILABILITY' && selectedRequest?.actionRequested !== 'ENABLE'
+                      ? 'bg-rose-600 hover:bg-rose-700'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-zinc-800 hover:bg-zinc-900'
+                  }`}
               >
                 {actionLoading
                   ? 'A processar...'
                   : deliberateAction === 'APPROVE'
-                  ? 'Confirmar Aprovação'
-                  : 'Confirmar Recusa'}
+                    ? selectedRequest?.type === 'ITEM_AVAILABILITY'
+                      ? selectedRequest?.actionRequested === 'ENABLE'
+                        ? 'Confirmar Reativação na Loja'
+                        : 'Confirmar Desativação na Loja'
+                      : 'Confirmar Aprovação'
+                    : 'Confirmar Recusa'}
               </Button>
             </DialogFooter>
           </DialogContent>

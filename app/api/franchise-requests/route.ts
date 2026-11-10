@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
-import { setStoreProductPrice } from '@/lib/repositories/productsRepository'
+import { setStoreProductPrice, toggleStoreItemStatus } from '@/lib/repositories/productsRepository'
 import { recordAuditLog } from '@/lib/repositories/auditRepository'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -9,10 +9,11 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const res = await query(
-      `SELECT id, tenant_id, request_type, title, description, status, requested_changes_json, response_notes,
-              created_at, updated_at
-       FROM franchise_requests
-       ORDER BY created_at DESC`
+      `SELECT r.id, r.tenant_id, r.request_type, r.title, r.description, r.status, r.requested_changes_json, r.response_notes,
+              r.created_at, r.updated_at, t.name as tenant_name
+       FROM franchise_requests r
+       LEFT JOIN tenants t ON t.id = r.tenant_id
+       ORDER BY r.created_at DESC`
     )
 
     const requests = (res.rows || []).map((r: any) => {
@@ -45,15 +46,16 @@ export async function GET() {
       return {
         id: r.id,
         tenantId: r.tenant_id,
-        storeName: data.storeName || (r.tenant_id === '11111111-1111-1111-1111-111111111111' ? 'Loja 1 - Figueira da Foz (Matriz)' : r.tenant_id === '22222222-2222-2222-2222-222222222222' ? 'Loja 2 - Torres Novas' : r.tenant_id === '33333333-3333-3333-3333-333333333333' ? 'Loja 3 - Aveiro' : 'Franquia Rede'),
-        managerName: data.managerName || 'Gerente',
-        type: r.request_type || 'PRICE_CHANGE',
-        productId: data.productId || 'cnt-500',
-        productName: data.productName || r.title || 'Produto',
+        storeName: r.tenant_name || data.storeName || 'Loja Franqueada',
+        managerName: data.managerName || 'Gerente da Loja',
+        type: r.request_type || data.type || 'PRICE_CHANGE',
+        productId: data.productId || '',
+        productName: data.productName || r.title || 'Item do Cardápio',
         productImage: data.productImage || '',
         category: data.category || 'Geral',
-        currentPrice: Number(data.currentPrice) || 12.90,
-        suggestedPrice: Number(data.suggestedPrice) || 13.50,
+        currentPrice: data.currentPrice !== undefined && data.currentPrice !== null ? Number(data.currentPrice) : 0,
+        suggestedPrice: data.suggestedPrice !== undefined && data.suggestedPrice !== null ? Number(data.suggestedPrice) : 0,
+        actionRequested: data.actionRequested || data.action || (r.request_type === 'ITEM_AVAILABILITY' ? 'DISABLE' : undefined),
         reason: r.description || data.reason || 'Solicitação de cardápio',
         status: r.status || 'PENDING',
         responseNotes: r.response_notes,
@@ -81,16 +83,34 @@ export async function POST(req: NextRequest) {
 
     const tenantId = isApplication
       ? '11111111-1111-1111-1111-111111111111' // Franqueadora Master Matriz
-      : body.tenantId || '22222222-2222-2222-2222-222222222222'
+      : body.tenantId
 
-    // Gravamos no BD como FRANCHISE_APPLICATION para não quebrar a check constraint, mas mantemos o JSON original contendo CONTACT_REQUEST
-    const requestType = isApplication ? 'FRANCHISE_APPLICATION' : (body.type || 'PRICE_CHANGE')
+    if (!tenantId) {
+      return NextResponse.json({ error: 'tenantId é obrigatório' }, { status: 400 })
+    }
+
+    // Normalização estrita para respeitar chk_franchise_request_type:
+    // ('PRICE_CHANGE', 'ITEM_AVAILABILITY', 'NEW_ITEM_PROPOSAL', 'FRANCHISE_APPLICATION')
+    let requestType = 'PRICE_CHANGE'
+    if (isApplication) {
+      requestType = 'FRANCHISE_APPLICATION'
+    } else if (body.type === 'ITEM_AVAILABILITY' || body.type === 'OPTION_STATUS_CHANGE') {
+      requestType = 'ITEM_AVAILABILITY'
+    } else if (body.type === 'NEW_PRODUCT' || body.type === 'NEW_ITEM_PROPOSAL') {
+      requestType = 'NEW_ITEM_PROPOSAL'
+    } else if (body.type === 'PRICE_CHANGE') {
+      requestType = 'PRICE_CHANGE'
+    }
+
     const title = isApplication 
       ? (body.type === 'CONTACT_REQUEST' ? `Contacto: ${body.nome || 'Novo Utilizador'}` : `Candidatura: ${body.nome || body.name || 'Novo Interessado'}`) 
+      : requestType === 'ITEM_AVAILABILITY'
+      ? `Disponibilidade: ${body.productName || 'Opcional / Item'} (${body.actionRequested === 'DISABLE' ? 'Desativação' : 'Ativação'})`
       : (body.productName || 'Alteração de Preço')
+
     const description = isApplication 
       ? (body.type === 'CONTACT_REQUEST' ? (body.motivo || 'Mensagem de contacto geral') : (body.motivo || body.reason || `Interesse em ${body.distrito || 'Portugal'}`)) 
-      : (body.reason || 'Ajuste de preço solicitado pela filial')
+      : (body.reason || 'Solicitação enviada pela filial')
 
     const res = await query(
       `INSERT INTO franchise_requests (id, tenant_id, request_type, title, description, status, requested_changes_json, created_at)
@@ -176,6 +196,12 @@ export async function PATCH(req: NextRequest) {
         await query(`UPDATE product_containers SET available_hours = $1 WHERE id::text = $2 AND tenant_id = $3`, [hoursJson, data.productId, r.tenant_id])
         await query(`UPDATE product_bases SET available_hours = $1 WHERE id::text = $2 AND tenant_id = $3`, [hoursJson, data.productId, r.tenant_id])
         await query(`UPDATE product_toppings SET available_hours = $1 WHERE id::text = $2 AND tenant_id = $3`, [hoursJson, data.productId, r.tenant_id])
+      }
+
+      // 4. Se for ITEM_AVAILABILITY (desativação ou reativação de opcional/produto na filial)
+      if (r.tenant_id && (r.request_type === 'ITEM_AVAILABILITY' || data.type === 'ITEM_AVAILABILITY') && data.productId) {
+        const isEnable = data.actionRequested === 'ENABLE' || data.action === 'ENABLE'
+        await toggleStoreItemStatus(r.tenant_id, data.productId, { isAvailable: isEnable, isVisible: isEnable })
       }
     }
 

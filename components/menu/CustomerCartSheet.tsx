@@ -878,18 +878,8 @@ export default function CustomerCartSheet({
 
                     {/* Opções de Consumo: Apenas para Takeaway (Talheres e Sacos de Transporte) */}
                     {consumptionType === 'TAKEAWAY' && (
-                      <div className="p-3 rounded-xl bg-white dark:bg-purple-950/40 border border-purple-200/80 dark:border-white/10 space-y-2.5 animate-in fade-in duration-150">
-                        <label className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-purple-200 cursor-pointer select-none">
-                          <span>{isEn ? 'Disposable cutlery?' : 'Talheres descartáveis?'}</span>
-                          <input
-                            type="checkbox"
-                            checked={needCutlery}
-                            onChange={(e) => setNeedCutlery(e.target.checked)}
-                            className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-purple-300 dark:border-white/20 accent-pink-600 cursor-pointer"
-                          />
-                        </label>
-
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-purple-200 select-none pt-0.5 border-t border-purple-100 dark:border-white/10">
+                      <div className="p-3 rounded-xl bg-white dark:bg-purple-950/40 border border-purple-200/80 dark:border-white/10 space-y-2 animate-in fade-in duration-150">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-purple-200 select-none">
                           <div className="leading-tight">
                             <div>{isEn ? 'Transport bags (+€0.10 each)' : 'Sacos de transporte (+0,10€ un.)'}</div>
                             <div className="text-[10px] text-slate-500 dark:text-purple-300/60 font-normal">

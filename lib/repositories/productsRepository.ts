@@ -46,7 +46,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       query(`SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT id, name, name_en, name_es, slug, menu_id, description, description_en, description_es, display_order, active, default_price, weight_grams FROM categories WHERE active = true ORDER BY display_order ASC`),
       query(`SELECT id, name, name_en, name_es, code, description, description_en, description_es, display_order, active FROM menus WHERE active = true ORDER BY display_order ASC`),
-      query(`SELECT id, name, price_type, additional_price, min_qty, max_qty, allow_item_quantity, is_required, show_detailed, options, active FROM product_option_models`),
+      query(`SELECT id, name, price_type, additional_price, min_qty, max_qty, allow_item_quantity, is_required, show_detailed, options, active, subtitle FROM product_option_models`),
     ])
 
     const optionModelsByIdMap = new Map<string, any>()
@@ -237,11 +237,16 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
               (isToppingMatch && toppingsOptionModel ? toppingsOptionModel : null) ||
               (isCaldaMatch && caldasOptionModel ? caldasOptionModel : null)
 
+            const targetId = canonicalModel?.id || g.id
+            const override = targetId ? availabilityMap.get(targetId) : undefined
+            const isGroupAvailable = override !== undefined ? (override.isAvailable && override.isVisible) : true
+
             if (canonicalModel) {
               return {
                 ...g,
                 id: canonicalModel.id,
                 name: canonicalModel.name || g.name,
+                subtitle: canonicalModel.subtitle || g.subtitle || undefined,
                 priceType: canonicalModel.price_type || g.priceType,
                 additionalPrice: Number(canonicalModel.additional_price ?? g.additionalPrice ?? 0),
                 minQty: Number(canonicalModel.min_qty ?? g.minQty ?? 0),
@@ -250,10 +255,13 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                 isRequired: canonicalModel.is_required !== undefined ? !!canonicalModel.is_required : !!g.isRequired,
                 showDetailed: canonicalModel.show_detailed !== undefined ? !!canonicalModel.show_detailed : !!g.showDetailed,
                 options: Array.isArray(canonicalModel.options) && canonicalModel.options.length > 0 ? canonicalModel.options : (g.options || []),
-                active: canonicalModel.active !== false && g.active !== false,
+                active: canonicalModel.active !== false && g.active !== false && isGroupAvailable,
               }
             }
-            return g
+            return {
+              ...g,
+              active: g.active !== false && isGroupAvailable,
+            }
           })
         }
 
@@ -407,6 +415,8 @@ export async function toggleStoreItemStatus(
        SELECT name FROM product_bases WHERE id::text = $1
        UNION ALL
        SELECT name FROM product_toppings WHERE id::text = $1
+       UNION ALL
+       SELECT name FROM product_option_models WHERE id::text = $1
        LIMIT 1`,
       [productId]
     )

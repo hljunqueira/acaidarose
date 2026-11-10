@@ -16,6 +16,7 @@ import { formatCurrency } from '@/lib/i18n/formatters'
 import { toast } from 'sonner'
 import { Building2, Send, AlertCircle } from 'lucide-react'
 import { CatalogData } from '@/types'
+import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 
 interface FranchiseRequestDialogProps {
   open: boolean
@@ -24,14 +25,7 @@ interface FranchiseRequestDialogProps {
   tenantName?: string
   catalog?: CatalogData
   initialItem?: any
-  initialType?: 'NEW_PRODUCT' | 'PRICE_CHANGE'
-}
-
-const STORE_NAMES: Record<string, string> = {
-  'tenant-aveiro': 'Açaí da Rose — Filial Aveiro',
-  'tenant-lisboa': 'Açaí da Rose — Filial Lisboa (Parque das Nações)',
-  'tenant-santarem': 'Açaí da Rose — Filial Santarém',
-  'tenant-torres-novas': 'Açaí da Rose — Matriz Central',
+  initialType?: 'NEW_PRODUCT' | 'PRICE_CHANGE' | 'ITEM_AVAILABILITY'
 }
 
 export default function FranchiseRequestDialog({
@@ -43,7 +37,10 @@ export default function FranchiseRequestDialog({
   initialItem,
   initialType = 'PRICE_CHANGE',
 }: FranchiseRequestDialogProps) {
-  const [requestType, setRequestType] = useState<'NEW_PRODUCT' | 'PRICE_CHANGE'>(initialType)
+  const { currentTenant, tenants } = useFranchiseStore()
+  const storeLabel = tenantName || currentTenant?.name || tenants.find((s) => s.id === tenantId)?.name || 'Loja Franqueada'
+
+  const [requestType, setRequestType] = useState<'NEW_PRODUCT' | 'PRICE_CHANGE' | 'ITEM_AVAILABILITY'>(initialType)
   const [selectedProductId, setSelectedProductId] = useState<string>(initialItem?.id || '')
   const [itemName, setItemName] = useState(initialItem?.name || '')
   const [category, setCategory] = useState(initialItem?.category || 'Copos Master')
@@ -51,6 +48,12 @@ export default function FranchiseRequestDialog({
   const [proposedPrice, setProposedPrice] = useState<string>(initialItem ? String(initialItem.precoBase || initialItem.price || '') : '')
   const [justification, setJustification] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Estados para solicitação de opcionais / disponibilidade
+  const [optionModels, setOptionModels] = useState<any[]>([])
+  const [selectedOptionId, setSelectedOptionId] = useState<string>('')
+  const [selectedOptionName, setSelectedOptionName] = useState<string>('')
+  const [actionRequested, setActionRequested] = useState<'DISABLE' | 'ENABLE'>('DISABLE')
 
   const containers = useMemo(() => {
     return catalog?.containers || []
@@ -75,6 +78,24 @@ export default function FranchiseRequestDialog({
     }
   }, [open, initialItem, containers, selectedProductId])
 
+  // Carregar modelos de opções reais do banco ao abrir
+  useEffect(() => {
+    if (open) {
+      fetch('/api/option-models')
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            setOptionModels(data)
+            if (!selectedOptionId) {
+              setSelectedOptionId(data[0].id)
+              setSelectedOptionName(data[0].name)
+            }
+          }
+        })
+        .catch((err) => console.error('Erro ao carregar modelos de opções:', err))
+    }
+  }, [open, selectedOptionId])
+
   const handleSelectProduct = (prodId: string) => {
     setSelectedProductId(prodId)
     const prod = containers.find((c) => c.id === prodId)
@@ -96,6 +117,54 @@ export default function FranchiseRequestDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // 1. Fluxo de Disponibilidade / Desativação de Opcionais
+    if (requestType === 'ITEM_AVAILABILITY') {
+      if (!selectedOptionId) {
+        toast.error('Selecione o opcional a ser ajustado')
+        return
+      }
+      if (!justification.trim() || justification.trim().length < 5) {
+        toast.error('Informe uma justificativa detalhada para a franqueadora')
+        return
+      }
+
+      setSubmitting(true)
+      try {
+        const res = await fetch('/api/franchise-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenantId,
+            storeName: storeLabel,
+            managerName: 'Gerente da Filial',
+            productId: selectedOptionId,
+            productName: selectedOptionName || 'Opcional',
+            category: 'Opcionais & Disponibilidade',
+            actionRequested,
+            type: 'ITEM_AVAILABILITY',
+            reason: justification.trim(),
+          }),
+        })
+
+        if (!res.ok) throw new Error('Falha ao enviar solicitação')
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('franchise_requests_updated', {}))
+        }
+
+        toast.success('Solicitação de opcional enviada com sucesso para a Franqueadora Master!')
+        onOpenChange(false)
+        setJustification('')
+      } catch (err: any) {
+        toast.error(err.message || 'Erro ao submeter solicitação')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
+
+    // 2. Fluxo de Reajuste de Preço ou Novo Produto
     const finalItemName = requestType === 'PRICE_CHANGE' ? itemName : itemName.trim()
 
     if (!finalItemName) {
@@ -112,8 +181,6 @@ export default function FranchiseRequestDialog({
     }
 
     setSubmitting(true)
-    const storeLabel = tenantName || STORE_NAMES[tenantId] || 'Loja Franqueada'
-
     try {
       const res = await fetch('/api/franchise-requests', {
         method: 'POST',
@@ -157,36 +224,104 @@ export default function FranchiseRequestDialog({
             Solicitação à Franqueadora
           </DialogTitle>
           <DialogDescription className="text-xs text-purple-700/80 dark:text-purple-200/70">
-            Novos produtos ou alterações de preço base exigem aprovação da Holding para {STORE_NAMES[tenantId] || 'sua filial'}.
+            Preços, novos produtos e disponibilidade de opcionais exigem aprovação da Holding para {storeLabel}.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5 my-2 text-xs">
           {/* Tipo de Solicitação */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
               onClick={() => setRequestType('PRICE_CHANGE')}
-              className={`p-2.5 rounded-2xl border text-xs font-bold transition-all cursor-pointer text-center ${
+              className={`p-2 rounded-xl border text-[11px] font-bold transition-all cursor-pointer text-center ${
                 requestType === 'PRICE_CHANGE'
                   ? 'border-purple-600 bg-purple-100/70 dark:bg-purple-900 text-purple-950 dark:text-white shadow-xs'
                   : 'border-purple-200 dark:border-white/10 text-purple-900/70 dark:text-purple-200/70 hover:bg-purple-50'
               }`}
             >
-              Reajustar Preço Base
+              Reajustar Preço
+            </button>
+            <button
+              type="button"
+              onClick={() => setRequestType('ITEM_AVAILABILITY')}
+              className={`p-2 rounded-xl border text-[11px] font-bold transition-all cursor-pointer text-center ${
+                requestType === 'ITEM_AVAILABILITY'
+                  ? 'border-purple-600 bg-purple-100/70 dark:bg-purple-900 text-purple-950 dark:text-white shadow-xs'
+                  : 'border-purple-200 dark:border-white/10 text-purple-900/70 dark:text-purple-200/70 hover:bg-purple-50'
+              }`}
+            >
+              Opcionais & Pausa
             </button>
             <button
               type="button"
               onClick={() => setRequestType('NEW_PRODUCT')}
-              className={`p-2.5 rounded-2xl border text-xs font-bold transition-all cursor-pointer text-center ${
+              className={`p-2 rounded-xl border text-[11px] font-bold transition-all cursor-pointer text-center ${
                 requestType === 'NEW_PRODUCT'
                   ? 'border-purple-600 bg-purple-100/70 dark:bg-purple-900 text-purple-950 dark:text-white shadow-xs'
                   : 'border-purple-200 dark:border-white/10 text-purple-900/70 dark:text-purple-200/70 hover:bg-purple-50'
               }`}
             >
-              Novo Produto / Combo
+              Novo Produto
             </button>
           </div>
+
+          {requestType === 'ITEM_AVAILABILITY' && (
+            <>
+              {/* Seleção do Opcional */}
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                  Selecione o Opcional / Grupo:
+                </Label>
+                <select
+                  value={selectedOptionId}
+                  onChange={(e) => {
+                    setSelectedOptionId(e.target.value)
+                    const found = optionModels.find((m) => m.id === e.target.value)
+                    if (found) setSelectedOptionName(found.name)
+                  }}
+                  className="w-full h-9 px-3 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-xs font-bold text-purple-950 dark:text-white [&>option]:bg-white dark:[&>option]:bg-[#160228]"
+                >
+                  {optionModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.priceType === 'Gratis' ? 'Incluso' : `Adicional ${formatCurrency(m.additionalPrice || 0)}`})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Ação Solicitada */}
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                  Ação Desejada para a sua Loja:
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActionRequested('DISABLE')}
+                    className={`p-2 rounded-xl border text-xs font-bold transition cursor-pointer text-center ${
+                      actionRequested === 'DISABLE'
+                        ? 'border-rose-600 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 shadow-xs'
+                        : 'border-purple-200 dark:border-white/10 text-purple-900/70 dark:text-purple-200/70 hover:bg-purple-50'
+                    }`}
+                  >
+                    Desativar na Minha Loja
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActionRequested('ENABLE')}
+                    className={`p-2 rounded-xl border text-xs font-bold transition cursor-pointer text-center ${
+                      actionRequested === 'ENABLE'
+                        ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 shadow-xs'
+                        : 'border-purple-200 dark:border-white/10 text-purple-900/70 dark:text-purple-200/70 hover:bg-purple-50'
+                    }`}
+                  >
+                    Reativar na Minha Loja
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
           {requestType === 'PRICE_CHANGE' ? (
             <>
