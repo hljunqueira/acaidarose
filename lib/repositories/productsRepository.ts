@@ -46,7 +46,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
       query(`SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`, [tenantId]),
       query(`SELECT id, name, name_en, name_es, slug, menu_id, description, description_en, description_es, display_order, active, default_price, weight_grams FROM categories WHERE active = true ORDER BY display_order ASC`),
       query(`SELECT id, name, name_en, name_es, code, description, description_en, description_es, display_order, active FROM menus WHERE active = true ORDER BY display_order ASC`),
-      query(`SELECT id, name, price_type, additional_price, min_qty, max_qty, allow_item_quantity, is_required, show_detailed, options, active, subtitle FROM product_option_models`),
+      query(`SELECT id, name, name_en, name_es, price_type, additional_price, min_qty, max_qty, allow_item_quantity, is_required, show_detailed, options, active, subtitle, subtitle_en, subtitle_es FROM product_option_models`),
     ])
 
     const optionModelsByIdMap = new Map<string, any>()
@@ -242,11 +242,24 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
             const isGroupAvailable = override !== undefined ? (override.isAvailable && override.isVisible) : true
 
             if (canonicalModel) {
+              const rawOpts = Array.isArray(canonicalModel.options) && canonicalModel.options.length > 0 ? canonicalModel.options : (g.options || [])
+              const localizedOpts = rawOpts.map((opt: any) => ({
+                ...opt,
+                nameEn: opt.nameEn || opt.name_en || opt.name,
+                nameEs: opt.nameEs || opt.name_es || opt.name,
+                descriptionEn: opt.descriptionEn || opt.description_en || opt.description || '',
+                descriptionEs: opt.descriptionEs || opt.description_es || opt.description || '',
+              }))
+
               return {
                 ...g,
                 id: canonicalModel.id,
                 name: canonicalModel.name || g.name,
+                nameEn: canonicalModel.name_en || g.nameEn || null,
+                nameEs: canonicalModel.name_es || g.nameEs || null,
                 subtitle: canonicalModel.subtitle || g.subtitle || undefined,
+                subtitleEn: canonicalModel.subtitle_en || g.subtitleEn || undefined,
+                subtitleEs: canonicalModel.subtitle_es || g.subtitleEs || undefined,
                 priceType: canonicalModel.price_type || g.priceType,
                 additionalPrice: Number(canonicalModel.additional_price ?? g.additionalPrice ?? 0),
                 minQty: Number(canonicalModel.min_qty ?? g.minQty ?? 0),
@@ -254,12 +267,21 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                 allowItemQuantity: canonicalModel.allow_item_quantity !== undefined ? !!canonicalModel.allow_item_quantity : !!g.allowItemQuantity,
                 isRequired: canonicalModel.is_required !== undefined ? !!canonicalModel.is_required : !!g.isRequired,
                 showDetailed: canonicalModel.show_detailed !== undefined ? !!canonicalModel.show_detailed : !!g.showDetailed,
-                options: Array.isArray(canonicalModel.options) && canonicalModel.options.length > 0 ? canonicalModel.options : (g.options || []),
+                options: localizedOpts,
                 active: canonicalModel.active !== false && g.active !== false && isGroupAvailable,
               }
             }
             return {
               ...g,
+              nameEn: g.nameEn || null,
+              nameEs: g.nameEs || null,
+              subtitleEn: g.subtitleEn || null,
+              subtitleEs: g.subtitleEs || null,
+              options: (g.options || []).map((opt: any) => ({
+                ...opt,
+                nameEn: opt.nameEn || opt.name_en || opt.name,
+                nameEs: opt.nameEs || opt.name_es || opt.name,
+              })),
               active: g.active !== false && isGroupAvailable,
             }
           })

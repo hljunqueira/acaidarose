@@ -20,6 +20,7 @@ import SurveyTranslationsTab from './SurveyTranslationsTab'
 type SectionTab =
   | 'menus'
   | 'categories'
+  | 'option_models'
   | 'tacas'
   | 'milkshakes'
   | 'sumos'
@@ -33,6 +34,7 @@ type SectionTab =
 const SECTION_TABS: { id: SectionTab; label: string }[] = [
   { id: 'menus', label: 'Menus Principais' },
   { id: 'categories', label: 'Categorias' },
+  { id: 'option_models', label: 'Modelos de Opções & Opcionais' },
   { id: 'tacas', label: 'Taças & Potes Açaí' },
   { id: 'milkshakes', label: 'Milk Shakes' },
   { id: 'sumos', label: 'Sumos de Polpa' },
@@ -56,9 +58,20 @@ export default function MultilingualManagementView() {
   const [activeTab, setActiveTab] = useState<SectionTab>('menus')
   const [searchTerm, setSearchTerm] = useState('')
   const [highlights, setHighlights] = useState<any[]>([])
+  const [optionModels, setOptionModels] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [languagesConfig, setLanguagesConfig] = useState<any[]>([])
   const [updatingLang, setUpdatingLang] = useState<string | null>(null)
+
+  const fetchOptionModels = async () => {
+    try {
+      const res = await fetch('/api/option-models')
+      if (res.ok) {
+        const data = await res.json()
+        setOptionModels(Array.isArray(data) ? data : data?.data || [])
+      }
+    } catch {}
+  }
 
   const fetchLanguagesConfig = async () => {
     try {
@@ -120,10 +133,11 @@ export default function MultilingualManagementView() {
   useEffect(() => {
     fetchCatalog()
     fetchLanguagesConfig()
+    fetchOptionModels()
   }, [])
   const [savingId, setSavingId] = useState<string | null>(null)
 
-  // Buffer de edições locais: { [id]: { nameEn, nameEs, descriptionEn, descriptionEs } }
+  // Buffer de edições locais: { [id]: { nameEn, nameEs, descriptionEn, descriptionEs, subtitleEn, subtitleEs, options } }
   const [drafts, setDrafts] = useState<
     Record<
       string,
@@ -132,11 +146,14 @@ export default function MultilingualManagementView() {
         nameEs: string
         descriptionEn?: string
         descriptionEs?: string
+        subtitleEn?: string
+        subtitleEs?: string
+        options?: any[]
       }
     >
   >({})
 
-  // Carrega destaques caso selecione a aba
+  // Carrega destaques ou modelos caso selecione a aba
   useEffect(() => {
     if (activeTab === 'highlights') {
       fetch('/api/highlights?loja=11111111-1111-1111-1111-111111111111')
@@ -145,6 +162,8 @@ export default function MultilingualManagementView() {
           if (Array.isArray(d.highlights)) setHighlights(d.highlights)
         })
         .catch(() => setHighlights([]))
+    } else if (activeTab === 'option_models') {
+      fetchOptionModels()
     }
   }, [activeTab])
 
@@ -156,6 +175,8 @@ export default function MultilingualManagementView() {
       list = catalog?.menus || []
     } else if (activeTab === 'categories') {
       list = catalog?.categories || []
+    } else if (activeTab === 'option_models') {
+      list = optionModels || []
     } else if (activeTab === 'highlights') {
       list = highlights
     } else {
@@ -208,13 +229,14 @@ export default function MultilingualManagementView() {
     return list.filter((it) => {
       const name = (it.name || it.title || '').toLowerCase()
       const desc = (it.description || it.subtitle || '').toLowerCase()
-      return name.includes(term) || desc.includes(term)
+      const optMatch = Array.isArray(it.options) && it.options.some((o: any) => (o.name || '').toLowerCase().includes(term))
+      return name.includes(term) || desc.includes(term) || optMatch
     })
-  }, [activeTab, catalog, highlights, searchTerm])
+  }, [activeTab, catalog, highlights, optionModels, searchTerm])
 
   const handleFieldChange = (
     id: string,
-    field: 'nameEn' | 'nameEs' | 'descriptionEn' | 'descriptionEs',
+    field: 'nameEn' | 'nameEs' | 'descriptionEn' | 'descriptionEs' | 'subtitleEn' | 'subtitleEs',
     val: string,
     originalItem: any
   ) => {
@@ -224,12 +246,53 @@ export default function MultilingualManagementView() {
         nameEs: originalItem.nameEs || originalItem.titleEs || '',
         descriptionEn: originalItem.descriptionEn || originalItem.subtitleEn || '',
         descriptionEs: originalItem.descriptionEs || originalItem.subtitleEs || '',
+        subtitleEn: originalItem.subtitleEn || '',
+        subtitleEs: originalItem.subtitleEs || '',
+        options: (originalItem.options || []).map((o: any) => ({ ...o })),
       }
       return {
         ...prev,
         [id]: {
           ...curr,
           [field]: val,
+        },
+      }
+    })
+  }
+
+  const handleOptionItemChange = (
+    modelId: string,
+    optionId: string,
+    field: 'nameEn' | 'nameEs',
+    val: string,
+    originalModel: any
+  ) => {
+    setDrafts((prev) => {
+      const curr = prev[modelId] || {
+        nameEn: originalModel.nameEn || '',
+        nameEs: originalModel.nameEs || '',
+        descriptionEn: originalModel.descriptionEn || '',
+        descriptionEs: originalModel.descriptionEs || '',
+        subtitleEn: originalModel.subtitleEn || '',
+        subtitleEs: originalModel.subtitleEs || '',
+        options: (originalModel.options || []).map((o: any) => ({ ...o })),
+      }
+      const currOptions = curr.options && curr.options.length > 0 
+        ? [...curr.options]
+        : (originalModel.options || []).map((o: any) => ({ ...o }))
+
+      const updatedOptions = currOptions.map((opt: any) => {
+        if (opt.id === optionId) {
+          return { ...opt, [field]: val }
+        }
+        return opt
+      })
+
+      return {
+        ...prev,
+        [modelId]: {
+          ...curr,
+          options: updatedOptions,
         },
       }
     })
@@ -251,6 +314,8 @@ export default function MultilingualManagementView() {
           ? 'category'
           : activeTab === 'highlights'
           ? 'story'
+          : activeTab === 'option_models'
+          ? 'option_model'
           : 'product'
 
       const res = await fetch('/api/translations', {
@@ -267,13 +332,20 @@ export default function MultilingualManagementView() {
           nameEs: draft.nameEs,
           descriptionEn: draft.descriptionEn,
           descriptionEs: draft.descriptionEs,
+          subtitleEn: draft.subtitleEn,
+          subtitleEs: draft.subtitleEs,
+          options: draft.options || item.options,
         }),
       })
 
       if (!res.ok) throw new Error('Falha ao guardar tradução')
 
       toast.success(`Traduções guardadas com sucesso para "${item.name || item.title}"!`)
-      fetchCatalog('11111111-1111-1111-1111-111111111111')
+      if (activeTab === 'option_models') {
+        fetchOptionModels()
+      } else {
+        fetchCatalog('11111111-1111-1111-1111-111111111111')
+      }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao guardar')
     } finally {
@@ -523,7 +595,9 @@ export default function MultilingualManagementView() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] text-slate-500 dark:text-purple-300">Nome:</label>
+                      <label className="text-[10px] text-slate-500 dark:text-purple-300">
+                        {activeTab === 'option_models' ? 'Nome do Grupo:' : 'Nome:'}
+                      </label>
                       <input
                         type="text"
                         value={valNameEn}
@@ -534,12 +608,14 @@ export default function MultilingualManagementView() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] text-slate-500 dark:text-purple-300">Descrição:</label>
+                      <label className="text-[10px] text-slate-500 dark:text-purple-300">
+                        {activeTab === 'option_models' ? 'Subtítulo / Cota:' : 'Descrição:'}
+                      </label>
                       <input
                         type="text"
                         value={valDescEn}
-                        onChange={(e) => handleFieldChange(item.id, 'descriptionEn', e.target.value, item)}
-                        placeholder="English description..."
+                        onChange={(e) => handleFieldChange(item.id, activeTab === 'option_models' ? 'subtitleEn' : 'descriptionEn', e.target.value, item)}
+                        placeholder={activeTab === 'option_models' ? '+€0.50 from 3rd unit...' : 'English description...'}
                         className="w-full text-xs px-3 py-2 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-black/30 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -553,7 +629,9 @@ export default function MultilingualManagementView() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] text-slate-500 dark:text-purple-300">Nome:</label>
+                      <label className="text-[10px] text-slate-500 dark:text-purple-300">
+                        {activeTab === 'option_models' ? 'Nombre del Grupo:' : 'Nome:'}
+                      </label>
                       <input
                         type="text"
                         value={valNameEs}
@@ -564,17 +642,81 @@ export default function MultilingualManagementView() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] text-slate-500 dark:text-purple-300">Descrição:</label>
+                      <label className="text-[10px] text-slate-500 dark:text-purple-300">
+                        {activeTab === 'option_models' ? 'Subtítulo / Cota:' : 'Descrição:'}
+                      </label>
                       <input
                         type="text"
                         value={valDescEs}
-                        onChange={(e) => handleFieldChange(item.id, 'descriptionEs', e.target.value, item)}
-                        placeholder="Descripción en español..."
+                        onChange={(e) => handleFieldChange(item.id, activeTab === 'option_models' ? 'subtitleEs' : 'descriptionEs', e.target.value, item)}
+                        placeholder={activeTab === 'option_models' ? '+0,50 € a partir de la 3ª ud...' : 'Descripción en español...'}
                         className="w-full text-xs px-3 py-2 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-black/30 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                   </div>
                 </div>
+
+                {/* Bloco de Ingredientes & Opcionais para Modelos de Opções */}
+                {activeTab === 'option_models' && Array.isArray(item.options) && item.options.length > 0 && (
+                  <div className="pt-3 border-t border-purple-100 dark:border-white/10 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                        <Layers className="h-3.5 w-3.5 text-pink-600 dark:text-pink-400" />
+                        <span>Itens & Opcionais deste Grupo ({item.options.length})</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Tradução individual de cada ingrediente / opcional
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto pr-1">
+                      {item.options.map((opt: any) => {
+                        const currentModelOptions = draft?.options || item.options || []
+                        const currentOpt = currentModelOptions.find((o: any) => o.id === opt.id) || opt
+                        const optNameEn = currentOpt.nameEn || ''
+                        const optNameEs = currentOpt.nameEs || ''
+
+                        return (
+                          <div
+                            key={opt.id}
+                            className="p-2.5 rounded-xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center text-xs"
+                          >
+                            <div className="sm:col-span-4 flex items-center justify-between pr-2">
+                              <span className="font-bold text-slate-900 dark:text-white truncate">
+                                {opt.name}
+                              </span>
+                              {Number(opt.price) > 0 && (
+                                <Badge variant="outline" className="text-[9px] font-mono font-bold text-emerald-600 border-emerald-300">
+                                  +{opt.price}€
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="sm:col-span-4">
+                              <input
+                                type="text"
+                                value={optNameEn}
+                                onChange={(e) => handleOptionItemChange(item.id, opt.id, 'nameEn', e.target.value, item)}
+                                placeholder="🇺🇸 English..."
+                                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-purple-200 dark:border-white/15 bg-white dark:bg-black/30 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              />
+                            </div>
+
+                            <div className="sm:col-span-4">
+                              <input
+                                type="text"
+                                value={optNameEs}
+                                onChange={(e) => handleOptionItemChange(item.id, opt.id, 'nameEs', e.target.value, item)}
+                                placeholder="🇪🇸 Español..."
+                                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-purple-200 dark:border-white/15 bg-white dark:bg-black/30 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })

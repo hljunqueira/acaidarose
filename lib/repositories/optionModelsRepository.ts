@@ -7,6 +7,8 @@ export interface OptionModelRecord {
   id: string
   tenantId?: string | null
   name: string
+  nameEn?: string | null
+  nameEs?: string | null
   priceType: 'Gratis' | 'Individual'
   additionalPrice: number
   minQty: number
@@ -18,6 +20,8 @@ export interface OptionModelRecord {
   active: boolean
   displayOrder?: number
   subtitle?: string | null
+  subtitleEn?: string | null
+  subtitleEs?: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -26,8 +30,8 @@ export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID, a
   try {
     const activeFilter = activeOnly ? 'AND active = true' : ''
     const res = await query(
-      `SELECT id, tenant_id, name, price_type, additional_price, min_qty, max_qty, 
-              allow_item_quantity, is_required, show_detailed, options, active, display_order, subtitle, created_at, updated_at
+      `SELECT id, tenant_id, name, name_en, name_es, price_type, additional_price, min_qty, max_qty, 
+              allow_item_quantity, is_required, show_detailed, options, active, display_order, subtitle, subtitle_en, subtitle_es, created_at, updated_at
        FROM product_option_models
        WHERE (tenant_id = $1 OR tenant_id = $2 OR tenant_id IS NULL) ${activeFilter}
        ORDER BY display_order ASC, created_at ASC`,
@@ -38,6 +42,8 @@ export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID, a
       id: r.id,
       tenantId: r.tenant_id,
       name: r.name,
+      nameEn: r.name_en || null,
+      nameEs: r.name_es || null,
       priceType: r.price_type === 'Individual' ? 'Individual' : 'Gratis',
       additionalPrice: Number(r.additional_price || 0),
       minQty: Number(r.min_qty || 0),
@@ -49,6 +55,8 @@ export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID, a
       active: r.active !== false,
       displayOrder: Number(r.display_order || 0),
       subtitle: r.subtitle || null,
+      subtitleEn: r.subtitle_en || null,
+      subtitleEs: r.subtitle_es || null,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }))
@@ -70,17 +78,23 @@ export async function createOptionModel(tenantId: string = AVEIRO_HQ_ID, modelDa
   const options = Array.isArray(modelData.options) ? modelData.options : []
   const displayOrder = Number(modelData.displayOrder || 0)
   const subtitle = modelData.subtitle !== undefined ? (modelData.subtitle ? String(modelData.subtitle).trim() : null) : null
+  const nameEn = modelData.nameEn !== undefined ? (modelData.nameEn ? String(modelData.nameEn).trim() : null) : null
+  const nameEs = modelData.nameEs !== undefined ? (modelData.nameEs ? String(modelData.nameEs).trim() : null) : null
+  const subtitleEn = modelData.subtitleEn !== undefined ? (modelData.subtitleEn ? String(modelData.subtitleEn).trim() : null) : null
+  const subtitleEs = modelData.subtitleEs !== undefined ? (modelData.subtitleEs ? String(modelData.subtitleEs).trim() : null) : null
 
   const res = await query(
     `INSERT INTO product_option_models (
-      id, tenant_id, name, price_type, additional_price, min_qty, max_qty, 
-      allow_item_quantity, is_required, show_detailed, options, active, display_order, subtitle
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, true, $12, $13)
+      id, tenant_id, name, name_en, name_es, price_type, additional_price, min_qty, max_qty, 
+      allow_item_quantity, is_required, show_detailed, options, active, display_order, subtitle, subtitle_en, subtitle_es
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, true, $14, $15, $16, $17)
     RETURNING *`,
     [
       id,
       tenantId,
       modelData.name,
+      nameEn,
+      nameEs,
       priceType,
       additionalPrice,
       minQty,
@@ -91,6 +105,8 @@ export async function createOptionModel(tenantId: string = AVEIRO_HQ_ID, modelDa
       JSON.stringify(options),
       displayOrder,
       subtitle,
+      subtitleEn,
+      subtitleEs,
     ]
   )
 
@@ -123,6 +139,8 @@ export async function createOptionModel(tenantId: string = AVEIRO_HQ_ID, modelDa
     id: created.id,
     tenantId: created.tenant_id,
     name: created.name,
+    nameEn: created.name_en || null,
+    nameEs: created.name_es || null,
     priceType: created.price_type,
     additionalPrice: Number(created.additional_price || 0),
     minQty: Number(created.min_qty || 0),
@@ -134,6 +152,8 @@ export async function createOptionModel(tenantId: string = AVEIRO_HQ_ID, modelDa
     active: created.active,
     displayOrder: created.display_order,
     subtitle: created.subtitle || null,
+    subtitleEn: created.subtitle_en || null,
+    subtitleEs: created.subtitle_es || null,
   }
 }
 
@@ -149,10 +169,16 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
   const displayOrder = Number(modelData.displayOrder || 0)
   const activeParam = modelData.active !== undefined ? Boolean(modelData.active) : null
   const subtitle = modelData.subtitle !== undefined ? (modelData.subtitle ? String(modelData.subtitle).trim() : null) : null
+  const nameEn = modelData.nameEn !== undefined ? (modelData.nameEn ? String(modelData.nameEn).trim() : null) : null
+  const nameEs = modelData.nameEs !== undefined ? (modelData.nameEs ? String(modelData.nameEs).trim() : null) : null
+  const subtitleEn = modelData.subtitleEn !== undefined ? (modelData.subtitleEn ? String(modelData.subtitleEn).trim() : null) : null
+  const subtitleEs = modelData.subtitleEs !== undefined ? (modelData.subtitleEs ? String(modelData.subtitleEs).trim() : null) : null
 
   const res = await query(
     `UPDATE product_option_models
      SET name = COALESCE($2, name),
+         name_en = CASE WHEN $15::boolean THEN $16 ELSE name_en END,
+         name_es = CASE WHEN $17::boolean THEN $18 ELSE name_es END,
          price_type = $3,
          additional_price = $4,
          min_qty = $5,
@@ -164,6 +190,8 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
          display_order = COALESCE($11, display_order),
          active = COALESCE($12, active),
          subtitle = CASE WHEN $13::boolean THEN $14 ELSE subtitle END,
+         subtitle_en = CASE WHEN $19::boolean THEN $20 ELSE subtitle_en END,
+         subtitle_es = CASE WHEN $21::boolean THEN $22 ELSE subtitle_es END,
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1
      RETURNING *`,
@@ -182,6 +210,14 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
       activeParam,
       modelData.subtitle !== undefined,
       subtitle,
+      modelData.nameEn !== undefined,
+      nameEn,
+      modelData.nameEs !== undefined,
+      nameEs,
+      modelData.subtitleEn !== undefined,
+      subtitleEn,
+      modelData.subtitleEs !== undefined,
+      subtitleEs,
     ]
   )
 
@@ -225,6 +261,8 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
             ...g,
             id: updated.id,
             name: updated.name,
+            nameEn: updated.name_en || g.nameEn,
+            nameEs: updated.name_es || g.nameEs,
             priceType: updated.price_type,
             additionalPrice: Number(updated.additional_price || 0),
             minQty: Number(updated.min_qty || 0),
@@ -235,6 +273,8 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
             options: updated.options || [],
             active: updated.active !== false,
             subtitle: updated.subtitle || g.subtitle || undefined,
+            subtitleEn: updated.subtitle_en || g.subtitleEn || undefined,
+            subtitleEs: updated.subtitle_es || g.subtitleEs || undefined,
           }
         }
         return g

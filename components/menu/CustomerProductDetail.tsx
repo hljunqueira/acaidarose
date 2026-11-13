@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Check, Plus, Minus } from 'lucide-react'
 import { useCustomerTheme } from '@/lib/hooks/useIsolatedTheme'
+import { useLanguageStore } from '@/lib/stores/languageStore'
+import { getLocalizedName, getLocalizedSubtitle, getLocalizedDescription } from '@/lib/i18n/localization'
 
 interface CustomerProductDetailProps {
   container: ProductContainer | null
@@ -49,6 +51,7 @@ export default function CustomerProductDetail({
   viewOnly = false,
 }: CustomerProductDetailProps) {
   const { isDark: isCustomerDark } = useCustomerTheme()
+  const { language } = useLanguageStore()
   if (!container) return null
 
   // Filtra bases e opcionais ativos (itens invisíveis são ocultados)
@@ -435,24 +438,54 @@ export default function CustomerProductDetail({
   const video = container.videoUrl || null
   const imageSrc = container.image || container.videoPoster || null
 
+  const localizedContainerName = getLocalizedName(container, language) || container.name
+
   const modalTitle = useMemo(() => {
-    if (viewOnly) return `Ingredientes: ${container.name}`
+    if (viewOnly) {
+      if (language === 'en') return `Ingredients: ${localizedContainerName}`
+      if (language === 'es') return `Ingredientes: ${localizedContainerName}`
+      return `Ingredientes: ${container.name}`
+    }
     const nameLower = (container.name || '').toLowerCase()
     if (nameLower.includes('copo')) {
+      if (language === 'en') return `Customize your ${localizedContainerName}`
+      if (language === 'es') return `Personaliza tu ${localizedContainerName}`
       return `Personalize o seu ${container.name}`
     }
     if (nameLower.includes('sensação') || nameLower.includes('sensacao')) {
-      if (containerFormat === 'CAIXA') return 'Personalize a sua Caixinha Plástica Sensação 750gr'
-      if (containerFormat === 'TACA') return 'Personalize a sua Taça Sensação 750gr'
+      if (containerFormat === 'CAIXA') {
+        if (language === 'en') return 'Customize your Plastic Box 750gr'
+        if (language === 'es') return 'Personaliza tu Caja de Plástico 750gr'
+        return 'Personalize a sua Caixinha Plástica Sensação 750gr'
+      }
+      if (containerFormat === 'TACA') {
+        if (language === 'en') return 'Customize your Bowl 750gr'
+        if (language === 'es') return 'Personaliza tu Bol 750gr'
+        return 'Personalize a sua Taça Sensação 750gr'
+      }
+      if (language === 'en') return 'Customize your Bowl or Box 750gr'
+      if (language === 'es') return 'Personaliza tu Bol o Caja 750gr'
       return 'Personalize a sua Taça ou Caixa Sensação 750gr'
     }
     if (nameLower.includes('família') || nameLower.includes('familia')) {
-      if (containerFormat === 'CAIXA') return 'Personalize a sua Caixinha Plástica Família 1kg'
-      if (containerFormat === 'TACA') return 'Personalize a sua Taça Família 1kg'
+      if (containerFormat === 'CAIXA') {
+        if (language === 'en') return 'Customize your Plastic Box 1kg'
+        if (language === 'es') return 'Personaliza tu Caja de Plástico 1kg'
+        return 'Personalize a sua Caixinha Plástica Família 1kg'
+      }
+      if (containerFormat === 'TACA') {
+        if (language === 'en') return 'Customize your Bowl 1kg'
+        if (language === 'es') return 'Personaliza tu Bol 1kg'
+        return 'Personalize a sua Taça Família 1kg'
+      }
+      if (language === 'en') return 'Customize your Bowl or Box 1kg'
+      if (language === 'es') return 'Personaliza tu Bol o Caja 1kg'
       return 'Personalize a sua Taça ou Caixa Família 1kg'
     }
+    if (language === 'en') return `Customize your ${localizedContainerName}`
+    if (language === 'es') return `Personaliza tu ${localizedContainerName}`
     return `Personalize o seu ${container.name}`
-  }, [viewOnly, container.name, containerFormat])
+  }, [viewOnly, container.name, localizedContainerName, containerFormat, language])
 
   return (
     <Dialog open={Boolean(container)} onOpenChange={(open) => !open && onClose()}>
@@ -492,20 +525,20 @@ export default function CustomerProductDetail({
 
             <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50/80 border border-purple-100 dark:bg-white/5 dark:border-white/10 space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-sm text-slate-900 dark:text-white">{container.name}</span>
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white">{localizedContainerName}</span>
                 <span className="font-black text-fuchsia-600 dark:text-fuchsia-300 font-mono text-sm">
                   {formatCurrency(container.precoBase)}
                 </span>
               </div>
               {container.description && container.description.trim() ? (
                 <p className="text-xs text-slate-600 dark:text-purple-200/70 leading-relaxed font-medium">
-                  {container.description.trim()}
+                  {getLocalizedDescription(container, language) || container.description.trim()}
                 </p>
               ) : !hasDynamicGroups && !isSomenteCreme ? (
                 <p className="text-xs text-slate-600 dark:text-purple-200/70 leading-relaxed font-medium">
                   {isUnlimited
-                    ? 'Frutas frescas e acompanhamentos tradicionais à vontade.'
-                    : `Inclui até ${maxFrutas} frutas e até ${maxToppingsGratis} acompanhamentos.`}
+                    ? (language === 'en' ? 'Fresh fruits and traditional toppings unlimited.' : language === 'es' ? 'Frutas frescas y acompañamientos tradicionales ilimitados.' : 'Frutas frescas e acompanhamentos tradicionais à vontade.')
+                    : (language === 'en' ? `Includes up to ${maxFrutas} fruits and up to ${maxToppingsGratis} toppings.` : language === 'es' ? `Incluye hasta ${maxFrutas} frutas y hasta ${maxToppingsGratis} acompañamientos.` : `Inclui até ${maxFrutas} frutas e até ${maxToppingsGratis} acompanhamentos.`)}
                 </p>
               ) : null}
             </div>
@@ -513,17 +546,19 @@ export default function CustomerProductDetail({
             {/* Resumo da Composição e Acréscimos em Tempo Real */}
             <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200/80 dark:bg-white/5 dark:border-white/10 space-y-2 text-left">
               <div className="text-xs font-black text-purple-950 dark:text-white uppercase tracking-wider">
-                Resumo dos Valores:
+                {language === 'en' ? 'Price Summary:' : language === 'es' ? 'Resumen de Precios:' : 'Resumo dos Valores:'}
               </div>
               <div className="space-y-1.5 text-xs text-slate-700 dark:text-purple-200/80 font-mono">
                 <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-purple-200">Preço Base:</span>
+                  <span className="text-slate-600 dark:text-purple-200">
+                    {language === 'en' ? 'Base Price:' : language === 'es' ? 'Precio Base:' : 'Preço Base:'}
+                  </span>
                   <span className="text-slate-900 dark:text-white font-bold">{formatCurrency(basePrice)}</span>
                 </div>
                 {hasDynamicGroups ? (
                   dynamicGroupsPrice > 0 && (
                     <div className="flex justify-between text-emerald-700 dark:text-emerald-300 font-semibold">
-                      <span>Adicionais Escolhidos:</span>
+                      <span>{language === 'en' ? 'Selected Add-ons:' : language === 'es' ? 'Adicionales Elegidos:' : 'Adicionais Escolhidos:'}</span>
                       <span>+{formatCurrency(dynamicGroupsPrice)}</span>
                     </div>
                   )
@@ -531,26 +566,26 @@ export default function CustomerProductDetail({
                   <>
                     {extraBasesCount > 0 && (
                       <div className="flex justify-between text-emerald-700 dark:text-emerald-300 font-semibold">
-                        <span>{extraBasesCount}x Creme Extra (+2€):</span>
+                        <span>{extraBasesCount}x {language === 'en' ? 'Extra Cream (+2€)' : language === 'es' ? 'Crema Extra (+2€)' : 'Creme Extra (+2€)'}:</span>
                         <span>+{formatCurrency(extraBasesPrice)}</span>
                       </div>
                     )}
                     {extraToppingsCount > 0 && (
                       <div className="flex justify-between text-emerald-700 dark:text-emerald-300 font-semibold">
-                        <span>{extraToppingsCount}x Topping (+0,50€):</span>
+                        <span>{extraToppingsCount}x {language === 'en' ? 'Topping (+€0.50)' : language === 'es' ? 'Topping (+0,50€)' : 'Topping (+0,50€)'}:</span>
                         <span>+{formatCurrency(extraToppingsPrice)}</span>
                       </div>
                     )}
                     {extraPremiumsPrice > 0 && (
                       <div className="flex justify-between text-amber-700 dark:text-amber-300 font-semibold">
-                        <span>Adicionais Especiais:</span>
+                        <span>{language === 'en' ? 'Special Syrups:' : language === 'es' ? 'Salsas Especiales:' : 'Adicionais Especiais:'}</span>
                         <span>+{formatCurrency(extraPremiumsPrice)}</span>
                       </div>
                     )}
                   </>
                 )}
                 <div className="border-t border-purple-200 dark:border-white/10 pt-1.5 flex justify-between text-xs text-fuchsia-700 dark:text-fuchsia-300 font-black">
-                  <span>Total Deste Item:</span>
+                  <span>{language === 'en' ? 'Total This Item:' : language === 'es' ? 'Total de este artículo:' : 'Total Deste Item:'}</span>
                   <span>{formatCurrency(unitTotal)}</span>
                 </div>
               </div>
@@ -564,14 +599,20 @@ export default function CustomerProductDetail({
               <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-white/5 border-2 border-purple-300 dark:border-purple-600/40 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>Escolha o Tipo de Embalagem</span>
+                    <span>
+                      {language === 'en' ? 'Choose Container Type' : language === 'es' ? 'Elige el Tipo de Envase' : 'Escolha o Tipo de Embalagem'}
+                    </span>
                     <Badge className="bg-pink-600 text-white font-bold text-[9px] py-0 px-1.5">
-                      Obrigatório
+                      {language === 'en' ? 'Required' : language === 'es' ? 'Obligatorio' : 'Obrigatório'}
                     </Badge>
                   </label>
                   {containerFormat && (
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      ✓ Selecionado: {containerFormat === 'TACA' ? 'Taça' : 'Caixinha Plástica'}
+                      {language === 'en'
+                        ? `✓ Selected: ${containerFormat === 'TACA' ? 'Bowl' : 'Plastic Box'}`
+                        : language === 'es'
+                        ? `✓ Seleccionado: ${containerFormat === 'TACA' ? 'Bol' : 'Caja de Plástico'}`
+                        : `✓ Selecionado: ${containerFormat === 'TACA' ? 'Taça' : 'Caixinha Plástica'}`}
                     </span>
                   )}
                 </div>
@@ -586,11 +627,13 @@ export default function CustomerProductDetail({
                       }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-sm text-slate-900 dark:text-white">Taça</span>
+                      <span className="font-black text-sm text-slate-900 dark:text-white">
+                        {language === 'en' ? 'Bowl' : language === 'es' ? 'Bol' : 'Taça'}
+                      </span>
                       {containerFormat === 'TACA' && <Check className="h-4 w-4 text-purple-700 dark:text-pink-400 stroke-[3]" />}
                     </div>
                     <span className="text-[11px] text-slate-600 dark:text-purple-200/80 mt-1">
-                      Para consumir no salão / local
+                      {language === 'en' ? 'For dine-in consumption' : language === 'es' ? 'Para consumir en el local' : 'Para consumir no salão / local'}
                     </span>
                   </button>
 
@@ -603,11 +646,13 @@ export default function CustomerProductDetail({
                       }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-sm text-slate-900 dark:text-white">Caixinha Plástica</span>
+                      <span className="font-black text-sm text-slate-900 dark:text-white">
+                        {language === 'en' ? 'Plastic Box' : language === 'es' ? 'Caja de Plástico' : 'Caixinha Plástica'}
+                      </span>
                       {containerFormat === 'CAIXA' && <Check className="h-4 w-4 text-purple-700 dark:text-pink-400 stroke-[3]" />}
                     </div>
                     <span className="text-[11px] text-slate-600 dark:text-purple-200/80 mt-1">
-                      Ideal para takeaway / levar para casa
+                      {language === 'en' ? 'Ideal for takeaway / to go' : language === 'es' ? 'Ideal para llevar a casa' : 'Ideal para takeaway / levar para casa'}
                     </span>
                   </button>
                 </div>
@@ -632,7 +677,11 @@ export default function CustomerProductDetail({
                   const isPartialQuota = group.priceType === 'Gratis' && hasAddCharge && !!group.allowItemQuantity
                   const isUnlimitedCounter = isPartialQuota || (group.priceType === 'Individual' && !!group.allowItemQuantity)
 
+                  const localizedSubtitleField = getLocalizedSubtitle(group, language)
                   const visualSubtitle = (() => {
+                    if (localizedSubtitleField && typeof localizedSubtitleField === 'string' && localizedSubtitleField.trim()) {
+                      return localizedSubtitleField.trim()
+                    }
                     if (group.subtitle && typeof group.subtitle === 'string' && group.subtitle.trim()) {
                       return group.subtitle.trim()
                     }
@@ -640,24 +689,40 @@ export default function CustomerProductDetail({
                       return group.customLabel.trim()
                     }
                     if (isAcaiCopo) {
+                      if (language === 'en') return hasAddCharge ? `Extra cream +${formatCurrency(addPrice)}` : 'Included'
+                      if (language === 'es') return hasAddCharge ? `Crema extra +${formatCurrency(addPrice)}` : 'Incluido'
                       return hasAddCharge ? `Creme extra +${formatCurrency(addPrice)}` : 'Incluso'
                     }
                     if (group.priceType === 'Individual') {
+                      if (language === 'en') return hasAddCharge ? `+${formatCurrency(addPrice)}/un.` : 'Price per item'
+                      if (language === 'es') return hasAddCharge ? `+${formatCurrency(addPrice)}/ud.` : 'Precio por unidad'
                       return hasAddCharge ? `+${formatCurrency(addPrice)}/un.` : 'Valor por item'
                     }
                     if (hasAddCharge) {
+                      if (language === 'en') {
+                        if (maxFree > 1) return `+${formatCurrency(addPrice)} from ${maxFree + 1}th unit`
+                        if (maxFree === 1) return `+${formatCurrency(addPrice)} from 2nd unit`
+                        return `+${formatCurrency(addPrice)}/unit`
+                      }
+                      if (language === 'es') {
+                        if (maxFree > 1) return `+${formatCurrency(addPrice)} a partir de la ${maxFree + 1}ª ud.`
+                        if (maxFree === 1) return `+${formatCurrency(addPrice)} a partir de la 2ª ud.`
+                        return `+${formatCurrency(addPrice)}/ud.`
+                      }
                       if (maxFree > 1) return `+${formatCurrency(addPrice)} a partir da ${maxFree + 1}ª un.`
                       if (maxFree === 1) return `+${formatCurrency(addPrice)} a partir da 2ª un.`
                       return `+${formatCurrency(addPrice)}/un.`
                     }
-                    return 'Incluso'
+                    return language === 'en' ? 'Included' : language === 'es' ? 'Incluido' : 'Incluso'
                   })()
+
+                  const localizedGroupName = getLocalizedName(group, language) || group.name
 
                   return (
                     <div key={groupId || groupIdx} className="space-y-2.5 p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10">
                       <div className="flex items-center justify-between flex-wrap gap-1.5">
                         <label className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                          <span>{group.name}</span>
+                          <span>{localizedGroupName}</span>
                           <span className="text-purple-700 dark:text-purple-300 font-bold">
                             ({groupTotalCount}{isUnlimitedCounter ? '' : (group.maxQty ? `/${group.maxQty}` : '')})
                           </span>
@@ -673,7 +738,7 @@ export default function CustomerProductDetail({
                           )}
                           {isPartialQuota && groupTotalCount > 0 && groupTotalCount <= maxFree && (
                             <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
-                              Incluso
+                              {language === 'en' ? 'Included' : language === 'es' ? 'Incluido' : 'Incluso'}
                             </span>
                           )}
                         </label>
@@ -681,15 +746,19 @@ export default function CustomerProductDetail({
                         <div className="flex items-center gap-1.5">
                           {isAcaiCopo ? (
                             <Badge className="bg-purple-100 text-purple-900 border border-purple-200 dark:bg-white/10 dark:text-purple-200 font-bold text-[9px] py-0 px-1.5">
-                              Opcional
+                              {language === 'en' ? 'Optional' : language === 'es' ? 'Opcional' : 'Opcional'}
                             </Badge>
                           ) : isObligatory ? (
                             <Badge className="bg-purple-700 text-white font-bold text-[9px] py-0 px-1.5">
-                              Obrigatório {group.minQty ? `(Mín: ${group.minQty})` : ''}
+                              {language === 'en'
+                                ? `Required ${group.minQty ? `(Min: ${group.minQty})` : ''}`
+                                : language === 'es'
+                                ? `Obligatorio ${group.minQty ? `(Mín: ${group.minQty})` : ''}`
+                                : `Obrigatório ${group.minQty ? `(Mín: ${group.minQty})` : ''}`}
                             </Badge>
                           ) : (
                             <Badge className="bg-purple-100 text-purple-900 border border-purple-200 dark:bg-white/10 dark:text-purple-200 font-bold text-[9px] py-0 px-1.5">
-                              Opcional
+                              {language === 'en' ? 'Optional' : language === 'es' ? 'Opcional' : 'Opcional'}
                             </Badge>
                           )}
                           <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold">
@@ -704,6 +773,8 @@ export default function CustomerProductDetail({
                           {(group.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
                             const currentQty = groupSelections[opt.id] || 0
                             const isSelected = currentQty > 0
+                            const localizedOptName = getLocalizedName(opt, language) || opt.name
+
                             return (
                               <div
                                 key={opt.id}
@@ -714,11 +785,11 @@ export default function CustomerProductDetail({
                               >
                                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                   {opt.image ? (
-                                    <img src={opt.image} alt={opt.name} className="h-10 w-10 rounded-xl object-cover flex-shrink-0" />
+                                    <img src={opt.image} alt={localizedOptName} className="h-10 w-10 rounded-xl object-cover flex-shrink-0" />
                                   ) : null}
                                   <div className="min-w-0 flex-1">
                                     <div className="font-bold text-[11px] sm:text-xs text-purple-950 dark:text-white whitespace-normal break-words leading-snug">
-                                      {opt.name}
+                                      {localizedOptName}
                                     </div>
                                     {group.priceType === 'Individual' && Number(opt.price) > 0 && (
                                       <div className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
@@ -759,7 +830,11 @@ export default function CustomerProductDetail({
                                       }`}
                                   >
                                     {isSelected && <Check className="h-3.5 w-3.5" />}
-                                    <span>{isSelected ? 'Selecionado' : 'Escolher'}</span>
+                                    <span>
+                                      {isSelected
+                                        ? (language === 'en' ? 'Selected' : language === 'es' ? 'Seleccionado' : 'Selecionado')
+                                        : (language === 'en' ? 'Choose' : language === 'es' ? 'Elegir' : 'Escolher')}
+                                    </span>
                                   </button>
                                 )}
                               </div>
@@ -772,6 +847,8 @@ export default function CustomerProductDetail({
                           {(group.options || []).filter((opt: any) => opt.active !== false).map((opt: any) => {
                             const currentQty = groupSelections[opt.id] || 0
                             const isSelected = currentQty > 0
+                            const localizedOptName = getLocalizedName(opt, language) || opt.name
+
                             return (
                               <div
                                 key={opt.id}
@@ -783,7 +860,7 @@ export default function CustomerProductDetail({
                               >
                                 <div className="flex-1 min-w-0 pr-1 text-left">
                                   <div className="text-[11px] sm:text-xs font-semibold leading-snug whitespace-normal break-words">
-                                    {opt.name}
+                                    {localizedOptName}
                                   </div>
                                   {group.priceType === 'Individual' && Number(opt.price) > 0 && (
                                     <div className={`text-[10px] font-mono font-bold leading-none mt-0.5 ${isSelected ? 'text-pink-200' : 'text-emerald-600 dark:text-emerald-400'}`}>
@@ -1035,13 +1112,19 @@ export default function CustomerProductDetail({
             {/* ETAPA 5: OBSERVAÇÕES */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-800 dark:text-purple-200">
-                Observações:
+                {language === 'en' ? 'Special Instructions:' : language === 'es' ? 'Instrucciones Especiales:' : 'Observações:'}
               </label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: pouco leite condensado..."
+                placeholder={
+                  language === 'en'
+                    ? 'e.g. less condensed milk...'
+                    : language === 'es'
+                    ? 'Ej: poca leche condensada...'
+                    : 'Ex: pouco leite condensado...'
+                }
                 className="w-full h-11 px-3.5 rounded-2xl bg-white border border-purple-200 text-base sm:text-xs text-slate-900 placeholder:text-slate-400 dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder:text-purple-300/40 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 font-medium"
               />
             </div>
@@ -1052,7 +1135,9 @@ export default function CustomerProductDetail({
         <div className="px-6 py-4 border-t border-purple-100 dark:border-white/10 bg-white dark:bg-[#1e0333] flex items-center justify-between gap-4">
           <div>
             <div className="text-[10px] text-slate-500 dark:text-purple-300 font-bold uppercase">
-              {viewOnly ? 'Preço Base' : 'Total do Item'}
+              {viewOnly
+                ? (language === 'en' ? 'Base Price' : language === 'es' ? 'Precio Base' : 'Preço Base')
+                : (language === 'en' ? 'Item Total' : language === 'es' ? 'Total del Artículo' : 'Total do Item')}
             </div>
             <div className="text-xl sm:text-2xl font-black text-purple-950 dark:text-fuchsia-300 font-mono">
               {formatCurrency(viewOnly ? basePrice : lineTotal)}
@@ -1066,7 +1151,7 @@ export default function CustomerProductDetail({
                 onClick={onClose}
                 className="h-11 px-6 rounded-2xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-600/30 cursor-pointer"
               >
-                Fechar
+                {language === 'en' ? 'Close' : language === 'es' ? 'Cerrar' : 'Fechar'}
               </Button>
             ) : (
               <>
@@ -1076,14 +1161,14 @@ export default function CustomerProductDetail({
                   onClick={onClose}
                   className="text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-purple-200 dark:hover:text-white cursor-pointer"
                 >
-                  Cancelar
+                  {language === 'en' ? 'Cancel' : language === 'es' ? 'Cancelar' : 'Cancelar'}
                 </Button>
                 <Button
                   type="button"
                   onClick={handleConfirm}
                   className="h-11 px-6 rounded-2xl bg-gradient-to-r from-purple-700 via-fuchsia-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-600/30 cursor-pointer"
                 >
-                  Adicionar ao Pedido
+                  {language === 'en' ? 'Add to Order' : language === 'es' ? 'Añadir al Pedido' : 'Adicionar ao Pedido'}
                 </Button>
               </>
             )}
