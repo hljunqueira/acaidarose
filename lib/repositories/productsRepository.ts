@@ -86,12 +86,20 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
     }
 
     const availabilityMap = new Map<string, { isAvailable: boolean; isVisible: boolean }>()
+    const pausedItemIds = new Set<string>()
+    const pausedItemNames = new Set<string>()
+
     if (availabilityOverridesRes && availabilityOverridesRes.rows) {
       availabilityOverridesRes.rows.forEach((r: any) => {
+        const isAvail = r.is_available !== false
+        const isVis = r.is_visible !== false
         availabilityMap.set(r.product_id, {
-          isAvailable: r.is_available !== false,
-          isVisible: r.is_visible !== false,
+          isAvailable: isAvail,
+          isVisible: isVis,
         })
+        if (!isAvail || !isVis) {
+          pausedItemIds.add(String(r.product_id))
+        }
       })
     }
 
@@ -145,6 +153,10 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         const override = availabilityMap.get(row.id)
         const isVisible = override ? override.isVisible : !!row.active
         const isAvailable = override ? override.isAvailable : !!row.active
+        if (!isVisible || !isAvailable) {
+          pausedItemIds.add(String(row.id))
+          if (row.name) pausedItemNames.add(row.name.toLowerCase().trim())
+        }
         bases.push({
           id: row.id,
           name: row.name,
@@ -169,6 +181,10 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         const override = availabilityMap.get(row.id)
         const isVisible = override ? override.isVisible : !!row.active
         const isAvailable = override ? override.isAvailable : !!row.active
+        if (!isVisible || !isAvailable) {
+          pausedItemIds.add(String(row.id))
+          if (row.name) pausedItemNames.add(row.name.toLowerCase().trim())
+        }
         toppings.push({
           id: row.id,
           name: row.name,
@@ -243,23 +259,41 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
 
             if (canonicalModel) {
               const rawOpts = Array.isArray(canonicalModel.options) && canonicalModel.options.length > 0 ? canonicalModel.options : (g.options || [])
-              const localizedOpts = rawOpts.map((opt: any) => ({
-                ...opt,
-                nameEn: opt.nameEn || opt.name_en || opt.name,
-                nameEs: opt.nameEs || opt.name_es || opt.name,
-                descriptionEn: opt.descriptionEn || opt.description_en || opt.description || '',
-                descriptionEs: opt.descriptionEs || opt.description_es || opt.description || '',
-              }))
+              const localizedOpts = rawOpts.map((opt: any) => {
+                const optId = opt.id ? String(opt.id) : ''
+                const optNameLower = (opt.name || '').toLowerCase().trim()
+                const optOverride = optId ? availabilityMap.get(optId) : undefined
+
+                const containerOpt = Array.isArray(g.options)
+                  ? g.options.find((o: any) => (o.id && String(o.id) === optId) || (o.name && o.name.toLowerCase().trim() === optNameLower))
+                  : null
+
+                const isPaused =
+                  (optOverride !== undefined && (!optOverride.isAvailable || !optOverride.isVisible)) ||
+                  (optId && pausedItemIds.has(optId)) ||
+                  (optNameLower && pausedItemNames.has(optNameLower)) ||
+                  (containerOpt && containerOpt.active === false) ||
+                  opt.active === false
+
+                return {
+                  ...opt,
+                  nameEn: opt.nameEn || opt.name_en || opt.name,
+                  nameEs: opt.nameEs || opt.name_es || opt.name,
+                  descriptionEn: opt.descriptionEn || opt.description_en || opt.description || '',
+                  descriptionEs: opt.descriptionEs || opt.description_es || opt.description || '',
+                  active: !isPaused,
+                }
+              })
 
               return {
                 ...g,
                 id: canonicalModel.id,
-                name: canonicalModel.name || g.name,
-                nameEn: canonicalModel.name_en || g.nameEn || null,
-                nameEs: canonicalModel.name_es || g.nameEs || null,
-                subtitle: canonicalModel.subtitle || g.subtitle || undefined,
-                subtitleEn: canonicalModel.subtitle_en || g.subtitleEn || undefined,
-                subtitleEs: canonicalModel.subtitle_es || g.subtitleEs || undefined,
+                name: g.name || canonicalModel.name,
+                nameEn: g.nameEn || canonicalModel.name_en || null,
+                nameEs: g.nameEs || canonicalModel.name_es || null,
+                subtitle: g.subtitle || canonicalModel.subtitle || undefined,
+                subtitleEn: g.subtitleEn || canonicalModel.subtitle_en || undefined,
+                subtitleEs: g.subtitleEs || canonicalModel.subtitle_es || undefined,
                 priceType: canonicalModel.price_type || g.priceType,
                 additionalPrice: Number(canonicalModel.additional_price ?? g.additionalPrice ?? 0),
                 minQty: Number(canonicalModel.min_qty ?? g.minQty ?? 0),
@@ -277,11 +311,22 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
               nameEs: g.nameEs || null,
               subtitleEn: g.subtitleEn || null,
               subtitleEs: g.subtitleEs || null,
-              options: (g.options || []).map((opt: any) => ({
-                ...opt,
-                nameEn: opt.nameEn || opt.name_en || opt.name,
-                nameEs: opt.nameEs || opt.name_es || opt.name,
-              })),
+              options: (g.options || []).map((opt: any) => {
+                const optId = opt.id ? String(opt.id) : ''
+                const optNameLower = (opt.name || '').toLowerCase().trim()
+                const optOverride = optId ? availabilityMap.get(optId) : undefined
+                const isPaused =
+                  (optOverride !== undefined && (!optOverride.isAvailable || !optOverride.isVisible)) ||
+                  (optId && pausedItemIds.has(optId)) ||
+                  (optNameLower && pausedItemNames.has(optNameLower)) ||
+                  opt.active === false
+                return {
+                  ...opt,
+                  nameEn: opt.nameEn || opt.name_en || opt.name,
+                  nameEs: opt.nameEs || opt.name_es || opt.name,
+                  active: !isPaused,
+                }
+              }),
               active: g.active !== false && isGroupAvailable,
             }
           })
@@ -464,6 +509,34 @@ export async function toggleStoreItemStatus(
         [tenantId, productId, newAvailable, newVisible]
       )
     }
+
+    // Se o item for um opcional/fruta/creme/base conhecido por nome, propaga para todos os IDs equivalentes
+    if (productName && productName !== 'Item do cardápio') {
+      try {
+        const matchRes = await query(
+          `SELECT id, tenant_id FROM product_toppings WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+           UNION ALL
+           SELECT id, tenant_id FROM product_bases WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))`,
+          [productName]
+        )
+        for (const m of matchRes.rows || []) {
+          if (applyToAll || m.tenant_id === tenantId) {
+            await query(
+              `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+               VALUES ($1, $2, $3, $4, timezone('utc'::text, now()))
+               ON CONFLICT (tenant_id, product_id) 
+               DO UPDATE SET is_available = EXCLUDED.is_available, is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+              [m.tenant_id, m.id, newAvailable, newVisible]
+            )
+          }
+        }
+      } catch (errMatch) {
+        console.warn('Erro ao propagar override de opcional por nome:', errMatch)
+      }
+    }
+
+    // Notifica e invalida caches em tempo real
+    await bumpStoreCatalogVersion(applyToAll ? undefined : [tenantId])
 
     await recordAuditLog({
       tenantId,

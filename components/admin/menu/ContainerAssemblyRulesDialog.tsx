@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { SlidersHorizontal, Check } from 'lucide-react'
 import { useAuthStore } from '@/lib/stores/authStore'
+import { usePublishStore } from '@/lib/stores/publishStore'
 
 interface ContainerRuleItem {
   id: string
@@ -44,6 +45,7 @@ export default function ContainerAssemblyRulesDialog({
   onSaved,
 }: ContainerAssemblyRulesDialogProps) {
   const { authFetch } = useAuthStore()
+  const markDirty = usePublishStore((state) => state.markDirty)
   const [rules, setRules] = useState<ContainerRuleItem[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -175,6 +177,9 @@ export default function ContainerAssemblyRulesDialog({
         }
       }
       toast.success('Regras de montagem do açaí configuradas e salvas no banco de dados!')
+      if (tenantId) {
+        markDirty(tenantId, 'Regras de montagem do açaí configuradas', fetcher)
+      }
       if (onSaved) onSaved()
       onOpenChange(false)
     } catch (err: any) {
@@ -287,7 +292,7 @@ export default function ContainerAssemblyRulesDialog({
                       className="h-9 rounded-xl text-xs bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
                     />
                     <p className="text-[10px] text-purple-700/80 dark:text-purple-300/70 font-medium">
-                      {rule.isBaseFixed ? 'Açaí é fixo. +1 creme incluso grátis.' : 'Cliente escolhe os cremes livremente.'}
+                      {rule.isBaseFixed ? `Açaí é fixo. +${rule.limiteBases} creme(s) grátis incluído(s).` : 'Cliente escolhe os cremes livremente.'}
                     </p>
                   </div>
 

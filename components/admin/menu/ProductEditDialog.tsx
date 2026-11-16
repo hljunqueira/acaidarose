@@ -216,6 +216,10 @@ export default function ProductEditDialog({
       const initialCatName = matchedCategory ? matchedCategory.name : (item.category || item.categoryName || '')
       const weight = item.weightGrams ?? matchedCategory?.weightGrams ?? matchedCategory?.weight_grams ?? null
 
+      const basesGroup = (item.optionGroups || []).find((g: any) => g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base'))))
+      const frutasGroup = (item.optionGroups || []).find((g: any) => g.id === 'model-frutas' || (g.name && g.name.toLowerCase().includes('fruta')))
+      const toppingsGroup = (item.optionGroups || []).find((g: any) => g.id === 'model-toppings' || (g.name && (g.name.toLowerCase().includes('acompanhamento') || g.name.toLowerCase().includes('topping'))))
+
       setForm({
         name: item.name || '',
         description: item.description || '',
@@ -228,9 +232,9 @@ export default function ProductEditDialog({
         image: item.image || item.imageUrl || '',
         videoUrl: item.videoUrl || '',
         availableHours: item.availableHours || null,
-        limiteBases: item.limiteBases ?? 1,
-        limiteFrutas: item.limiteFrutas ?? 2,
-        limiteToppings: item.limiteToppings ?? 3,
+        limiteBases: item.limiteBases ?? item.limite_bases ?? basesGroup?.maxQty ?? 1,
+        limiteFrutas: item.limiteFrutas ?? item.limite_frutas ?? frutasGroup?.maxQty ?? 2,
+        limiteToppings: item.limiteToppings ?? item.limite_toppings ?? item.limiteComplementosGratis ?? item.limite_complementos_gratis ?? toppingsGroup?.maxQty ?? 3,
       })
     } else {
       // Novo item SEMPRE inicia sem modelos de opções vinculados (o usuário vincula se quiser)
@@ -333,7 +337,19 @@ export default function ProductEditDialog({
         )
 
         payload.productType = isAcaiContainer ? 'CONTAINER' : 'ITEM'
-        payload.optionGroups = linkedOptionGroups
+        const syncedOptionGroups = (linkedOptionGroups || []).map((g) => {
+          if (g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))) {
+            return { ...g, maxQty: Number(form.limiteBases ?? 1) }
+          }
+          if (g.id === 'model-frutas' || (g.name && g.name.toLowerCase().includes('fruta'))) {
+            return { ...g, maxQty: Number(form.limiteFrutas ?? 2) }
+          }
+          if (g.id === 'model-toppings' || (g.name && (g.name.toLowerCase().includes('acompanhamento') || g.name.toLowerCase().includes('topping')))) {
+            return { ...g, maxQty: Number(form.limiteToppings ?? 3) }
+          }
+          return g
+        })
+        payload.optionGroups = syncedOptionGroups
 
         if (isAcaiContainer) {
           payload.limiteBases = Number(form.limiteBases ?? 1)
@@ -627,6 +643,110 @@ export default function ProductEditDialog({
                     )
                   })}
                 </select>
+              </div>
+            )}
+
+            {collection === 'containers' && (
+              <div className="p-3.5 border border-purple-150 dark:border-white/10 rounded-xl bg-purple-50/40 dark:bg-white/5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-purple-950 dark:text-white">
+                    Cotas Inclusas no Copo/Taça:
+                  </Label>
+                  {!isSuperAdmin && (
+                    <span className="text-[10px] text-zinc-500 font-medium flex items-center gap-1">
+                      <Lock className="h-3 w-3" /> Padrão Master
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-purple-900 dark:text-purple-300">
+                      Cremes Inclusos:
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="10"
+                      disabled={!isSuperAdmin}
+                      value={form.limiteBases ?? 1}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        setForm({ ...form, limiteBases: val })
+                        setLinkedOptionGroups((prev) =>
+                          prev.map((g) => {
+                            if (g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))) {
+                              return { ...g, maxQty: val }
+                            }
+                            return g
+                          })
+                        )
+                      }}
+                      className="h-8 text-xs font-bold font-mono bg-white dark:bg-white/10 border-purple-200 dark:border-white/15"
+                    />
+                    <span className="text-[9px] text-purple-600 dark:text-purple-400 block leading-tight">
+                      Cota gratuita
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-purple-900 dark:text-purple-300">
+                      Frutas Inclusas:
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="999"
+                      disabled={!isSuperAdmin}
+                      value={form.limiteFrutas ?? 2}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        setForm({ ...form, limiteFrutas: val })
+                        setLinkedOptionGroups((prev) =>
+                          prev.map((g) => {
+                            if (g.id === 'model-frutas' || (g.name && g.name.toLowerCase().includes('fruta'))) {
+                              return { ...g, maxQty: val }
+                            }
+                            return g
+                          })
+                        )
+                      }}
+                      className="h-8 text-xs font-bold font-mono bg-white dark:bg-white/10 border-purple-200 dark:border-white/15"
+                    />
+                    <span className="text-[9px] text-purple-600 dark:text-purple-400 block leading-tight">
+                      999 = ilimitado
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-purple-900 dark:text-purple-300">
+                      Toppings Inclusos:
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="999"
+                      disabled={!isSuperAdmin}
+                      value={form.limiteToppings ?? 3}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        setForm({ ...form, limiteToppings: val })
+                        setLinkedOptionGroups((prev) =>
+                          prev.map((g) => {
+                            if (g.id === 'model-toppings' || (g.name && (g.name.toLowerCase().includes('acompanhamento') || g.name.toLowerCase().includes('topping')))) {
+                              return { ...g, maxQty: val }
+                            }
+                            return g
+                          })
+                        )
+                      }}
+                      className="h-8 text-xs font-bold font-mono bg-white dark:bg-white/10 border-purple-200 dark:border-white/15"
+                    />
+                    <span className="text-[9px] text-purple-600 dark:text-purple-400 block leading-tight">
+                      999 = ilimitado
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

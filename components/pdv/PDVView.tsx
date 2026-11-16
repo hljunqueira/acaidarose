@@ -131,7 +131,14 @@ export default function PDVView({
     if (!draft?.container) return null
     const weight = Number(draft.container.weightGrams) || 500
     const isUnlimited = weight >= 500
-    const maxBases = draft.container.limiteCremes || draft.container.limiteBases || 2
+    const isSomenteCreme = (draft.container.name || '').toLowerCase().includes('somente creme') || (draft.container.name || '').toLowerCase().includes('apenas creme')
+    const isBaseFixed = !isSomenteCreme
+    const maxFreeCremes = isBaseFixed
+      ? (draft.container.limiteCremes !== undefined && draft.container.limiteCremes !== null
+          ? Number(draft.container.limiteCremes)
+          : Math.max(1, (Number(draft.container.limiteBases) || 2) - 1))
+      : Number(draft.container.limiteCremes) || Number(draft.container.limiteBases) || 2
+
     const basesModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme'))
     const toppingsModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
     const frutasModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta'))
@@ -140,7 +147,10 @@ export default function PDVView({
     const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.5
     const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.5
 
-    const extraBases = Math.max(0, (draft.bases?.length || 0) - maxBases)
+    const selectedCremesList = isBaseFixed
+      ? (draft.bases || []).filter((b: any) => !b.name?.toLowerCase().includes('açaí tradicional'))
+      : (draft.bases || [])
+    const extraBases = Math.max(0, selectedCremesList.length - maxFreeCremes)
     const extraBasesVal = extraBases * additionalBasePrice
 
     const maxFrutas = draft.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)

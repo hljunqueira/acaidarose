@@ -36,6 +36,8 @@ export interface OptionItem {
 export interface OptionModelData {
   id?: string
   name: string
+  nameEn?: string
+  nameEs?: string
   priceType: 'Gratis' | 'Individual'
   additionalPrice?: number
   minQty: number
@@ -46,6 +48,8 @@ export interface OptionModelData {
   isBaseFixed?: boolean
   active?: boolean
   subtitle?: string
+  subtitleEn?: string
+  subtitleEs?: string
   options: OptionItem[]
 }
 
@@ -222,6 +226,10 @@ export default function OptionModelDialog({
       id: initialModel?.id || `model-${Date.now()}`,
       name: name.trim(),
       subtitle: subtitle.trim() || undefined,
+      nameEn: initialModel?.nameEn,
+      nameEs: initialModel?.nameEs,
+      subtitleEn: initialModel?.subtitleEn,
+      subtitleEs: initialModel?.subtitleEs,
       priceType,
       additionalPrice: Number(additionalPrice) || 0,
       minQty,

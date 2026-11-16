@@ -677,21 +677,39 @@ export default function CustomerProductDetail({
                   const isPartialQuota = group.priceType === 'Gratis' && hasAddCharge && !!group.allowItemQuantity
                   const isUnlimitedCounter = isPartialQuota || (group.priceType === 'Individual' && !!group.allowItemQuantity)
 
+                  const isOldHardcodedSubtitle = (group.subtitle || '').toLowerCase().includes('até 2 opções inclusas') || (getLocalizedSubtitle(group, language) || '').toLowerCase().includes('até 2 opções inclusas')
                   const localizedSubtitleField = getLocalizedSubtitle(group, language)
                   const visualSubtitle = (() => {
-                    if (localizedSubtitleField && typeof localizedSubtitleField === 'string' && localizedSubtitleField.trim()) {
+                    if (isAcaiCopo) {
+                      const freeExtraCremes = Math.max(0, maxFree - 1)
+                      if (language === 'en') {
+                        return freeExtraCremes === 1
+                          ? `Açaí included + 1 free cream (extra +${formatCurrency(addPrice)})`
+                          : freeExtraCremes > 1
+                            ? `Açaí included + ${freeExtraCremes} free creams (extra +${formatCurrency(addPrice)})`
+                            : `Açaí included (extra cream +${formatCurrency(addPrice)})`
+                      }
+                      if (language === 'es') {
+                        return freeExtraCremes === 1
+                          ? `Açaí incluido + 1 crema gratis (extra +${formatCurrency(addPrice)})`
+                          : freeExtraCremes > 1
+                            ? `Açaí incluido + ${freeExtraCremes} cremas gratis (extra +${formatCurrency(addPrice)})`
+                            : `Açaí incluido (crema extra +${formatCurrency(addPrice)})`
+                      }
+                      return freeExtraCremes === 1
+                        ? `Açaí incluso + 1 creme grátis (extra +${formatCurrency(addPrice)})`
+                        : freeExtraCremes > 1
+                          ? `Açaí incluso + ${freeExtraCremes} cremes grátis (extra +${formatCurrency(addPrice)})`
+                          : `Açaí incluso (cremes extra +${formatCurrency(addPrice)})`
+                    }
+                    if (localizedSubtitleField && !isOldHardcodedSubtitle && typeof localizedSubtitleField === 'string' && localizedSubtitleField.trim()) {
                       return localizedSubtitleField.trim()
                     }
-                    if (group.subtitle && typeof group.subtitle === 'string' && group.subtitle.trim()) {
+                    if (group.subtitle && !isOldHardcodedSubtitle && typeof group.subtitle === 'string' && group.subtitle.trim()) {
                       return group.subtitle.trim()
                     }
                     if (group.customLabel && typeof group.customLabel === 'string' && group.customLabel.trim()) {
                       return group.customLabel.trim()
-                    }
-                    if (isAcaiCopo) {
-                      if (language === 'en') return hasAddCharge ? `Extra cream +${formatCurrency(addPrice)}` : 'Included'
-                      if (language === 'es') return hasAddCharge ? `Crema extra +${formatCurrency(addPrice)}` : 'Incluido'
-                      return hasAddCharge ? `Creme extra +${formatCurrency(addPrice)}` : 'Incluso'
                     }
                     if (group.priceType === 'Individual') {
                       if (language === 'en') return hasAddCharge ? `+${formatCurrency(addPrice)}/un.` : 'Price per item'
@@ -716,7 +734,10 @@ export default function CustomerProductDetail({
                     return language === 'en' ? 'Included' : language === 'es' ? 'Incluido' : 'Incluso'
                   })()
 
-                  const localizedGroupName = getLocalizedName(group, language) || group.name
+                  const rawLocalizedName = getLocalizedName(group, language) || group.name
+                  const localizedGroupName = (rawLocalizedName || '').toLowerCase().includes('cremes gelados inclusos')
+                    ? (language === 'en' ? 'Ice Creams & Bases' : language === 'es' ? 'Cremas Heladas y Bases' : 'Cremes Gelados & Bases')
+                    : rawLocalizedName
 
                   return (
                     <div key={groupId || groupIdx} className="space-y-2.5 p-3.5 rounded-2xl bg-purple-50/40 dark:bg-white/5 border border-purple-100 dark:border-white/10">

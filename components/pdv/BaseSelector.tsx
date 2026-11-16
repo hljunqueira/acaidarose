@@ -48,7 +48,9 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
   }, [selectedBases, isBaseFixed, acaiBase])
 
   const maxCremesInclusos = isBaseFixed
-    ? Number(container.limiteCremes) || 1
+    ? (container.limiteCremes !== undefined && container.limiteCremes !== null
+        ? Number(container.limiteCremes)
+        : Math.max(1, (Number(container.limiteBases) || 2) - 1))
     : Number(container.limiteCremes) || Number(container.limiteBases) || 2
 
   const cremesCount = selectedCremes.length
@@ -78,7 +80,7 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
           <p className="text-xs text-muted-foreground mt-0.5">
             {isBaseFixed ? (
               <>
-                <b>Açaí Tradicional incluso</b> + <b>{maxCremesInclusos} creme gelado incluso</b> no pedido • Cremes adicionais somam <b>+€ 2,00</b> cada
+                <b>Açaí Tradicional incluso</b> + <b>{maxCremesInclusos} {maxCremesInclusos === 1 ? 'creme gelado incluso' : 'cremes gelados inclusos'}</b> no pedido • Cremes adicionais somam <b>+€ 2,00</b> cada
               </>
             ) : (
               <>
