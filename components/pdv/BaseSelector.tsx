@@ -47,18 +47,24 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
     return selectedBases.filter((b) => !acaiBase || b.id !== acaiBase.id)
   }, [selectedBases, isBaseFixed, acaiBase])
 
-  const maxCremesInclusos = isBaseFixed
-    ? (container.limiteCremes !== undefined && container.limiteCremes !== null
-        ? Number(container.limiteCremes)
-        : Math.max(1, (Number(container.limiteBases) || 2) - 1))
-    : Number(container.limiteCremes) || Number(container.limiteBases) || 2
-
   const baseGroup = useMemo(() => {
     return (container.optionGroups || []).find(
       (g: any) => g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))
     )
   }, [container.optionGroups])
   const additionalPrice = Number(baseGroup?.additionalPrice ?? 2.00)
+
+  const maxCremesInclusos = isBaseFixed
+    ? (baseGroup?.maxQty !== undefined && baseGroup?.maxQty !== null
+        ? Number(baseGroup.maxQty)
+        : (container.limiteCremes !== undefined && container.limiteCremes !== null
+            ? Number(container.limiteCremes)
+            : Math.max(0, (Number(container.limiteBases) || 2) - 1)))
+    : (baseGroup?.maxQty !== undefined && baseGroup?.maxQty !== null
+        ? Number(baseGroup.maxQty)
+        : (container.limiteCremes !== undefined && container.limiteCremes !== null
+            ? Number(container.limiteCremes)
+            : (Number(container.limiteBases) || 2)))
 
   const cremesCount = selectedCremes.length
   const extraCount = Math.max(0, cremesCount - maxCremesInclusos)
@@ -87,7 +93,12 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
           <p className="text-xs text-muted-foreground mt-0.5">
             {isBaseFixed ? (
               <>
-                <b>Açaí Tradicional incluso</b> + <b>{maxCremesInclusos} {maxCremesInclusos === 1 ? 'creme gelado incluso' : 'cremes gelados inclusos'}</b> no pedido • Cremes adicionais somam <b>+€ {additionalPrice.toFixed(2)}</b> cada
+                <b>Açaí Tradicional incluso</b>
+                {maxCremesInclusos > 0 ? (
+                  <> + <b>{maxCremesInclusos} {maxCremesInclusos === 1 ? 'creme gelado incluso' : 'cremes gelados inclusos'}</b> no pedido</>
+                ) : (
+                  <> (sem cremes inclusos)</>
+                )} • Cremes adicionais somam <b>+€ {additionalPrice.toFixed(2)}</b> cada
               </>
             ) : (
               <>

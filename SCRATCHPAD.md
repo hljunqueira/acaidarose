@@ -1,5 +1,24 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Correção da Cobrança de Creme no Copo 250gr no PDV e Alinhamento dos Modelos de Opção [CONCLUÍDO & TESTADO]**:
+  - **Ações Realizadas**:
+    1. *Correção do Cálculo no PDV / Comanda (`cartStore.ts`, `BaseSelector.tsx` e `PDVView.tsx`)*:
+       - Em `lib/stores/cartStore.ts`: eliminada a coerção `Number(limiteCremes) || 1` que forçava 1 creme grátis quando a cota era 0. Agora lê diretamente de `basesModel?.maxQty` com fallback seguro para `limiteCremes` respeitando valores nulos/zero.
+       - Aplicada a mesma blindagem em `maxFrutas` e `maxToppings` contra coerções falsas em cota zero (`0 || ...`).
+       - Em `components/pdv/BaseSelector.tsx`: substituído `Math.max(1, ...)` por `Math.max(0, ...)` e ajustada a leitura de `baseGroup?.maxQty` para refletir a ausência de cremes inclusos no Copo 250gr. Mensagem visual agora destaca `Açaí Tradicional incluso (sem cremes inclusos) • Cremes adicionais somam +€ 2.00 cada`.
+       - Em `components/pdv/PDVView.tsx`: sincronizado `draftBreakdown` para ler `basesModel?.maxQty` prioritariamente, garantindo que o subtotal em tempo real e os badges de adicionais exibam imediatamente o acréscimo de +2,00 € no Copo 250gr.
+    2. *Limpeza e Promoção de Modelos de Opção no PostgreSQL (`product_option_models` e `product_containers`)*:
+       - Removidos os 2 modelos órfãos que nenhum produto utilizava: `"Escolha a Fruta"` e `"Escolha os sabores do seu copo"`.
+       - Promovidos para a tabela mestre `product_option_models` os 7 modelos reais utilizados em produtos: `"Preparação do Sumo"`, `"Adoçamento"`, `"Gelo"`, `"Opção de Leite"`, `"Tipo de Leite"`, `"Ponto da Textura"` e `"Turbinar Milk Shake"`.
+       - Sincronizados 48 produtos em `product_containers` para utilizarem os novos IDs canônicos UUID dos modelos.
+       - Versão do catálogo incrementada em todas as lojas em `store_catalog_versions`.
+    3. *Validação & Gate de Qualidade*:
+       - Simulação unitária executada: Copo 250gr com 0 cremes = 6,50 €; com 1 creme extra = 8,50 € (+2,00 €); com 2 cremes extras = 10,50 € (+4,00 €).
+       - Varredura de integridade: 0 grupos de opções desvinculados no catálogo.
+       - `tsc --noEmit` executado com código 0 (zero erros de TypeScript).
+       - `npm run build` compilou com sucesso absoluto todas as 45 rotas (0 erros).
+
+
 - **Correção da Persistência de Subtítulo, Remoção de Estáticos & Modal com Diff Real [CONCLUÍDO & TESTADO]**:
   - **Ações Realizadas**:
     1. *Prioridade Absoluta do Banco de Dados no Cardápio (`CustomerProductDetail.tsx`)*:

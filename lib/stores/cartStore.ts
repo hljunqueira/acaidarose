@@ -25,7 +25,7 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
   const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.50
   const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
 
-  // 1. Cremes / Bases Extras (Açaí fixo incluso + 1 creme incluso; ou 2 cremes para Somente Creme)
+  // 1. Cremes / Bases Extras (Açaí fixo incluso + cremes configurados no modelo/produto)
   const isSomenteCreme = (item.container.name || '').toLowerCase().includes('somente creme') || (item.container.name || '').toLowerCase().includes('apenas creme')
   const isBaseFixed = item.container.isBaseFixed !== undefined ? item.container.isBaseFixed : !isSomenteCreme
 
@@ -33,17 +33,40 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
   if (isBaseFixed) {
     const acaiBase = (item.bases || []).find((b) => (b.name || '').toLowerCase().includes('açaí') || (b.name || '').toLowerCase().includes('acai'))
     const cremesCount = (item.bases || []).filter((b) => !acaiBase || b.id !== acaiBase.id).length
-    const maxCremesGratis = Number(item.container.limiteCremes) || 1
+    const maxCremesGratis =
+      basesModel?.maxQty !== undefined && basesModel?.maxQty !== null
+        ? Number(basesModel.maxQty)
+        : (item.container.limiteCremes !== undefined && item.container.limiteCremes !== null
+            ? Number(item.container.limiteCremes)
+            : 1)
     extraBasesCount = Math.max(0, cremesCount - maxCremesGratis)
   } else {
-    const maxBases = Number(item.container.limiteCremes) || Number(item.container.limiteBases) || 2
+    const maxBases =
+      basesModel?.maxQty !== undefined && basesModel?.maxQty !== null
+        ? Number(basesModel.maxQty)
+        : (item.container.limiteCremes !== undefined && item.container.limiteCremes !== null
+            ? Number(item.container.limiteCremes)
+            : (item.container.limiteBases !== undefined && item.container.limiteBases !== null
+                ? Number(item.container.limiteBases)
+                : 2))
     extraBasesCount = Math.max(0, (item.bases?.length || 0) - maxBases)
   }
   const extraBasesPrice = extraBasesCount * additionalBasePrice
 
-  // 2. Frutas & Toppings Tradicionais vs Premium
-  const maxFrutas = item.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
-  const maxToppings = item.container.limiteToppings || (isUnlimited ? 999 : weight === 250 ? 3 : 4)
+  // 2. Frutas & Toppings Tradicionais vs Premium (Respeitando cota 0 sem cair em falsos fallbacks)
+  const maxFrutas =
+    frutasModel?.maxQty !== undefined && frutasModel?.maxQty !== null
+      ? Number(frutasModel.maxQty)
+      : (item.container.limiteFrutas !== undefined && item.container.limiteFrutas !== null
+          ? Number(item.container.limiteFrutas)
+          : (isUnlimited ? 999 : weight === 250 ? 2 : 3))
+
+  const maxToppings =
+    toppingsModel?.maxQty !== undefined && toppingsModel?.maxQty !== null
+      ? Number(toppingsModel.maxQty)
+      : (item.container.limiteToppings !== undefined && item.container.limiteToppings !== null
+          ? Number(item.container.limiteToppings)
+          : (isUnlimited ? 999 : weight === 250 ? 3 : 4))
 
   let frutasCount = 0
   let toppingsTradicionaisCount = 0
@@ -80,8 +103,19 @@ export function computeToppingBreakdown(item: CartDraftItem | CartItem): OrderIt
   const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.50
   const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
 
-  const maxFrutas = item.container?.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
-  const maxToppings = item.container?.limiteToppings || (isUnlimited ? 999 : weight === 250 ? 3 : 4)
+  const maxFrutas =
+    frutasModel?.maxQty !== undefined && frutasModel?.maxQty !== null
+      ? Number(frutasModel.maxQty)
+      : (item.container?.limiteFrutas !== undefined && item.container?.limiteFrutas !== null
+          ? Number(item.container.limiteFrutas)
+          : (isUnlimited ? 999 : weight === 250 ? 2 : 3))
+
+  const maxToppings =
+    toppingsModel?.maxQty !== undefined && toppingsModel?.maxQty !== null
+      ? Number(toppingsModel.maxQty)
+      : (item.container?.limiteToppings !== undefined && item.container?.limiteToppings !== null
+          ? Number(item.container.limiteToppings)
+          : (isUnlimited ? 999 : weight === 250 ? 3 : 4))
 
   let frutasVistas = 0
   let toppingsVistos = 0

@@ -133,11 +133,6 @@ export default function PDVView({
     const isUnlimited = weight >= 500
     const isSomenteCreme = (draft.container.name || '').toLowerCase().includes('somente creme') || (draft.container.name || '').toLowerCase().includes('apenas creme')
     const isBaseFixed = !isSomenteCreme
-    const maxFreeCremes = isBaseFixed
-      ? (draft.container.limiteCremes !== undefined && draft.container.limiteCremes !== null
-          ? Number(draft.container.limiteCremes)
-          : Math.max(1, (Number(draft.container.limiteBases) || 2) - 1))
-      : Number(draft.container.limiteCremes) || Number(draft.container.limiteBases) || 2
 
     const basesModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme'))
     const toppingsModel = (draft.container.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
@@ -147,20 +142,37 @@ export default function PDVView({
     const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.5
     const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.5
 
+    const maxFreeCremes = isBaseFixed
+      ? (basesModel?.maxQty !== undefined && basesModel?.maxQty !== null
+          ? Number(basesModel.maxQty)
+          : (draft.container.limiteCremes !== undefined && draft.container.limiteCremes !== null
+              ? Number(draft.container.limiteCremes)
+              : Math.max(0, (Number(draft.container.limiteBases) || 2) - 1)))
+      : (basesModel?.maxQty !== undefined && basesModel?.maxQty !== null
+          ? Number(basesModel.maxQty)
+          : (draft.container.limiteCremes !== undefined && draft.container.limiteCremes !== null
+              ? Number(draft.container.limiteCremes)
+              : (Number(draft.container.limiteBases) || 2)))
+
     const selectedCremesList = isBaseFixed
       ? (draft.bases || []).filter((b: any) => !b.name?.toLowerCase().includes('açaí tradicional'))
       : (draft.bases || [])
     const extraBases = Math.max(0, selectedCremesList.length - maxFreeCremes)
     const extraBasesVal = extraBases * additionalBasePrice
 
-    const maxFrutas = draft.container.limiteFrutas !== undefined && draft.container.limiteFrutas !== null
-      ? Number(draft.container.limiteFrutas)
-      : (isUnlimited ? 999 : null)
-    const maxToppings = draft.container.limiteToppings !== undefined && draft.container.limiteToppings !== null
-      ? Number(draft.container.limiteToppings)
-      : (draft.container.limiteComplementosGratis !== undefined && draft.container.limiteComplementosGratis !== null
-          ? Number(draft.container.limiteComplementosGratis)
+    const maxFrutas = frutasModel?.maxQty !== undefined && frutasModel?.maxQty !== null
+      ? Number(frutasModel.maxQty)
+      : (draft.container.limiteFrutas !== undefined && draft.container.limiteFrutas !== null
+          ? Number(draft.container.limiteFrutas)
           : (isUnlimited ? 999 : null))
+
+    const maxToppings = toppingsModel?.maxQty !== undefined && toppingsModel?.maxQty !== null
+      ? Number(toppingsModel.maxQty)
+      : (draft.container.limiteToppings !== undefined && draft.container.limiteToppings !== null
+          ? Number(draft.container.limiteToppings)
+          : (draft.container.limiteComplementosGratis !== undefined && draft.container.limiteComplementosGratis !== null
+              ? Number(draft.container.limiteComplementosGratis)
+              : (isUnlimited ? 999 : null)))
 
     let frutasCount = 0
     let toppingsCount = 0
