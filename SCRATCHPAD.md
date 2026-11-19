@@ -1,5 +1,20 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Deploy em Produção & Git Push (Alinhamento de Dados & Segurança P0) [CONCLUÍDO & EM PRODUÇÃO]**:
+  - **Git Commit & Push**:
+    - Commit `69010cd7`: `feat(catalog): alinhamento de dados, remocao de estaticos e blindagem de seguranca`
+    - Branch: `main` sincronizada com `origin/main` (`https://github.com/hljunqueira/acaidarose.git`).
+  - **Deploy em Produção (VPS 198.50.117.110)**:
+    - [1/5] Compilação Next.js 15.5.18 standalone: 45/45 rotas geradas com 0 erros.
+    - [2/5] Assets estáticos, públicos e certificados copiados para o standalone.
+    - [3/5] Compactação de bundle: `301.36 MB`.
+    - [4/5] Transferência SCP concluída com sucesso.
+    - [5/5] Extração e reinicialização do container Docker `acaidarose-app` (Node.js 20 Alpine) na porta 3000.
+  - **Validação Pós-Deploy em Produção**:
+    - `https://app.acaidarose.pt/api/health`: HTTP 200 OK (`HEALTHY`, PostgreSQL conectado com latência 2ms, 3 tenants ativos).
+    - `https://app.acaidarose.pt/api/catalog/publish`: HTTP 401 Unauthorized (bloqueio de acesso anônimo validado).
+    - `https://app.acaidarose.pt/api/qrcode-config`: Sanitização validada (chaves Ifthenpay protegidas).
+
 - **Execução do Plano de Alinhamento: Segurança P0, Desacoplamento de Arrays Estáticos & Motor Puro de Preços [CONCLUÍDO & TESTADO]**:
   - **Solicitação do Usuário**:
     1. Instalar o skill `awesome-skills/code-review-skill`.
