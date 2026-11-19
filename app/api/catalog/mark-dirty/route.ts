@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       field: body.field || null,
       previousValue: body.previousValue !== undefined ? body.previousValue : null,
       newValue: body.newValue !== undefined ? body.newValue : null,
+      details: Array.isArray(body.details) ? body.details : null,
       scope: applyToAll ? 'NETWORK' : 'STORE',
       tenantId,
       timestamp: new Date().toISOString(),

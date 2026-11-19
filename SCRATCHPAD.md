@@ -1,5 +1,29 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Correção da Persistência de Subtítulo, Remoção de Estáticos & Modal com Diff Real [CONCLUÍDO & TESTADO]**:
+  - **Ações Realizadas**:
+    1. *Prioridade Absoluta do Banco de Dados no Cardápio (`CustomerProductDetail.tsx`)*:
+       - Removida a trava `if (isAcaiCopo)` que sobrescrevia qualquer subtítulo com template estático.
+       - Removida a trava `isOldHardcodedSubtitle`.
+       - O cardápio agora renderiza estritamente o `group.subtitle` (ou `localizedSubtitleField`) vindo do PostgreSQL.
+    2. *Persistência Imediata de Modelos em `ProductEditDialog.tsx`*:
+       - `handleSaveOptionModel` agora realiza requisição `PUT /api/option-models/${id}` com `authFetch` imediatamente para a tabela `product_option_models`.
+    3. *Permissão de Limpeza de Subtítulo (`OptionModelDialog.tsx`)*:
+       - Alterado `subtitle: subtitle.trim() || undefined` para `subtitle: subtitle.trim() ? subtitle.trim() : null`, permitindo que o PostgreSQL grave `NULL` quando limpo.
+    4. *Precedência do Modelo Canônico (`productsRepository.ts` e `optionModelsRepository.ts`)*:
+       - O subtítulo da tabela mestre `product_option_models` tem precedência absoluta sobre JSONs antigos nos recipientes.
+    5. *Remoção de Estáticos no PDV (`ContainerSelector.tsx` e `BaseSelector.tsx`)*:
+       - Quantidade de bases lida dinamicamente de `c.limiteBases`.
+       - Valor adicional de bases lido dinamicamente de `additionalPrice`.
+    6. *Rastreabilidade de Alterações com Diff Real (`StoreCompanySettingsView.tsx` e `OptionModelsManagerDialog.tsx`)*:
+       - Calculado diff campo a campo: Denominação Social, NIF, Morada, Contactos, Wi-Fi e Horários dia a dia (De: "X" ➔ Para: "Y").
+    7. *Redesenho do Modal de Pendências (`PublishChangesBanner.tsx` e `MenuHierarchyView.tsx`)*:
+       - Largura expandida para `sm:max-w-xl`.
+       - Exibição de cards estilizados com o que realmente mudou (campo, valor anterior riscado em vermelho e valor novo em verde).
+    8. *Validação*:
+       - `tsc --noEmit` executado com código 0 (zero erros de TypeScript).
+       - `npm run build` compilou com sucesso absoluto todas as 45 rotas (0 erros).
+
 - **Deploy em Produção & Git Push (Alinhamento de Dados & Segurança P0) [CONCLUÍDO & EM PRODUÇÃO]**:
   - **Git Commit & Push**:
     - Commit `69010cd7`: `feat(catalog): alinhamento de dados, remocao de estaticos e blindagem de seguranca`

@@ -53,6 +53,13 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
         : Math.max(1, (Number(container.limiteBases) || 2) - 1))
     : Number(container.limiteCremes) || Number(container.limiteBases) || 2
 
+  const baseGroup = useMemo(() => {
+    return (container.optionGroups || []).find(
+      (g: any) => g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))
+    )
+  }, [container.optionGroups])
+  const additionalPrice = Number(baseGroup?.additionalPrice ?? 2.00)
+
   const cremesCount = selectedCremes.length
   const extraCount = Math.max(0, cremesCount - maxCremesInclusos)
 
@@ -80,11 +87,11 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
           <p className="text-xs text-muted-foreground mt-0.5">
             {isBaseFixed ? (
               <>
-                <b>Açaí Tradicional incluso</b> + <b>{maxCremesInclusos} {maxCremesInclusos === 1 ? 'creme gelado incluso' : 'cremes gelados inclusos'}</b> no pedido • Cremes adicionais somam <b>+€ 2,00</b> cada
+                <b>Açaí Tradicional incluso</b> + <b>{maxCremesInclusos} {maxCremesInclusos === 1 ? 'creme gelado incluso' : 'cremes gelados inclusos'}</b> no pedido • Cremes adicionais somam <b>+€ {additionalPrice.toFixed(2)}</b> cada
               </>
             ) : (
               <>
-                <b>{maxCremesInclusos} opções</b> inclusas no pedido • Opções adicionais somam <b>+€ 2,00</b> cada
+                <b>{maxCremesInclusos} opções</b> inclusas no pedido • Opções adicionais somam <b>+€ {additionalPrice.toFixed(2)}</b> cada
               </>
             )}
           </p>
@@ -92,7 +99,7 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
         <div className="flex items-center gap-2">
           {extraCount > 0 && (
             <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-xs font-black px-2.5 py-0.5">
-              +{extraCount}x Creme Extra (+€ {(extraCount * 2).toFixed(2)})
+              +{extraCount}x Creme Extra (+€ {(extraCount * additionalPrice).toFixed(2)})
             </Badge>
           )}
           <span

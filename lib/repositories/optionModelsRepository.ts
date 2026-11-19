@@ -272,9 +272,9 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
             showDetailed: !!updated.show_detailed,
             options: updated.options || [],
             active: updated.active !== false,
-            subtitle: updated.subtitle || g.subtitle || undefined,
-            subtitleEn: updated.subtitle_en || g.subtitleEn || undefined,
-            subtitleEs: updated.subtitle_es || g.subtitleEs || undefined,
+            subtitle: updated.subtitle !== undefined ? (updated.subtitle || undefined) : (g.subtitle || undefined),
+            subtitleEn: updated.subtitle_en !== undefined ? (updated.subtitle_en || undefined) : (g.subtitleEn || undefined),
+            subtitleEs: updated.subtitle_es !== undefined ? (updated.subtitle_es || undefined) : (g.subtitleEs || undefined),
           }
         }
         return g

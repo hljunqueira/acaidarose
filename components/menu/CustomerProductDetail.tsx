@@ -651,9 +651,20 @@ export default function CustomerProductDetail({
                   const isPartialQuota = group.priceType === 'Gratis' && hasAddCharge && !!group.allowItemQuantity
                   const isUnlimitedCounter = isPartialQuota || (group.priceType === 'Individual' && !!group.allowItemQuantity)
 
-                  const isOldHardcodedSubtitle = (group.subtitle || '').toLowerCase().includes('até 2 opções inclusas') || (getLocalizedSubtitle(group, language) || '').toLowerCase().includes('até 2 opções inclusas')
                   const localizedSubtitleField = getLocalizedSubtitle(group, language)
                   const visualSubtitle = (() => {
+                    // 1. Prioridade Absoluta: Subtítulo configurado no PostgreSQL (localizado ou padrão)
+                    if (localizedSubtitleField && typeof localizedSubtitleField === 'string' && localizedSubtitleField.trim()) {
+                      return localizedSubtitleField.trim()
+                    }
+                    if (group.subtitle && typeof group.subtitle === 'string' && group.subtitle.trim()) {
+                      return group.subtitle.trim()
+                    }
+                    if (group.customLabel && typeof group.customLabel === 'string' && group.customLabel.trim()) {
+                      return group.customLabel.trim()
+                    }
+
+                    // 2. Fallback dinâmico caso nenhum subtítulo tenha sido configurado no banco
                     if (isAcaiCopo) {
                       const freeExtraCremes = Math.max(0, maxFree - 1)
                       if (language === 'en') {
@@ -675,15 +686,6 @@ export default function CustomerProductDetail({
                         : freeExtraCremes > 1
                           ? `Açaí incluso + ${freeExtraCremes} cremes grátis (extra +${formatCurrency(addPrice)})`
                           : `Açaí incluso (cremes extra +${formatCurrency(addPrice)})`
-                    }
-                    if (localizedSubtitleField && !isOldHardcodedSubtitle && typeof localizedSubtitleField === 'string' && localizedSubtitleField.trim()) {
-                      return localizedSubtitleField.trim()
-                    }
-                    if (group.subtitle && !isOldHardcodedSubtitle && typeof group.subtitle === 'string' && group.subtitle.trim()) {
-                      return group.subtitle.trim()
-                    }
-                    if (group.customLabel && typeof group.customLabel === 'string' && group.customLabel.trim()) {
-                      return group.customLabel.trim()
                     }
                     if (group.priceType === 'Individual') {
                       if (language === 'en') return hasAddCharge ? `+${formatCurrency(addPrice)}/un.` : 'Price per item'

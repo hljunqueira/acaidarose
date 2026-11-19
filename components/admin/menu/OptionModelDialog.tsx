@@ -47,9 +47,9 @@ export interface OptionModelData {
   showDetailed?: boolean
   isBaseFixed?: boolean
   active?: boolean
-  subtitle?: string
-  subtitleEn?: string
-  subtitleEs?: string
+  subtitle?: string | null
+  subtitleEn?: string | null
+  subtitleEs?: string | null
   options: OptionItem[]
 }
 
@@ -225,7 +225,7 @@ export default function OptionModelDialog({
     const savedModel: OptionModelData = {
       id: initialModel?.id || `model-${Date.now()}`,
       name: name.trim(),
-      subtitle: subtitle.trim() || undefined,
+      subtitle: subtitle.trim() ? subtitle.trim() : null,
       nameEn: initialModel?.nameEn,
       nameEs: initialModel?.nameEs,
       subtitleEn: initialModel?.subtitleEn,

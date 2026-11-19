@@ -153,7 +153,55 @@ export default function OptionModelsManagerDialog({
       })
 
       if (tenantId) {
-        markDirty(tenantId, `Modelo de opções "${savedModel.name}" alterado`, authFetch)
+        const diffs: Array<{ field: string; label: string; previousValue: any; newValue: any }> = []
+        if (editingModel) {
+          if (editingModel.name !== savedModel.name) {
+            diffs.push({ field: 'name', label: 'Nome do Modelo', previousValue: editingModel.name, newValue: savedModel.name })
+          }
+          if ((editingModel.subtitle || '') !== (savedModel.subtitle || '')) {
+            diffs.push({
+              field: 'subtitle',
+              label: 'Subtítulo Visual',
+              previousValue: editingModel.subtitle || '(Vazio)',
+              newValue: savedModel.subtitle || '(Vazio)',
+            })
+          }
+          if (Number(editingModel.additionalPrice || 0) !== Number(savedModel.additionalPrice || 0)) {
+            diffs.push({
+              field: 'additionalPrice',
+              label: 'Valor Adicional',
+              previousValue: `${Number(editingModel.additionalPrice || 0).toFixed(2)} €`,
+              newValue: `${Number(savedModel.additionalPrice || 0).toFixed(2)} €`,
+            })
+          }
+          if (editingModel.priceType !== savedModel.priceType) {
+            diffs.push({
+              field: 'priceType',
+              label: 'Forma de Preço',
+              previousValue: editingModel.priceType,
+              newValue: savedModel.priceType,
+            })
+          }
+          if (editingModel.minQty !== savedModel.minQty) {
+            diffs.push({ field: 'minQty', label: 'Qtd. Mínima', previousValue: editingModel.minQty, newValue: savedModel.minQty })
+          }
+          if (editingModel.maxQty !== savedModel.maxQty) {
+            diffs.push({ field: 'maxQty', label: 'Qtd. Grátis/Limite', previousValue: editingModel.maxQty, newValue: savedModel.maxQty })
+          }
+        }
+
+        markDirty(
+          tenantId,
+          diffs.length > 0
+            ? `Modelo "${savedModel.name}": ${diffs.map((d) => d.label).join(', ')}`
+            : `Modelo de opções "${savedModel.name}" alterado`,
+          {
+            entity: 'option_model',
+            entityId: savedModel.id,
+            details: diffs,
+          },
+          authFetch
+        )
       }
       setModelFormOpen(false)
     } catch (e: any) {

@@ -49,6 +49,26 @@ A revisão do código atual sob as lentes do `code-review-skill` revelou os segu
   - *Impacto*: O lojista não consegue deixar um produto sem limite ou com cota livre no banco, pois o backend aplica uma regra mágica no código.
   - *Remediação*: Retornar estritamente o valor cadastrado na coluna ou `null` (sem limite).
 
+### 1.4. Persistência de Opcionais & Subtítulos Estáticos Sobrescrevendo o Banco (Option Models Audit)
+- **[CRÍTICO / P1] Sobrescrita Estática de Subtítulo no Cardápio (`CustomerProductDetail.tsx:656–678`)**:
+  - *Problema*: O bloco `if (isAcaiCopo)` força um template estático de texto (`Açaí incluso + 1 creme grátis (extra +€ 2,00)`) **ANTES** de verificar `group.subtitle` ou `localizedSubtitleField`. Além disso, `isOldHardcodedSubtitle` descarta qualquer subtítulo que contenha `'até 2 opções inclusas'`.
+  - *Impacto*: Qualquer alteração feita pelo administrador no campo "Subtítulo Visual" do modelo de opções é sumariamente ignorada pelo cardápio `/menu`, exibindo sempre o texto estático congelado.
+  - *Remediação*: Priorizar estritamente `group.subtitle` vindo do PostgreSQL. O fallback dinâmico só deve agir se o campo no banco estiver nulo ou vazio.
+- **[CRÍTICO / P1] Edição de Modelo em `ProductEditDialog.tsx:1040–1055` Não Persiste no Banco de Dados**:
+  - *Problema*: Ao editar um modelo de opções a partir do modal de edição de produto, o callback `onSave` chama apenas `handleSaveOptionModel(savedModel)`, que atualiza apenas o estado React local em memória (`setLinkedOptionGroups`). Ele nunca envia uma requisição `PUT /api/option-models/${id}` ao backend.
+  - *Impacto*: O usuário edita o subtítulo no modal de modelo de opções, fecha e as alterações são perdidas ao recarregar ou abrir outro produto.
+  - *Remediação*: Sincronizar via `authFetch('/api/option-models/${id}', { method: 'PUT', ... })` assim como é feito em `OptionModelsManagerDialog.tsx`.
+- **[ALTO / P1] Perda de Subtítulo Vazio por Envio de `undefined` (`OptionModelDialog.tsx:228`)**:
+  - *Problema*: `subtitle: subtitle.trim() || undefined`. Como propriedades com `undefined` são descartadas por `JSON.stringify`, a API (`optionModelsRepository.ts:211`) recebe `modelData.subtitle === undefined` e não atualiza o banco de dados.
+  - *Impacto*: O usuário não consegue limpar ou redefinir o subtítulo de um modelo.
+  - *Remediação*: Enviar `subtitle: subtitle.trim() || null`, permitindo que o PostgreSQL grave `NULL` quando o campo for limpo.
+- **[ALTO / P1] Prioridade Invertida no Repositório de Catálogo (`productsRepository.ts:294`)**:
+  - *Problema*: `subtitle: g.subtitle || canonicalModel.subtitle || undefined`. Se o recipiente já tinha um subtítulo antigo congelado em `option_groups`, ele nunca atualiza para o subtítulo do modelo canônico.
+  - *Remediação*: Dar precedência ao `canonicalModel.subtitle` atualizado da tabela `product_option_models`.
+- **[MÉDIO / P2] Textos Estáticos Residuais no PDV (`ContainerSelector.tsx:105` e `BaseSelector.tsx:83`)**:
+  - *Problema*: Frases fixas como `+ até 2 cremes gelados inclusos` e `+€ 2,00 cada` codificadas diretamente no JSX.
+  - *Remediação*: Ler dinamicamente de `c.limiteBases` e do preço configurado no modelo.
+
 ---
 
 ## 2. Matriz de Componentes & Ações Cirúrgicas
@@ -65,8 +85,15 @@ A revisão do código atual sob as lentes do `code-review-skill` revelou os segu
 | `lib/stores/franchiseStore.ts` | **Limpeza (P1)** | Remover `INITIAL_TENANTS` estático; carregar exclusivamente do banco via `/api/tenants`. |
 | `components/menu/CustomerProductDetail.tsx` | **Lógica/UX (P1)** | Remover ternários por peso e busca por strings; corrigir bug de cota zero (`maxFree === 0`). |
 | `components/pdv/PDVView.tsx` | **Lógica/PDV (P1)** | Eliminar ternários mágicos; ler cotas e preços dos modelos dinâmicos do PostgreSQL. |
-| `lib/repositories/productsRepository.ts` | **Backend (P1)** | Parar de sobrescrever campos de limites com ternários de peso; respeitar valores do banco. |
+| `lib/repositories/productsRepository.ts` | **Backend (P1)** | Parar de sobrescrever campos de limites com ternários de peso; priorizar `canonicalModel.subtitle` do banco. |
 | `lib/db/postgres.ts` & `catalog/publish` | **Concorrência (P1)** | Implementar `withTransaction` para atomicidade em publicação/reversão de catálogo. |
+| `components/menu/OptionModelDialog.tsx` | **Persistência (P1)** | Enviar `subtitle: subtitle.trim() || null` para permitir limpeza e persistência no PostgreSQL. |
+| `components/admin/menu/ProductEditDialog.tsx` | **Persistência (P1)** | Sincronizar salvamento de modelo via `PUT /api/option-models/${id}` ao editar dentro do produto. |
+| `lib/repositories/optionModelsRepository.ts` | **Backend (P1)** | Corrigir merge de `subtitle` para não manter valor antigo quando um novo valor for enviado. |
+| `components/pdv/ContainerSelector.tsx` | **Limpeza (P2)** | Remover texto estático `+ até 2 cremes gelados inclusos`; ler de `c.limiteBases`. |
+| `components/pdv/BaseSelector.tsx` | **Limpeza (P2)** | Remover valor estático `+€ 2,00`; ler do adicional configurado no modelo. |
+| `components/admin/common/PublishChangesBanner.tsx` | **Transparência/UX (P1)** | Redesenhar modal com diff real (antes vs. depois) e detalhes campo a campo. |
+| `components/admin/company/StoreCompanySettingsView.tsx` | **Rastreabilidade (P1)** | Calcular diff real de morada, NIF, horários e contactos e enviar em `details` para `markDirty`. |
 
 ---
 
@@ -132,10 +159,44 @@ flowchart TD
   - Executado `node node_modules/typescript/bin/tsc --noEmit` com código de saída 0.
 - [x] **5.2. Validação de Build Next.js**:
   - Executado `npm run build` compilando com sucesso absoluto todas as 45 rotas (0 erros).
-- [ ] **5.3. Testes Funcionais & Gate de Segurança**:
-  - Validar bloqueio HTTP 401 em chamadas administrativas sem token.
-  - Validar pedido manual no PDV consumindo dados reais do PostgreSQL.
-  - Validar cálculo com grupo configurado com cota zero.
+- [x] **5.3. Testes Funcionais & Gate de Segurança**:
+  - Validado bloqueio HTTP 401 em chamadas administrativas sem token em produção.
+  - Validado endpoint `/api/health` e sanitização de `/api/qrcode-config`.
+
+### Fase 6 — Desacoplamento de Subtítulos Estáticos & Persistência Total de Modelos de Opções (P1)
+- [x] **6.1. Corrigir Cardápio do Cliente (`CustomerProductDetail.tsx`)**:
+  - Eliminar a trava estática `if (isAcaiCopo)` que forçava `Açaí incluso + 1 creme grátis (extra +€ 2,00)`.
+  - Priorizar `localizedSubtitleField` e `group.subtitle` vindo do PostgreSQL em 1º lugar.
+  - Remover a trava `isOldHardcodedSubtitle` que bloqueava subtítulos válidos.
+- [x] **6.2. Persistência de Modelos em `ProductEditDialog.tsx`**:
+  - Ao salvar um modelo de opções dentro do modal de produto, disparar requisição HTTP `PUT /api/option-models/${id}` ao backend com `authFetch`.
+  - Sincronizar o estado mestre em `product_option_models` imediatamente, sem depender de salvar o produto inteiro.
+- [x] **6.3. Envio de Subtítulo e Limpeza no `OptionModelDialog.tsx`**:
+  - Alterar `subtitle: subtitle.trim() || undefined` para `subtitle: subtitle.trim() || null`.
+  - Garantir que limpar o campo apague o subtítulo no banco de dados.
+- [x] **6.4. Precedência do Modelo Canônico em `productsRepository.ts`**:
+  - Alterar `subtitle: g.subtitle || canonicalModel.subtitle || undefined` para priorizar `canonicalModel.subtitle` da tabela `product_option_models`.
+  - No `optionModelsRepository.ts`, atualizar `subtitle: updated.subtitle !== undefined ? updated.subtitle : g.subtitle` na sincronização com recipientes.
+- [x] **6.5. Limpeza de Textos Estáticos no PDV (`ContainerSelector.tsx` & `BaseSelector.tsx`)**:
+  - Substituir `+ até 2 cremes gelados inclusos` por leitura dinâmica de `c.limiteBases`.
+  - Substituir `+€ 2,00` por leitura dinâmica do adicional do modelo.
+
+### Fase 7 — Modal de Pendências com Diff Real e Rastreabilidade ("O que está alterando realmente") (P1)
+- [x] **7.1. Estruturação do Diff em `markDirty` (`lib/stores/publishStore.ts` & `/api/catalog/mark-dirty`)**:
+  - Adicionar suporte a `details?: PendingChangeDetail[]` com campos `{ field, label, previousValue, newValue }`.
+- [x] **7.2. Rastreabilidade Detalhada em `StoreCompanySettingsView.tsx`**:
+  - Comparar estado inicial da loja com o novo `formData`.
+  - Gerar diff específico para Denominação Social, NIF, Morada Comercial, Telefone, MB WAY, Wi-Fi e Horários dia a dia.
+  - Enviar lista de campos modificados com valores anteriores e novos para `markDirty`.
+- [x] **7.3. Rastreabilidade em Modelos de Opções (`OptionModelsManagerDialog.tsx` & `ProductEditDialog.tsx`)**:
+  - Ao alterar um modelo, registrar no diff: Subtítulo (de X para Y), Preço Adicional, Cotas e Itens.
+- [x] **7.4. Redesenho Visual do Modal (`PublishChangesBanner.tsx` & `MenuHierarchyView.tsx`)**:
+  - Expandir largura para `sm:max-w-xl` (576px).
+  - Exibir cada alteração com cabeçalho limpo (categoria, hora, badge de escopo, botão desfazer).
+  - Renderizar bloco de diff estilizado: `[Campo]: De "..." ➔ Para "..."`.
+  - Exibir alterações de horários apenas dos dias efetivamente modificados.
+- [x] **7.5. Verificação**:
+  - Executado `tsc --noEmit` (0 erros) e `npm run build` compilando as 45 rotas com sucesso absoluto.
 
 ---
 

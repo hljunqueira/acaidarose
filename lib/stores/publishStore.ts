@@ -3,6 +3,13 @@
 import { create } from 'zustand'
 import { emitCatalogSync } from '@/lib/utils/catalogSync'
 
+export interface PendingChangeDetail {
+  field: string
+  label: string
+  previousValue: any
+  newValue: any
+}
+
 export interface PendingChangeItem {
   id?: string
   reason: string
@@ -13,6 +20,7 @@ export interface PendingChangeItem {
   field?: string
   previousValue?: any
   newValue?: any
+  details?: PendingChangeDetail[]
   scope?: 'NETWORK' | 'STORE'
   tenantId?: string
 }
@@ -25,6 +33,7 @@ export interface MarkDirtyOptions {
   field?: string
   previousValue?: any
   newValue?: any
+  details?: PendingChangeDetail[]
   applyToAll?: boolean
 }
 
@@ -119,6 +128,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
       field: options.field,
       previousValue: options.previousValue,
       newValue: options.newValue,
+      details: options.details,
       scope: options.applyToAll ? 'NETWORK' : 'STORE',
       tenantId,
     }

@@ -1223,7 +1223,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       {/* Modal com Lista Detalhada de Alterações e Descarte Individual */}
       <Dialog open={pendingChangesModalOpen} onOpenChange={setPendingChangesModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-[#160228] text-foreground border-purple-100 dark:border-white/10 rounded-3xl p-6 shadow-2xl">
+        <DialogContent className="sm:max-w-xl bg-white dark:bg-[#160228] text-foreground border-purple-100 dark:border-white/10 rounded-3xl p-6 shadow-2xl">
           <DialogTitle className="text-base sm:text-lg font-black text-purple-950 dark:text-white flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-pink-600" />
             <span>Alterações Pendentes de Publicação</span>
@@ -1234,49 +1234,93 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
               Revise as alterações salvas antes de publicar. Você pode desfazer qualquer alteração indevida individualmente:
             </p>
 
-            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+            <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1">
               {pendingSummary.map((item, idx) => (
                 <div
                   key={item.id || idx}
-                  className="p-2.5 rounded-xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-xs flex items-center justify-between gap-2.5"
+                  className="p-3 rounded-2xl bg-purple-50/50 dark:bg-white/5 border border-purple-100 dark:border-white/10 text-xs space-y-2 transition-all shadow-2xs"
                 >
-                  <div className="flex items-start gap-2 min-w-0">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-pink-600 shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <div className="font-bold text-foreground truncate">{item.reason}</div>
-                      <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 mt-0.5">
-                        <span>{new Date(item.timestamp).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                        {item.scope === 'NETWORK' ? (
-                          <Badge className="bg-pink-100 text-pink-800 dark:bg-pink-950/60 dark:text-pink-300 text-[9px] font-bold py-0 px-1.5 border-0">
-                            Toda a Rede
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 text-[9px] font-bold py-0 px-1.5 border-0">
-                            Loja Atual
-                          </Badge>
-                        )}
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <CheckCircle2 className="h-4 w-4 text-pink-600 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-foreground leading-snug">{item.reason}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 mt-0.5">
+                          <span>{new Date(item.timestamp).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                          {item.scope === 'NETWORK' ? (
+                            <Badge className="bg-pink-100 text-pink-800 dark:bg-pink-950/60 dark:text-pink-300 text-[9px] font-bold py-0 px-1.5 border-0">
+                              Toda a Rede
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 text-[9px] font-bold py-0 px-1.5 border-0">
+                              Loja Atual
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {item.id && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={isPublishing || isReverting || revertingItemId === item.id}
+                        onClick={() => handleDiscardSingleChange(item)}
+                        className="h-7 px-2 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer shrink-0 transition flex items-center gap-1"
+                        title="Descartar apenas esta alteração indevida"
+                      >
+                        {revertingItemId === item.id ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-3 w-3" />
+                        )}
+                        <span>Desfazer</span>
+                      </Button>
+                    )}
                   </div>
 
-                  {item.id && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isPublishing || isReverting || revertingItemId === item.id}
-                      onClick={() => handleDiscardSingleChange(item)}
-                      className="h-7 px-2 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer shrink-0 transition flex items-center gap-1"
-                      title="Descartar apenas esta alteração indevida"
-                    >
-                      {revertingItemId === item.id ? (
-                        <RefreshCw className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <RotateCcw className="h-3 w-3" />
-                      )}
-                      <span>Desfazer</span>
-                    </Button>
-                  )}
+                  {/* Detalhamento visual do que realmente foi alterado (Diff Antes vs. Depois) */}
+                  {Array.isArray(item.details) && item.details.length > 0 ? (
+                    <div className="pt-2 border-t border-purple-100/70 dark:border-white/10 space-y-1.5">
+                      {item.details.map((diff: any, dIdx: number) => (
+                        <div
+                          key={dIdx}
+                          className="text-[11px] bg-white/80 dark:bg-black/30 p-2 rounded-xl border border-purple-100 dark:border-white/5 space-y-1"
+                        >
+                          <div className="font-bold text-purple-950 dark:text-purple-200 flex items-center justify-between">
+                            <span>{diff.label || diff.field}</span>
+                          </div>
+                          <div className="flex items-center gap-2 font-mono text-[10px] flex-wrap">
+                            <span className="text-red-700 dark:text-red-400 line-through bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded-md">
+                              De: {String(diff.previousValue || '(Vazio)')}
+                            </span>
+                            <span className="text-muted-foreground font-sans">➔</span>
+                            <span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
+                              Para: {String(diff.newValue || '(Vazio)')}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : item.field && (item.previousValue !== undefined || item.newValue !== undefined) ? (
+                    <div className="pt-2 border-t border-purple-100/70 dark:border-white/10">
+                      <div className="text-[11px] bg-white/80 dark:bg-black/30 p-2 rounded-xl border border-purple-100 dark:border-white/5 space-y-1">
+                        <span className="font-bold text-purple-950 dark:text-purple-200 capitalize">{item.field}:</span>
+                        <div className="flex items-center gap-2 font-mono text-[10px] flex-wrap">
+                          {item.previousValue !== undefined && (
+                            <span className="text-red-700 dark:text-red-400 line-through bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded-md">
+                              De: {String(item.previousValue === true ? 'Ativo / Visível' : item.previousValue === false ? 'Inativo / Pausado' : item.previousValue ?? '(Vazio)')}
+                            </span>
+                          )}
+                          <span className="text-muted-foreground font-sans">➔</span>
+                          <span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
+                            Para: {String(item.newValue === true ? 'Ativo / Visível' : item.newValue === false ? 'Inativo / Pausado' : item.newValue ?? '(Vazio)')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>

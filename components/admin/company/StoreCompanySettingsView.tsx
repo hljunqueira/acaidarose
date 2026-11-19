@@ -22,6 +22,7 @@ export default function StoreCompanySettingsView({ tenantId }: StoreCompanySetti
   const markDirty = usePublishStore((state) => state.markDirty)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [initialForm, setInitialForm] = useState<Partial<Tenant> | null>(null)
 
   const [form, setForm] = useState<Partial<Tenant>>({
     name: '',
@@ -54,6 +55,7 @@ export default function StoreCompanySettingsView({ tenantId }: StoreCompanySetti
       const data = await res.json()
       if (data.tenant) {
         setForm(data.tenant)
+        setInitialForm(JSON.parse(JSON.stringify(data.tenant)))
       }
     } catch {
       toast.error('Erro ao carregar dados da empresa')
@@ -80,7 +82,82 @@ export default function StoreCompanySettingsView({ tenantId }: StoreCompanySetti
       if (data.tenant) {
         setCurrentTenant(data.tenant)
       }
-      await markDirty(tenantId, 'Dados da empresa, horários e contactos atualizados', authFetch)
+
+      // Calcula o diff real campo a campo entre o estado original e o novo
+      const diffs: Array<{ field: string; label: string; previousValue: any; newValue: any }> = []
+
+      const fieldLabels: Record<string, string> = {
+        companyName: 'Denominação Social',
+        name: 'Nome Comercial',
+        nif: 'NIF',
+        address: 'Morada Comercial',
+        postalCode: 'Código Postal',
+        city: 'Cidade',
+        phone: 'Telefone Comercial',
+        mbwayPhone: 'Telemóvel MB WAY',
+        wifiNetwork: 'Rede Wi-Fi',
+        wifiPassword: 'Senha do Wi-Fi',
+        aboutText: 'Texto Sobre a Loja',
+        instagramUrl: 'Instagram',
+      }
+
+      for (const [key, label] of Object.entries(fieldLabels)) {
+        const prevVal = (initialForm as any)?.[key] ?? ''
+        const newVal = (form as any)?.[key] ?? ''
+        if (String(prevVal).trim() !== String(newVal).trim()) {
+          diffs.push({
+            field: key,
+            label,
+            previousValue: String(prevVal).trim() || '(Não preenchido)',
+            newValue: String(newVal).trim() || '(Removido)',
+          })
+        }
+      }
+
+      const dayLabels: Record<string, string> = {
+        seg: 'Segunda-feira',
+        ter: 'Terça-feira',
+        qua: 'Quarta-feira',
+        qui: 'Quinta-feira',
+        sex: 'Sexta-feira',
+        sab: 'Sábado',
+        dom: 'Domingo',
+      }
+
+      for (const [day, dayLabel] of Object.entries(dayLabels)) {
+        const prevDay = (initialForm?.openingHours as any)?.[day]
+        const newDay = (form?.openingHours as any)?.[day]
+        const prevStr = prevDay?.closed ? 'Fechado' : (prevDay?.open && prevDay?.close ? `${prevDay.open} às ${prevDay.close}` : 'Não definido')
+        const newStr = newDay?.closed ? 'Fechado' : (newDay?.open && newDay?.close ? `${newDay.open} às ${newDay.close}` : 'Não definido')
+        if (prevStr !== newStr) {
+          diffs.push({
+            field: `openingHours_${day}`,
+            label: `Horário: ${dayLabel}`,
+            previousValue: prevStr,
+            newValue: newStr,
+          })
+        }
+      }
+
+      const reasonSummary = diffs.length > 0
+        ? `Dados da loja: ${diffs.map((d) => d.label).slice(0, 3).join(', ')}${diffs.length > 3 ? ` (+${diffs.length - 3})` : ''}`
+        : 'Dados da empresa, horários e contactos atualizados'
+
+      await markDirty(
+        tenantId,
+        reasonSummary,
+        {
+          entity: 'tenant',
+          entityId: tenantId,
+          details: diffs,
+        },
+        authFetch
+      )
+
+      if (data.tenant) {
+        setInitialForm(JSON.parse(JSON.stringify(data.tenant)))
+      }
+
       toast.success('Dados da empresa e horários atualizados com sucesso!')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao guardar dados')

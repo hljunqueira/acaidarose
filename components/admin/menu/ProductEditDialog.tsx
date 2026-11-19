@@ -23,6 +23,7 @@ import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 import OptionModelsManagerDialog from './OptionModelsManagerDialog'
 import FranchiseRequestDialog from './FranchiseRequestDialog'
 import { useMenuConfigStore } from '@/lib/stores/menuConfigStore'
+import { usePublishStore } from '@/lib/stores/publishStore'
 import { FIGUEIRA_HQ_ID, canManageMasterCatalog, canEditProductPrices } from '@/lib/utils/permissions'
 
 interface ProductEditDialogProps {
@@ -49,6 +50,7 @@ export default function ProductEditDialog({
   onSave,
 }: ProductEditDialogProps) {
   const { user, authFetch } = useAuthStore()
+  const { markDirty } = usePublishStore()
   const effectiveTenant = tenantId || item?.tenantId || user?.tenantId
   const isSuperAdmin = canManageMasterCatalog(user, effectiveTenant)
   const isPriceEditable = canEditProductPrices(user, effectiveTenant)
@@ -384,8 +386,11 @@ export default function ProductEditDialog({
     setOptionModelOpen(true)
   }
 
-  const handleSaveOptionModel = (savedModel: OptionModelData) => {
+  const handleSaveOptionModel = async (savedModel: OptionModelData) => {
     const isModelActive = savedModel.active !== false
+    const targetTenant = effectiveTenant || FIGUEIRA_HQ_ID
+
+    // 1. Atualização imediata em memória dos grupos vinculados
     setLinkedOptionGroups((prev) => {
       const exists = prev.find((g) => g.id === savedModel.id || g.name === savedModel.name)
       if (exists) {
@@ -393,6 +398,88 @@ export default function ProductEditDialog({
       }
       return [...prev, { ...savedModel, active: isModelActive }]
     })
+
+    // 2. Persistência real e imediata no PostgreSQL (product_option_models)
+    const isNew = !savedModel.id || savedModel.id.startsWith('model-')
+    try {
+      if (isNew) {
+        const res = await authFetch(`/api/option-models?tenantId=${encodeURIComponent(targetTenant)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...savedModel, tenantId: targetTenant }),
+        })
+        if (res.ok) {
+          const created = await res.json()
+          savedModel = { ...savedModel, id: created.id }
+        }
+      } else {
+        const res = await authFetch(`/api/option-models/${savedModel.id}?tenantId=${encodeURIComponent(targetTenant)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...savedModel, tenantId: targetTenant }),
+        })
+        if (res.ok) {
+          const updated = await res.json()
+          savedModel = { ...savedModel, ...updated }
+        }
+      }
+
+      if (targetTenant) {
+        const diffs: Array<{ field: string; label: string; previousValue: any; newValue: any }> = []
+        if (editingModel) {
+          if (editingModel.name !== savedModel.name) {
+            diffs.push({ field: 'name', label: 'Nome do Modelo', previousValue: editingModel.name, newValue: savedModel.name })
+          }
+          if ((editingModel.subtitle || '') !== (savedModel.subtitle || '')) {
+            diffs.push({
+              field: 'subtitle',
+              label: 'Subtítulo Visual',
+              previousValue: editingModel.subtitle || '(Vazio)',
+              newValue: savedModel.subtitle || '(Vazio)',
+            })
+          }
+          if (Number(editingModel.additionalPrice || 0) !== Number(savedModel.additionalPrice || 0)) {
+            diffs.push({
+              field: 'additionalPrice',
+              label: 'Valor Adicional',
+              previousValue: `${Number(editingModel.additionalPrice || 0).toFixed(2)} €`,
+              newValue: `${Number(savedModel.additionalPrice || 0).toFixed(2)} €`,
+            })
+          }
+          if (editingModel.priceType !== savedModel.priceType) {
+            diffs.push({
+              field: 'priceType',
+              label: 'Forma de Preço',
+              previousValue: editingModel.priceType,
+              newValue: savedModel.priceType,
+            })
+          }
+          if (editingModel.minQty !== savedModel.minQty) {
+            diffs.push({ field: 'minQty', label: 'Qtd. Mínima', previousValue: editingModel.minQty, newValue: savedModel.minQty })
+          }
+          if (editingModel.maxQty !== savedModel.maxQty) {
+            diffs.push({ field: 'maxQty', label: 'Qtd. Grátis/Limite', previousValue: editingModel.maxQty, newValue: savedModel.maxQty })
+          }
+        }
+
+        markDirty(
+          targetTenant,
+          diffs.length > 0
+            ? `Modelo "${savedModel.name}": ${diffs.map((d) => d.label).join(', ')}`
+            : `Modelo de opções "${savedModel.name}" atualizado`,
+          {
+            entity: 'option_model',
+            entityId: savedModel.id,
+            details: diffs,
+          },
+          authFetch
+        )
+      }
+      toast.success(`Modelo "${savedModel.name}" salvo no banco de dados!`)
+    } catch (e: any) {
+      console.error('Erro ao sincronizar modelo no servidor:', e)
+      toast.error('Erro ao salvar modelo no banco de dados.')
+    }
   }
 
   // Alterna o grupo inteiro (ativo / inativo) - Franqueadora e Filial podem alternar visibilidade local

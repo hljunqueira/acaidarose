@@ -102,7 +102,7 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
                   )}
 
                   <div className="text-[10px] text-purple-700 font-semibold pt-1">
-                    + até 2 cremes gelados inclusos
+                    + até {c.limiteBases || 2} opções de bases/cremes inclusas
                   </div>
                 </div>
               </div>
