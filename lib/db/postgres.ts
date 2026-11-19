@@ -1,4 +1,4 @@
-import { Pool } from 'pg'
+import { Pool, PoolClient } from 'pg'
 
 declare global {
   var __postgres_pool: Pool | undefined
@@ -31,6 +31,25 @@ function getPool(): Pool {
 export async function query(text: string, params?: any[]) {
   const pool = getPool()
   return await pool.query(text, params)
+}
+
+/**
+ * Executa uma transação SQL atômica com rollback automático em caso de erro.
+ */
+export async function withTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  const pool = getPool()
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const result = await work(client)
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export default getPool

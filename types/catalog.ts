@@ -10,11 +10,11 @@ export interface ProductContainer {
   weightGrams?: number | null // 250, 350, 500, 750, 1000, ou null para lanches
   precoBase: number
   price?: number
-  limiteFrutas: number // 250g: 2, 350g: 3, 500g+: 999 (livre)
-  limiteToppings: number // 250g: 3, 350g: 4, 500g+: 999 (livre)
-  limiteCremes: number // 1 opcional
-  limiteBases?: number // retrocompatibilidade
-  limiteComplementosGratis?: number // retrocompatibilidade
+  limiteFrutas?: number | null // cota configurada no PostgreSQL (null = livre / sem cota)
+  limiteToppings?: number | null // cota configurada no PostgreSQL (null = livre / sem cota)
+  limiteCremes?: number | null // cota configurada
+  limiteBases?: number | null // retrocompatibilidade
+  limiteComplementosGratis?: number | null // retrocompatibilidade
   emoji?: string
   image?: string | null
   videoUrl?: string | null

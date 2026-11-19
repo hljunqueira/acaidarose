@@ -57,7 +57,10 @@ export async function createOrder(payload: any): Promise<Order> {
     (payload.cashierName && (payload.cashierName.toLowerCase().includes('qr') || payload.cashierName.toLowerCase().includes('autoatendimento')))
   )
   const channel = isQRCode ? 'QR_CODE' : (payload.channel || 'POS')
-  const paymentStatus = payload.paymentStatus === 'PAID' || payload.status === 'PAID' || payload.status === 'COMPLETED' ? 'PAID' : 'PENDING'
+  // Pedidos de autoatendimento QR Code nascem sempre como PENDING até confirmação pelo operador de caixa ou gateway
+  const paymentStatus = isQRCode
+    ? 'PENDING'
+    : (payload.paymentStatus === 'PAID' || payload.status === 'PAID' || payload.status === 'COMPLETED' ? 'PAID' : 'PENDING')
   const cashierName = isQRCode ? 'Autoatendimento QR Code' : (payload.cashierName || 'Caixa Balcão')
   const cashierId = isQRCode ? null : (payload.cashierId || null)
 

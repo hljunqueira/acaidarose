@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { OrderStatus, PaymentMethodCode, ProductContainer, ProductBase, ProductTopping } from '@/types'
 import {
   Dialog,
@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge'
 import { ShoppingBag, Check, Star, AlertCircle, Utensils, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/i18n/formatters'
-import { CONTAINERS, BASES, TOPPINGS } from '@/lib/catalog'
 
 interface NewOrderManualModalProps {
   tenantId: string
@@ -42,18 +41,60 @@ export default function NewOrderManualModal({
   const [bagQuantity, setBagQuantity] = useState<number>(0)
   const [loading, setLoading] = useState(false)
 
-  // Seleções do Açaí
-  const [selectedContainer, setSelectedContainer] = useState<ProductContainer>(CONTAINERS[1] || CONTAINERS[0])
-  const [selectedBases, setSelectedBases] = useState<ProductBase[]>([BASES[0]])
-  const [selectedToppings, setSelectedToppings] = useState<ProductTopping[]>([
-    TOPPINGS.find((t) => t.name === 'Banana') || TOPPINGS[0],
-    TOPPINGS.find((t) => t.name === 'Granola') || TOPPINGS[1],
-  ])
+  // Catálogo dinâmico carregado diretamente do PostgreSQL via API
+  const [containers, setContainers] = useState<ProductContainer[]>([])
+  const [bases, setBases] = useState<ProductBase[]>([])
+  const [toppings, setToppings] = useState<ProductTopping[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(false)
 
-  // Separação de Toppings por categoria
-  const fruits = useMemo(() => TOPPINGS.filter((t) => t.category === 'Frutas' && !t.isPremium), [])
-  const regularToppings = useMemo(() => TOPPINGS.filter((t) => t.category === 'Toppings' && !t.isPremium), [])
-  const premiumToppings = useMemo(() => TOPPINGS.filter((t) => t.isPremium || t.category === 'Adicionais'), [])
+  // Seleções do Açaí
+  const [selectedContainer, setSelectedContainer] = useState<ProductContainer | null>(null)
+  const [selectedBases, setSelectedBases] = useState<ProductBase[]>([])
+  const [selectedToppings, setSelectedToppings] = useState<ProductTopping[]>([])
+
+  useEffect(() => {
+    if (!open) return
+    let isMounted = true
+    setCatalogLoading(true)
+    fetch(`/api/products?tenantId=${encodeURIComponent(tenantId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return
+        const loadedContainers: ProductContainer[] = (data.containers || []).filter((c: any) => c.active !== false)
+        const loadedBases: ProductBase[] = (data.bases || []).filter((b: any) => b.active !== false)
+        const loadedToppings: ProductTopping[] = (data.toppings || []).filter((t: any) => t.active !== false)
+        setContainers(loadedContainers)
+        setBases(loadedBases)
+        setToppings(loadedToppings)
+
+        if (loadedContainers.length > 0) {
+          setSelectedContainer((prev) => (prev && loadedContainers.some((c) => c.id === prev.id) ? prev : loadedContainers[0]))
+        }
+        if (loadedBases.length > 0) {
+          setSelectedBases((prev) => (prev.length > 0 ? prev : [loadedBases[0]]))
+        }
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar catálogo para pedido manual:', err)
+      })
+      .finally(() => {
+        if (isMounted) setCatalogLoading(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [open, tenantId])
+
+  // Separação de Toppings por categoria vindas do banco de dados
+  const fruits = useMemo(() => toppings.filter((t) => t.category === 'Frutas' && !t.isPremium), [toppings])
+  const regularToppings = useMemo(
+    () => toppings.filter((t) => (t.category === 'Toppings' || t.category === 'Acompanhamentos') && !t.isPremium),
+    [toppings]
+  )
+  const premiumToppings = useMemo(
+    () => toppings.filter((t) => t.isPremium || t.category === 'Adicionais'),
+    [toppings]
+  )
 
   // Alternar Base
   const toggleBase = (base: ProductBase) => {
@@ -78,7 +119,7 @@ export default function NewOrderManualModal({
   // Cálculo de Preço Total
   const bagFee = +(bagQuantity * 0.10).toFixed(2)
   const totalAmount = useMemo(() => {
-    const basePrice = selectedContainer.precoBase || 0
+    const basePrice = selectedContainer ? (selectedContainer.precoBase || selectedContainer.price || 0) : 0
     const premiumExtras = selectedToppings
       .filter((t) => t.isPremium)
       .reduce((sum, t) => sum + (t.precoExtra || 1.0), 0)
@@ -87,9 +128,14 @@ export default function NewOrderManualModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!selectedContainer) {
+      toast.warning('Selecione um tamanho de açaí')
+      return
+    }
     setLoading(true)
     try {
-      const itemsLineTotal = +(selectedContainer.precoBase + selectedToppings.filter((t) => t.isPremium).reduce((sum, t) => sum + (t.precoExtra || 1.0), 0)).toFixed(2)
+      const basePrice = selectedContainer.precoBase || selectedContainer.price || 0
+      const itemsLineTotal = +(basePrice + selectedToppings.filter((t) => t.isPremium).reduce((sum, t) => sum + (t.precoExtra || 1.0), 0)).toFixed(2)
       const payload = {
         tenantId,
         isTableOrder,
@@ -111,8 +157,8 @@ export default function NewOrderManualModal({
           {
             containerId: selectedContainer.id,
             containerName: selectedContainer.name,
-            containerEmoji: selectedContainer.emoji,
-            containerPrice: selectedContainer.precoBase,
+            containerEmoji: selectedContainer.emoji || '',
+            containerPrice: basePrice,
             bases: selectedBases.map((b) => ({ id: b.id, name: b.name })),
             toppings: selectedToppings.map((t) => ({
               id: t.id,
@@ -186,42 +232,49 @@ export default function NewOrderManualModal({
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-black uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
                   <span>1. Tamanho do Açaí</span>
-                  <span className="text-purple-600 font-normal">({CONTAINERS.length} opções)</span>
+                  <span className="text-purple-600 font-normal">({containers.length} opções)</span>
                 </Label>
                 <span className="text-[11px] text-muted-foreground font-medium">
-                  {selectedContainer.name} · {formatCurrency(selectedContainer.precoBase)}
+                  {selectedContainer ? `${selectedContainer.name} · ${formatCurrency(selectedContainer.precoBase || selectedContainer.price || 0)}` : 'A carregar...'}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {CONTAINERS.map((c) => {
-                  const isSelected = selectedContainer.id === c.id
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setSelectedContainer(c)}
-                      className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer relative flex flex-col justify-between ${
-                        isSelected
-                          ? 'border-purple-600 bg-purple-50/80 ring-2 ring-purple-600/20 shadow-xs'
-                          : 'border-purple-100 hover:border-purple-200 bg-white hover:bg-purple-50/30'
-                      }`}
-                    >
-                      {isSelected && (
-                        <span className="absolute top-2 right-2 h-4 w-4 bg-purple-700 text-white rounded-full flex items-center justify-center text-[10px]">
-                          ✓
-                        </span>
-                      )}
-                      <div className="text-xl mb-1">{c.emoji}</div>
-                      <div>
-                        <div className="text-xs font-black text-foreground truncate">{c.name}</div>
-                        <div className="text-xs font-extrabold text-purple-700 mt-0.5">
-                          {formatCurrency(c.precoBase)}
+                {catalogLoading && containers.length === 0 ? (
+                  <div className="col-span-full py-6 text-center text-xs text-muted-foreground">
+                    A carregar opções do catálogo...
+                  </div>
+                ) : (
+                  containers.map((c) => {
+                    const isSelected = selectedContainer?.id === c.id
+                    const cPrice = c.precoBase || c.price || 0
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedContainer(c)}
+                        className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-purple-600 bg-purple-50/80 ring-2 ring-purple-600/20 shadow-xs'
+                            : 'border-purple-100 hover:border-purple-200 bg-white hover:bg-purple-50/30'
+                        }`}
+                      >
+                        {isSelected && (
+                          <span className="absolute top-2 right-2 h-4 w-4 bg-purple-700 text-white rounded-full flex items-center justify-center text-[10px]">
+                            ✓
+                          </span>
+                        )}
+                        <div className="text-xl mb-1">{c.emoji || '🥣'}</div>
+                        <div>
+                          <div className="text-xs font-black text-foreground truncate">{c.name}</div>
+                          <div className="text-xs font-extrabold text-purple-700 mt-0.5">
+                            {formatCurrency(cPrice)}
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  )
-                })}
+                      </button>
+                    )
+                  })
+                )}
               </div>
             </div>
 
@@ -235,7 +288,7 @@ export default function NewOrderManualModal({
               </Label>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {BASES.map((base) => {
+                {bases.map((base) => {
                   const isSelected = selectedBases.some((b) => b.id === base.id)
                   return (
                     <button
@@ -248,7 +301,7 @@ export default function NewOrderManualModal({
                           : 'bg-white text-foreground border-purple-100 hover:bg-purple-50/50 text-xs'
                       }`}
                     >
-                      <span className="text-sm flex-shrink-0">{base.emoji}</span>
+                      <span className="text-sm flex-shrink-0">{base.emoji || '🟣'}</span>
                       <span className="text-[11px] font-semibold truncate leading-tight">
                         {base.name}
                       </span>

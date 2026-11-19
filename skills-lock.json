@@ -1,11 +1,18 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
+    "code-review-skill": {
+      "source": "awesome-skills/code-review-skill",
+      "commit": "4850184dfd7765ea7b3c5c4e9b6cf8e0815ee7cb",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "f2725b0f6247a5cfc876198c64c9b14a06edc733f57d1007cbfe37c6bcca5d93"
+    },
     "gravitas": {
       "source": "udaysharmadev/Gravitas",
       "sourceType": "github",
       "skillPath": "skills/gravitas/SKILL.md",
-      "computedHash": "1ef9a8048a626aafe7c87f74cefaf030e71cff6231abad5e917cc5d9cd1fdefb"
+      "computedHash": "bb5bc875b2023f1dc795e73cebfb45c8e3ed6f374246c24504ca01637685eb76"
     }
   }
 }

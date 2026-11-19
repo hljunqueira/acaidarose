@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react'
 import { ProductContainer, ProductBase, ProductTopping, CatalogData } from '@/types'
 import { formatCurrency } from '@/lib/i18n/formatters'
+import { calculateGroupPrice } from '@/lib/catalog/pricing'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -186,40 +187,13 @@ export default function CustomerProductDetail({
   }, 0)
   const extraPremiumsPrice = premiumsPrice
 
-  // Preço calculado dos grupos dinâmicos vinculados
+  // Preço calculado dos grupos dinâmicos vinculados (usando o motor puro de pricing)
   const dynamicGroupsPrice = useMemo(() => {
     if (!hasDynamicGroups) return 0
     let sum = 0
     for (const group of (container.optionGroups || []).filter((g) => g.active !== false)) {
       const selections = customSelections[group.id || group.name] || {}
-      const groupAddPrice = Number(group.additionalPrice || 0)
-      const groupTotalCount = Object.values(selections).reduce((a, b) => a + b, 0)
-      const isBaseGroup = group.id === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
-
-      if (group.priceType === 'Individual') {
-        for (const opt of (group.options || []).filter((o: any) => o.active !== false)) {
-          const qty = selections[opt.id] || 0
-          if (qty > 0) {
-            const optPrice = opt.price !== undefined && Number(opt.price) > 0 ? Number(opt.price) : groupAddPrice
-            sum += optPrice * qty
-          }
-        }
-      } else {
-        // Grupo Incluso / Grátis
-        // 1. Itens com sobrepreço avulso individual (ex: premium)
-        for (const opt of (group.options || []).filter((o: any) => o.active !== false)) {
-          const qty = selections[opt.id] || 0
-          if (qty > 0 && opt.price && Number(opt.price) > 0) {
-            sum += Number(opt.price) * qty
-          }
-        }
-        // 2. Excedente além da cota gratuita maxQty (ex: 2º creme +2,00€)
-        const maxFree = Number(group.maxQty) || 0
-        if (maxFree > 0 && groupTotalCount > maxFree && groupAddPrice > 0) {
-          const extraCount = groupTotalCount - maxFree
-          sum += extraCount * groupAddPrice
-        }
-      }
+      sum += calculateGroupPrice(group, selections)
     }
     return sum
   }, [hasDynamicGroups, container.optionGroups, customSelections])

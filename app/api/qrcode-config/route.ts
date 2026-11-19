@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
 import { getTenantByIdOrSlug } from '@/lib/repositories/tenantsRepository'
+import { getAuthUser } from '@/lib/api/authGuard'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,8 @@ export async function GET(req: NextRequest) {
 
     const t = await getTenantByIdOrSlug(rawTenant)
     const tenantId = t ? t.id : '11111111-1111-1111-1111-111111111111'
+    const user = await getAuthUser(req)
+    const isStaff = Boolean(user && ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'].includes(user.role))
 
     let saved: any = null
 
@@ -38,8 +41,10 @@ export async function GET(req: NextRequest) {
       customerPhoneRule: saved?.customer_phone_rule || 'REQUIRED',
       customerNifRule: saved?.customer_nif_rule || 'OPTIONAL',
       allowInternationalPhone: saved?.allow_international_phone ?? true,
-      ifthenpayMbwayKey: saved?.ifthenpay_mbway_key || '',
-      ifthenpayAntiPhishingKey: saved?.ifthenpay_anti_phishing_key || '',
+      // Credenciais do gateway são mascaradas para clientes públicos (prevenção de vazamento de credenciais)
+      ifthenpayMbwayKey: isStaff ? (saved?.ifthenpay_mbway_key || '') : '',
+      ifthenpayAntiPhishingKey: isStaff ? (saved?.ifthenpay_anti_phishing_key || '') : '',
+      hasMbwayConfigured: Boolean(saved?.ifthenpay_mbway_key),
       bannerUrl: '',
       tenantId,
       storeSlug: t?.slug || 'loja',
@@ -57,11 +62,20 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const user = await getAuthUser(req)
+    if (!user || !['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'].includes(user.role)) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
     const body = await req.json()
     const { tenantId, config } = body
 
     if (!tenantId || !config) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
+    }
+
+    if (user.role === 'TENANT_ADMIN' && user.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'Acesso negado para esta loja' }, { status: 403 })
     }
 
     const mode = config.mode === 'VIEW_ONLY' ? 'VIEW_ONLY' : 'ORDER_EMISSION'

@@ -116,6 +116,15 @@ export async function POST(request: NextRequest) {
       (!user && !body.cashierId)
     )
 
+    // Apenas operadores de caixa ou administradores autenticados podem criar pedidos já marcados como PAGO no balcão.
+    // Pedidos de clientes (QR Code / Autoatendimento) nascem SEMPRE como PENDING.
+    const isAuthorizedStaff = Boolean(
+      user && ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN', 'CASHIER'].includes(user.role)
+    )
+    const finalPaymentStatus = isAuthorizedStaff && (body.paymentStatus === 'PAID' || body.status === 'PAID' || body.status === 'COMPLETED')
+      ? 'PAID'
+      : 'PENDING'
+
     const payload = {
       ...body,
       tenantId,
@@ -125,7 +134,7 @@ export async function POST(request: NextRequest) {
         : (user ? user.name : (body.cashierName || 'Caixa Balcão')),
       isQRCode: isCustomerQRCode,
       channel: isCustomerQRCode ? 'QR_CODE' : (body.channel || 'POS'),
-      paymentStatus: body.paymentStatus || (body.status === 'PAID' || body.status === 'COMPLETED' ? 'PAID' : 'PENDING'),
+      paymentStatus: finalPaymentStatus,
     }
 
     // Se o pedido for associado a uma mesa física (esplanada/salão), valida no banco de dados se a mesa realmente existe na loja

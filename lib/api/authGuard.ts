@@ -41,31 +41,6 @@ export async function getAuthUser(request: NextRequest): Promise<User | null> {
     }
   }
 
-  // Fallback de contingência para requisições de administração interna
-  try {
-    const res = await query(
-      `SELECT id, email, name, role, tenant_id, active, created_at, updated_at, deleted_at 
-       FROM users 
-       WHERE role IN ('SUPER_ADMIN', 'FRANCHISOR_ADMIN') AND active = true AND deleted_at IS NULL 
-       ORDER BY CASE WHEN role = 'SUPER_ADMIN' THEN 1 ELSE 2 END 
-       LIMIT 1`
-    )
-    if (res && res.rows && res.rows.length > 0) {
-      const row = res.rows[0]
-      return {
-        id: row.id,
-        email: row.email,
-        name: row.name,
-        role: row.role as UserRole,
-        tenantId: row.tenant_id,
-        active: row.active,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        deletedAt: row.deleted_at,
-      }
-    }
-  } catch {}
-
   return null
 }
 

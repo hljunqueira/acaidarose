@@ -355,13 +355,15 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
 
         const limiteFrutas = frutasGroup?.maxQty !== undefined
           ? Number(frutasGroup.maxQty)
-          : (weight && weight >= 500 ? 999 : weight === 250 ? 2 : 3)
+          : (row.limite_frutas !== null && row.limite_frutas !== undefined
+              ? Number(row.limite_frutas)
+              : null)
 
         const limiteToppings = toppingsGroup?.maxQty !== undefined
           ? Number(toppingsGroup.maxQty)
           : (row.limite_complementos_gratis !== null && row.limite_complementos_gratis !== undefined
               ? Number(row.limite_complementos_gratis)
-              : (weight && weight >= 500 ? 999 : weight === 250 ? 3 : 4))
+              : null)
 
         containers.push({
           id: row.id,

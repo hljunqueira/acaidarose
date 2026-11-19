@@ -9,6 +9,10 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const body = await request.json().catch(() => ({}))
     const rawTenant = body.tenantId || ''
     const targetTenantId = await resolveTenantId(rawTenant)
@@ -16,9 +20,19 @@ export async function POST(request: NextRequest) {
     const replicateAll = Boolean(body.replicateAll)
     const note = body.note || ''
 
-    const isSuperOrFranchisor = user ? hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN']) : true
-    const authorName = user?.name || 'Operador da Loja'
-    const authorRole = user?.role || 'TENANT_ADMIN'
+    const isSuperOrFranchisor = hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN'])
+    const isTenantAdmin = user.role === 'TENANT_ADMIN' && user.tenantId === targetTenantId
+
+    if (!isSuperOrFranchisor && !isTenantAdmin) {
+      return NextResponse.json({ error: 'Permissão insuficiente para publicar nesta loja' }, { status: 403 })
+    }
+
+    if ((replicateAll || publishAllPending) && !isSuperOrFranchisor) {
+      return NextResponse.json({ error: 'Apenas a Franqueadora Master pode publicar em rede' }, { status: 403 })
+    }
+
+    const authorName = user.name || 'Operador da Loja'
+    const authorRole = user.role
 
     // Se for publicação para toda a rede ou em lote para todas as lojas com pendências
     if ((replicateAll || publishAllPending) && isSuperOrFranchisor) {

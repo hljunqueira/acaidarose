@@ -9,12 +9,23 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const body = await request.json().catch(() => ({}))
     const rawTenant = body.tenantId || ''
     const targetTenantId = await resolveTenantId(rawTenant)
 
-    const authorName = user?.name || 'Operador da Loja'
-    const authorRole = user?.role || 'TENANT_ADMIN'
+    const isSuperOrFranchisor = user.role === 'SUPER_ADMIN' || user.role === 'FRANCHISOR_ADMIN'
+    const isTenantAdmin = user.role === 'TENANT_ADMIN' && user.tenantId === targetTenantId
+
+    if (!isSuperOrFranchisor && !isTenantAdmin) {
+      return NextResponse.json({ error: 'Permissão insuficiente para reverter nesta loja' }, { status: 403 })
+    }
+
+    const authorName = user.name || 'Operador da Loja'
+    const authorRole = user.role
 
     const changeId = body.changeId || body.id || ''
 

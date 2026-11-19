@@ -153,16 +153,22 @@ export default function PDVView({
     const extraBases = Math.max(0, selectedCremesList.length - maxFreeCremes)
     const extraBasesVal = extraBases * additionalBasePrice
 
-    const maxFrutas = draft.container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
-    const maxToppings = draft.container.limiteToppings || (isUnlimited ? 999 : weight === 250 ? 3 : 4)
+    const maxFrutas = draft.container.limiteFrutas !== undefined && draft.container.limiteFrutas !== null
+      ? Number(draft.container.limiteFrutas)
+      : (isUnlimited ? 999 : null)
+    const maxToppings = draft.container.limiteToppings !== undefined && draft.container.limiteToppings !== null
+      ? Number(draft.container.limiteToppings)
+      : (draft.container.limiteComplementosGratis !== undefined && draft.container.limiteComplementosGratis !== null
+          ? Number(draft.container.limiteComplementosGratis)
+          : (isUnlimited ? 999 : null))
 
     let frutasCount = 0
     let toppingsCount = 0
     let premiumsVal = 0
 
     for (const t of draft.toppings || []) {
-      const isSpecial = t.isSpecialAddon || t.category === 'Adicionais' || t.isPremium || (t.precoExtra && t.precoExtra > 0)
-      const isFruta = t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f))
+      const isSpecial = Boolean(t.isSpecialAddon || t.category === 'Adicionais' || t.isPremium || (t.precoExtra && t.precoExtra > 0))
+      const isFruta = t.category === 'Frutas'
 
       if (isSpecial) {
         premiumsVal += getPremiumToppingPrice(t.name, weight, t.precoExtra)
@@ -173,9 +179,9 @@ export default function PDVView({
       }
     }
 
-    const extraFrutas = isUnlimited ? 0 : Math.max(0, frutasCount - maxFrutas)
+    const extraFrutas = isUnlimited || maxFrutas === null ? 0 : Math.max(0, frutasCount - maxFrutas)
     const extraFrutasVal = extraFrutas * additionalFrutaPrice
-    const extraToppings = isUnlimited ? 0 : Math.max(0, toppingsCount - maxToppings)
+    const extraToppings = isUnlimited || maxToppings === null ? 0 : Math.max(0, toppingsCount - maxToppings)
     const extraToppingsVal = extraToppings * additionalToppingPrice
 
     return {

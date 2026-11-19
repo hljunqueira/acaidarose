@@ -1,5 +1,35 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Execução do Plano de Alinhamento: Segurança P0, Desacoplamento de Arrays Estáticos & Motor Puro de Preços [CONCLUÍDO & TESTADO]**:
+  - **Solicitação do Usuário**:
+    1. Instalar o skill `awesome-skills/code-review-skill`.
+    2. Revisar o código e atualizar o plano com 100% de configurabilidade no banco e remoção de todos os arrays estáticos e fallbacks.
+    3. Executar o plano aprovado.
+  - **Ações Executadas**:
+    1. *Instalação do Skill*: Instalado `code-review-skill` via `npx skills add awesome-skills/code-review-skill` em `.agents/skills/code-review-skill`.
+    2. *Fase 1 (Segurança & Integridade P0)*:
+       - `lib/api/authGuard.ts`: Removido o fallback de contingência que concedia `SUPER_ADMIN` para chamadas sem token. Sem token válido = `null` (HTTP 401).
+       - `lib/utils/permissions.ts`: Removida a permissão cega por `currentTenant === FIGUEIRA_HQ_ID`. Apenas `SUPER_ADMIN` e `FRANCHISOR_ADMIN` possuem gestão mestre.
+       - `app/api/orders/route.ts` & `lib/repositories/ordersRepository.ts`: Pedidos de autoatendimento QR Code nascem estritamente como `paymentStatus: 'PENDING'`, impedindo injeção de estado pago pelo cliente.
+       - `app/api/qrcode-config/route.ts`: Sanitizado GET público (oculta chaves de gateway para clientes não autenticados) e adicionada proteção de autorização no PUT.
+    3. *Fase 2 (Desacoplamento de Arrays Estáticos P1)*:
+       - `components/admin/orders/NewOrderManualModal.tsx`: Removida a importação de `lib/catalog.ts`. Agora carrega recipientes, bases e acompanhamentos dinamicamente do PostgreSQL via `/api/products?tenantId=...`.
+       - `lib/catalog.ts`: Arrays estáticos `CONTAINERS`, `BASES` e `TOPPINGS` desativados e marcados como obsoletos.
+    4. *Fase 3 (Motor Puro de Preços & Configurabilidade no Banco P1)*:
+       - Criado `lib/catalog/pricing.ts` com cálculo puro de grupos de opções e cota zero em cêntimos.
+       - `components/menu/CustomerProductDetail.tsx`: Conectado a `calculateGroupPrice`, corrigindo o bug da cota zero (`maxFree === 0`) e removendo lógicas redundantes.
+       - `components/pdv/PDVView.tsx`: Eliminados ternários fixos por peso e buscas de frutas por string; limites respeitam os campos configurados no banco.
+       - `lib/repositories/productsRepository.ts`: Limites nulos não são mais sobrescritos por ternários mágicos por peso.
+       - `types/catalog.ts`: Tipagem `limiteFrutas` e `limiteToppings` atualizada para suportar `number | null` (livre / sem cota).
+    5. *Fase 4 (Transações Atômicas P1)*:
+       - `lib/db/postgres.ts`: Implementado helper `withTransaction<T>(work)`.
+       - `app/api/catalog/publish/route.ts` & `revert/route.ts`: Adicionadas checagens estritas de autenticação/autorização e proteção contra chamadas anônimas.
+    6. *Validação & Gate de Qualidade*:
+       - `tsc --noEmit` executado com código 0 (zero erros de TypeScript).
+       - `npm run build` compilado com sucesso absoluto em todas as 45 rotas (0 erros).
+
+
+
 - **Opcional "Quer talher extra?" & Botões de Desativação para Franquias/Franqueadora [CONCLUÍDO & TESTADO]**:
   - **Solicitação do Usuário**:
     1. Opcional como extra puro: `"Quer talher extra?"` sem conceder 1 grátis (pois 1 colher já acompanha o copo por padrão).
@@ -1145,3 +1175,18 @@ O usuário solicitou: *"e o Qr code balcao pode separar uma aba dentro do gestor
 - Pagamento no balcão; sem saldos, custos de pontos ou lojas fictícias como dados de produção.
 - Validação: inspeção visual dos 4 painéis; corrigida miniatura de taça indevida na linha Copo 500gr do cardápio. Sem código de produto alterado; build/testes não aplicáveis a PNG.
 - Complementos possíveis para próxima revisão: ecrãs próprios de convite de amigos, candidatura de franquia, apoio/FAQ, detalhes do movimento e estados de erro/offline/carregamento.
+
+## 2026-11-18 - Auditoria configuracoes versus menu (sem implementacao)
+- Pedido: analisar cobranca de cremes no Copo 250gr e divergencias por loja antes de corrigir.
+- Unico arquivo alterado: SCRATCHPAD.md. Codigo de producao, configuracoes e banco preservados.
+- Confirmado por execucao via Node/TypeScript/VM do corpo real de dynamicGroupsPrice: maxQty=0 com 1 ou 3 cremes cobra zero; maxQty=1 com acai+1 creme cobra 2; maxQty=2 cobra zero. Condicao maxFree > 0 elimina cobranca com cota zero.
+- Confirmado executando computeItemLineTotal real: limiteCremes=0 vira 1 por || 1; copo 6.50 com acai+creme fica 6.50.
+- Semantica divergente: admin chama limiteBases/maxQty de Cremes Inclusos; menu dinamico conta acai na mesma cota, cartStore trata limiteCremes separado do acai.
+- Mesmo defeito de cota zero atinge frutas/acompanhamentos dinamicos. Caminho legado tambem substitui cotas zero por defaults e ignora cotas de frutas/toppings para peso >=500.
+- productsRepository hidrata preco/tipo/minimo/obrigatoriedade/opcoes do modelo global, mas preserva maxQty do produto. Edicoes locais podem ser sobrepostas; alteracao de maximo no modelo nao substitui cotas existentes.
+- optionModelsRepository atualiza grupos de todos produtos e redefine options/active; pausas embutidas no produto podem ser perdidas, embora store_product_overrides separado continue aplicado na leitura.
+- productsRepository nao aplica availabilityMap a menus/categories. Categorias inativas sao excluidas antes da resolucao e isCategoryPaused nao reconhece categoria excluida. Exposicao real depende do caminho de listagem.
+- app/menu/page.tsx atualiza catalog mas nao selectedContainer; personalizador aberto pode manter configuracao antiga. Alteracao de modelos nao incrementa versao no repositorio/rota; sincronizacao entre abas local nao atualiza outros aparelhos por si so.
+- Consulta PostgreSQL em transacao READ ONLY bloqueada com EACCES; nao confirmados registros atuais por loja nem versao implantada. Nao afirmar auditoria do banco/producao concluida.
+- Validacao: comando inline Node com 5 assertions passou, reproduzindo comportamento defeituoso atual. Build nao executado: auditoria sem implementacao.
+- Ruling: considerar intencao atual do usuario de zero cremes gratis no 250gr; AGENTS.md ainda descreve duas bases inclusas em todos tamanhos. Alinhar documentacao quando houver implementacao autorizada.
