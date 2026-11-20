@@ -40,6 +40,37 @@ export function middleware(request: NextRequest) {
     )
   }
 
+  // Identifica se a requisição é direcionada ao subdomínio de Ajuda e Manuais (ex: ajuda.acaidarose.pt)
+  const isAjudaDomain = hostname === 'ajuda.acaidarose.pt' || hostname.startsWith('ajuda.')
+
+  if (isAjudaDomain) {
+    const { pathname } = request.nextUrl
+
+    // Endpoints de API (/api/*) passam diretamente
+    if (pathname.startsWith('/api')) {
+      return NextResponse.next()
+    }
+
+    // Checagem de autenticação: redireciona anónimos para o login
+    const authToken =
+      request.cookies.get('x-auth-token')?.value ||
+      request.cookies.get('auth_token')?.value ||
+      request.cookies.get('token')?.value ||
+      request.nextUrl.searchParams.get('token')
+
+    if (!authToken) {
+      const loginUrl = new URL('https://app.acaidarose.pt/login')
+      loginUrl.searchParams.set('redirect', `https://ajuda.acaidarose.pt${pathname === '/' ? '' : pathname}`)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    // Reescreve internamente para as rotas sob /ajuda
+    const rewritePath = pathname === '/' ? '/ajuda' : pathname.startsWith('/ajuda') ? pathname : `/ajuda${pathname}`
+    const response = NextResponse.rewrite(new URL(rewritePath, request.url))
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
+    return response
+  }
+
   return NextResponse.next()
 }
 

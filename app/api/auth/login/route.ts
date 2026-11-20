@@ -73,11 +73,24 @@ export async function POST(request: NextRequest) {
     // Utiliza o ID do usuário como token de sessão autenticada
     const token = userRow.id
 
-    return NextResponse.json({
+    const host = request.headers.get('host') || ''
+    const isProd = host.includes('acaidarose.pt')
+
+    const response = NextResponse.json({
       token,
       user: safeUser,
       message: 'Sessão iniciada com sucesso.',
     })
+
+    response.cookies.set('x-auth-token', token, {
+      path: '/',
+      domain: isProd ? '.acaidarose.pt' : undefined,
+      maxAge: 30 * 24 * 60 * 60, // 30 dias
+      sameSite: 'lax',
+      secure: isProd,
+    })
+
+    return response
   } catch (err: any) {
     console.error('Erro na rota de login PostgreSQL:', err)
     return NextResponse.json(

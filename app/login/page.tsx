@@ -27,7 +27,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push('/')
+      const searchParams = new URLSearchParams(window.location.search)
+      const redirectUrl = searchParams.get('redirect')
+      if (redirectUrl && redirectUrl.startsWith('https://')) {
+        window.location.href = redirectUrl
+      } else {
+        router.push(redirectUrl || '/')
+      }
     }
   }, [user, router])
 
@@ -42,7 +48,9 @@ export default function LoginPage() {
     try {
       await loginWithCredentials(email.trim().toLowerCase(), password)
       toast.success('Sessão iniciada com sucesso!')
-      window.location.href = '/'
+      const searchParams = new URLSearchParams(window.location.search)
+      const redirectUrl = searchParams.get('redirect')
+      window.location.href = redirectUrl ? redirectUrl : '/'
     } catch (err: any) {
       toast.error(err.message || 'Falha na autenticação. Verifique os seus dados.')
     } finally {

@@ -30,6 +30,11 @@ export const useAuthStore = create<AuthState>()(
         if (!res.ok || !data.token || !data.user) {
           throw new Error(data.error || 'Credenciais inválidas')
         }
+        if (typeof document !== 'undefined' && data.token) {
+          const isProd = window.location.hostname.includes('acaidarose.pt')
+          const domainStr = isProd ? '; domain=.acaidarose.pt' : ''
+          document.cookie = `x-auth-token=${data.token}; path=/${domainStr}; max-age=2592000; SameSite=Lax`
+        }
         set({ token: data.token, user: data.user })
       },
       checkAuth: async () => {
@@ -59,6 +64,11 @@ export const useAuthStore = create<AuthState>()(
             })
           }
         } catch {}
+        if (typeof document !== 'undefined') {
+          const isProd = window.location.hostname.includes('acaidarose.pt')
+          const domainStr = isProd ? '; domain=.acaidarose.pt' : ''
+          document.cookie = `x-auth-token=; path=/${domainStr}; max-age=0`
+        }
         set({ token: null, user: null })
       },
       authFetch: async (url: string, init: RequestInit = {}) => {

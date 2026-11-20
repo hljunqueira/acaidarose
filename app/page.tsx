@@ -48,6 +48,7 @@ import PrinterSettingsView from '@/components/admin/printers/PrinterSettingsView
 import DevMasterView from '@/components/admin/dev/DevMasterView'
 import PreventionCenterView from '@/components/admin/dev/PreventionCenterView'
 import AuditLogsView from '@/components/admin/dev/AuditLogsView'
+import ManualsAdminView from '@/components/admin/manuals/ManualsAdminView'
 import SupplyHubView from '@/components/admin/supply/SupplyHubView'
 import TVOrdersControlView from '@/components/admin/tv/TVOrdersControlView'
 import InventoryManagementView from '@/components/admin/inventory/InventoryManagementView'
@@ -57,6 +58,7 @@ import MultilingualManagementView from '@/components/admin/menu/MultilingualMana
 import CustomerFeedbackAdminView from '@/components/admin/reports/CustomerFeedbackAdminView'
 import AnalyticsModuleView from '@/components/admin/analytics/AnalyticsModuleView'
 import OrderHistoryAdminView from '@/components/admin/orders/OrderHistoryAdminView'
+import AppHelpFloatingButton from '@/components/layout/AppHelpFloatingButton'
 import { useAdminTheme } from '@/lib/hooks/useIsolatedTheme'
 
 export default function HomePage() {
@@ -284,6 +286,7 @@ export default function HomePage() {
           {/* 1. CENTRAL MASTER TI */}
           {(view === 'dev_hub' || view === 'prevention_center') && isSuperAdmin && <DevMasterView />}
           {view === 'audit_logs' && isSuperAdmin && <AuditLogsView />}
+          {view === 'manuals_admin' && isSuperAdmin && <ManualsAdminView />}
 
           {/* 2. FRANQUEADORA MASTER */}
           {view === 'franchise' && (isSuperAdmin || isFranchisorAdmin) && <FranchiseCorporateView />}
@@ -385,6 +388,9 @@ export default function HomePage() {
           toast.success(`Loja alterada para: ${t.name}`)
         }}
       />
+
+      {/* Botão Flutuante Minimalista de Ajuda */}
+      <AppHelpFloatingButton />
     </div>
   )
 }

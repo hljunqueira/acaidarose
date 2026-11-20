@@ -31,6 +31,7 @@ export type AppViewId =
   | 'dev_hub'
   | 'prevention_center'
   | 'audit_logs'
+  | 'manuals_admin'
   | 'franchise'
   | 'franchise_candidates'
   | 'store_requests'
@@ -134,7 +135,7 @@ export default function AppSidebar({
   }, [currentView])
 
   const getGroupForView = (v: AppViewId): string => {
-    if (['dev_hub', 'prevention_center', 'audit_logs'].includes(v)) return 'devHub'
+    if (['dev_hub', 'prevention_center', 'audit_logs', 'manuals_admin'].includes(v)) return 'devHub'
     if (['franchise', 'franchise_candidates', 'store_requests', 'franchise_requests', 'supply_hub'].includes(v)) return 'franchise'
     if (['analytics_overview', 'analytics_products', 'analytics_toppings'].includes(v)) return 'analytics'
     if (['pdv', 'qrcode', 'orders_history', 'tables'].includes(v)) return 'salon'
@@ -187,6 +188,7 @@ export default function AppSidebar({
         items: [
           { id: 'dev_hub', label: 'Status & Integridade VPS', subtitle: 'PostgreSQL 16 & Gateways', show: true },
           { id: 'audit_logs', label: 'Logs & Auditoria TI', subtitle: 'Histórico Imutável de Eventos', show: true },
+          { id: 'manuals_admin', label: 'Gestão da Central de Ajuda', subtitle: 'Manuais', show: true },
         ],
       },
       {
