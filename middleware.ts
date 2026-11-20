@@ -46,6 +46,16 @@ export function middleware(request: NextRequest) {
   if (isAjudaDomain) {
     const { pathname } = request.nextUrl
 
+    // Arquivos estáticos (imagens, favicons, mídias, fontes) passam diretamente sem autenticação e sem reescrita
+    if (
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/uploads') ||
+      pathname === '/favicon.ico' ||
+      /\.(png|jpe?g|gif|svg|ico|webp|mp4|webm|woff2?|ttf|eot|css|js|map)$/i.test(pathname)
+    ) {
+      return NextResponse.next()
+    }
+
     // Endpoints de API (/api/*) passam diretamente
     if (pathname.startsWith('/api')) {
       return NextResponse.next()
@@ -77,8 +87,8 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Intercepta requisições exceto bundles estáticos do Next.js e favicon
+     * Intercepta requisições exceto arquivos estáticos com extensão, _next e favicon
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|webm|woff2?|ttf|eot|css|js)$).*)',
   ],
 }
