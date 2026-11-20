@@ -33,6 +33,7 @@ import {
   Trash2,
   LayoutGrid,
   ListOrdered,
+  History,
 } from 'lucide-react'
 
 import { playOrderNotificationSound, announceTVCall, getTVSoundConfig } from '@/lib/utils/soundNotification'
@@ -50,6 +51,7 @@ import { printOrderDirectly } from '@/lib/printers/autoPrintService'
 interface QRCodeOrdersAdminProps {
   tenantId: string
   onOpenPDV?: () => void
+  onOpenHistory?: () => void
 }
 
 interface KanbanColumn {
@@ -116,7 +118,7 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
   },
 ]
 
-export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersAdminProps) {
+export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV, onOpenHistory }: QRCodeOrdersAdminProps) {
   const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -125,6 +127,7 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
   const [originFilter, setOriginFilter] = useState<'ALL' | 'TABLES' | 'COUNTER'>('ALL')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [prevCount, setPrevCount] = useState(0)
+  const [serverTimeOffset, setServerTimeOffset] = useState<number>(0)
 
   const handleOpenNewOrder = () => {
     if (onOpenPDV) {
@@ -226,6 +229,12 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     try {
       const res = await authFetch(`/api/orders?tenantId=${encodeURIComponent(tenantId)}`)
       const data = await res.json()
+      if (data.serverTime) {
+        const sTime = new Date(data.serverTime).getTime()
+        if (!isNaN(sTime)) {
+          setServerTimeOffset(Date.now() - sTime)
+        }
+      }
       if (data.orders) {
         const newOrders: Order[] = data.orders
         const newCount = newOrders.filter(
@@ -623,20 +632,15 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     })
   }
 
-  // Helper de cálculo de tempo decorrido com compensação inteligente de timezone
+  // Cálculo de tempo decorrido oficial sincronizado com o fuso de Portugal
   const calculateElapsedMinutes = (dateStr: string | Date | undefined | null) => {
     if (!dateStr) return 0
-    const now = Date.now()
-    let orderTime = new Date(dateStr).getTime()
+    const currentServerNow = Date.now() - serverTimeOffset
+    const orderTime = new Date(dateStr).getTime()
     if (isNaN(orderTime)) return 0
 
-    let diffMs = now - orderTime
-    let minutes = Math.floor(diffMs / 60000)
-
-    // Compensação de offset de 1 hora (UTC vs WEST / Fuso Europe/Lisbon)
-    if (minutes >= 55 && minutes <= 75) {
-      minutes = Math.max(0, minutes - 60)
-    }
+    const diffMs = currentServerNow - orderTime
+    const minutes = Math.floor(diffMs / 60000)
 
     return Math.max(0, minutes)
   }
@@ -677,10 +681,14 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
     <div className="w-full space-y-2.5">
       {/* Linha 1: Título e Ações Rápidas */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-purple-100 dark:border-white/10">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-base font-black text-purple-950 dark:text-white tracking-tight shrink-0">
             Pedidos QR Code | Balcão
           </h1>
+          <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-lg border border-purple-200 dark:border-white/10 flex items-center gap-1 shrink-0">
+            <Clock className="h-3 w-3 text-purple-600 dark:text-pink-400" />
+            <span>Hoje • Turno 05h PT</span>
+          </span>
         </div>
 
         {/* Ações Alinhadas em Linha Única */}
@@ -748,6 +756,20 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
+
+          {onOpenHistory && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onOpenHistory}
+              title="Consultar pedidos e auditoria de dias anteriores"
+              className="h-8 px-2.5 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-800 dark:text-purple-100 cursor-pointer flex items-center gap-1.5"
+            >
+              <History className="h-3.5 w-3.5 text-purple-600 dark:text-pink-400" />
+              <span className="hidden sm:inline">Histórico</span>
+            </Button>
+          )}
 
           <Button
             size="sm"

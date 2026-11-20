@@ -337,6 +337,7 @@ export default function HomePage() {
             <QRCodeOrdersAdmin
               tenantId={activeTenantId}
               onOpenPDV={() => setView('pdv')}
+              onOpenHistory={() => setView('orders_history')}
             />
           )}
           {view === 'orders_history' && (

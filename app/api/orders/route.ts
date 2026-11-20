@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get('loja') ||
       request.nextUrl.searchParams.get('tenantId') ||
       request.nextUrl.searchParams.get('tenant')
+    const all = request.nextUrl.searchParams.get('all') === 'true'
 
     let tenantId = rawTenant
     if (rawTenant) {
@@ -19,12 +20,22 @@ export async function GET(request: NextRequest) {
       if (t) tenantId = t.id
     }
 
-    let sql = `SELECT * FROM orders`
+    let sql = `SELECT * FROM orders WHERE 1=1`
     const params: any[] = []
 
     if (tenantId) {
-      sql += ` WHERE tenant_id::text = $1`
+      sql += ` AND tenant_id::text = $${params.length + 1}`
       params.push(tenantId)
+    }
+
+    // Regra Operacional de Restauração (Horário de Portugal / Europe/Lisbon):
+    // No KDS / Painel ao vivo, mantém apenas pedidos do turno operacional corrente
+    // (corte diário às 05:00 da manhã de Portugal) OU pedidos ativos ainda não finalizados.
+    if (!all) {
+      sql += ` AND (
+        ((created_at AT TIME ZONE 'Europe/Lisbon') - interval '5 hours')::date = ((now() AT TIME ZONE 'Europe/Lisbon') - interval '5 hours')::date
+        OR status NOT IN ('PAID', 'COMPLETED', 'CANCELLED')
+      )`
     }
 
     sql += ` ORDER BY created_at DESC LIMIT 100`
@@ -90,7 +101,10 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ orders })
+    return NextResponse.json({
+      orders,
+      serverTime: new Date().toISOString(),
+    })
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Erro ao procurar pedidos' },

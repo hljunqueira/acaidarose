@@ -35,6 +35,24 @@ interface OrderItemsModalProps {
   onCallTV?: (order: Order) => void
 }
 
+const formatOrderDateTime = (dateStr: string | Date | undefined | null) => {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ''
+    return d.toLocaleString('pt-PT', {
+      timeZone: 'Europe/Lisbon',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return ''
+  }
+}
+
 export default function OrderItemsModal({
   order,
   open,
@@ -66,8 +84,8 @@ export default function OrderItemsModal({
       <DialogContent className="w-[95vw] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-[#160228] text-slate-900 dark:text-white border border-purple-150 dark:border-white/20 rounded-3xl shadow-2xl">
         {/* Header com Ticket, Esplanada e Nome */}
         <DialogHeader className="pb-3 border-b border-purple-100 dark:border-white/10 text-left">
-          <DialogTitle className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+          <DialogTitle className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xl font-black text-purple-950 dark:text-pink-300 font-mono">
                 Ticket #{order.orderNumber || 100}
               </span>
@@ -88,6 +106,14 @@ export default function OrderItemsModal({
                 <Badge variant="outline" className="text-xs font-bold border-slate-300 dark:border-white/20 text-slate-700 dark:text-slate-300">
                   Local
                 </Badge>
+              )}
+
+              {/* Data e Hora Oficial do Pedido (Horário de Portugal) */}
+              {order.createdAt && (
+                <span className="flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-purple-200/90 bg-purple-50/80 dark:bg-white/5 px-2 py-0.5 rounded-lg border border-purple-200 dark:border-white/10 shrink-0">
+                  <Clock className="h-3 w-3 text-purple-600 dark:text-pink-400" />
+                  <span>{formatOrderDateTime(order.createdAt)}</span>
+                </span>
               )}
             </div>
 
@@ -156,7 +182,7 @@ export default function OrderItemsModal({
                   )}
 
                   {/* Opções Selecionadas / Modificadores (Leite, Textura, Adicionais) */}
-                  {(item.selectedOptions?.length > 0 || item.options?.length > 0) && (
+                  {Boolean((item.selectedOptions?.length || 0) > 0 || (item.options?.length || 0) > 0) && (
                     <div className="text-[11px] text-purple-900 dark:text-purple-100 break-words">
                       <span className="font-bold text-purple-700/80 dark:text-purple-200/70">Opções/Modificadores:</span>{' '}
                       {(item.selectedOptions || item.options).map((opt: any) =>
@@ -195,7 +221,7 @@ export default function OrderItemsModal({
 
         {/* Resumo Financeiro */}
         <div className="p-3.5 rounded-2xl bg-purple-50/80 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-1.5 text-xs">
-          {((order.bagQuantity && order.bagQuantity > 0) || (order.bagFee && order.bagFee > 0)) && (
+          {Boolean((Number(order.bagQuantity) > 0) || (Number(order.bagFee) > 0)) && (
             <div className="flex items-center justify-between text-muted-foreground pb-1 border-b border-purple-100 dark:border-white/10">
               <span>Saco de Transporte ({order.bagQuantity || 1}x):</span>
               <span className="font-mono font-bold">+{formatCurrency(order.bagFee || 0.10)}</span>
