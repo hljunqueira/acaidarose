@@ -1,6 +1,6 @@
 # SCRATCHPAD - Açaí da Rose
 
-- **Correção da Cobrança de Creme no Copo 250gr no PDV e Alinhamento dos Modelos de Opção [CONCLUÍDO & TESTADO]**:
+- **Correção da Cobrança de Creme no Copo 250gr no PDV e Alinhamento dos Modelos de Opção [CONCLUÍDO & EM PRODUÇÃO]**:
   - **Ações Realizadas**:
     1. *Correção do Cálculo no PDV / Comanda (`cartStore.ts`, `BaseSelector.tsx` e `PDVView.tsx`)*:
        - Em `lib/stores/cartStore.ts`: eliminada a coerção `Number(limiteCremes) || 1` que forçava 1 creme grátis quando a cota era 0. Agora lê diretamente de `basesModel?.maxQty` com fallback seguro para `limiteCremes` respeitando valores nulos/zero.
@@ -17,6 +17,10 @@
        - Varredura de integridade: 0 grupos de opções desvinculados no catálogo.
        - `tsc --noEmit` executado com código 0 (zero erros de TypeScript).
        - `npm run build` compilou com sucesso absoluto todas as 45 rotas (0 erros).
+    4. *Deploy em Produção (VPS 198.50.117.110)*:
+       - Commit git `4fb01c98`: `fix(pdv): correcao de cobranca de creme em cota zero e alinhamento de modelos de opcao` enviado para `origin/main`.
+       - Container Docker `acaidarose-app` (Node.js 20 Alpine) atualizado e em execução na VPS.
+       - Verificação de integridade: endpoint `https://app.acaidarose.pt/api/health` respondendo HTTP 200 `HEALTHY` com PostgreSQL conectado (latência 16ms, 3 tenants ativos).
 
 
 - **Correção da Persistência de Subtítulo, Remoção de Estáticos & Modal com Diff Real [CONCLUÍDO & TESTADO]**:
