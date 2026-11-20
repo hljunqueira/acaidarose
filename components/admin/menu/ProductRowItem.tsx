@@ -14,6 +14,8 @@ import {
   GripVertical,
   Send,
   Clock,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react'
 import ProductActiveHoursModal from './ProductActiveHoursModal'
 
@@ -24,6 +26,8 @@ interface ProductRowItemProps {
   onEdit: (product: any) => void
   onToggleStatus: (product: any, field?: 'visibility' | 'availability', targetValue?: boolean) => void
   onDelete: (product: any) => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }
 
 import { canManageMasterCatalog } from '@/lib/utils/permissions'
@@ -35,6 +39,8 @@ export default function ProductRowItem({
   onEdit,
   onToggleStatus,
   onDelete,
+  onMoveUp,
+  onMoveDown,
 }: ProductRowItemProps) {
   const { user } = useAuthStore()
   const isFranchisor = canManageMasterCatalog(user, tenantId)
@@ -108,8 +114,36 @@ export default function ProductRowItem({
       <div className="flex items-start md:items-center justify-between gap-3 flex-1 min-w-0">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
           {isFranchisor && (
-            <div className="text-purple-400 dark:text-purple-300/40 hover:text-purple-700 dark:hover:text-pink-400 cursor-grab shrink-0">
-              <GripVertical className="h-4 w-4" />
+            <div className="flex items-center gap-0.5 text-purple-400 dark:text-purple-300/60 shrink-0">
+              <div className="hover:text-purple-700 dark:hover:text-pink-400 cursor-grab p-1" title="Arrastar para reordenar">
+                <GripVertical className="h-4 w-4" />
+              </div>
+              {onMoveUp && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onMoveUp()
+                  }}
+                  className="p-1 hover:bg-purple-100 dark:hover:bg-white/10 hover:text-purple-900 dark:hover:text-white rounded-lg cursor-pointer"
+                  title="Mover para cima"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {onMoveDown && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onMoveDown()
+                  }}
+                  className="p-1 hover:bg-purple-100 dark:hover:bg-white/10 hover:text-purple-900 dark:hover:text-white rounded-lg cursor-pointer"
+                  title="Mover para baixo"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           )}
 

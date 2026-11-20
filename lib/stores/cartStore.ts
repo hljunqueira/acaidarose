@@ -172,6 +172,7 @@ interface CartState {
   addSimpleItem: (container: ProductContainer, quantity?: number, options?: any[], notes?: string, customUnitPrice?: number) => void
   updateItemQuantity: (id: string, delta: number) => void
   removeItem: (id: string) => void
+  editCartItem: (id: string) => CartItem | null
   clearCart: () => void
   total: () => number
 }
@@ -343,6 +344,28 @@ export const useCartStore = create<CartState>()(
 
       removeItem: (id: string) =>
         set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
+
+      editCartItem: (id: string) => {
+        const item = get().items.find((i) => i.id === id)
+        if (!item) return null
+        if (item.container) {
+          set((s) => ({
+            items: s.items.filter((i) => i.id !== id),
+            draft: {
+              id: item.id,
+              container: item.container,
+              bases: item.bases || [],
+              toppings: (item.toppings || []).map((t) => ({
+                ...t,
+                active: t.active !== undefined ? t.active : true,
+              })),
+              packagingType: item.packagingType || 'TACA',
+              containerFormat: item.containerFormat || 'TACA',
+            },
+          }))
+        }
+        return item
+      },
 
       clearCart: () => set({ items: [], draft: null }),
 

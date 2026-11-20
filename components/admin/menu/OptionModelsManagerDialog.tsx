@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { Search, Edit2, Copy, Trash2, Eye, EyeOff, SlidersHorizontal, Building2 } from 'lucide-react'
+import { Search, Edit2, Copy, Trash2, Eye, EyeOff, SlidersHorizontal, Building2, GripVertical, ChevronUp, ChevronDown, Layers } from 'lucide-react'
 import OptionModelDialog, { OptionModelData } from './OptionModelDialog'
 import FranchiseRequestDialog from './FranchiseRequestDialog'
 import { useAuthStore } from '@/lib/stores/authStore'
@@ -89,12 +89,103 @@ export default function OptionModelsManagerDialog({
   const [modelToDuplicate, setModelToDuplicate] = useState<OptionModelData | null>(null)
   const [duplicateConfirmOpen, setDuplicateConfirmOpen] = useState(false)
 
-  // Filtragem de modelos pela busca
+  // Filtragem de modelos pela busca (ordenados por displayOrder)
   const filteredModels = useMemo(() => {
-    if (!searchTerm.trim()) return internalModels
+    let list = [...internalModels]
+    list.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+    if (!searchTerm.trim()) return list
     const term = searchTerm.toLowerCase().trim()
-    return internalModels.filter((m) => m.name.toLowerCase().includes(term))
+    return list.filter((m) => m.name.toLowerCase().includes(term))
   }, [internalModels, searchTerm])
+
+  const [draggedModelId, setDraggedModelId] = useState<string | null>(null)
+
+  const handleMoveModel = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= internalModels.length) return
+
+    const updated = [...internalModels]
+    const [moved] = updated.splice(index, 1)
+    updated.splice(targetIndex, 0, moved)
+
+    // Atualiza displayOrder localmente
+    const withOrder = updated.map((m, idx) => ({ ...m, displayOrder: idx }))
+    setInternalModels(withOrder)
+    onSaveModels(withOrder)
+
+    const effectiveTenant = tenantId || FIGUEIRA_HQ_ID
+    try {
+      const itemsPayload = withOrder
+        .filter((m) => m.id && m.id.length === 36)
+        .map((m, idx) => ({ id: m.id!, displayOrder: idx }))
+
+      if (itemsPayload.length > 0) {
+        await authFetch('/api/option-models/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: itemsPayload, tenantId: effectiveTenant }),
+        })
+      }
+
+      markDirty(
+        effectiveTenant,
+        `Ordem das etapas de montagem reorganizada: ${moved.name} movido`,
+        authFetch
+      )
+      toast.success('Ordem das etapas de montagem atualizada!')
+    } catch (e) {
+      console.error('Erro ao reordenar modelos de opções no servidor:', e)
+      toast.error('Erro ao salvar nova ordem das etapas')
+    }
+  }
+
+  const handleDragStartModel = (e: React.DragEvent, id: string) => {
+    setDraggedModelId(id)
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDropModel = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    if (!draggedModelId || draggedModelId === targetId) return
+
+    const sourceIndex = internalModels.findIndex((m) => m.id === draggedModelId)
+    const targetIndex = internalModels.findIndex((m) => m.id === targetId)
+    if (sourceIndex === -1 || targetIndex === -1) return
+
+    const updated = [...internalModels]
+    const [moved] = updated.splice(sourceIndex, 1)
+    updated.splice(targetIndex, 0, moved)
+
+    const withOrder = updated.map((m, idx) => ({ ...m, displayOrder: idx }))
+    setInternalModels(withOrder)
+    onSaveModels(withOrder)
+    setDraggedModelId(null)
+
+    const effectiveTenant = tenantId || FIGUEIRA_HQ_ID
+    try {
+      const itemsPayload = withOrder
+        .filter((m) => m.id && m.id.length === 36)
+        .map((m, idx) => ({ id: m.id!, displayOrder: idx }))
+
+      if (itemsPayload.length > 0) {
+        await authFetch('/api/option-models/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: itemsPayload, tenantId: effectiveTenant }),
+        })
+      }
+
+      markDirty(
+        effectiveTenant,
+        `Ordem das etapas de montagem reorganizada via arrasto`,
+        authFetch
+      )
+      toast.success('Ordem das etapas de montagem atualizada!')
+    } catch (e) {
+      console.error('Erro ao salvar reordenação de modelos:', e)
+    }
+  }
 
   const handleOpenCreateModel = () => {
     setEditingModel(null)
@@ -350,6 +441,17 @@ export default function OptionModelsManagerDialog({
             </div>
           </div>
 
+          {/* Banner de Sequência de Montagem */}
+          <div className="mx-5 mb-3 p-3 bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 rounded-2xl flex items-center gap-2.5 text-xs text-purple-900 dark:text-purple-200">
+            <Layers className="h-4 w-4 text-purple-600 dark:text-pink-400 shrink-0" />
+            <div className="leading-tight text-[11px]">
+              <span className="font-black">Sequência de Montagem no Balcão & Cardápio:</span>
+              <span className="opacity-80 ml-1">
+                A ordem abaixo define o passo a passo da montagem dos adicionais no PDV Balcão (Etapa 2, 3...) e no menu online. Use as setas para reordenar a sequência.
+              </span>
+            </div>
+          </div>
+
           {/* Lista de Modelos */}
           <div className="px-5 pb-5 flex-1 overflow-y-auto space-y-2">
             {filteredModels.length === 0 ? (
@@ -357,27 +459,66 @@ export default function OptionModelsManagerDialog({
                 Nenhum modelo de opções encontrado.
               </div>
             ) : (
-              filteredModels.map((m) => {
+              filteredModels.map((m, idx) => {
                 const itemCount = (m.options || []).length
                 const isModelActive = m.active !== false
                 return (
                   <div
                     key={m.id || m.name}
-                    className={`p-3 px-4 rounded-2xl border transition flex items-center justify-between gap-3 shadow-xs ${!isModelActive
+                    draggable={isSuperAdmin && !searchTerm.trim()}
+                    onDragStart={(e) => m.id && handleDragStartModel(e, m.id)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => m.id && handleDropModel(e, m.id)}
+                    className={`p-3 px-4 rounded-2xl border transition flex items-center justify-between gap-3 shadow-xs ${
+                      draggedModelId === m.id ? 'opacity-40 border-purple-500 border-dashed' : ''
+                    } ${!isModelActive
                         ? 'border-amber-200/70 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-950/10 opacity-75'
                         : 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-300 dark:hover:border-white/20'
                       }`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className={`font-bold text-xs truncate ${!isModelActive ? 'line-through text-zinc-500 dark:text-zinc-400' : 'text-purple-950 dark:text-white'}`}>
-                        {m.name}
-                      </div>
-                      <div className="text-[10px] text-purple-600 dark:text-purple-300/70 font-mono mt-0.5">
-                        {itemCount} {itemCount === 1 ? 'item cadastrado' : 'itens cadastrados'} · {m.priceType === 'Individual' ? 'Adicional Pago (€)' : 'Incluso'}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {isSuperAdmin && !searchTerm.trim() && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <GripVertical className="h-4 w-4 text-purple-400/80 dark:text-purple-500/70 cursor-grab shrink-0" />
+                          <span className="text-[10px] font-mono font-black bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800/40">
+                            Etapa #{idx + 2}
+                          </span>
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className={`font-bold text-xs truncate ${!isModelActive ? 'line-through text-zinc-500 dark:text-zinc-400' : 'text-purple-950 dark:text-white'}`}>
+                          {m.name}
+                        </div>
+                        <div className="text-[10px] text-purple-600 dark:text-purple-300/70 font-mono mt-0.5">
+                          {itemCount} {itemCount === 1 ? 'item cadastrado' : 'itens cadastrados'} · {m.priceType === 'Individual' ? 'Adicional Pago (€)' : 'Incluso'}
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {isSuperAdmin && !searchTerm.trim() && (
+                        <div className="flex items-center border border-purple-200 dark:border-white/10 rounded-lg p-0.5 bg-purple-50/50 dark:bg-white/5 mr-1">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveModel(idx, 'up')}
+                            className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
+                            title="Mover etapa para cima"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === filteredModels.length - 1}
+                            onClick={() => handleMoveModel(idx, 'down')}
+                            className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
+                            title="Mover etapa para baixo"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+
                       {isSuperAdmin ? (
                         <>
                           <button

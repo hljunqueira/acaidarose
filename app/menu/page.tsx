@@ -208,8 +208,9 @@ function MenuContent() {
     if (paramNumero) setCurrentTableNum(paramNumero)
   }, [paramNumero])
 
-  const loadCatalog = () => {
-    fetch(`/api/products?loja=${encodeURIComponent(activeLoja)}&_t=${Date.now()}`, { cache: 'no-store' })
+  const loadCatalog = (targetVersion?: number) => {
+    const v = targetVersion !== undefined ? targetVersion : (catalogVersion || 1)
+    fetch(`/api/products?loja=${encodeURIComponent(activeLoja)}&v=${v}&_t=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         setCatalog(data)
@@ -279,7 +280,7 @@ function MenuContent() {
         const data = await res.json()
         if (data?.version && data.version > catalogVersion) {
           setCatalogVersion(data.version)
-          loadCatalog()
+          loadCatalog(data.version)
         }
       } catch {}
     }, 15000)

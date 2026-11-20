@@ -325,7 +325,7 @@ export default function AuditLogsView() {
       {/* Modal de Detalhes da Alteração */}
       {selectedLog && (
         <Dialog open={Boolean(selectedLog)} onOpenChange={() => setSelectedLog(null)}>
-          <DialogContent className="max-w-lg rounded-3xl bg-white dark:bg-[#180424] border border-purple-150 dark:border-white/10 p-6 space-y-4 text-slate-900 dark:text-white">
+          <DialogContent className="max-w-2xl sm:max-w-3xl w-full rounded-3xl bg-white dark:bg-[#180424] border border-purple-150 dark:border-white/10 p-6 sm:p-7 space-y-4 text-slate-900 dark:text-white">
             <DialogHeader>
               <DialogTitle className="text-lg font-black text-purple-950 dark:text-white flex items-center gap-2">
                 <Info className="h-5 w-5 text-pink-500" />

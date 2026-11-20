@@ -361,9 +361,6 @@ export default function AjudaPortalPage() {
 
       if (Array.isArray(catsData.categories)) {
         setCategories(catsData.categories)
-        if (!selectedCatId && catsData.categories.length > 0) {
-          setSelectedCatId(catsData.categories[0].id)
-        }
       }
       if (Array.isArray(artsData.articles)) {
         setArticles(artsData.articles)
@@ -509,20 +506,20 @@ export default function AjudaPortalPage() {
     })
   }, [categories, activeScope])
 
-  // Ajusta automaticamente a categoria selecionada se a atual sair do escopo
+  // Mantém categorias recolhidas por padrão, abrindo apenas sob clique do usuário
   useEffect(() => {
-    if (scopedCategories.length > 0) {
+    if (scopedCategories.length > 0 && selectedCatId) {
       const exists = scopedCategories.some((c) => c.id === selectedCatId)
       if (!exists && !activeArticle) {
-        setSelectedCatId(scopedCategories[0].id)
+        setSelectedCatId(null)
       }
     }
   }, [scopedCategories, selectedCatId, activeArticle])
 
-  // Categoria ativa atual
+  // Categoria ativa atual (apenas se o usuário tiver clicado e aberto)
   const activeCategory = useMemo(() => {
-    return categories.find((c) => c.id === selectedCatId) || scopedCategories[0] || null
-  }, [categories, selectedCatId, scopedCategories])
+    return selectedCatId ? categories.find((c) => c.id === selectedCatId) || null : null
+  }, [categories, selectedCatId])
 
   // Artigos pertencentes à categoria ativa
   const categoryArticles = useMemo(() => {
@@ -763,11 +760,11 @@ export default function AjudaPortalPage() {
 
                 return (
                   <div key={cat.id} className="rounded-xl overflow-hidden transition-all">
-                    {/* Botão da Categoria */}
+                    {/* Botão da Categoria (Toggle Expande/Recolhe) */}
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedCatId(cat.id)
+                        setSelectedCatId((prev) => (prev === cat.id ? null : cat.id))
                         if (activeArticle?.categoryId !== cat.id) {
                           setActiveArticle(null)
                         }
@@ -849,29 +846,10 @@ export default function AjudaPortalPage() {
                       {activeArticle.categoryTitle}
                     </Badge>
 
-                    {activeScreenRoute && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 text-purple-800 dark:text-purple-300 text-[10.5px] font-mono font-bold">
-                        <Compass className="h-3 w-3" />
-                        Rota: {activeScreenRoute}
-                      </span>
-                    )}
-
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       Leitura: {activeArticle.readTimeMinutes || 4} min
                     </span>
-
-                    {activeScreenRoute && (
-                      <a
-                        href={`https://app.acaidarose.pt/?view=${encodeURIComponent(activeScreenRoute)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-card border border-border hover:bg-muted text-xs font-bold text-foreground transition shadow-2xs cursor-pointer"
-                      >
-                        <span>Abrir tela no sistema</span>
-                        <ExternalLink className="h-3 w-3 text-purple-600" />
-                      </a>
-                    )}
                   </div>
 
                   <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight leading-tight">
@@ -900,13 +878,6 @@ export default function AjudaPortalPage() {
                           <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight">
                             {section.title}
                           </h2>
-
-                          {section.routePath && section.routePath !== activeScreenRoute && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 text-[10.5px] font-mono font-bold">
-                              <Compass className="h-3 w-3" />
-                              Rota: {section.routePath}
-                            </span>
-                          )}
                         </div>
 
                         {/* Callout / Dica / Alerta no Topo da Seção se Houver */}
@@ -1115,6 +1086,19 @@ export default function AjudaPortalPage() {
                   </div>
                 </div>
               </article>
+            ) : !activeCategory ? (
+              /* ESTADO INICIAL RECOLHIDO: CONVITE PARA SELECIONAR UMA CATEGORIA */
+              <div className="py-20 px-6 text-center border border-dashed border-border rounded-3xl bg-card/50 space-y-3 max-w-lg mx-auto my-8">
+                <div className="h-12 w-12 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center mx-auto">
+                  <BookOpen className="h-6 w-6" />
+                </div>
+                <h3 className="text-base font-black text-foreground tracking-tight">
+                  Selecione uma categoria de ajuda ao lado
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Clique em qualquer categoria no menu lateral para expandir os tópicos e consultar os manuais e o funcionamento detalhado de cada tela.
+                </p>
+              </div>
             ) : (
               /* ========================================================= */
               /* LISTAGEM DE TELAS DA CATEGORIA SELECIONADA (VISÃO GERAL) */

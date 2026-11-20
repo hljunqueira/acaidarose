@@ -8,6 +8,7 @@ import { playOrderNotificationSound } from '@/lib/utils/soundNotification'
 import { subscribeToTVCalls, TVCallEvent } from '@/lib/utils/tvBroadcast'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { CheckCircle2, Clock, ChefHat, Bell, X, ExternalLink } from 'lucide-react'
+import { toast } from 'sonner'
 
 export interface ActiveCustomerOrder {
   orderId: string
@@ -26,6 +27,7 @@ export default function CustomerOrderLiveTracker() {
   const [activeOrder, setActiveOrder] = useState<ActiveCustomerOrder | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [readyModalOpen, setReadyModalOpen] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
 
   // Carregar pedido ativo do localStorage
   const loadActiveOrder = useCallback(() => {
@@ -37,7 +39,7 @@ export default function CustomerOrderLiveTracker() {
         return
       }
       const parsed: ActiveCustomerOrder = JSON.parse(raw)
-      // Se já foi finalizado há mais de 4 horas, ignora
+      // Se já foi finalizado há mais de 4 horas ou cancelado, ignora e remove
       if (parsed.createdAt) {
         const orderTime = new Date(parsed.createdAt).getTime()
         const now = Date.now()
@@ -47,7 +49,36 @@ export default function CustomerOrderLiveTracker() {
           return
         }
       }
+      if (parsed.status === 'CANCELLED') {
+        localStorage.removeItem('customer_active_order')
+        setActiveOrder(null)
+        return
+      }
       setActiveOrder(parsed)
+
+      // Verificação imediata no servidor para não manter pedido excluído na tela
+      if (parsed.orderId) {
+        fetch(`/api/orders/${encodeURIComponent(parsed.orderId)}`, { cache: 'no-store' })
+          .then((res) => {
+            if (res.status === 404) {
+              localStorage.removeItem('customer_active_order')
+              setActiveOrder(null)
+              window.dispatchEvent(new Event('customer_order_updated'))
+              return null
+            }
+            return res.ok ? res.json() : null
+          })
+          .then((data) => {
+            if (!data) return
+            const sOrder = data.order || data
+            if (!sOrder || sOrder.status === 'CANCELLED' || sOrder.deleted_at) {
+              localStorage.removeItem('customer_active_order')
+              setActiveOrder(null)
+              window.dispatchEvent(new Event('customer_order_updated'))
+            }
+          })
+          .catch(() => {})
+      }
     } catch {
       setActiveOrder(null)
     }
@@ -106,11 +137,37 @@ export default function CustomerOrderLiveTracker() {
         const res = await fetch(`/api/orders/${encodeURIComponent(activeOrder.orderId)}`, {
           cache: 'no-store',
         })
+
+        // Se o pedido foi excluído definitivamente pelo balcão (404)
+        if (res.status === 404) {
+          try {
+            localStorage.removeItem('customer_active_order')
+          } catch {}
+          setActiveOrder(null)
+          setReadyModalOpen(false)
+          setDetailsOpen(false)
+          window.dispatchEvent(new Event('customer_order_updated'))
+          toast.info('O seu pedido foi cancelado ou removido pelo balcão.')
+          return
+        }
+
         if (!res.ok) return
 
         const data = await res.json()
         const serverOrder = data.order || data
-        if (!serverOrder) return
+        
+        // Se a comanda retornou vazia ou foi cancelada/excluída
+        if (!serverOrder || serverOrder.status === 'CANCELLED' || serverOrder.deleted_at) {
+          try {
+            localStorage.removeItem('customer_active_order')
+          } catch {}
+          setActiveOrder(null)
+          setReadyModalOpen(false)
+          setDetailsOpen(false)
+          window.dispatchEvent(new Event('customer_order_updated'))
+          toast.info('O seu pedido foi cancelado ou removido pelo balcão.')
+          return
+        }
 
         const newStatus = serverOrder.status
 
@@ -150,6 +207,17 @@ export default function CustomerOrderLiveTracker() {
         event.customerName.trim().toLowerCase() === activeOrder.customerName.trim().toLowerCase()
 
       if (isMyTicket || isMyName) {
+        if (event.status === 'CANCELLED' || event.status === 'DELETED') {
+          try {
+            localStorage.removeItem('customer_active_order')
+          } catch {}
+          setActiveOrder(null)
+          setReadyModalOpen(false)
+          setDetailsOpen(false)
+          window.dispatchEvent(new Event('customer_order_updated'))
+          toast.info('O seu pedido foi cancelado ou removido pelo balcão.')
+          return
+        }
         triggerReadyNotification(activeOrder)
       }
     }, undefined, activeOrder.tenantId)
@@ -166,6 +234,7 @@ export default function CustomerOrderLiveTracker() {
     setActiveOrder(null)
     setReadyModalOpen(false)
     setDetailsOpen(false)
+    window.dispatchEvent(new Event('customer_order_updated'))
   }
 
   if (!activeOrder) return null
@@ -199,59 +268,72 @@ export default function CustomerOrderLiveTracker() {
   return (
     <>
       {/* BARRA FLUTUANTE DISCRETA ACIMA DA BOTTOM NAV */}
-      <div className="fixed bottom-16 inset-x-0 z-40 px-3 sm:px-4 pointer-events-none">
-        <div className="max-w-md mx-auto pointer-events-auto">
-          <div
-            onClick={() => setDetailsOpen(true)}
-            className={`cursor-pointer transition-all duration-300 rounded-2xl p-2.5 sm:p-3 shadow-xl backdrop-blur-md border flex items-center justify-between gap-3 ${
-              isReady
-                ? 'bg-emerald-950/90 text-white border-emerald-400/50 shadow-emerald-950/40'
-                : 'bg-[#1b032e]/95 text-white border-purple-400/30 shadow-purple-950/40'
-            }`}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  isReady ? 'bg-emerald-500 text-white' : 'bg-purple-800/80 text-pink-300'
-                }`}
-              >
-                {isReady ? (
-                  <CheckCircle2 className="h-5 w-5" />
-                ) : isPreparing ? (
-                  <ChefHat className="h-5 w-5 animate-pulse" />
-                ) : (
-                  <Clock className="h-5 w-5" />
-                )}
+      {!isDismissed && (
+        <div className="fixed bottom-[calc(4.85rem+env(safe-area-inset-bottom,0px))] sm:bottom-20 inset-x-0 z-40 px-3 sm:px-4 pointer-events-none">
+          <div className="max-w-md mx-auto pointer-events-auto">
+            <div
+              onClick={() => setDetailsOpen(true)}
+              className={`cursor-pointer transition-all duration-300 rounded-2xl p-2.5 sm:p-3 shadow-xl backdrop-blur-md border flex items-center justify-between gap-2.5 ${
+                isReady
+                  ? 'bg-emerald-950/90 text-white border-emerald-400/50 shadow-emerald-950/40'
+                  : 'bg-[#1b032e]/95 text-white border-purple-400/30 shadow-purple-950/40'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div
+                  className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    isReady ? 'bg-emerald-500 text-white' : 'bg-purple-800/80 text-pink-300'
+                  }`}
+                >
+                  {isReady ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : isPreparing ? (
+                    <ChefHat className="h-5 w-5 animate-pulse" />
+                  ) : (
+                    <Clock className="h-5 w-5" />
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-sm tracking-tight text-pink-300">
+                      #{activeOrder.orderNumber}
+                    </span>
+                    <span className="text-xs font-bold truncate text-white">
+                      {activeOrder.customerName}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-purple-200/80 truncate">
+                    {activeOrder.tableLabel} · {isReady ? 'Pode retirar!' : isPreparing ? 'A preparar açaí...' : 'Dirija-se ao caixa'}
+                  </div>
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-black text-sm tracking-tight text-pink-300">
-                    #{activeOrder.orderNumber}
-                  </span>
-                  <span className="text-xs font-bold truncate text-white">
-                    {activeOrder.customerName}
-                  </span>
-                </div>
-                <div className="text-[11px] text-purple-200/80 truncate">
-                  {activeOrder.tableLabel} · {isReady ? 'Pode retirar!' : isPreparing ? 'A preparar açaí...' : 'Dirija-se ao caixa'}
-                </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {getStatusBadge()}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] font-bold text-purple-200 hover:text-white hover:bg-white/10 rounded-lg"
+                >
+                  Ver
+                </Button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsDismissed(true)
+                  }}
+                  className="p-1 text-purple-300/70 hover:text-white hover:bg-white/10 rounded-md transition cursor-pointer"
+                  title="Ocultar barra"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {getStatusBadge()}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-[11px] font-bold text-purple-200 hover:text-white hover:bg-white/10 rounded-lg"
-              >
-                Ver
-              </Button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* MODAL DE ALERTA MÁXIMO QUANDO O PEDIDO FICA PRONTO (APENAS NESTE TELEMÓVEL) */}
       <Dialog open={readyModalOpen} onOpenChange={setReadyModalOpen}>

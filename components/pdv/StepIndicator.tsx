@@ -5,6 +5,7 @@ import { Check } from 'lucide-react'
 interface StepIndicatorProps {
   current: number
   onSelectStep?: (step: number) => void
+  canNavigateForward?: boolean
 }
 
 const STEPS = [
@@ -13,25 +14,28 @@ const STEPS = [
   { id: 3, label: '3. Frutas & Acompanhamentos', desc: 'Acompanhamentos & Extras' },
 ]
 
-export default function StepIndicator({ current, onSelectStep }: StepIndicatorProps) {
+export default function StepIndicator({ current, onSelectStep, canNavigateForward = false }: StepIndicatorProps) {
   return (
     <div className="w-full mb-5">
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {STEPS.map((s) => {
           const isDone = current > s.id
           const isActive = current === s.id
+          const isDisabled = !canNavigateForward && s.id > current
 
           return (
             <button
               key={s.id}
               type="button"
-              onClick={() => onSelectStep && s.id <= current && onSelectStep(s.id)}
-              disabled={s.id > current}
+              onClick={() => onSelectStep && !isDisabled && onSelectStep(s.id)}
+              disabled={isDisabled}
               className={`relative flex items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl border text-left transition-all duration-200 ${
                 isActive
                   ? 'bg-purple-700 text-white border-purple-600 shadow-sm'
                   : isDone
                   ? 'bg-purple-50 text-purple-950 border-purple-200 hover:bg-purple-100 cursor-pointer'
+                  : !isDisabled
+                  ? 'bg-purple-50/50 text-purple-950 border-purple-200 hover:bg-purple-100/80 cursor-pointer'
                   : 'bg-muted/30 text-muted-foreground border-transparent opacity-50 cursor-not-allowed'
               }`}
             >
@@ -41,6 +45,8 @@ export default function StepIndicator({ current, onSelectStep }: StepIndicatorPr
                     ? 'bg-white/20 text-white'
                     : isDone
                     ? 'bg-purple-600 text-white'
+                    : !isDisabled
+                    ? 'bg-purple-200/80 text-purple-900 font-bold'
                     : 'bg-muted text-muted-foreground'
                 }`}
               >

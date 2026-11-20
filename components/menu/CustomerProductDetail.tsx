@@ -328,7 +328,11 @@ export default function CustomerProductDetail({
         if (activeOptions.length === 0) continue // grupo sem itens ativos não bloqueia o pedido
         const selections = customSelections[group.id || group.name] || {}
         const totalQty = Object.values(selections).reduce((a, b) => a + b, 0)
-        const minRequired = group.isRequired ? Math.max(1, group.minQty || 1) : (group.minQty || 0)
+        const isBaseOrCremeGroup = (group.name || '').toLowerCase().includes('base') || (group.name || '').toLowerCase().includes('creme')
+        // Se o produto já possui Açaí fixo, cremes adicionais são estritamente opcionais (mínimo 0)
+        const minRequired = (isBaseOrCremeGroup && isBaseFixed)
+          ? 0
+          : (group.isRequired ? Math.max(1, group.minQty || 1) : (group.minQty || 0))
         if (totalQty < minRequired) {
           toast.error(`Selecione pelo menos ${minRequired} item(ns) em "${group.name}"`)
           return

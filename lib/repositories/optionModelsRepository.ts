@@ -292,6 +292,42 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
     console.error('Erro ao sincronizar modelo atualizado nos recipientes:', syncErr)
   }
 
+  // Sincroniza a ordenação física dos itens em product_bases ou product_toppings
+  if (Array.isArray(options) && options.length > 0) {
+    try {
+      const isBaseModel = id === 'ddcec6eb-6a9d-4266-93b2-954dfba2e75a' || 
+        (updated.name && (updated.name.toLowerCase().includes('creme') || updated.name.toLowerCase().includes('base')))
+      
+      if (isBaseModel) {
+        for (let i = 0; i < options.length; i++) {
+          const opt = options[i]
+          if (opt.id && opt.id.length === 36) {
+            await query(`UPDATE product_bases SET display_order = $1 WHERE id = $2`, [i, opt.id])
+          } else if (opt.name) {
+            await query(`UPDATE product_bases SET display_order = $1 WHERE LOWER(TRIM(name)) = LOWER(TRIM($2))`, [i, opt.name])
+          }
+        }
+      } else {
+        for (let i = 0; i < options.length; i++) {
+          const opt = options[i]
+          if (opt.id && opt.id.length === 36) {
+            await query(`UPDATE product_toppings SET display_order = $1 WHERE id = $2`, [i, opt.id])
+          } else if (opt.name) {
+            await query(`UPDATE product_toppings SET display_order = $1 WHERE LOWER(TRIM(name)) = LOWER(TRIM($2))`, [i, opt.name])
+          }
+        }
+      }
+    } catch (orderErr) {
+      console.error('Erro ao sincronizar display_order dos itens do modelo:', orderErr)
+    }
+  }
+
+  // Notifica PDV e cardápio imediatamente via version bump
+  try {
+    const { bumpStoreCatalogVersion } = await import('@/lib/repositories/productsRepository')
+    await bumpStoreCatalogVersion()
+  } catch {}
+
   // Log para o TI
   await recordAuditLog({
     tenantId,
@@ -411,4 +447,65 @@ export async function deleteOptionModel(id: string, tenantId: string = AVEIRO_HQ
   })
 
   return true
+}
+
+export async function reorderOptionModels(
+  items: Array<{ id: string; displayOrder: number }>,
+  tenantId?: string,
+  author?: { name?: string; role?: string; id?: string }
+): Promise<boolean> {
+  try {
+    for (const item of items) {
+      await query(
+        `UPDATE product_option_models 
+         SET display_order = $1, updated_at = timezone('utc'::text, now()) 
+         WHERE id::text = $2`,
+        [item.displayOrder, item.id]
+      )
+    }
+
+    // Sincroniza a ordem dos option_groups em todos os recipientes vinculados
+    const containersRes = await query(
+      `SELECT id, option_groups FROM product_containers 
+       WHERE option_groups IS NOT NULL AND jsonb_array_length(option_groups) > 0`
+    )
+    const modelOrderMap = new Map<string, number>()
+    items.forEach((it) => modelOrderMap.set(it.id, it.displayOrder))
+
+    for (const row of containersRes.rows || []) {
+      const groups = Array.isArray(row.option_groups) ? row.option_groups : []
+      if (groups.length > 1) {
+        const sortedGroups = [...groups].sort((a: any, b: any) => {
+          const ordA = modelOrderMap.has(a.id) ? modelOrderMap.get(a.id)! : (a.displayOrder ?? 999)
+          const ordB = modelOrderMap.has(b.id) ? modelOrderMap.get(b.id)! : (b.displayOrder ?? 999)
+          return ordA - ordB
+        })
+        await query(
+          `UPDATE product_containers 
+           SET option_groups = $1::jsonb, updated_at = timezone('utc'::text, now()) 
+           WHERE id = $2`,
+          [JSON.stringify(sortedGroups), row.id]
+        )
+      }
+    }
+
+    const { bumpStoreCatalogVersion } = await import('@/lib/repositories/productsRepository')
+    await bumpStoreCatalogVersion()
+
+    await recordAuditLog({
+      tenantId: tenantId || null,
+      userId: author?.id,
+      authorName: author?.name,
+      userRole: author?.role || 'FRANCHISOR_ADMIN',
+      action: 'OPTION_MODELS_REORDERED',
+      entity: 'product_option_models',
+      message: `Ordem das etapas de montagem reorganizada nos modelos de opções (${items.length} modelos)`,
+      metadata: { items },
+    })
+
+    return true
+  } catch (err) {
+    console.error('Erro ao reordenar modelos de opções:', err)
+    return false
+  }
 }

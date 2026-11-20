@@ -51,7 +51,16 @@ export async function GET(req: NextRequest) {
       storeName: t?.name || 'Loja',
     }
 
-    return NextResponse.json({ config })
+    return NextResponse.json(
+      { config },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    )
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Erro ao carregar configurações de QR Code' },

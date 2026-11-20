@@ -25,6 +25,9 @@ import {
   TrendingUp,
   BarChart3,
   Printer,
+  Clock,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 
 export type AppViewId =
@@ -59,6 +62,40 @@ export type AppViewId =
   | 'users'
   | 'reports'
   | 'customer_feedback'
+
+const VIEW_ICONS: Record<AppViewId, any> = {
+  dev_hub: Server,
+  prevention_center: ShieldCheck,
+  audit_logs: Terminal,
+  manuals_admin: FileText,
+  franchise: Building2,
+  franchise_candidates: Users,
+  store_requests: Sparkles,
+  franchise_requests: Building2,
+  supply_hub: Truck,
+  analytics_overview: TrendingUp,
+  analytics_products: BarChart3,
+  analytics_toppings: Utensils,
+  pdv: ShoppingCart,
+  qrcode: Tv,
+  orders_history: FileText,
+  tv_panel: Tv,
+  tables: Store,
+  inventory: Boxes,
+  supply_orders: Truck,
+  menu: Utensils,
+  menu_categories: Boxes,
+  menu_menus: Utensils,
+  menu_highlights: Star,
+  menu_schedules: Clock,
+  menu_languages: Globe,
+  company: Store,
+  qrcode_config: Printer,
+  printers: Printer,
+  users: Users,
+  reports: FileText,
+  customer_feedback: Star,
+}
 
 interface AppSidebarProps {
   currentView: AppViewId
@@ -99,6 +136,25 @@ export default function AppSidebar({
   const isFranchisorAdmin = user.role === 'FRANCHISOR_ADMIN'
   const isTenantAdmin = user.role === 'TENANT_ADMIN'
   const isMatrizTenant = Boolean(currentTenant?.isHeadquarters) || currentTenant?.id === '11111111-1111-1111-1111-111111111111' || currentTenant?.slug === 'figueira-da-foz' || currentTenant?.slug === 'figueira'
+
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('acaidarose_sidebar_collapsed')
+      if (saved === 'true') setIsCollapsed(true)
+    } catch {}
+  }, [])
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('acaidarose_sidebar_collapsed', String(next))
+      } catch {}
+      return next
+    })
+  }
 
   // Contagem de solicitações e candidaturas pendentes
   const [candidatesCount, setCandidatesCount] = useState<number>(0)
@@ -510,13 +566,17 @@ export default function AppSidebar({
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-white dark:bg-[#120120] border-r border-purple-100 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out lg:static lg:z-auto ${
+        className={`fixed top-0 bottom-0 left-0 z-50 bg-white dark:bg-[#120120] border-r border-purple-100 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out lg:static lg:z-auto ${
+          isCollapsed ? 'lg:w-[76px] w-72' : 'lg:w-72 w-72'
+        } ${
           mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Topo do Sidebar: Logo Oficial */}
-        <div className="p-4 border-b border-purple-100 dark:border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Topo do Sidebar: Logo Oficial & Botão de Recolher */}
+        <div className={`border-b border-purple-100 dark:border-white/10 flex items-center justify-between ${
+          isCollapsed ? 'p-3 flex-col lg:gap-2' : 'p-4'
+        }`}>
+          <div className="flex items-center gap-3 min-w-0">
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-purple-700 to-pink-600 p-0.5 shadow-md flex items-center justify-center shrink-0">
               <img
                 src="/logo-oficial-1.png"
@@ -527,145 +587,239 @@ export default function AppSidebar({
                 }}
               />
             </div>
-            <div>
-              <div className="font-black text-sm text-purple-950 dark:text-white leading-tight">
-                Açaí da Rose
+            {!isCollapsed && (
+              <div className="min-w-0">
+                <div className="font-black text-sm text-purple-950 dark:text-white leading-tight truncate">
+                  Açaí da Rose
+                </div>
+                <div className="text-[10px] text-pink-600 dark:text-pink-400 font-bold uppercase tracking-wider truncate">
+                  PDV & FRANQUEADORA
+                </div>
               </div>
-              <div className="text-[10px] text-pink-600 dark:text-pink-400 font-bold uppercase tracking-wider">
-                PDV & FRANQUEADORA
-              </div>
-            </div>
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={onCloseMobile}
-            className="p-1.5 rounded-xl text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-white/10 lg:hidden cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Botão minimalista para recolher/expandir sidebar (Desktop) */}
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              title={isCollapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
+              className="hidden lg:flex p-1.5 rounded-xl text-purple-700 dark:text-purple-300 hover:bg-purple-100/70 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              {isCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </button>
+
+            {/* Fechar no Mobile */}
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="p-1.5 rounded-xl text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-white/10 lg:hidden cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Seletor de Loja Ativa */}
-        <div className="p-3 border-b border-purple-100 dark:border-white/10 bg-purple-50/40 dark:bg-white/5">
-          {isMasterSwitcherAllowed ? (
-            <button
-              type="button"
-              onClick={onOpenStoreSwitcher}
-              className="w-full text-left p-2.5 rounded-2xl border border-purple-200/80 dark:border-white/15 bg-white dark:bg-[#160228] hover:border-purple-400 dark:hover:border-pink-500 transition-all shadow-xs group cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 pr-1">
-                  <div className="text-xs font-black text-purple-950 dark:text-white truncate group-hover:text-purple-700 dark:group-hover:text-pink-300">
-                    {currentTenant.name}
-                  </div>
-                  <div className="text-[10px] text-purple-700 dark:text-purple-300/80 font-bold mt-0.5 flex items-center gap-1">
-                    <span>Trocar de Loja</span>
-                    <span className="text-[9px]">▾</span>
-                  </div>
-                </div>
-                <div className="h-6 w-6 rounded-xl bg-purple-100 dark:bg-white/10 text-purple-700 dark:text-pink-400 flex items-center justify-center font-bold text-xs shrink-0">
-                  <span className="text-xs">▾</span>
-                </div>
+        <div className={`border-b border-purple-100 dark:border-white/10 bg-purple-50/40 dark:bg-white/5 ${
+          isCollapsed ? 'p-2 flex justify-center' : 'p-3'
+        }`}>
+          {isCollapsed ? (
+            isMasterSwitcherAllowed ? (
+              <button
+                type="button"
+                onClick={onOpenStoreSwitcher}
+                title={`${currentTenant.name} (Clique para trocar de loja)`}
+                className="h-10 w-10 rounded-2xl border border-purple-200/80 dark:border-white/15 bg-white dark:bg-[#160228] hover:border-purple-400 dark:hover:border-pink-500 flex items-center justify-center text-purple-700 dark:text-pink-400 transition-all shadow-xs cursor-pointer group"
+              >
+                <Store className="h-4 w-4 group-hover:scale-110 transition-transform" />
+              </button>
+            ) : (
+              <div
+                title={`${currentTenant.name} (${currentTenant.city || 'Portugal'}) · Loja Fixada`}
+                className="h-10 w-10 rounded-2xl border border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 flex items-center justify-center text-purple-700 dark:text-purple-300"
+              >
+                <Store className="h-4 w-4" />
               </div>
-            </button>
+            )
           ) : (
-            <div className="p-3 rounded-2xl border border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5">
-              <div className="text-xs font-bold text-purple-950 dark:text-white truncate">
-                {currentTenant.name}
+            isMasterSwitcherAllowed ? (
+              <button
+                type="button"
+                onClick={onOpenStoreSwitcher}
+                className="w-full text-left p-2.5 rounded-2xl border border-purple-200/80 dark:border-white/15 bg-white dark:bg-[#160228] hover:border-purple-400 dark:hover:border-pink-500 transition-all shadow-xs group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 pr-1">
+                    <div className="text-xs font-black text-purple-950 dark:text-white truncate group-hover:text-purple-700 dark:group-hover:text-pink-300">
+                      {currentTenant.name}
+                    </div>
+                    <div className="text-[10px] text-purple-700 dark:text-purple-300/80 font-bold mt-0.5 flex items-center gap-1">
+                      <span>Trocar de Loja</span>
+                      <span className="text-[9px]">▾</span>
+                    </div>
+                  </div>
+                  <div className="h-6 w-6 rounded-xl bg-purple-100 dark:bg-white/10 text-purple-700 dark:text-pink-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    <span className="text-xs">▾</span>
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <div className="p-3 rounded-2xl border border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5">
+                <div className="text-xs font-bold text-purple-950 dark:text-white truncate">
+                  {currentTenant.name}
+                </div>
+                <div className="text-[10px] text-purple-700 dark:text-purple-200/60 font-semibold mt-0.5">
+                  {currentTenant.city || 'Portugal'} · Loja Fixada
+                </div>
               </div>
-              <div className="text-[10px] text-purple-700 dark:text-purple-200/60 font-semibold mt-0.5">
-                {currentTenant.city || 'Portugal'} · Loja Fixada
-              </div>
-            </div>
+            )
           )}
         </div>
 
-        {/* Grupos Colapsáveis Dinâmicos */}
-        <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
-          {navGroups.map((group) => {
-            const GroupIcon = group.icon
-            const isGroupActive = group.items.some((it) => it.id === currentView)
-            const isOpen = openGroups[group.key] ?? true
+        {/* Grupos Dinâmicos / Navegação */}
+        {isCollapsed ? (
+          <nav className="p-2 space-y-2 flex-1 overflow-y-auto overflow-x-hidden">
+            {navGroups.map((group) => {
+              const activeItems = group.items.filter((it) => it.show)
+              if (activeItems.length === 0) return null
 
-            return (
-              <div key={group.key} className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(group.key)}
-                  className={`w-full px-3 py-2 rounded-2xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
-                    isGroupActive
-                      ? 'bg-purple-100 dark:bg-white/10 text-purple-950 dark:text-white border border-purple-200 dark:border-pink-500/30'
-                      : 'text-purple-900 dark:text-purple-200/80 hover:bg-purple-50 dark:hover:bg-white/5 dark:hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <GroupIcon className={`h-4 w-4 ${group.accentClass}`} />
-                    <span className="text-xs uppercase tracking-tight">{group.title}</span>
-                  </div>
-                  {isOpen ? (
-                    <ChevronUp className="h-3.5 w-3.5 text-purple-500" />
-                  ) : (
-                    <ChevronDown className="h-3.5 w-3.5 text-purple-400" />
-                  )}
-                </button>
+              return (
+                <div key={group.key} className="space-y-1.5">
+                  <div className="w-full border-t border-purple-100 dark:border-white/10 my-2 first:hidden" />
+                  {activeItems.map((item) => {
+                    const active = currentView === item.id
+                    const IconComponent = VIEW_ICONS[item.id] || group.icon || Store
 
-                {isOpen && (
-                  <div className="pl-3.5 pr-1 py-1 space-y-1 border-l border-purple-200 dark:border-white/10 ml-3 animate-in fade-in duration-150">
-                    {group.items
-                      .filter((it) => it.show)
-                      .map((item) => {
-                        const active = currentView === item.id
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => {
-                              onSelectView(item.id)
-                              onCloseMobile()
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-between ${
-                              active
-                                ? 'bg-gradient-to-r from-purple-700 via-purple-800 to-pink-600 dark:from-pink-600 dark:via-fuchsia-600 dark:to-purple-600 text-white font-bold shadow-md shadow-purple-700/20'
-                                : 'text-purple-900 dark:text-purple-200/70 font-semibold hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
-                            }`}
-                          >
-                            <div className="flex flex-col min-w-0 pr-2">
-                              <span className="font-bold text-xs leading-tight">{item.label}</span>
-                              {item.subtitle && (
-                                <span
-                                  className={`text-[10px] font-semibold leading-tight mt-0.5 ${
-                                    active ? 'text-purple-100 dark:text-pink-100' : 'text-purple-600 dark:text-purple-300/80'
-                                  }`}
-                                >
-                                  {item.subtitle}
-                                </span>
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectView(item.id)
+                          onCloseMobile()
+                        }}
+                        title={`${item.label}${item.subtitle ? ` · ${item.subtitle}` : ''}`}
+                        className={`w-full h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative group ${
+                          active
+                            ? 'bg-gradient-to-br from-purple-700 to-pink-600 text-white shadow-md shadow-purple-700/20'
+                            : 'text-purple-900 dark:text-purple-200/70 hover:bg-purple-100/70 dark:hover:bg-white/10 hover:text-purple-950 dark:hover:text-white'
+                        }`}
+                      >
+                        <IconComponent className="h-5 w-5 shrink-0" />
+                        {item.badge && (
+                          <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-amber-400 text-purple-950 text-[9px] font-black flex items-center justify-center">
+                            {item.badge}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </nav>
+        ) : (
+          <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
+            {navGroups.map((group) => {
+              const GroupIcon = group.icon
+              const isGroupActive = group.items.some((it) => it.id === currentView)
+              const isOpen = openGroups[group.key] ?? true
+
+              return (
+                <div key={group.key} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key)}
+                    className={`w-full px-3 py-2 rounded-2xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
+                      isGroupActive
+                        ? 'bg-purple-100 dark:bg-white/10 text-purple-950 dark:text-white border border-purple-200 dark:border-pink-500/30'
+                        : 'text-purple-900 dark:text-purple-200/80 hover:bg-purple-50 dark:hover:bg-white/5 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <GroupIcon className={`h-4 w-4 ${group.accentClass}`} />
+                      <span className="text-xs uppercase tracking-tight">{group.title}</span>
+                    </div>
+                    {isOpen ? (
+                      <ChevronUp className="h-3.5 w-3.5 text-purple-500" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5 text-purple-400" />
+                    )}
+                  </button>
+
+                  {isOpen && (
+                    <div className="pl-3.5 pr-1 py-1 space-y-1 border-l border-purple-200 dark:border-white/10 ml-3 animate-in fade-in duration-150">
+                      {group.items
+                        .filter((it) => it.show)
+                        .map((item) => {
+                          const active = currentView === item.id
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                onSelectView(item.id)
+                                onCloseMobile()
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-between ${
+                                active
+                                  ? 'bg-gradient-to-r from-purple-700 via-purple-800 to-pink-600 dark:from-pink-600 dark:via-fuchsia-600 dark:to-purple-600 text-white font-bold shadow-md shadow-purple-700/20'
+                                  : 'text-purple-900 dark:text-purple-200/70 font-semibold hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/5'
+                              }`}
+                            >
+                              <div className="flex flex-col min-w-0 pr-2">
+                                <span className="font-bold text-xs leading-tight">{item.label}</span>
+                                {item.subtitle && (
+                                  <span
+                                    className={`text-[10px] font-semibold leading-tight mt-0.5 ${
+                                      active ? 'text-purple-100 dark:text-pink-100' : 'text-purple-600 dark:text-purple-300/80'
+                                    }`}
+                                  >
+                                    {item.subtitle}
+                                  </span>
+                                )}
+                              </div>
+
+                              {item.badge && (
+                                <Badge className="bg-amber-400 text-purple-950 text-[10px] font-black py-0 px-1.5 shrink-0">
+                                  {item.badge}
+                                </Badge>
                               )}
-                            </div>
-
-                            {item.badge && (
-                              <Badge className="bg-amber-400 text-purple-950 text-[10px] font-black py-0 px-1.5 shrink-0">
-                                {item.badge}
-                              </Badge>
-                            )}
-                          </button>
-                        )
-                      })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </nav>
+                            </button>
+                          )
+                        })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </nav>
+        )}
 
         {/* Rodapé do Sidebar */}
-        <div className="p-3 border-t border-purple-100 dark:border-white/10 text-center">
-          <div className="text-[11px] text-purple-700/80 dark:text-purple-300/70 font-bold">
-            Açaí da Rose · Portugal
-          </div>
-          <div className="text-[10px] text-purple-500 dark:text-purple-400 font-medium">
-            Versão Corporativa 2.5
-          </div>
+        <div className={`border-t border-purple-100 dark:border-white/10 text-center ${
+          isCollapsed ? 'p-2' : 'p-3'
+        }`}>
+          {isCollapsed ? (
+            <div className="text-[10px] text-pink-600 dark:text-pink-400 font-black tracking-tight" title="Açaí da Rose · Versão Corporativa 2.5">
+              v2.5
+            </div>
+          ) : (
+            <>
+              <div className="text-[11px] text-purple-700/80 dark:text-purple-300/70 font-bold">
+                Açaí da Rose · Portugal
+              </div>
+              <div className="text-[10px] text-purple-500 dark:text-purple-400 font-medium">
+                Versão Corporativa 2.5
+              </div>
+            </>
+          )}
         </div>
       </aside>
     </>

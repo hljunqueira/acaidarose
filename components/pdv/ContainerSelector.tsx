@@ -39,8 +39,8 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
                 !isAvailable
                   ? 'border-border/60 bg-muted/30 opacity-60 cursor-not-allowed'
                   : isSelected
-                  ? 'border-purple-600 bg-purple-50/70 shadow-md scale-[1.02] cursor-pointer'
-                  : 'border-purple-100/90 hover:border-purple-300 hover:shadow-md hover:scale-[1.01] bg-white cursor-pointer'
+                  ? 'border-purple-600 bg-purple-50/70 dark:bg-purple-950/40 shadow-md scale-[1.02] cursor-pointer'
+                  : 'border-purple-100/90 dark:border-white/10 hover:border-purple-300 dark:hover:border-white/20 hover:shadow-md hover:scale-[1.01] bg-white dark:bg-[#160228] cursor-pointer'
               }`}
             >
               {/* Selected Check Badge */}
@@ -61,7 +61,7 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
 
               <div>
                 {/* Imagem Real de Alta Qualidade */}
-                <div className="h-28 w-full rounded-2xl overflow-hidden bg-purple-100 relative mb-3 border border-purple-100 shadow-2xs">
+                <div className="h-28 w-full rounded-2xl overflow-hidden bg-purple-100 dark:bg-purple-950/40 relative mb-3 border border-purple-100 dark:border-white/10 shadow-2xs">
                   {c.image ? (
                     <img
                       src={c.image}
@@ -69,7 +69,7 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
                       className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center text-xs font-black text-purple-700">
+                    <div className="h-full w-full flex items-center justify-center text-xs font-black text-purple-700 dark:text-purple-300">
                       {c.name}
                     </div>
                   )}
@@ -83,34 +83,20 @@ export default function ContainerSelector({ containers, selected, onSelect }: Co
                 {/* Nome do Tamanho */}
                 <div className="font-black text-sm text-foreground leading-tight">{c.name}</div>
 
-                {/* Regras e Inclusões */}
-                <div className="mt-2 space-y-1 text-xs">
-                  {isUnlimited ? (
-                    <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-extrabold flex items-center gap-1.5 border border-emerald-200/60">
-                      <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0"></span>
-                      <span className="text-[11px] leading-tight">Frutas & Acompanhamentos Livres</span>
-                    </div>
+                {/* Descrição Real do Produto (Dinâmica do Banco de Dados) */}
+                <div className="mt-2 text-xs text-muted-foreground line-clamp-3 leading-relaxed min-h-[36px]">
+                  {c.description ? (
+                    <span>{c.description}</span>
                   ) : (
-                    <div className="space-y-0.5 text-muted-foreground text-[11px]">
-                      <div className="font-semibold text-purple-950">
-                        • <b>{c.limiteFrutas}</b> frutas inclusas
-                      </div>
-                      <div className="font-semibold text-purple-950">
-                        • <b>{c.limiteToppings}</b> acompanhamentos inclusos
-                      </div>
-                    </div>
+                    <span className="text-muted-foreground/50 italic">Sem descrição informada</span>
                   )}
-
-                  <div className="text-[10px] text-purple-700 font-semibold pt-1">
-                    + até {c.limiteBases || 2} opções de bases/cremes inclusas
-                  </div>
                 </div>
               </div>
 
               {/* Botão de Ação / Rodapé */}
-              <div className="mt-3 pt-2.5 border-t border-purple-100/70 flex items-center justify-between">
+              <div className="mt-3 pt-2.5 border-t border-purple-100/70 dark:border-white/10 flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground font-semibold">Total base</span>
-                <span className="text-xs font-black text-purple-900">
+                <span className="text-xs font-black text-purple-900 dark:text-pink-300">
                   {formatCurrency(c.precoBase)}
                 </span>
               </div>

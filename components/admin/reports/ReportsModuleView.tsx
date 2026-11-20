@@ -15,9 +15,11 @@ interface ReportsModuleViewProps {
 export default function ReportsModuleView({ tenantId, currentUser }: ReportsModuleViewProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'invisible' | 'audit' | 'orders'>('overview')
   const [report, setReport] = useState<DayReportSummary | null>(null)
+  const [auditLogsList, setAuditLogsList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingAudit, setLoadingAudit] = useState(false)
 
-  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN'
+  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'FRANCHISOR_ADMIN'
 
   const fetchReport = useCallback(async () => {
     setLoading(true)
@@ -32,11 +34,32 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
     }
   }, [tenantId])
 
+  const fetchAuditLogs = useCallback(async () => {
+    setLoadingAudit(true)
+    try {
+      const res = await fetch(`/api/dev/audit-logs?tenantId=${encodeURIComponent(tenantId)}`)
+      const data = await res.json()
+      if (Array.isArray(data.logs)) {
+        setAuditLogsList(data.logs)
+      }
+    } catch {
+      toast.error('Erro ao carregar histórico de auditoria')
+    } finally {
+      setLoadingAudit(false)
+    }
+  }, [tenantId])
+
   useEffect(() => {
     fetchReport()
   }, [fetchReport])
 
-  const auditLogs = (report as any)?.auditLogs || []
+  useEffect(() => {
+    if (activeTab === 'audit') {
+      fetchAuditLogs()
+    }
+  }, [activeTab, fetchAuditLogs])
+
+  const auditLogs = auditLogsList.length > 0 ? auditLogsList : ((report as any)?.auditLogs || [])
   const orders = report?.orders || []
   const invisibleProducts: any[] = []
 
@@ -219,7 +242,7 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
       )}
 
       {/* ========================================================= */}
-      {/* 4. HISTÓRICO DE ALTERAÇÕES (EXCLUSIVO FRANQUEADORA)       */}
+      {/* 4. HISTÓRICO DE ALTERAÇÕES & AUDITORIA                    */}
       {/* ========================================================= */}
       {activeTab === 'audit' && (
         <div className="space-y-4">
@@ -227,35 +250,79 @@ export default function ReportsModuleView({ tenantId, currentUser }: ReportsModu
             <div className="p-8 text-center bg-white dark:bg-[#160228]/95 rounded-3xl border border-red-300 dark:border-red-500/40 text-slate-900 dark:text-white shadow-xs dark:shadow-xl">
               <div className="text-sm font-black text-red-600 dark:text-red-400">Acesso Restrito à Franqueadora</div>
               <p className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-1">
-                O log de auditoria corporativo e histórico de alterações master é de acesso exclusivo para SUPER_ADMIN.
+                O log de auditoria corporativo e histórico de alterações master é de acesso exclusivo para SUPER_ADMIN e Administradores da Rede.
               </p>
             </div>
           ) : (
             <div className="bg-white dark:bg-[#160228]/95 rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs dark:shadow-xl overflow-hidden text-slate-900 dark:text-white">
               <div className="p-4 border-b border-purple-100 dark:border-white/10 bg-purple-50/50 dark:bg-white/5 flex justify-between items-center">
-                <h2 className="text-xs font-black uppercase text-purple-950 dark:text-white">
-                  Histórico Corporativo de Alterações & Sincronizações (Audit Log)
-                </h2>
-                <Badge className="bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 text-white text-[9px] font-black uppercase border-0">
-                  Exclusivo Franqueadora
-                </Badge>
+                <div>
+                  <h2 className="text-xs font-black uppercase text-purple-950 dark:text-white">
+                    Histórico Corporativo de Alterações & Sincronizações (Audit Log)
+                  </h2>
+                  <p className="text-[10px] text-purple-700/80 dark:text-purple-300/70 mt-0.5">
+                    Visualização em tempo real de ações registradas na rede e nesta loja
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={fetchAuditLogs}
+                    disabled={loadingAudit}
+                    className="h-7 px-2.5 text-[11px] font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white cursor-pointer"
+                  >
+                    <span>{loadingAudit ? 'Atualizando...' : 'Atualizar'}</span>
+                  </Button>
+                  <Badge className="bg-purple-700 dark:bg-pink-600 text-white text-[9px] font-black uppercase border-0">
+                    Auditoria do Sistema
+                  </Badge>
+                </div>
               </div>
 
-              <div className="divide-y divide-purple-100 dark:divide-white/10 text-xs">
-                {auditLogs.map((log: any) => (
-                  <div key={log.id} className="p-4 hover:bg-purple-50/50 dark:hover:bg-white/5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="font-bold text-purple-950 dark:text-white">{log.details}</div>
-                      <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70 mt-0.5">
-                        Executado por: <span className="font-mono text-purple-700 dark:text-pink-300 font-semibold">{log.user}</span>
+              {loadingAudit ? (
+                <div className="py-12 text-center text-xs font-bold text-purple-700 dark:text-purple-200 animate-pulse">
+                  A carregar eventos de auditoria...
+                </div>
+              ) : auditLogs.length === 0 ? (
+                <div className="py-12 text-center text-xs font-bold text-purple-700/80 dark:text-purple-200/60">
+                  Nenhum registro de auditoria encontrado para o período selecionado.
+                </div>
+              ) : (
+                <div className="divide-y divide-purple-100 dark:divide-white/10 text-xs">
+                  {auditLogs.map((log: any) => {
+                    const message = log.message || log.details || 'Ação registrada'
+                    const author = log.author || log.user || 'Sistema'
+                    const role = log.role ? `(${log.role})` : ''
+                    const scope = log.scope || log.action || 'SISTEMA'
+                    const dateFormatted = log.timestamp
+                      ? new Date(log.timestamp).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })
+                      : 'Data recente'
+
+                    return (
+                      <div key={log.id} className="p-4 hover:bg-purple-50/50 dark:hover:bg-white/5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[9px] font-mono font-bold bg-purple-50 dark:bg-white/5 border-purple-200 dark:border-white/10 text-purple-900 dark:text-pink-300">
+                              {scope}
+                            </Badge>
+                            <span className="font-bold text-purple-950 dark:text-white">{message}</span>
+                          </div>
+                          <div className="text-[11px] text-purple-700/80 dark:text-purple-200/70">
+                            Executado por: <span className="font-mono text-purple-700 dark:text-pink-300 font-semibold">{author} {role}</span>
+                            {log.tenant && (
+                              <span className="ml-2 text-purple-500 dark:text-purple-400">· {log.tenant}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-[11px] font-mono text-purple-600/80 dark:text-purple-200/80 flex-shrink-0">
+                          {dateFormatted}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-[11px] font-mono text-purple-600/80 dark:text-purple-200/80 flex-shrink-0">
-                      {new Date(log.timestamp).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -68,9 +68,27 @@ export default function PDVView({
     addSimpleItem,
     updateItemQuantity,
     removeItem,
+    editCartItem,
     clearCart,
     total,
   } = useCartStore()
+
+  const handleEditCartItem = (id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+
+    const isAcai = (item.bases && item.bases.length > 0) || (item.toppings && item.toppings.length > 0) || (item.container && ((item.container.weightGrams || 0) > 0 || item.container.productType === 'CONTAINER'))
+
+    if (isAcai) {
+      editCartItem(id)
+      setStep(2)
+      toast.success('Item carregado no montador de açaí para edição!')
+    } else {
+      removeItem(id)
+      setOptionsModalProduct(item.container)
+      toast.success('Item carregado para personalização de opções!')
+    }
+  }
 
   const currentTotal = total()
   const currentDraftTotal = draft?.container ? computeItemLineTotal(draft) : 0
@@ -524,7 +542,7 @@ export default function PDVView({
             ) : isAcaiMenu ? (
               <>
                 {/* WIZARD DE AÇAÍ: ETAPAS 1, 2 e 3 */}
-                <StepIndicator current={step} onSelectStep={setStep} />
+                <StepIndicator current={step} onSelectStep={setStep} canNavigateForward={Boolean(draft?.container)} />
 
                 {/* Cabeçalho da Taça Sendo Montada com Preço em Tempo Real */}
                 {draft?.container && (
@@ -805,6 +823,7 @@ export default function PDVView({
             items={items}
             total={currentTotal}
             onRemoveItem={removeItem}
+            onEditItem={handleEditCartItem}
             onUpdateQuantity={updateItemQuantity}
             onClearCart={clearCart}
             onOpenPayment={() => setPayOpen(true)}

@@ -349,9 +349,13 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           ? Boolean(basesGroup.isBaseFixed)
           : !isSomenteCreme
 
-        const limiteBases = basesGroup?.maxQty !== undefined
+        const limiteBases = (row.limite_bases !== null && row.limite_bases !== undefined && Number(row.limite_bases) >= 2)
+          ? Number(row.limite_bases)
+          : 2
+
+        const limiteCremes = basesGroup?.maxQty !== undefined
           ? Number(basesGroup.maxQty)
-          : (row.limite_bases !== null && row.limite_bases !== undefined ? Number(row.limite_bases) : (isBaseFixed ? 1 : 2))
+          : (isBaseFixed ? 1 : 2)
 
         const limiteFrutas = frutasGroup?.maxQty !== undefined
           ? Number(frutasGroup.maxQty)
@@ -1487,8 +1491,46 @@ export async function reorderProducts(
           )
         }
       }
-      await bumpStoreCatalogVersion()
     }
+
+    // Sincroniza a ordenação no modelo de opções canônico de cremes gelados
+    if (collection === 'bases') {
+      try {
+        const sortedBases = await query(
+          `SELECT id, name, description FROM product_bases 
+           WHERE (tenant_id = $1 OR tenant_id = $2) AND deleted_at IS NULL 
+           ORDER BY display_order ASC`,
+          [tenantId || FIGUEIRA_HQ_ID, FIGUEIRA_HQ_ID]
+        )
+        if (sortedBases.rows && sortedBases.rows.length > 0) {
+          const optModel = await query(
+            `SELECT id, options FROM product_option_models 
+             WHERE id = 'ddcec6eb-6a9d-4266-93b2-954dfba2e75a' OR name ILIKE '%creme%' 
+             LIMIT 1`
+          )
+          if (optModel.rows && optModel.rows[0]) {
+            const currentOpts = Array.isArray(optModel.rows[0].options) ? optModel.rows[0].options : []
+            const orderMap = new Map<string, number>()
+            sortedBases.rows.forEach((b: any, idx: number) => {
+              orderMap.set((b.name || '').toLowerCase().trim(), idx)
+            })
+            const reorderedOpts = [...currentOpts].sort((a: any, b: any) => {
+              const idxA = orderMap.has((a.name || '').toLowerCase().trim()) ? orderMap.get((a.name || '').toLowerCase().trim())! : 999
+              const idxB = orderMap.has((b.name || '').toLowerCase().trim()) ? orderMap.get((b.name || '').toLowerCase().trim())! : 999
+              return idxA - idxB
+            })
+            await query(
+              `UPDATE product_option_models SET options = $1::jsonb WHERE id = $2`,
+              [JSON.stringify(reorderedOpts), optModel.rows[0].id]
+            )
+          }
+        }
+      } catch (optErr) {
+        console.error('Erro ao sincronizar opções do modelo de cremes:', optErr)
+      }
+    }
+
+    await bumpStoreCatalogVersion()
 
     await recordAuditLog({
       tenantId: tenantId || null,

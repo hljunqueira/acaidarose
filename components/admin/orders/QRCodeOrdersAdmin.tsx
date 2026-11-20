@@ -334,6 +334,16 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       })
       if (!res.ok) throw new Error('Erro ao cancelar comanda')
       broadcastTVClearCall(orderToCancel?.tenantId)
+      if (orderToCancel) {
+        broadcastTVCall(
+          {
+            ticket: String(orderToCancel.orderNumber || 1),
+            customerName: orderToCancel.customerName || undefined,
+            status: 'CANCELLED',
+          },
+          orderToCancel.tenantId
+        )
+      }
       toast.success(`Comanda #${formattedNum} cancelada: ${reason}`)
       setCancelConfirmOpen(false)
       setSelectedOrderForAudit(null)
@@ -394,6 +404,14 @@ export default function QRCodeOrdersAdmin({ tenantId, onOpenPDV }: QRCodeOrdersA
       })
       if (!res.ok) throw new Error('Falha ao excluir comanda')
       broadcastTVClearCall(orderToDelete.tenantId)
+      broadcastTVCall(
+        {
+          ticket: String(orderToDelete.orderNumber || 1),
+          customerName: orderToDelete.customerName || undefined,
+          status: 'CANCELLED',
+        },
+        orderToDelete.tenantId
+      )
       setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id))
       setSelectedOrderForItems(null)
       setSelectedOrderForAudit(null)

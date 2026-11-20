@@ -35,24 +35,49 @@ export default function BaseSelector({ bases, container, selectedBases, onToggle
     }
   }, [isBaseFixed, acaiBase, selectedBases, onToggleBase])
 
-  // Demais bases são os Cremes Gelados
-  const otherBases = useMemo(() => {
-    if (!isBaseFixed) return bases.filter((b) => b.active !== false)
-    return bases.filter((b) => b.active !== false && (!acaiBase || b.id !== acaiBase.id))
-  }, [bases, isBaseFixed, acaiBase])
-
-  // Contagem de cremes selecionados
-  const selectedCremes = useMemo(() => {
-    if (!isBaseFixed) return selectedBases
-    return selectedBases.filter((b) => !acaiBase || b.id !== acaiBase.id)
-  }, [selectedBases, isBaseFixed, acaiBase])
-
   const baseGroup = useMemo(() => {
     return (container.optionGroups || []).find(
       (g: any) => g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))
     )
   }, [container.optionGroups])
   const additionalPrice = Number(baseGroup?.additionalPrice ?? 2.00)
+
+  // Demais bases são os Cremes Gelados (rigorosamente ordenados pelo modelo de opções)
+  const otherBases = useMemo(() => {
+    let list = !isBaseFixed
+      ? bases.filter((b) => b.active !== false)
+      : bases.filter((b) => b.active !== false && (!acaiBase || b.id !== acaiBase.id))
+
+    if (baseGroup?.options && Array.isArray(baseGroup.options) && baseGroup.options.length > 0) {
+      const orderMap = new Map<string, number>()
+      baseGroup.options.forEach((opt: any, idx: number) => {
+        if (opt.id) orderMap.set(String(opt.id), idx)
+        if (opt.name) orderMap.set(String(opt.name).toLowerCase().trim(), idx)
+      })
+      list = [...list].sort((a, b) => {
+        const orderA = orderMap.has(String(a.id))
+          ? orderMap.get(String(a.id))!
+          : orderMap.has(String(a.name).toLowerCase().trim())
+          ? orderMap.get(String(a.name).toLowerCase().trim())!
+          : (a.displayOrder ?? 999)
+        const orderB = orderMap.has(String(b.id))
+          ? orderMap.get(String(b.id))!
+          : orderMap.has(String(b.name).toLowerCase().trim())
+          ? orderMap.get(String(b.name).toLowerCase().trim())!
+          : (b.displayOrder ?? 999)
+        return orderA - orderB
+      })
+    } else {
+      list = [...list].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+    }
+    return list
+  }, [bases, isBaseFixed, acaiBase, baseGroup])
+
+  // Contagem de cremes selecionados
+  const selectedCremes = useMemo(() => {
+    if (!isBaseFixed) return selectedBases
+    return selectedBases.filter((b) => !acaiBase || b.id !== acaiBase.id)
+  }, [selectedBases, isBaseFixed, acaiBase])
 
   const maxCremesInclusos = isBaseFixed
     ? (baseGroup?.maxQty !== undefined && baseGroup?.maxQty !== null

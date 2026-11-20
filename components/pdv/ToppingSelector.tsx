@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { ProductContainer, ProductTopping } from '@/types'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { getPremiumToppingPrice } from '@/lib/stores/cartStore'
@@ -42,14 +42,17 @@ export default function ToppingSelector({
     return getPremiumToppingPrice(t.name, weight, t.precoExtra)
   }
 
-  const filtered = toppings.filter((t) => {
-    if (t.active === false) return false
-    if (activeCategory === 'Todos') return true
-    if (activeCategory === 'Frutas') return t.category === 'Frutas'
-    if (activeCategory === 'Toppings') return t.category === 'Toppings' || t.category === 'Cereais' || t.category === 'Doces'
-    if (activeCategory === 'Adicionais') return t.category === 'Adicionais' || t.isSpecialAddon
-    return true
-  })
+  const filtered = useMemo(() => {
+    const list = toppings.filter((t) => {
+      if (t.active === false) return false
+      if (activeCategory === 'Todos') return true
+      if (activeCategory === 'Frutas') return t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva', 'abacaxi'].some((f) => t.name.toLowerCase().includes(f))
+      if (activeCategory === 'Toppings') return t.category === 'Toppings' || t.category === 'Cereais' || t.category === 'Doces'
+      if (activeCategory === 'Adicionais') return t.category === 'Adicionais' || t.isSpecialAddon || t.isPremium || (t.precoExtra && t.precoExtra > 0)
+      return true
+    })
+    return list.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+  }, [toppings, activeCategory])
 
   return (
     <div className="space-y-4">

@@ -87,10 +87,6 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   // Nível 1: Menu Selecionado ('all_menus' lista todos os menus)
   const [selectedMainMenu, setSelectedMainMenu] = useState<string>('all_menus')
 
-  // Seletor de Visão Principal: Taças/Produtos vs Opcionais
-  const [activeViewMode, setActiveViewMode] = useState<'products' | 'options'>('products')
-  const [selectedOptionCategory, setSelectedOptionCategory] = useState<'all' | 'bases' | 'frutas' | 'toppings' | 'caldas'>('all')
-
   // Nível 2: Categoria Selecionada ('all_cats' lista todas as categorias)
   const [selectedCategory, setSelectedCategory] = useState<string>('all_cats')
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
@@ -235,15 +231,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
     }
     const defaultCatId = selectedCategory !== 'all_cats' ? selectedCategory : (visibleCategories[0]?.id || undefined)
     setEditingItem(defaultCatId ? { categoryId: defaultCatId } : null)
-    if (activeViewMode === 'options') {
-      if (selectedOptionCategory === 'bases') {
-        setEditingType('bases')
-      } else {
-        setEditingType('toppings')
-      }
-    } else {
-      setEditingType('containers')
-    }
+    setEditingType('containers')
     setEditOpen(true)
   }
 
@@ -292,6 +280,60 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
       })
       if (!res.ok) throw new Error('Falha ao salvar ordenação no servidor')
       toast.success('Ordem dos itens atualizada com sucesso!')
+      emitCatalogSync({
+        tenantId,
+        entity: 'product',
+        action: 'reorder',
+      })
+      markDirty(tenantId, 'Reordenação de itens do catálogo', authFetch)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao sincronizar ordenação')
+    }
+  }
+
+  const handleMoveItem = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= displayedItems.length) return
+
+    const source = displayedItems[index]
+    const target = displayedItems[targetIndex]
+    if (!source || !target) return
+
+    const targetType = source.type
+    const currentList: any[] = targetType === 'containers' ? [...catalog.containers] : targetType === 'bases' ? [...catalog.bases] : [...catalog.toppings]
+    const currentIndex = currentList.findIndex((item) => item.id === source.item.id)
+    const targetListIndex = currentList.findIndex((item) => item.id === target.item.id)
+    if (currentIndex === -1 || targetListIndex === -1) return
+
+    const [moved] = currentList.splice(currentIndex, 1)
+    currentList.splice(targetListIndex, 0, moved)
+
+    const updatedWithOrders = currentList.map((item, idx) => ({
+      ...item,
+      displayOrder: idx + 1,
+    }))
+
+    setCatalog((prev) => ({
+      ...prev,
+      [targetType]: updatedWithOrders,
+    }))
+
+    try {
+      const itemsPayload = updatedWithOrders.map((item) => ({
+        id: item.id,
+        displayOrder: item.displayOrder,
+      }))
+      const res = await authFetch('/api/products/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: itemsPayload,
+          collection: targetType,
+          tenantId,
+        }),
+      })
+      if (!res.ok) throw new Error('Falha ao salvar ordenação no servidor')
+      toast.success('Ordem atualizada com sucesso!')
       emitCatalogSync({
         tenantId,
         entity: 'product',
@@ -571,39 +613,17 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   const displayedItems = useMemo(() => {
     const list: Array<{ item: any; type: 'containers' | 'bases' | 'toppings' }> = []
     const containersList = menuContainers
-    const basesList = catalog.bases || []
-    const toppingsList = catalog.toppings || []
 
-    if (activeViewMode === 'options') {
-      if (selectedOptionCategory === 'all') {
-        basesList.forEach((b) => list.push({ item: b, type: 'bases' }))
-        toppingsList.forEach((t) => list.push({ item: t, type: 'toppings' }))
-      } else if (selectedOptionCategory === 'bases') {
-        basesList.forEach((b) => list.push({ item: b, type: 'bases' }))
-      } else if (selectedOptionCategory === 'frutas') {
-        toppingsList
-          .filter((t) => t.category === 'Frutas' || ['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
-          .forEach((t) => list.push({ item: t, type: 'toppings' }))
-      } else if (selectedOptionCategory === 'toppings') {
-        toppingsList
-          .filter((t) => !t.isPremium && t.category !== 'Frutas' && t.category !== 'Adicionais' && !['banana', 'morango', 'kiwi', 'manga', 'uva'].some((f) => t.name.toLowerCase().includes(f)))
-          .forEach((t) => list.push({ item: t, type: 'toppings' }))
-      } else if (selectedOptionCategory === 'caldas') {
-        toppingsList
-          .filter((t) => t.isPremium || t.category === 'Adicionais' || (t.precoExtra && t.precoExtra > 0))
-          .forEach((t) => list.push({ item: t, type: 'toppings' }))
-      }
+    // MODO PRODUTOS (TAÇAS / ITENS)
+    if (selectedCategory === 'all_cats') {
+      containersList.forEach((c) => list.push({ item: c, type: 'containers' }))
     } else {
-      // MODO PRODUTOS (TAÇAS / ITENS)
-      if (selectedCategory === 'all_cats') {
-        containersList.forEach((c) => list.push({ item: c, type: 'containers' }))
-      } else {
-        containersList
-          .filter((c) => c.categoryId === selectedCategory)
-          .forEach((c) => list.push({ item: c, type: 'containers' }))
-      }
+      containersList
+        .filter((c) => c.categoryId === selectedCategory)
+        .forEach((c) => list.push({ item: c, type: 'containers' }))
+    }
 
-      // Ordena rigorosamente por: 1. Ordem do Menu -> 2. Ordem da Categoria -> 3. Ordem do Produto
+    // Ordena rigorosamente por: 1. Ordem do Menu -> 2. Ordem da Categoria -> 3. Ordem do Produto
       list.sort((a, b) => {
         const itemA = a.item
         const itemB = b.item
@@ -620,9 +640,8 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
           return catA - catB
         }
 
-        return (itemA.displayOrder || 0) - (itemB.displayOrder || 0)
-      })
-    }
+      return (itemA.displayOrder || 0) - (itemB.displayOrder || 0)
+    })
 
     // Aplicação dos Filtros Avançados
     return list.filter(({ item }) => {
@@ -644,7 +663,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
 
       return true
     })
-  }, [catalog, activeViewMode, selectedCategory, selectedOptionCategory, filterOptions, categories, visibleCategories, menuContainers, menuOrderMap, categoryOrderMap, getItemMenuOrder])
+  }, [catalog, selectedCategory, filterOptions, categories, visibleCategories, menuContainers, menuOrderMap, categoryOrderMap, getItemMenuOrder])
 
   const hasActiveFilters =
     filterOptions.status !== 'all' ||
@@ -890,7 +909,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             Carregando itens do cardápio...
           </div>
         ) : displayedItems.length === 0 ? (
-          selectedMainMenu !== 'all_menus' && visibleCategories.length === 0 && activeViewMode === 'products' ? (
+          selectedMainMenu !== 'all_menus' && visibleCategories.length === 0 ? (
             <div className="py-12 px-6 text-center space-y-2.5 bg-white dark:bg-white/5 rounded-2xl border border-dashed border-purple-200 dark:border-white/15">
               <h3 className="font-bold text-sm text-purple-950 dark:text-white">Nenhuma categoria cadastrada neste cardápio</h3>
               <p className="text-xs text-purple-700/80 dark:text-purple-200/70 max-w-md mx-auto">
@@ -912,7 +931,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             </div>
           )
         ) : (
-          displayedItems.map(({ item, type }) => {
+          displayedItems.map(({ item, type }, index) => {
             const isDragging = draggedItemId === item.id
             return (
               <div
@@ -932,6 +951,8 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
                   onEdit={handleEdit}
                   onToggleStatus={handleToggleStatus}
                   onDelete={handleDelete}
+                  onMoveUp={index > 0 ? () => handleMoveItem(index, 'up') : undefined}
+                  onMoveDown={index < displayedItems.length - 1 ? () => handleMoveItem(index, 'down') : undefined}
                 />
               </div>
             )

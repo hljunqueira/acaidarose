@@ -47,6 +47,7 @@ export interface OptionModelData {
   showDetailed?: boolean
   isBaseFixed?: boolean
   active?: boolean
+  displayOrder?: number
   subtitle?: string | null
   subtitleEn?: string | null
   subtitleEs?: string | null
