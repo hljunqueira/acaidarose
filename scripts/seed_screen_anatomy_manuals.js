@@ -92,6 +92,16 @@ async function seedScreenAnatomyManuals() {
         orderIndex: 9,
         targetRoles: ['CASHIER', 'TENANT_ADMIN', 'SUPER_ADMIN'],
       },
+
+      // CENTRAL MASTER TI & INFRAESTRUTURA
+      {
+        id: '10000000-0000-0000-0000-000000000010',
+        title: 'Central Master TI & Infraestrutura',
+        slug: 'central-master-ti-e-infraestrutura',
+        description: 'Status e integridade da VPS, banco PostgreSQL 16, replicação, auditoria de logs e centro de prevenção de desastres.',
+        orderIndex: 10,
+        targetRoles: ['SUPER_ADMIN'],
+      },
     ]
 
     console.log(`Sincronizando ${categories.length} categorias...`)
@@ -1000,11 +1010,150 @@ async function seedScreenAnatomyManuals() {
         steps: [
           {
             stepNumber: 1,
-            title: '🎯 Mapa de Mesas do Salão',
-            instruction: 'Visualização do salão físico em tempo real:\n\n• Mesas Livres (Verde): Disponíveis para receber novos clientes.\n• Mesas Ocupadas (Vermelho): Comandas abertas com pedidos em consumo.\n• [ Transferir Mesa ]: Permite mudar o cliente de mesa com 1 clique, mantendo intactos todos os itens já pedidos.\n• [ Fechar Conta da Mesa ]: Abre a tela de pagamento com o subtotal da mesa para emissão do talão.',
+            title: 'Mapa de Mesas do Salão',
+            instruction: 'Como gerir o salão físico em tempo real:\n\n• Mesas Livres (Verde): Prontas para receber novos clientes.\n• Mesas Ocupadas (Roxo/Vermelho): Comandas abertas com consumo em andamento.\n• [ Transferir Mesa ]: Muda o cliente de mesa com um clique, sem perder nada da conta.\n• [ Fechar Conta da Mesa ]: Abre a tela de pagamento com o subtotal da mesa para emissão do talão.',
             routePath: '/tables',
             calloutType: 'INFO',
-            calloutMessage: 'Clientes que pedem pelo QR Code de mesa têm os itens adicionados diretamente à respectiva mesa.',
+            calloutMessage: 'Quando o cliente pede através do QR Code da mesa, os itens entram de imediato na comanda da mesa correspondente.',
+            media: null,
+          },
+        ],
+      },
+
+      // -----------------------------------------------------------------------
+      // 30. OPCIONAIS & MODELOS DE MONTAGEM (CARDÁPIO)
+      // -----------------------------------------------------------------------
+      {
+        id: '20000000-0000-0000-0000-000000000030',
+        categoryId: '10000000-0000-0000-0000-000000000003',
+        title: 'Opcionais & Modelos de Montagem (Bases, Frutas e Acompanhamentos)',
+        slug: 'opcionais-e-modelos-de-montagem',
+        summary: 'Como criar e gerir os grupos de opcionais de açaí: regras de bases inclusas, limites de frutas, acompanhamentos e taxas adicionais em Euros (€).',
+        readTimeMinutes: 5,
+        targetRoles: ['FRANCHISOR_ADMIN', 'TENANT_ADMIN', 'CASHIER', 'SUPER_ADMIN'],
+        orderIndex: 6,
+        published: true,
+        steps: [
+          {
+            stepNumber: 1,
+            title: 'Como Cadastrar e Gerir Ingredientes Opcionais',
+            instruction: 'Passo a passo para manter a lista de ingredientes atualizada:\n\n1. Abra o painel do Cardápio e clique em Gerir Opcionais.\n2. Escolha o grupo do ingrediente:\n   • Bases e Cremes: Açaí puro, cremes especiais (Cupuaçu, Ninho, Maracujá, etc.).\n   • Frutas Frescas: Morango, banana, manga, kiwi e abacaxi.\n   • Acompanhamentos Tradicionais: Granola, leite em pó, paçoca e aveia.\n   • Caldas e Coberturas: Mel, leite condensado, chocolate e caramelo.\n3. Clique em [ + Novo Opcional ] para adicionar um ingrediente novo com foto.\n4. Para pausar um ingrediente que esgotou no stock da loja, use o botão [ Pausar Ingrediente ]. O item desaparece na hora dos QR Codes e do PDV.',
+            routePath: '/menu',
+            calloutType: 'INFO',
+            calloutMessage: 'Ao pausar um ingrediente na sua loja, as restantes lojas da rede continuam ativas sem alteração.',
+            media: null,
+          },
+          {
+            stepNumber: 2,
+            title: 'Regras de Cobrança e Adicionais por Recipiente',
+            instruction: 'Como o sistema calcula os adicionais de forma automática:\n\n• Regra de Bases Inclusas: Em todos os tamanhos, o cliente pode combinar até 2 opções no preço base (Açaí + 1 creme, ou 2 cremes). A partir da 3ª opção de base, o sistema adiciona automaticamente +2,00 € à comanda.\n• Copos Pequenos (250g e 350g): Possuem cotas inclusas de frutas e acompanhamentos. Cada item extra além da cota custa +0,50 €.\n• Copos Grandes e Taças (500g, 750g e 1kg): Frutas e acompanhamentos tradicionais são livres / ilimitados (maxQty: 999).\n• [ Definir Regras do Recipiente ]: Abre a janela onde se ajustam as quantidades máximas e valores adicionais de cada tamanho.',
+            routePath: '/menu',
+            calloutType: 'ALERT',
+            calloutMessage: 'Mantenha a regra de +2,00 € para a 3ª base para preservar a margem e a padronização oficial da franquia.',
+            media: null,
+          },
+        ],
+      },
+
+      // -----------------------------------------------------------------------
+      // 31. HORÁRIOS DO CARDÁPIO POR TURNO
+      // -----------------------------------------------------------------------
+      {
+        id: '20000000-0000-0000-0000-000000000031',
+        categoryId: '10000000-0000-0000-0000-000000000003',
+        title: 'Horários de Disponibilidade do Cardápio (Turnos e Dias)',
+        slug: 'horarios-de-disponibilidade-do-cardapio',
+        summary: 'Programação de produtos e categorias que só devem aparecer em determinados dias da semana ou turnos específicos.',
+        readTimeMinutes: 4,
+        targetRoles: ['FRANCHISOR_ADMIN', 'TENANT_ADMIN', 'CASHIER', 'SUPER_ADMIN'],
+        orderIndex: 7,
+        published: true,
+        steps: [
+          {
+            stepNumber: 1,
+            title: 'Como Programar Horários para Produtos',
+            instruction: 'Para definir horários em que itens específicos aparecem na ementa:\n\n1. Acesse Cardápio, Mídias & Preços e clique na aba Horários do Cardápio.\n2. Clique no botão [ + Novo Horário de Cardápio ].\n3. Dê um nome ao turno (exemplo: "Pequeno-Almoço: 08:30 às 11:30" ou "Happy Hour").\n4. Marque os dias da semana em que o horário é válido (segunda a domingo).\n5. Selecione os produtos ou categorias que farão parte deste turno.\n6. Clique em [ Salvar Horário ]. Fora desse período, os itens ficam automaticamente ocultos nos QR Codes.',
+            routePath: '/menu_schedules',
+            calloutType: 'INFO',
+            calloutMessage: 'Itens essenciais de açaí ficam sempre disponíveis durante todo o horário comercial da loja.',
+            media: null,
+          },
+        ],
+      },
+
+      // -----------------------------------------------------------------------
+      // 32. HORÁRIOS DE FUNCIONAMENTO DA LOJA & FERIADOS
+      // -----------------------------------------------------------------------
+      {
+        id: '20000000-0000-0000-0000-000000000032',
+        categoryId: '10000000-0000-0000-0000-000000000008',
+        title: 'Horários de Funcionamento da Loja & Feriados (Configurações da Loja)',
+        slug: 'horarios-de-funcionamento-da-loja-e-feriados',
+        summary: 'Como configurar o horário de abertura, fecho, tolerância de atendimento, morada, NIF e pausas de feriado da sua unidade.',
+        readTimeMinutes: 4,
+        targetRoles: ['TENANT_ADMIN', 'FRANCHISOR_ADMIN', 'SUPER_ADMIN'],
+        orderIndex: 7,
+        published: true,
+        steps: [
+          {
+            stepNumber: 1,
+            title: 'Como Configurar os Horários Semanais da Loja',
+            instruction: 'Para manter o atendimento online sincronizado com as portas abertas da loja:\n\n1. No menu lateral, acesse Configurações da Loja e selecione Dados da Empresa.\n2. Na seção Horários de Atendimento, defina a hora de abertura e fecho para cada dia da semana.\n3. Se a loja fechar à tarde para descanso da equipa, clique em [ Adicionar Intervalo / Pausa ].\n4. Se precisar fechar num feriado nacional de Portugal, marque a opção [ Fecho Excepcional / Feriado ].\n5. Clique em [ Salvar Configurações ]. Quando a loja estiver fechada, os clientes que abrirem o QR Code verão uma mensagem simpática informando o próximo horário de abertura.',
+            routePath: '/company',
+            calloutType: 'ALERT',
+            calloutMessage: 'Mantenha os horários atualizados na época de verão nas cidades litorais (Figueira da Foz e Aveiro), onde o atendimento se estende até mais tarde.',
+            media: null,
+          },
+        ],
+      },
+
+      // -----------------------------------------------------------------------
+      // 33. RELATÓRIOS DE VENDAS & FECHO DE CAIXA DIÁRIO
+      // -----------------------------------------------------------------------
+      {
+        id: '20000000-0000-0000-0000-000000000033',
+        categoryId: '10000000-0000-0000-0000-000000000009',
+        title: 'Relatórios de Vendas & Fecho de Caixa Diário',
+        slug: 'relatorios-de-vendas-e-fecho-de-caixa-diario',
+        summary: 'Como auditar os valores apurados no dia, conferir numerário em gaveta, TPA Multibanco, MB WAY e emitir o relatório de fecho.',
+        readTimeMinutes: 5,
+        targetRoles: ['CASHIER', 'TENANT_ADMIN', 'SUPER_ADMIN'],
+        orderIndex: 6,
+        published: true,
+        steps: [
+          {
+            stepNumber: 1,
+            title: 'Como Realizar o Fecho de Caixa no Fim do Dia',
+            instruction: 'Passo a passo para fechar o caixa sem diferenças:\n\n1. No menu lateral, abra Relatórios do Dia ou clique em Fecho de Caixa no PDV.\n2. Verifique o resumo financeiro apurado:\n   • Numerário (Dinheiro): Total vendido em dinheiro vivo na gaveta.\n   • Cartão Multibanco (TPA): Total transacionado nos terminais físicos de pagamento.\n   • MB WAY: Total recebido via telemóvel e confirmado pelo banco.\n3. Conte o dinheiro físico da gaveta e digite o valor contado no campo de conferência.\n4. Caso tenha feito retiradas durante o expediente para o cofre, confirme os lançamentos em [ Sangria de Caixa ].\n5. Clique em [ Imprimir Fecho de Caixa ] para gerar o comprovante na impressora térmica.',
+            routePath: '/reports',
+            calloutType: 'INFO',
+            calloutMessage: 'O fecho de caixa gera um registro imutável que pode ser consultado a qualquer momento pela gerência e pela contabilidade.',
+            media: null,
+          },
+        ],
+      },
+
+      // -----------------------------------------------------------------------
+      // 34. CENTRO DE PREVENÇÃO DE DESASTRES & SNAPSHOTS
+      // -----------------------------------------------------------------------
+      {
+        id: '20000000-0000-0000-0000-000000000034',
+        categoryId: '10000000-0000-0000-0000-000000000010',
+        title: 'Centro de Prevenção de Desastres & Snapshots',
+        slug: 'centro-de-prevencao-de-desastres-e-snapshots',
+        summary: 'Painel técnico exclusivo para o Super Admin gerenciar cópias de segurança em tempo real, integridade dos dados e histórico de snapshots.',
+        readTimeMinutes: 4,
+        targetRoles: ['SUPER_ADMIN'],
+        orderIndex: 1,
+        published: true,
+        steps: [
+          {
+            stepNumber: 1,
+            title: 'Gestão de Snapshots da Base de Dados PostgreSQL',
+            instruction: 'Procedimentos de segurança e integridade:\n\n• [ Criar Snapshot Manual ]: Cria uma cópia de segurança completa e congelada de todo o banco de dados da rede.\n• [ Testar Integridade ]: Executa uma validação das tabelas e chaves estrangeiras sem impactar a operação das lojas.\n• [ Histórico de Cópias ]: Permite auditar todos os pontos de restauração salvos com data, hora e tamanho em MB.\n• [ Restaurar Ponto ]: Ação de emergência para recuperar dados em caso de falha física do servidor.',
+            routePath: '/prevention_center',
+            calloutType: 'ALERT',
+            calloutMessage: 'A restauração de backup substitui o estado atual do banco; utilize apenas sob autorização expressa da equipe de TI.',
             media: null,
           },
         ],
@@ -1044,7 +1193,7 @@ async function seedScreenAnatomyManuals() {
       )
     }
 
-    console.log('✓ Todos os 29 manuais com Screen Anatomy (botões, cards, filtros e modais) sincronizados com sucesso no PostgreSQL!')
+    console.log(`✓ Todos os ${articles.length} manuais com Screen Anatomy (botões, cards, filtros e modais) sincronizados com sucesso no PostgreSQL!`)
     await pool.end()
     process.exit(0)
   } catch (err) {

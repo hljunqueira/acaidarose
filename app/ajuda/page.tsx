@@ -106,9 +106,14 @@ function normalizeSection(raw: any, index: number): NormalizedSection {
 }
 
 // Identifica a qual escopo a categoria pertence de forma dinâmica
-function getCategoryScope(cat: ManualCategory): 'FRANCHISOR' | 'FRANCHISEE' | 'POS' | 'SHARED' {
+function getCategoryScope(cat: ManualCategory): 'FRANCHISOR' | 'FRANCHISEE' | 'POS' | 'SHARED' | 'DEV' {
   const t = (cat.title || '').toLowerCase()
   const s = (cat.slug || '').toLowerCase()
+
+  // Central Master TI
+  if (t.includes('master ti') || t.includes('infraestrutura') || s.includes('master-ti')) {
+    return 'DEV'
+  }
 
   // Cardápio, Mídias & Preços é compartilhado entre Franqueadora, Franquias e Caixas
   if (t.includes('cardápio') || s.includes('cardapio') || t.includes('mídias') || t.includes('preços')) {
@@ -1119,7 +1124,7 @@ export default function AjudaPortalPage() {
                 <div className="border-b border-border pb-4 space-y-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300">
-                      {activeCategory ? getCategoryScope(activeCategory) === 'SHARED' ? 'Cardápio & Preços' : getCategoryScope(activeCategory) === 'FRANCHISOR' ? 'Franqueadora Master' : getCategoryScope(activeCategory) === 'FRANCHISEE' ? 'Franquia (Loja)' : 'Operação de Caixa' : 'Ajuda'}
+                      {activeCategory ? getCategoryScope(activeCategory) === 'SHARED' ? 'Cardápio & Preços' : getCategoryScope(activeCategory) === 'FRANCHISOR' ? 'Franqueadora Master' : getCategoryScope(activeCategory) === 'FRANCHISEE' ? 'Franquia (Loja)' : getCategoryScope(activeCategory) === 'DEV' ? 'Central Master TI' : 'Operação de Caixa' : 'Ajuda'}
                     </span>
                     <span className="text-xs text-muted-foreground font-semibold">
                       {categoryArticles.length} guias disponíveis
