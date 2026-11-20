@@ -438,7 +438,17 @@ export async function deleteManualArticle(id: string): Promise<boolean> {
   return (res.rowCount || 0) > 0
 }
 
-export async function voteManualFeedback(id: string, isHelpful: boolean): Promise<{ helpfulVotes: number; unhelpfulVotes: number }> {
+export async function voteManualFeedback(
+  id: string,
+  isHelpful: boolean,
+  feedbackData?: {
+    userId?: string | null
+    userName?: string | null
+    userRole?: string | null
+    tenantId?: string | null
+    suggestionText?: string | null
+  }
+): Promise<{ helpfulVotes: number; unhelpfulVotes: number; feedbackId?: string }> {
   const col = isHelpful ? 'helpful_votes' : 'unhelpful_votes'
   const res = await query(
     `UPDATE manual_articles
@@ -453,10 +463,127 @@ export async function voteManualFeedback(id: string, isHelpful: boolean): Promis
     throw new Error('Artigo de manual não encontrado.')
   }
 
+  let feedbackId: string | undefined
+  try {
+    const feedbackRes = await query(
+      `INSERT INTO manual_feedback_suggestions (
+        article_id, user_id, user_name, user_role, tenant_id, is_helpful, suggestion_text
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id`,
+      [
+        id,
+        feedbackData?.userId || null,
+        feedbackData?.userName || null,
+        feedbackData?.userRole || null,
+        feedbackData?.tenantId || null,
+        isHelpful,
+        feedbackData?.suggestionText?.trim() || null,
+      ]
+    )
+    if (feedbackRes.rows?.[0]) {
+      feedbackId = feedbackRes.rows[0].id
+    }
+  } catch (err) {
+    console.error('Aviso: falha ao gravar em manual_feedback_suggestions:', err)
+  }
+
   return {
     helpfulVotes: Number(res.rows[0].helpful_votes) || 0,
     unhelpfulVotes: Number(res.rows[0].unhelpful_votes) || 0,
+    feedbackId,
   }
+}
+
+export async function getManualFeedbackMetrics(): Promise<{
+  totalVotes: number
+  helpfulVotes: number
+  unhelpfulVotes: number
+  helpfulPercentage: number
+  pendingSuggestionsCount: number
+  suggestions: any[]
+  lowestRatedArticles: any[]
+}> {
+  // 1. Totais consolidados
+  const totalsRes = await query(`
+    SELECT
+      COALESCE(SUM(helpful_votes), 0) as total_helpful,
+      COALESCE(SUM(unhelpful_votes), 0) as total_unhelpful,
+      (COALESCE(SUM(helpful_votes), 0) + COALESCE(SUM(unhelpful_votes), 0)) as total_votes
+    FROM manual_articles
+  `)
+
+  const row = totalsRes.rows?.[0] || {}
+  const helpfulVotes = Number(row.total_helpful) || 0
+  const unhelpfulVotes = Number(row.total_unhelpful) || 0
+  const totalVotes = Number(row.total_votes) || 0
+  const helpfulPercentage = totalVotes > 0 ? Math.round((helpfulVotes / totalVotes) * 100) : 100
+
+  // 2. Contagem de sugestões pendentes
+  const pendingRes = await query(`
+    SELECT COUNT(*) as count
+    FROM manual_feedback_suggestions
+    WHERE status = 'PENDING' AND suggestion_text IS NOT NULL
+  `)
+  const pendingSuggestionsCount = Number(pendingRes.rows?.[0]?.count) || 0
+
+  // 3. Lista de sugestões recentes
+  const suggestionsRes = await query(`
+    SELECT
+      f.id,
+      f.article_id,
+      f.user_id,
+      f.user_name,
+      f.user_role,
+      f.is_helpful,
+      f.suggestion_text,
+      f.status,
+      f.created_at,
+      a.title as article_title,
+      c.title as category_title
+    FROM manual_feedback_suggestions f
+    JOIN manual_articles a ON a.id = f.article_id
+    LEFT JOIN manual_categories c ON c.id = a.category_id
+    WHERE f.suggestion_text IS NOT NULL AND TRIM(f.suggestion_text) != ''
+    ORDER BY f.created_at DESC
+    LIMIT 100
+  `)
+
+  // 4. Artigos com mais dúvidas / menor aprovação
+  const lowestRatedRes = await query(`
+    SELECT
+      a.id,
+      a.title,
+      c.title as category_title,
+      a.helpful_votes,
+      a.unhelpful_votes,
+      (a.helpful_votes + a.unhelpful_votes) as total_votes,
+      ROUND((a.helpful_votes::float / NULLIF(a.helpful_votes + a.unhelpful_votes, 0) * 100)::numeric, 0) as approval_rate
+    FROM manual_articles a
+    LEFT JOIN manual_categories c ON c.id = a.category_id
+    WHERE (a.helpful_votes + a.unhelpful_votes) > 0
+    ORDER BY a.unhelpful_votes DESC, a.helpful_votes ASC
+    LIMIT 10
+  `)
+
+  return {
+    totalVotes,
+    helpfulVotes,
+    unhelpfulVotes,
+    helpfulPercentage,
+    pendingSuggestionsCount,
+    suggestions: suggestionsRes.rows || [],
+    lowestRatedArticles: lowestRatedRes.rows || [],
+  }
+}
+
+export async function updateFeedbackSuggestionStatus(id: string, status: string): Promise<boolean> {
+  const res = await query(
+    `UPDATE manual_feedback_suggestions
+     SET status = $1, updated_at = NOW()
+     WHERE id::text = $2`,
+    [status, id]
+  )
+  return (res.rowCount || 0) > 0
 }
 
 export async function searchManuals(searchTerm: string, userRole?: UserRole | null): Promise<Array<{

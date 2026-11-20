@@ -27,6 +27,11 @@ import {
   FolderPlus,
   Layers,
   Sparkles,
+  ThumbsUp,
+  ThumbsDown,
+  BarChart3,
+  MessageSquare,
+  Clock,
 } from 'lucide-react'
 
 type FilterRole = 'ALL' | 'FRANCHISOR_ADMIN' | 'TENANT_ADMIN' | 'CASHIER'
@@ -46,6 +51,20 @@ export default function ManualsAdminView() {
   const [loading, setLoading] = useState(true)
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<FilterRole>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Aba ativa: Gestão de Manuais vs Métricas de Feedback
+  const [activeAdminTab, setActiveAdminTab] = useState<'MANUALS' | 'METRICS'>('MANUALS')
+  const [metricsData, setMetricsData] = useState<{
+    totalVotes: number
+    helpfulVotes: number
+    unhelpfulVotes: number
+    helpfulPercentage: number
+    pendingSuggestionsCount: number
+    suggestions: any[]
+    lowestRatedArticles: any[]
+  } | null>(null)
+  const [metricsLoading, setMetricsLoading] = useState(false)
+  const [suggestionStatusFilter, setSuggestionStatusFilter] = useState<'ALL' | 'PENDING' | 'IMPLEMENTED'>('ALL')
 
   // Modais
   const [editArticleOpen, setEditArticleOpen] = useState(false)
@@ -124,6 +143,43 @@ export default function ManualsAdminView() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Carregar métricas e sugestões
+  const loadMetrics = useCallback(async () => {
+    setMetricsLoading(true)
+    try {
+      const res = await authFetch('/api/manuals/feedback/metrics')
+      const json = await res.json()
+      if (res.ok) {
+        setMetricsData(json)
+      }
+    } catch {
+      toast.error('Erro ao carregar métricas de feedback')
+    } finally {
+      setMetricsLoading(false)
+    }
+  }, [authFetch])
+
+  useEffect(() => {
+    loadMetrics()
+  }, [loadMetrics])
+
+  const handleUpdateSuggestionStatus = async (id: string, status: string) => {
+    try {
+      const res = await authFetch('/api/manuals/feedback/metrics', {
+        method: 'PATCH',
+        body: JSON.stringify({ id, status }),
+      })
+      if (res.ok) {
+        toast.success(status === 'IMPLEMENTED' ? 'Sugestão marcada como atendida!' : 'Status atualizado!')
+        loadMetrics()
+      } else {
+        throw new Error()
+      }
+    } catch {
+      toast.error('Erro ao atualizar status da sugestão')
+    }
+  }
 
   // Abertura de Edição de Manual
   const handleOpenArticleDialog = (article?: ManualArticle) => {
@@ -450,9 +506,322 @@ export default function ManualsAdminView() {
         </div>
       </div>
 
-      {/* Barra de Filtros por Perfil & Busca */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border">
-        {/* Abas de Perfil */}
+      {/* Abas Super Admin: Manuais e Telas vs Métricas & Sugestões */}
+      <div className="flex items-center gap-2 border-b border-border pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveAdminTab('MANUALS')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+            activeAdminTab === 'MANUALS'
+              ? 'bg-purple-700 text-white shadow-xs'
+              : 'bg-card hover:bg-muted text-foreground border border-border'
+          }`}
+        >
+          <BookOpen className="h-4 w-4" />
+          <span>Manuais & Telas ({articles.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveAdminTab('METRICS')
+            loadMetrics()
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+            activeAdminTab === 'METRICS'
+              ? 'bg-purple-700 text-white shadow-xs'
+              : 'bg-card hover:bg-muted text-foreground border border-border'
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          <span>Métricas & Sugestões de Utilizadores</span>
+          {metricsData && metricsData.pendingSuggestionsCount > 0 && (
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-amber-500 text-white font-black">
+              {metricsData.pendingSuggestionsCount} pendentes
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeAdminTab === 'METRICS' ? (
+        /* ========================================================= */
+        /* PAINEL DE MÉTRICAS & FEED DE SUGESTÕES DOS UTILIZADORES   */
+        /* ========================================================= */
+        <div className="space-y-6">
+          {metricsLoading && !metricsData ? (
+            <div className="text-center py-16 text-xs text-muted-foreground">
+              Carregando indicadores analíticos e sugestões...
+            </div>
+          ) : metricsData ? (
+            <>
+              {/* 1. CARDS DE INDICADORES GLOBAIS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-card border border-border rounded-2xl p-4 space-y-1 shadow-2xs">
+                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Total de Avaliações
+                  </div>
+                  <div className="text-2xl font-black text-foreground">
+                    {metricsData.totalVotes}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Votos registrados em todos os manuais
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-4 space-y-1 shadow-2xs">
+                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                    <span>Taxa de Aprovação</span>
+                    <Badge variant="outline" className={`text-[10px] font-bold ${
+                      metricsData.helpfulPercentage >= 80
+                        ? 'text-emerald-700 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30'
+                        : 'text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-950/30'
+                    }`}>
+                      {metricsData.helpfulPercentage}% Útil
+                    </Badge>
+                  </div>
+                  <div className="text-2xl font-black text-foreground">
+                    {metricsData.helpfulVotes} <span className="text-xs text-muted-foreground font-normal">votos Sim</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${metricsData.helpfulPercentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-4 space-y-1 shadow-2xs">
+                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Dúvidas / Votos Não
+                  </div>
+                  <div className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                    {metricsData.unhelpfulVotes}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Usuários que precisavam de mais detalhes
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-4 space-y-1 shadow-2xs">
+                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                    <span>Sugestões Enviadas</span>
+                    {metricsData.pendingSuggestionsCount > 0 && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-amber-500 text-white font-bold">
+                        {metricsData.pendingSuggestionsCount} pendentes
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl font-black text-purple-700 dark:text-purple-400">
+                    {metricsData.suggestions.length}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Contribuições para enriquecer os guias
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. TELAS COM MAIOR ÍNDICE DE DÚVIDAS (PRIORIDADE DE VÍDEO/PRINT) */}
+              {metricsData.lowestRatedArticles.length > 0 && (
+                <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <span>Telas com Maior Índice de Dúvidas (Prioridade para Vídeos/Prints)</span>
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Estas páginas receberam votos negativos e devem receber mídias ou explicações adicionais primeiro.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-border text-muted-foreground text-[11px]">
+                          <th className="py-2.5 font-bold">Tela / Manual</th>
+                          <th className="py-2.5 font-bold">Categoria</th>
+                          <th className="py-2.5 font-bold text-center">Votos Sim (👍)</th>
+                          <th className="py-2.5 font-bold text-center">Votos Não (👎)</th>
+                          <th className="py-2.5 font-bold text-center">Aprovação</th>
+                          <th className="py-2.5 font-bold text-right">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metricsData.lowestRatedArticles.map((art: any) => (
+                          <tr key={art.id} className="border-b border-border/50 hover:bg-muted/40 transition">
+                            <td className="py-2.5 font-bold text-foreground">{art.title}</td>
+                            <td className="py-2.5 text-muted-foreground">{art.category_title || '-'}</td>
+                            <td className="py-2.5 text-center text-emerald-600 font-bold">{art.helpful_votes}</td>
+                            <td className="py-2.5 text-center text-rose-600 font-bold">{art.unhelpful_votes}</td>
+                            <td className="py-2.5 text-center">
+                              <Badge variant="outline" className="text-[10px] font-bold">
+                                {art.approval_rate || 0}%
+                              </Badge>
+                            </td>
+                            <td className="py-2.5 text-right">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const found = articles.find((a) => a.id === art.id)
+                                  if (found) handleOpenArticleDialog(found)
+                                }}
+                                className="text-xs font-bold rounded-lg h-7 cursor-pointer"
+                              >
+                                Editar Tela
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. FEED DE SUGESTÕES DOS UTILIZADORES */}
+              <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-purple-600" />
+                      <span>Feed de Sugestões Enviadas pelos Utilizadores</span>
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Comentários detalhados enviados quando o usuário respondeu &quot;Não&quot; no guia da tela.
+                    </p>
+                  </div>
+
+                  {/* Filtro de Status das Sugestões */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSuggestionStatusFilter('ALL')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        suggestionStatusFilter === 'ALL'
+                          ? 'bg-purple-700 text-white'
+                          : 'bg-muted text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Todas ({metricsData.suggestions.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSuggestionStatusFilter('PENDING')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        suggestionStatusFilter === 'PENDING'
+                          ? 'bg-purple-700 text-white'
+                          : 'bg-muted text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Pendentes ({metricsData.suggestions.filter((s: any) => s.status === 'PENDING').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSuggestionStatusFilter('IMPLEMENTED')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        suggestionStatusFilter === 'IMPLEMENTED'
+                          ? 'bg-purple-700 text-white'
+                          : 'bg-muted text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Atendidas ({metricsData.suggestions.filter((s: any) => s.status === 'IMPLEMENTED').length})
+                    </button>
+                  </div>
+                </div>
+
+                {metricsData.suggestions.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-muted-foreground">
+                    Nenhuma sugestão registrada até ao momento.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {metricsData.suggestions
+                      .filter((s: any) => {
+                        if (suggestionStatusFilter === 'PENDING') return s.status === 'PENDING'
+                        if (suggestionStatusFilter === 'IMPLEMENTED') return s.status === 'IMPLEMENTED'
+                        return true
+                      })
+                      .map((sug: any) => (
+                        <div
+                          key={sug.id}
+                          className="p-4 rounded-xl border border-border bg-background space-y-2.5 hover:border-purple-300 transition"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-foreground">
+                                {sug.user_name || 'Usuário Anônimo'}
+                              </span>
+                              {sug.user_role && (
+                                <Badge variant="outline" className="text-[9.5px] font-bold text-muted-foreground">
+                                  {sug.user_role}
+                                </Badge>
+                              )}
+                              <span className="text-[10px] text-muted-foreground">
+                                • {new Date(sug.created_at).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] font-bold text-purple-700 border-purple-200">
+                                {sug.article_title}
+                              </Badge>
+
+                              <Badge className={`text-[10px] font-bold ${
+                                sug.status === 'IMPLEMENTED'
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60'
+                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60'
+                              }`}>
+                                {sug.status === 'IMPLEMENTED' ? 'Atendida' : 'Pendente'}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="text-xs text-foreground/90 bg-muted/30 p-3 rounded-lg border border-border/40 whitespace-pre-line leading-relaxed">
+                            &quot;{sug.suggestion_text}&quot;
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-1">
+                            {sug.status === 'PENDING' ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleUpdateSuggestionStatus(sug.id, 'IMPLEMENTED')}
+                                className="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold rounded-lg h-7 cursor-pointer"
+                              >
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Marcar como Atendida
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdateSuggestionStatus(sug.id, 'PENDING')}
+                                className="text-[11px] font-bold rounded-lg h-7 cursor-pointer"
+                              >
+                                Reabrir Sugestão
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : (
+        /* ========================================================= */
+        /* GESTÃO DE MANUAIS & TELAS (VISUALIZAÇÃO DE CARDS)         */
+        /* ========================================================= */
+        <>
+        {/* Barra de Filtros por Perfil & Busca */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border">
+          {/* Abas de Perfil */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           <button
             type="button"
@@ -624,6 +993,8 @@ export default function ManualsAdminView() {
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
 
       {/* DIÁLOGO: CRIAÇÃO / EDIÇÃO DE MANUAL */}

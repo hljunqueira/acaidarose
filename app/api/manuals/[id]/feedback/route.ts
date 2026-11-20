@@ -17,8 +17,15 @@ export async function POST(
     const { id } = await params
     const body = await request.json()
     const isHelpful = Boolean(body?.isHelpful)
+    const suggestionText = typeof body?.suggestionText === 'string' ? body.suggestionText : null
 
-    const result = await voteManualFeedback(id, isHelpful)
+    const result = await voteManualFeedback(id, isHelpful, {
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      tenantId: user.tenantId,
+      suggestionText,
+    })
     return NextResponse.json({ success: true, ...result })
   } catch (err: any) {
     console.error('Erro ao registrar feedback do manual:', err)

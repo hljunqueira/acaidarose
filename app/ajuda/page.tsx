@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { ManualArticle, ManualCategory, ManualStep, UserRole } from '@/types'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { ManualArticle, ManualCategory, UserRole } from '@/types'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -19,12 +19,109 @@ import {
   ExternalLink,
   Info,
   AlertTriangle,
-  CheckCircle2,
-  Lock,
-  ArrowRight,
   Maximize2,
   X,
+  Building2,
+  Store,
+  ShoppingBag,
+  Layers,
+  Compass,
+  Clock,
+  CheckCircle2,
+  ChevronLeft,
+  MessageSquarePlus,
+  Send,
+  Sparkles,
 } from 'lucide-react'
+
+// Escopos estruturais para separar Franqueadora Master e Franquias
+type PortalScope = 'ALL' | 'FRANCHISOR' | 'FRANCHISEE' | 'POS'
+
+interface ScopeMeta {
+  id: PortalScope
+  title: string
+  subtitle: string
+  badge: string
+  icon: React.ElementType
+}
+
+const SCOPES: ScopeMeta[] = [
+  {
+    id: 'ALL',
+    title: 'Todas as Telas',
+    subtitle: 'Visão unificada das 29 telas e processos operacionais da rede',
+    badge: 'Rede Completa',
+    icon: Layers,
+  },
+  {
+    id: 'FRANCHISOR',
+    title: 'Franqueadora Master',
+    subtitle: 'Governança da rede, contratos, armazém B2B, cardápio oficial e analytics global',
+    badge: 'Matriz & Expansão',
+    icon: Building2,
+  },
+  {
+    id: 'FRANCHISEE',
+    title: 'Franquias (Lojas)',
+    subtitle: 'Administração da unidade, estoque local, reposição com matriz, qualidade e configurações',
+    badge: 'Gestão da Loja',
+    icon: Store,
+  },
+  {
+    id: 'POS',
+    title: 'Operação de Caixa',
+    subtitle: 'Frente de caixa PDV, montagem de copos, comandas de mesas e fila KDS',
+    badge: 'Caixa & Salão',
+    icon: ShoppingBag,
+  },
+]
+
+// Normalizador unificado de seções e componentes da tela
+interface NormalizedSection {
+  stepNumber: number
+  title: string
+  instruction: string
+  routePath: string | null
+  calloutType: string | null
+  calloutMessage: string | null
+  mediaSource: string | null
+  mediaType: string | null
+  mediaUrl: string | null
+  youtubeId: string | null
+}
+
+function normalizeSection(raw: any, index: number): NormalizedSection {
+  return {
+    stepNumber: raw?.stepNumber ?? raw?.step_number ?? index + 1,
+    title: raw?.title || `Seção ${index + 1}`,
+    instruction: raw?.instruction ?? raw?.description ?? '',
+    routePath: raw?.routePath ?? raw?.action_route ?? null,
+    calloutType: raw?.calloutType ?? raw?.callout_type ?? null,
+    calloutMessage: raw?.calloutMessage ?? raw?.callout_text ?? null,
+    mediaSource: raw?.mediaSource ?? raw?.media_source ?? (raw?.youtube_id ? 'YOUTUBE' : null),
+    mediaType: raw?.mediaType ?? raw?.media_type ?? (raw?.media_url?.endsWith?.('.mp4') ? 'VIDEO' : 'IMAGE'),
+    mediaUrl: raw?.mediaUrl ?? raw?.media_url ?? (typeof raw?.media === 'string' ? raw.media : raw?.media?.url ?? null),
+    youtubeId: raw?.youtubeId ?? raw?.youtube_id ?? null,
+  }
+}
+
+// Identifica a qual escopo a categoria pertence de forma dinâmica
+function getCategoryScope(cat: ManualCategory): 'FRANCHISOR' | 'FRANCHISEE' | 'POS' {
+  const t = (cat.title || '').toLowerCase()
+  const s = (cat.slug || '').toLowerCase()
+
+  if (t.startsWith('franqueadora') || s.startsWith('franqueadora')) return 'FRANCHISOR'
+  if (t.startsWith('franquia') || s.startsWith('franquia')) return 'FRANCHISEE'
+  if (t.includes('caixa') || t.includes('operação') || s.includes('caixa') || s.includes('operacao')) return 'POS'
+
+  if (cat.targetRoles.includes('FRANCHISOR_ADMIN') && !cat.targetRoles.includes('TENANT_ADMIN')) {
+    return 'FRANCHISOR'
+  }
+  if (cat.targetRoles.includes('CASHIER') && !cat.targetRoles.includes('FRANCHISOR_ADMIN')) {
+    return 'POS'
+  }
+  return 'FRANCHISEE'
+}
 
 export default function AjudaPortalPage() {
   const { user, token, checkAuth, login } = useAuthStore()
@@ -33,6 +130,9 @@ export default function AjudaPortalPage() {
   const [categories, setCategories] = useState<ManualCategory[]>([])
   const [articles, setArticles] = useState<ManualArticle[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Escopo ativo (Segmented Control): Franqueadora Master vs Franquias vs Operação
+  const [activeScope, setActiveScope] = useState<PortalScope>('ALL')
 
   // Filtro de auditoria exclusivo para SUPER_ADMIN (Henrique)
   const [simulatedRole, setSimulatedRole] = useState<UserRole | 'ALL'>('ALL')
@@ -49,9 +149,22 @@ export default function AjudaPortalPage() {
   // Lightbox de Imagem
   const [lightboxImg, setLightboxImg] = useState<string | null>(null)
 
-  // Feedback de voto
+  // Feedback Inteligente: Voto & Caixa de Sugestão
   const [votedArticleId, setVotedArticleId] = useState<string | null>(null)
+  const [voteChoice, setVoteChoice] = useState<'YES' | 'NO' | null>(null)
+  const [showSuggestionBox, setShowSuggestionBox] = useState(false)
+  const [suggestionText, setSuggestionText] = useState('')
+  const [suggestionSubmitted, setSuggestionSubmitted] = useState(false)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
+
+  // Reseta estado de feedback ao trocar de artigo
+  useEffect(() => {
+    setVotedArticleId(null)
+    setVoteChoice(null)
+    setShowSuggestionBox(false)
+    setSuggestionText('')
+    setSuggestionSubmitted(false)
+  }, [activeArticle?.id])
 
   // Inicialização de Auth com resiliência a subdomínio
   useEffect(() => {
@@ -167,6 +280,10 @@ export default function AjudaPortalPage() {
     if (found) {
       setActiveArticle(found)
       setSelectedCatId(found.categoryId)
+      const foundCat = categories.find((c) => c.id === found.categoryId)
+      if (foundCat) {
+        setActiveScope(getCategoryScope(foundCat))
+      }
     } else {
       try {
         const activeToken = effectiveToken || useAuthStore.getState().token
@@ -177,6 +294,10 @@ export default function AjudaPortalPage() {
         if (data.article) {
           setActiveArticle(data.article)
           setSelectedCatId(data.article.categoryId)
+          const foundCat = categories.find((c) => c.id === data.article.categoryId)
+          if (foundCat) {
+            setActiveScope(getCategoryScope(foundCat))
+          }
         }
       } catch {
         toast.error('Manual não encontrado')
@@ -184,9 +305,49 @@ export default function AjudaPortalPage() {
     }
   }
 
-  // Registrar voto de utilidade
+  // Registrar voto Sim / Não
   const handleVote = async (articleId: string, isHelpful: boolean) => {
-    if (votedArticleId === articleId) return
+    if (votedArticleId === articleId && !showSuggestionBox) return
+
+    if (isHelpful) {
+      setFeedbackLoading(true)
+      try {
+        const activeToken = effectiveToken || useAuthStore.getState().token
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(activeToken ? { 'x-auth-token': activeToken } : {}),
+        }
+        const tokenParam = activeToken ? `?token=${encodeURIComponent(activeToken)}` : ''
+        const res = await fetch(`/api/manuals/${articleId}/feedback${tokenParam}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ isHelpful: true }),
+        })
+        if (!res.ok) throw new Error()
+        setVotedArticleId(articleId)
+        setVoteChoice('YES')
+        setShowSuggestionBox(false)
+        toast.success('Obrigado! O seu voto positivo foi registrado com sucesso.')
+      } catch {
+        toast.error('Não foi possível registrar o feedback.')
+      } finally {
+        setFeedbackLoading(false)
+      }
+    } else {
+      // Quando clica em NÃO: abre imediatamente a caixa de sugestão
+      setVotedArticleId(articleId)
+      setVoteChoice('NO')
+      setShowSuggestionBox(true)
+    }
+  }
+
+  // Enviar sugestão de melhoria quando votou NÃO
+  const handleSendSuggestion = async (articleId: string) => {
+    if (!suggestionText.trim()) {
+      toast.error('Por favor, escreva o que gostaria que fosse explicado.')
+      return
+    }
+
     setFeedbackLoading(true)
     try {
       const activeToken = effectiveToken || useAuthStore.getState().token
@@ -198,13 +359,14 @@ export default function AjudaPortalPage() {
       const res = await fetch(`/api/manuals/${articleId}/feedback${tokenParam}`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ isHelpful }),
+        body: JSON.stringify({ isHelpful: false, suggestionText: suggestionText.trim() }),
       })
       if (!res.ok) throw new Error()
-      setVotedArticleId(articleId)
-      toast.success('Obrigado pelo seu feedback!')
+      setSuggestionSubmitted(true)
+      setShowSuggestionBox(false)
+      toast.success('Sugestão enviada ao Super Admin! Agradecemos a sua colaboração.')
     } catch {
-      toast.error('Não foi possível registrar o feedback.')
+      toast.error('Erro ao enviar a sugestão.')
     } finally {
       setFeedbackLoading(false)
     }
@@ -212,44 +374,117 @@ export default function AjudaPortalPage() {
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
-  // Filtragem dos artigos da categoria selecionada
-  const activeCategory = categories.find((c) => c.id === selectedCatId)
-  const categoryArticles = articles.filter((a) => {
-    if (selectedCatId && a.categoryId !== selectedCatId) return false
-    if (simulatedRole !== 'ALL' && !a.targetRoles.includes(simulatedRole)) return false
-    return true
-  })
+  // Categorias filtradas pelo escopo selecionado (Franqueadora vs Franquia vs Caixa)
+  const scopedCategories = useMemo(() => {
+    if (activeScope === 'ALL') return categories
+    return categories.filter((c) => getCategoryScope(c) === activeScope)
+  }, [categories, activeScope])
+
+  // Ajusta automaticamente a categoria selecionada se a atual sair do escopo
+  useEffect(() => {
+    if (scopedCategories.length > 0) {
+      const exists = scopedCategories.some((c) => c.id === selectedCatId)
+      if (!exists && !activeArticle) {
+        setSelectedCatId(scopedCategories[0].id)
+      }
+    }
+  }, [scopedCategories, selectedCatId, activeArticle])
+
+  // Categoria ativa atual
+  const activeCategory = useMemo(() => {
+    return categories.find((c) => c.id === selectedCatId) || scopedCategories[0] || null
+  }, [categories, selectedCatId, scopedCategories])
+
+  // Artigos pertencentes à categoria ativa
+  const categoryArticles = useMemo(() => {
+    if (!activeCategory) return []
+    return articles.filter((a) => {
+      if (a.categoryId !== activeCategory.id) return false
+      if (simulatedRole !== 'ALL' && !a.targetRoles.includes(simulatedRole)) return false
+      return true
+    })
+  }, [articles, activeCategory, simulatedRole])
+
+  // Agrupamento de categorias por seção para a barra lateral
+  const groupedCategories = useMemo(() => {
+    return {
+      franchisor: categories.filter((c) => getCategoryScope(c) === 'FRANCHISOR'),
+      franchisee: categories.filter((c) => getCategoryScope(c) === 'FRANCHISEE'),
+      pos: categories.filter((c) => getCategoryScope(c) === 'POS'),
+    }
+  }, [categories])
+
+  // Contagens para badges dos botões de escopo
+  const scopeCounts = useMemo(() => {
+    return {
+      ALL: articles.length,
+      FRANCHISOR: articles.filter((a) => {
+        const cat = categories.find((c) => c.id === a.categoryId)
+        return cat && getCategoryScope(cat) === 'FRANCHISOR'
+      }).length,
+      FRANCHISEE: articles.filter((a) => {
+        const cat = categories.find((c) => c.id === a.categoryId)
+        return cat && getCategoryScope(cat) === 'FRANCHISEE'
+      }).length,
+      POS: articles.filter((a) => {
+        const cat = categories.find((c) => c.id === a.categoryId)
+        return cat && getCategoryScope(cat) === 'POS'
+      }).length,
+    }
+  }, [articles, categories])
+
+  // Navegação entre manuais (Anterior / Próximo)
+  const currentArticleIndex = useMemo(() => {
+    if (!activeArticle) return -1
+    return categoryArticles.findIndex((a) => a.id === activeArticle.id)
+  }, [activeArticle, categoryArticles])
+
+  const prevArticle = currentArticleIndex > 0 ? categoryArticles[currentArticleIndex - 1] : null
+  const nextArticle =
+    currentArticleIndex >= 0 && currentArticleIndex < categoryArticles.length - 1
+      ? categoryArticles[currentArticleIndex + 1]
+      : null
+
+  // Rota principal da tela atual
+  const activeScreenRoute = useMemo(() => {
+    if (!activeArticle) return null
+    const firstStep = activeArticle.steps?.find((s: any) => s.routePath || s.action_route)
+    return firstStep ? (firstStep as any).routePath || (firstStep as any).action_route : null
+  }, [activeArticle])
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#0b0612] text-foreground font-sans antialiased selection:bg-purple-600 selection:text-white">
       {/* 1. TOPO CORPORATIVO (HEADER) */}
       <header className="sticky top-0 z-30 bg-white/95 dark:bg-[#120a1f]/95 backdrop-blur-md border-b border-border px-4 md:px-8 py-3.5 print:hidden">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Logo & Título */}
+          {/* Logo Oficial & Identidade Canónica (notranslate para evitar 'Açaí da Rosa') */}
           <div className="flex items-center gap-3">
             <img
-              src="/logo-oficial-1.png"
+              src="https://app.acaidarose.pt/logo-oficial-1.png"
+              onError={(e) => {
+                e.currentTarget.src = '/logo-oficial-1.png'
+              }}
               alt="Açaí da Rose"
-              className="h-9 w-auto object-contain drop-shadow-xs"
+              className="h-10 w-auto object-contain drop-shadow-xs"
             />
-            <div>
-              <div className="text-sm font-black text-foreground tracking-tight leading-none">
+            <div className="notranslate" translate="no">
+              <div className="text-base font-black text-foreground tracking-tight leading-none">
                 Açaí da Rose
               </div>
-              <div className="text-[10px] text-purple-700 dark:text-purple-400 font-bold tracking-wider uppercase mt-0.5">
+              <div className="text-[10.5px] text-purple-700 dark:text-purple-400 font-bold tracking-wider uppercase mt-1">
                 Central de Manuais & Ajuda
               </div>
             </div>
           </div>
 
-          {/* Barra de Pesquisa Instantânea */}
+          {/* Barra de Pesquisa Instantânea em Botões, Cards e Rotas */}
           <div className="relative flex-1 max-w-md mx-auto md:mx-6 w-full">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Pesquisar em passos, regras e manuais..."
-              className="pl-8 text-xs rounded-xl h-9 bg-card border-border"
+              placeholder="Pesquisar botões, cards, modais e rotas (/franchise, /pos)..."
+              className="pl-9 text-xs rounded-xl h-9 bg-card border-border shadow-2xs"
             />
 
             {/* Dropdown de Resultados da Busca */}
@@ -257,7 +492,7 @@ export default function AjudaPortalPage() {
               <div className="absolute left-0 right-0 top-11 bg-card border border-border rounded-2xl shadow-xl z-50 p-2 text-xs space-y-1 max-h-80 overflow-y-auto">
                 {searchLoading ? (
                   <div className="p-3 text-center text-muted-foreground text-[11px]">
-                    Pesquisando...
+                    Pesquisando nas 29 telas documentadas...
                   </div>
                 ) : searchResults.length === 0 ? (
                   <div className="p-3 text-center text-muted-foreground text-[11px]">
@@ -279,7 +514,7 @@ export default function AjudaPortalPage() {
                       </div>
                       {res.matchType === 'STEP' && res.matchedStepTitle && (
                         <div className="text-[10.5px] text-muted-foreground">
-                          No Passo {res.matchedStepNumber}: {res.matchedStepTitle}
+                          Em {res.matchedStepTitle}
                         </div>
                       )}
                       {res.summary && res.matchType !== 'STEP' && (
@@ -305,10 +540,10 @@ export default function AjudaPortalPage() {
                   onChange={(e) => setSimulatedRole(e.target.value as any)}
                   className="bg-transparent text-[10.5px] font-bold text-foreground focus:outline-hidden cursor-pointer"
                 >
-                  <option value="ALL">Todas as Áreas (Super Admin)</option>
-                  <option value="CASHIER">Caixa & Atendimento</option>
-                  <option value="TENANT_ADMIN">Franqueado (Loja)</option>
+                  <option value="ALL">Todas as Telas (Super Admin)</option>
                   <option value="FRANCHISOR_ADMIN">Franqueadora (Matriz)</option>
+                  <option value="TENANT_ADMIN">Franqueados (Lojas)</option>
+                  <option value="CASHIER">Caixa & Atendimento</option>
                 </select>
               </div>
             )}
@@ -323,7 +558,7 @@ export default function AjudaPortalPage() {
               </div>
             ) : null}
 
-            {/* Botão de Retorno à Plataforma */}
+            {/* Botão de Retorno à Plataforma Principal */}
             <a
               href="https://app.acaidarose.pt"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition shadow-xs cursor-pointer"
@@ -335,78 +570,250 @@ export default function AjudaPortalPage() {
         </div>
       </header>
 
-      {/* 2. CORPO EM DUAS COLUNAS (LINEAR/STRIPE STYLE) */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* COLUNA ESQUERDA: NAVEGAÇÃO DE CATEGORIAS (md:col-span-3) */}
-        <aside className="md:col-span-3 space-y-4 print:hidden">
-          <div className="sticky top-20 space-y-4">
-            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2">
-              Categorias de Manuais
-            </div>
+      {/* 2. SELETOR DE ESCOPO HORIZONTAL (SEGMENTED TABS: FRANQUEADORA vs FRANQUIAS vs CAIXA) */}
+      <div className="bg-white dark:bg-[#120a1f] border-b border-border print:hidden">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+            {SCOPES.map((scope) => {
+              const Icon = scope.icon
+              const isSelected = activeScope === scope.id
+              const count = scopeCounts[scope.id] || 0
 
-            <nav className="space-y-1">
-              {categories.map((cat) => {
-                const isSelected = selectedCatId === cat.id && !activeArticle
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCatId(cat.id)
-                      setActiveArticle(null)
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-between ${
+              return (
+                <button
+                  key={scope.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveScope(scope.id)
+                    setActiveArticle(null)
+                  }}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    isSelected
+                      ? 'bg-purple-700 text-white shadow-xs'
+                      : 'bg-muted/40 hover:bg-muted text-foreground border border-border/60'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 ${isSelected ? 'text-white' : 'text-purple-600 dark:text-purple-400'}`} />
+                  <span>{scope.title}</span>
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
                       isSelected
-                        ? 'bg-purple-700 text-white shadow-xs'
-                        : 'text-foreground hover:bg-muted'
+                        ? 'bg-purple-800 text-white'
+                        : 'bg-muted text-muted-foreground font-semibold'
                     }`}
                   >
-                    <span className="truncate">{cat.title}</span>
-                    <span
-                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
-                        isSelected
-                          ? 'bg-purple-800 text-white'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {cat.articlesCount || 0}
-                    </span>
-                  </button>
-                )
-              })}
-            </nav>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. CORPO EM DUAS COLUNAS COM ALTA LEGIbILIDADE (md:col-span-4 + md:col-span-8) */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 grid grid-cols-1 md:grid-cols-12 gap-8">
+        {/* COLUNA ESQUERDA: NAVEGAÇÃO HIERÁRQUICA DE CATEGORIAS */}
+        <aside className="md:col-span-4 lg:col-span-3 space-y-6 print:hidden">
+          <div className="sticky top-32 space-y-5">
+            {/* Bloco 1: FRANQUEADORA MASTER */}
+            {(activeScope === 'ALL' || activeScope === 'FRANCHISOR') && groupedCategories.franchisor.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between px-2 text-[11px] font-black tracking-wider text-purple-900 dark:text-purple-300 uppercase">
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-purple-700" />
+                    <span>Franqueadora Master</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    {groupedCategories.franchisor.reduce((acc, c) => acc + (c.articlesCount || 0), 0)} telas
+                  </span>
+                </div>
+
+                <nav className="space-y-1">
+                  {groupedCategories.franchisor.map((cat) => {
+                    const isSelected = selectedCatId === cat.id && !activeArticle
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCatId(cat.id)
+                          setActiveArticle(null)
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-purple-700 text-white shadow-xs'
+                            : 'text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <span className="truncate pr-1">
+                          {cat.title.replace(/^Franqueadora:\s*/i, '')}
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 ${
+                            isSelected
+                              ? 'bg-purple-800 text-white'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {cat.articlesCount || 0}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </nav>
+              </div>
+            )}
+
+            {/* Bloco 2: FRANQUIAS (LOJAS) */}
+            {(activeScope === 'ALL' || activeScope === 'FRANCHISEE') && groupedCategories.franchisee.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between px-2 text-[11px] font-black tracking-wider text-purple-900 dark:text-purple-300 uppercase">
+                  <div className="flex items-center gap-1.5">
+                    <Store className="h-3.5 w-3.5 text-purple-700" />
+                    <span>Franquias (Lojas)</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    {groupedCategories.franchisee.reduce((acc, c) => acc + (c.articlesCount || 0), 0)} telas
+                  </span>
+                </div>
+
+                <nav className="space-y-1">
+                  {groupedCategories.franchisee.map((cat) => {
+                    const isSelected = selectedCatId === cat.id && !activeArticle
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCatId(cat.id)
+                          setActiveArticle(null)
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-purple-700 text-white shadow-xs'
+                            : 'text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <span className="truncate pr-1">
+                          {cat.title.replace(/^Franquias:\s*/i, '')}
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 ${
+                            isSelected
+                              ? 'bg-purple-800 text-white'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {cat.articlesCount || 0}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </nav>
+              </div>
+            )}
+
+            {/* Bloco 3: OPERAÇÃO & CAIXA */}
+            {(activeScope === 'ALL' || activeScope === 'POS') && groupedCategories.pos.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between px-2 text-[11px] font-black tracking-wider text-purple-900 dark:text-purple-300 uppercase">
+                  <div className="flex items-center gap-1.5">
+                    <ShoppingBag className="h-3.5 w-3.5 text-purple-700" />
+                    <span>Operação & Caixa</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    {groupedCategories.pos.reduce((acc, c) => acc + (c.articlesCount || 0), 0)} telas
+                  </span>
+                </div>
+
+                <nav className="space-y-1">
+                  {groupedCategories.pos.map((cat) => {
+                    const isSelected = selectedCatId === cat.id && !activeArticle
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCatId(cat.id)
+                          setActiveArticle(null)
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-purple-700 text-white shadow-xs'
+                            : 'text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <span className="truncate pr-1">{cat.title}</span>
+                        <span
+                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 ${
+                            isSelected
+                              ? 'bg-purple-800 text-white'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {cat.articlesCount || 0}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </nav>
+              </div>
+            )}
           </div>
         </aside>
 
-        {/* COLUNA PRINCIPAL: ARTIGO ABERTO OU LISTAGEM (md:col-span-9) */}
-        <main className="md:col-span-9">
+        {/* COLUNA PRINCIPAL: GUIA DA TELA OU LISTAGEM (md:col-span-8 lg:md:col-span-9) */}
+        <main className="md:col-span-8 lg:col-span-9">
           {loading ? (
-            <div className="py-20 text-center text-xs text-muted-foreground">
-              A carregar conteúdo dos manuais...
+            <div className="py-24 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
+              <BookOpen className="h-6 w-6 text-purple-600 animate-pulse" />
+              <span>A carregar dicionário de telas e componentes...</span>
             </div>
           ) : activeArticle ? (
             /* ========================================================= */
-            /* VISUALIZADOR DE ARTIGO / MANUAL COMPLETO                  */
+            /* GUIA COMPLETO DA TELA (SCREEN ANATOMY)                    */
             /* ========================================================= */
             <article className="space-y-8 max-w-3xl">
-              {/* Topo do Artigo / Breadcrumb */}
-              <div className="space-y-3 border-b border-border pb-5">
+              {/* Header do Guia da Tela */}
+              <div className="space-y-3.5 border-b border-border pb-6">
                 <button
                   type="button"
                   onClick={() => setActiveArticle(null)}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-400 hover:underline cursor-pointer print:hidden"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
-                  <span>Voltar aos manuais de {activeArticle.categoryTitle || 'Categoria'}</span>
+                  <span>Voltar às telas de {activeArticle.categoryTitle || 'Categoria'}</span>
                 </button>
 
-                <div className="flex items-center gap-2 pt-1 print:hidden">
+                <div className="flex flex-wrap items-center gap-2 pt-1 print:hidden">
                   <Badge variant="outline" className="text-[10.5px] font-bold text-purple-700 border-purple-200">
                     {activeArticle.categoryTitle}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Tempo estimado: {activeArticle.readTimeMinutes || 3} min
+
+                  {activeScreenRoute && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 text-purple-800 dark:text-purple-300 text-[10.5px] font-mono font-bold">
+                      <Compass className="h-3 w-3" />
+                      Rota: {activeScreenRoute}
+                    </span>
+                  )}
+
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Leitura: {activeArticle.readTimeMinutes || 4} min
                   </span>
+
+                  {activeScreenRoute && (
+                    <a
+                      href={`https://app.acaidarose.pt/?view=${encodeURIComponent(activeScreenRoute)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-card border border-border hover:bg-muted text-xs font-bold text-foreground transition shadow-2xs cursor-pointer"
+                    >
+                      <span>Abrir tela no sistema</span>
+                      <ExternalLink className="h-3 w-3 text-purple-600" />
+                    </a>
+                  )}
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight leading-tight">
@@ -420,175 +827,277 @@ export default function AjudaPortalPage() {
                 )}
               </div>
 
-              {/* PASSOS SEQUENCIAIS (1, 2, 3...) */}
-              <div className="space-y-8">
-                {activeArticle.steps.map((step) => (
-                  <section
-                    key={step.step_number}
-                    className="space-y-4 p-5 sm:p-6 rounded-2xl border border-border bg-card shadow-xs break-inside-avoid"
+              {/* COMPONENTES MAPEADOS DA TELA (BOTÕES, CARDS, FILTROS, MODAIS, REGRAS) */}
+              <div className="space-y-6">
+                {activeArticle.steps.map((rawStep, idx) => {
+                  const section = normalizeSection(rawStep, idx)
+
+                  return (
+                    <section
+                      key={section.stepNumber}
+                      className="space-y-4 p-5 sm:p-6 rounded-2xl border border-border bg-card shadow-xs break-inside-avoid"
+                    >
+                      {/* Header da Seção do Componente */}
+                      <div className="flex items-start gap-3.5">
+                        <div className="space-y-1.5 flex-1">
+                          <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
+                            <span>{section.title}</span>
+                          </h2>
+
+                          {/* Rota Específica caso declarada no bloco */}
+                          {section.routePath && section.routePath !== activeScreenRoute && (
+                            <div className="flex flex-wrap items-center gap-2 pt-0.5 print:hidden">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 text-purple-800 dark:text-purple-300 text-[10.5px] font-mono font-bold">
+                                <Compass className="h-3 w-3" />
+                                Rota: {section.routePath}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Texto Explicativo Detalhado de Cada Elemento da Tela */}
+                          {section.instruction && (
+                            <div className="text-xs sm:text-sm text-foreground/80 leading-relaxed whitespace-pre-line pt-1">
+                              {section.instruction}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* MÍDIA DO COMPONENTE (VÍDEO / GIF / PRINT) */}
+                      {section.mediaSource === 'YOUTUBE' && section.youtubeId ? (
+                        <div className="relative rounded-2xl overflow-hidden border border-border aspect-video max-w-2xl bg-black">
+                          <iframe
+                            src={`https://www.youtube-nocookie.com/embed/${section.youtubeId}?rel=0&modestbranding=1&controls=1&playsinline=1`}
+                            title={section.title}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="w-full h-full border-0"
+                          />
+                        </div>
+                      ) : section.mediaUrl ? (
+                        <div className="relative group rounded-2xl overflow-hidden border border-border bg-black/5 dark:bg-black/30 max-w-2xl">
+                          {section.mediaType === 'VIDEO' ? (
+                            <video
+                              src={section.mediaUrl}
+                              controls
+                              muted
+                              loop
+                              playsInline
+                              className="w-full h-auto max-h-[460px] object-contain rounded-xl"
+                            />
+                          ) : (
+                            <div className="relative">
+                              <img
+                                src={section.mediaUrl}
+                                alt={section.title}
+                                className="w-full h-auto max-h-[460px] object-contain rounded-xl cursor-zoom-in"
+                                onClick={() => setLightboxImg(section.mediaUrl || null)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setLightboxImg(section.mediaUrl || null)}
+                                className="absolute top-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/80 text-white text-xs opacity-0 group-hover:opacity-100 transition print:hidden cursor-pointer"
+                                title="Ampliar imagem"
+                              >
+                                <Maximize2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+
+                      {/* CALLOUT (DICA / ATENÇÃO FISCAL / REGRA DA MARCA) */}
+                      {section.calloutMessage && (
+                        <div
+                          className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs leading-relaxed ${
+                            section.calloutType === 'ALERT'
+                              ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-900 dark:text-amber-200'
+                              : 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 text-purple-900 dark:text-purple-200'
+                          }`}
+                        >
+                          {section.calloutType === 'ALERT' ? (
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                          ) : (
+                            <Info className="h-4 w-4 shrink-0 text-purple-700 mt-0.5" />
+                          )}
+                          <span>{section.calloutMessage}</span>
+                        </div>
+                      )}
+                    </section>
+                  )
+                })}
+              </div>
+
+              {/* NAVEGAÇÃO ENTRE TELAS (ANTERIOR / PRÓXIMO) */}
+              <div className="pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-4 print:hidden">
+                {prevArticle ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveArticle(prevArticle)}
+                    className="p-4 rounded-xl border border-border bg-card hover:bg-muted text-left transition flex items-center gap-3 cursor-pointer"
                   >
-                    {/* Header do Passo */}
-                    <div className="flex items-start gap-3">
-                      <span className="h-7 w-7 rounded-full bg-purple-700 text-white flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
-                        {step.step_number}
-                      </span>
-                      <div className="space-y-1">
-                        <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight">
-                          {step.title}
-                        </h2>
-                        {step.description && (
-                          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                            {step.description}
-                          </p>
-                        )}
+                    <ChevronLeft className="h-4 w-4 text-purple-700 shrink-0" />
+                    <div className="truncate">
+                      <div className="text-[10px] text-muted-foreground uppercase font-bold">Tela Anterior</div>
+                      <div className="text-xs font-bold text-foreground truncate">{prevArticle.title}</div>
+                    </div>
+                  </button>
+                ) : <div />}
+
+                {nextArticle ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveArticle(nextArticle)}
+                    className="p-4 rounded-xl border border-border bg-card hover:bg-muted text-right transition flex items-center justify-end gap-3 cursor-pointer ml-auto w-full sm:w-auto"
+                  >
+                    <div className="truncate text-right">
+                      <div className="text-[10px] text-muted-foreground uppercase font-bold">Próxima Tela</div>
+                      <div className="text-xs font-bold text-foreground truncate">{nextArticle.title}</div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-purple-700 shrink-0" />
+                  </button>
+                ) : null}
+              </div>
+
+              {/* RODAPÉ DO GUIA: FEEDBACK INTELIGENTE (SIM / NÃO COM CAIXA DE SUGESTÃO) */}
+              <div className="pt-6 border-t border-border space-y-4 print:hidden">
+                <div className="p-5 rounded-2xl border border-border bg-card space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-foreground">
+                        Este guia foi útil para compreender todos os recursos desta tela?
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        O seu voto orienta melhorias e gravações de novos vídeos pela Franqueadora.
                       </div>
                     </div>
 
-                    {/* MÍDIA DO PASSO (IMAGEM, GIF OU VÍDEO) */}
-                    {step.media_source === 'YOUTUBE' && step.youtube_id ? (
-                      <div className="relative rounded-2xl overflow-hidden border border-border aspect-video max-w-2xl bg-black">
-                        <iframe
-                          src={`https://www.youtube-nocookie.com/embed/${step.youtube_id}?rel=0&modestbranding=1&controls=1&playsinline=1`}
-                          title={step.title}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="w-full h-full border-0"
-                        />
-                      </div>
-                    ) : step.media_url ? (
-                      <div className="relative group rounded-2xl overflow-hidden border border-border bg-black/5 dark:bg-black/30 max-w-2xl">
-                        {step.media_type === 'VIDEO' ? (
-                          <video
-                            src={step.media_url}
-                            controls
-                            muted
-                            loop
-                            playsInline
-                            className="w-full h-auto max-h-[460px] object-contain rounded-xl"
-                          />
-                        ) : (
-                          <div className="relative">
-                            <img
-                              src={step.media_url}
-                              alt={step.title}
-                              className="w-full h-auto max-h-[460px] object-contain rounded-xl cursor-zoom-in"
-                              onClick={() => setLightboxImg(step.media_url || null)}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setLightboxImg(step.media_url || null)}
-                              className="absolute top-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/80 text-white text-xs opacity-0 group-hover:opacity-100 transition print:hidden cursor-pointer"
-                              title="Ampliar imagem"
-                            >
-                              <Maximize2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-
-                    {/* CALLOUT (DICA / ATENÇÃO) */}
-                    {step.callout_type && step.callout_text && (
-                      <div
-                        className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs leading-relaxed ${
-                          step.callout_type === 'ALERT'
-                            ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-900 dark:text-amber-200'
-                            : 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 text-purple-900 dark:text-purple-200'
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        disabled={feedbackLoading || (votedArticleId === activeArticle.id && voteChoice === 'YES')}
+                        onClick={() => handleVote(activeArticle.id, true)}
+                        className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          voteChoice === 'YES'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40'
+                            : 'bg-card border-border hover:bg-muted text-foreground'
                         }`}
                       >
-                        {step.callout_type === 'ALERT' ? (
-                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-                        ) : (
-                          <Info className="h-4 w-4 shrink-0 text-purple-700 mt-0.5" />
-                        )}
-                        <span>{step.callout_text}</span>
-                      </div>
-                    )}
+                        <ThumbsUp className="h-3.5 w-3.5" />
+                        <span>Sim</span>
+                      </button>
 
-                    {/* BOTÃO DE AÇÃO RÁPIDA ("IR PARA A TELA") */}
-                    {step.action_route && (
-                      <div className="pt-1 print:hidden">
-                        <a
-                          href={`https://app.acaidarose.pt/?view=${step.action_route}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card border border-border hover:bg-muted text-xs font-bold text-foreground transition cursor-pointer"
-                        >
-                          <span>Aceder à tela no sistema</span>
-                          <ExternalLink className="h-3 w-3 text-purple-600" />
-                        </a>
-                      </div>
-                    )}
-                  </section>
-                ))}
-              </div>
-
-              {/* RODAPÉ DO ARTIGO: FEEDBACK & IMPRESSÃO A4 */}
-              <div className="pt-8 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
-                {/* Pergunta de Feedback */}
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="font-bold text-muted-foreground">
-                    Este guia esclareceu a sua dúvida?
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      disabled={feedbackLoading || votedArticleId === activeArticle.id}
-                      onClick={() => handleVote(activeArticle.id, true)}
-                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                        votedArticleId === activeArticle.id
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                          : 'bg-card border-border hover:bg-muted text-foreground'
-                      }`}
-                    >
-                      <ThumbsUp className="h-3.5 w-3.5" />
-                      <span>Sim</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={feedbackLoading || votedArticleId === activeArticle.id}
-                      onClick={() => handleVote(activeArticle.id, false)}
-                      className="px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <ThumbsDown className="h-3.5 w-3.5" />
-                      <span>Não</span>
-                    </button>
+                      <button
+                        type="button"
+                        disabled={feedbackLoading}
+                        onClick={() => handleVote(activeArticle.id, false)}
+                        className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          voteChoice === 'NO'
+                            ? 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40'
+                            : 'bg-card border-border hover:bg-muted text-foreground'
+                        }`}
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                        <span>Não</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* CAIXA DE SUGESTÃO AUTOMÁTICA AO CLICAR EM "NÃO" */}
+                  {showSuggestionBox && !suggestionSubmitted && (
+                    <div className="pt-3 border-t border-border space-y-2.5 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                        <MessageSquarePlus className="h-3.5 w-3.5 text-purple-600" />
+                        <span>O que faltou neste guia? Qual botão, card ou processo gostaria de ver explicado?</span>
+                      </div>
+
+                      <textarea
+                        value={suggestionText}
+                        onChange={(e) => setSuggestionText(e.target.value)}
+                        placeholder="Ex.: Não ficou claro como o Fundo de Marketing é calculado, ou gostaria de ver um vídeo demonstrando o modal de Nova Franquia..."
+                        className="w-full text-xs rounded-xl bg-background border border-border p-3 focus:outline-hidden resize-none h-20 text-foreground"
+                      />
+
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowSuggestionBox(false)}
+                          className="text-xs font-bold rounded-xl h-8 cursor-pointer"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={feedbackLoading || !suggestionText.trim()}
+                          onClick={() => handleSendSuggestion(activeArticle.id)}
+                          className="bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl h-8 cursor-pointer flex items-center gap-1"
+                        >
+                          <Send className="h-3 w-3" />
+                          <span>Enviar Sugestão</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MENSAGEM DE AGRADECIMENTO PELA SUGESTÃO */}
+                  {suggestionSubmitted && (
+                    <div className="pt-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Sugestão enviada com sucesso! A Franqueadora irá enriquecer este guia.</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Botão de Impressão A4 */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => window.print()}
-                  className="text-xs font-bold rounded-xl cursor-pointer"
-                >
-                  <Printer className="h-3.5 w-3.5 mr-1.5" />
-                  Imprimir Guia em A4
-                </Button>
+                {/* BOTÃO DE IMPRESSÃO A4 */}
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => window.print()}
+                    className="text-xs font-bold rounded-xl cursor-pointer"
+                  >
+                    <Printer className="h-3.5 w-3.5 mr-1.5" />
+                    Imprimir Guia em A4
+                  </Button>
+                </div>
               </div>
             </article>
           ) : (
             /* ========================================================= */
-            /* LISTAGEM DE MANUAIS DA CATEGORIA SELECIONADA              */
+            /* LISTAGEM DE TELAS DA CATEGORIA SELECIONADA                */
             /* ========================================================= */
             <div className="space-y-6">
-              <div className="border-b border-border pb-4">
-                <h2 className="text-xl font-black text-foreground tracking-tight">
-                  {activeCategory?.title || 'Manuais de Operação'}
-                </h2>
-                {activeCategory?.description && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {activeCategory.description}
-                  </p>
-                )}
+              {/* Header da Categoria com Distinção de Escopo */}
+              <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300">
+                      {activeCategory ? getCategoryScope(activeCategory) === 'FRANCHISOR' ? 'Franqueadora Master' : getCategoryScope(activeCategory) === 'FRANCHISEE' ? 'Franquia (Loja)' : 'Operação de Caixa' : 'Telas do Sistema'}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-semibold">
+                      {categoryArticles.length} telas documentadas
+                    </span>
+                  </div>
+
+                  <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight mt-1">
+                    {activeCategory?.title || 'Telas de Operação'}
+                  </h2>
+                  {activeCategory?.description && (
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-2xl">
+                      {activeCategory.description}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {categoryArticles.length === 0 ? (
                 <div className="p-12 text-center border border-dashed border-border rounded-2xl bg-card space-y-2">
                   <BookOpen className="h-8 w-8 text-muted-foreground/40 mx-auto" />
                   <div className="text-xs font-bold text-foreground">
-                    Nenhum manual cadastrado nesta categoria.
+                    Nenhuma tela cadastrada nesta categoria.
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     O administrador pode adicionar novos guias passo a passo a qualquer momento.
@@ -596,36 +1105,49 @@ export default function AjudaPortalPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {categoryArticles.map((art) => (
-                    <button
-                      key={art.id}
-                      type="button"
-                      onClick={() => setActiveArticle(art)}
-                      className="text-left bg-card border border-border hover:border-purple-400 dark:hover:border-purple-800 rounded-2xl p-5 flex flex-col justify-between transition-all shadow-xs hover:shadow-md space-y-3 cursor-pointer group"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-                          <span>{art.steps?.length || 0} passos</span>
-                          <span>{art.readTimeMinutes || 3} min</span>
+                  {categoryArticles.map((art) => {
+                    const firstStepWithRoute = art.steps?.find((s: any) => s.routePath || s.action_route)
+                    const routeBadge = firstStepWithRoute ? (firstStepWithRoute as any).routePath || (firstStepWithRoute as any).action_route : null
+
+                    return (
+                      <button
+                        key={art.id}
+                        type="button"
+                        onClick={() => setActiveArticle(art)}
+                        className="text-left bg-card border border-border hover:border-purple-400 dark:hover:border-purple-800 rounded-2xl p-5 flex flex-col justify-between transition-all shadow-xs hover:shadow-md space-y-3 cursor-pointer group"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground font-semibold">
+                            {routeBadge ? (
+                              <span className="text-purple-700 dark:text-purple-400 font-mono font-bold bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800/60 truncate max-w-[150px]">
+                                {routeBadge}
+                              </span>
+                            ) : (
+                              <span className="font-mono bg-muted px-2 py-0.5 rounded-md">
+                                Guia Completo
+                              </span>
+                            )}
+                            <span>{art.readTimeMinutes || 4} min</span>
+                          </div>
+
+                          <h3 className="text-sm font-bold text-foreground group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-snug">
+                            {art.title}
+                          </h3>
+
+                          {art.summary && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                              {art.summary}
+                            </p>
+                          )}
                         </div>
 
-                        <h3 className="text-sm font-bold text-foreground group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors leading-snug">
-                          {art.title}
-                        </h3>
-
-                        {art.summary && (
-                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                            {art.summary}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="pt-2 flex items-center justify-between text-xs text-purple-700 dark:text-purple-400 font-bold">
-                        <span>Ver passo a passo</span>
-                        <ChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </button>
-                  ))}
+                        <div className="pt-2 flex items-center justify-between text-xs text-purple-700 dark:text-purple-400 font-bold border-t border-border/40">
+                          <span>Ver anatomia da tela</span>
+                          <ChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
