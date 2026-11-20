@@ -72,7 +72,15 @@ export const useAuthStore = create<AuthState>()(
         set({ token: null, user: null })
       },
       authFetch: async (url: string, init: RequestInit = {}) => {
-        const t = get().token
+        let t = get().token
+        if (!t && typeof window !== 'undefined') {
+          const match = document.cookie.match(/(?:^|;\s*)x-auth-token=([^;]+)/)
+          if (match) t = match[1]
+          if (!t) {
+            const urlParams = new URLSearchParams(window.location.search)
+            t = urlParams.get('token')
+          }
+        }
         const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
         const headers: Record<string, string> = {
           ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
