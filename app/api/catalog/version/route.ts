@@ -24,15 +24,17 @@ export async function GET(request: NextRequest) {
                t.name as store_name, t.slug as store_slug
         FROM store_catalog_versions v
         LEFT JOIN tenants t ON t.id::text = v.tenant_id::text
-        WHERE v.has_pending_changes = TRUE
+        WHERE v.has_pending_changes = TRUE AND COALESCE(v.pending_changes_count, 0) > 0
       `)
       if (pendingRes?.rows) {
-        pendingStores = pendingRes.rows.map((r: any) => ({
-          tenantId: r.tenant_id,
-          storeName: r.store_name || 'Loja',
-          storeSlug: r.store_slug || 'loja',
-          pendingCount: Number(r.pending_changes_count) || 0,
-        }))
+        pendingStores = pendingRes.rows
+          .map((r: any) => ({
+            tenantId: r.tenant_id,
+            storeName: r.store_name || 'Loja',
+            storeSlug: r.store_slug || 'loja',
+            pendingCount: Number(r.pending_changes_count) || 0,
+          }))
+          .filter((s: any) => s.pendingCount > 0)
       }
     } catch {}
 

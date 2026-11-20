@@ -73,8 +73,9 @@ export const useAuthStore = create<AuthState>()(
       },
       authFetch: async (url: string, init: RequestInit = {}) => {
         const t = get().token
+        const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
         const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
+          ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
           ...((init.headers as Record<string, string>) || {}),
         }
         if (t) headers['x-auth-token'] = t

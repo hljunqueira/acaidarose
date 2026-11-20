@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { ManualArticle, ManualCategory, ManualStep, UserRole } from '@/types'
+import { useAuthStore } from '@/lib/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +39,8 @@ function extractYoutubeId(url: string): string | null {
 }
 
 export default function ManualsAdminView() {
+  const { authFetch } = useAuthStore()
+
   const [categories, setCategories] = useState<ManualCategory[]>([])
   const [articles, setArticles] = useState<ManualArticle[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,8 +101,8 @@ export default function ManualsAdminView() {
     setLoading(true)
     try {
       const [catsRes, artsRes] = await Promise.all([
-        fetch('/api/manuals/categories'),
-        fetch('/api/manuals?onlyPublished=false'),
+        authFetch('/api/manuals/categories'),
+        authFetch('/api/manuals?onlyPublished=false'),
       ])
 
       const catsData = await catsRes.json()
@@ -116,7 +119,7 @@ export default function ManualsAdminView() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [authFetch])
 
   useEffect(() => {
     loadData()
@@ -206,9 +209,8 @@ export default function ManualsAdminView() {
       const url = isEdit ? `/api/manuals/categories/${categoryForm.id}` : '/api/manuals/categories'
       const method = isEdit ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(categoryForm),
       })
 
@@ -231,7 +233,7 @@ export default function ManualsAdminView() {
     }
 
     try {
-      const res = await fetch(`/api/manuals/categories/${id}`, { method: 'DELETE' })
+      const res = await authFetch(`/api/manuals/categories/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Erro ao excluir')
       toast.success('Categoria excluída')
       loadData()
@@ -302,7 +304,7 @@ export default function ManualsAdminView() {
       const data = new FormData()
       data.append('file', file)
 
-      const res = await fetch('/api/upload', {
+      const res = await authFetch('/api/upload', {
         method: 'POST',
         body: data,
       })
@@ -366,9 +368,8 @@ export default function ManualsAdminView() {
       const url = isEdit ? `/api/manuals/${formData.id}` : '/api/manuals'
       const method = isEdit ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
 
@@ -389,7 +390,7 @@ export default function ManualsAdminView() {
     if (!confirm(`Deseja realmente excluir o manual "${title}"?`)) return
 
     try {
-      const res = await fetch(`/api/manuals/${id}`, { method: 'DELETE' })
+      const res = await authFetch(`/api/manuals/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Erro ao excluir')
       toast.success('Manual removido')
       loadData()

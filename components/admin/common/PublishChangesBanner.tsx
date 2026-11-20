@@ -110,11 +110,17 @@ export default function PublishChangesBanner({ tenantId, storeName }: PublishCha
     }
   }
 
-  if (!hasPendingChanges && (!isSuperOrFranchisor || pendingStores.length === 0)) {
+  const activePendingStores = pendingStores.filter((s) => s.pendingCount > 0)
+  const isMultiStorePending = activePendingStores.length > 1 && isSuperOrFranchisor
+
+  const totalModifications = isMultiStorePending
+    ? activePendingStores.reduce((acc, s) => acc + s.pendingCount, 0)
+    : pendingCount
+
+  // Aparece estritamente quando realmente houver alterações pendentes (total > 0)
+  if (totalModifications <= 0 || (!hasPendingChanges && activePendingStores.length === 0)) {
     return null
   }
-
-  const isMultiStorePending = pendingStores.length > 1 && isSuperOrFranchisor
 
   return (
     <>

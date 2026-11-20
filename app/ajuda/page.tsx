@@ -27,7 +27,8 @@ import {
 } from 'lucide-react'
 
 export default function AjudaPortalPage() {
-  const { user, token, checkAuth } = useAuthStore()
+  const { user, token, checkAuth, login } = useAuthStore()
+  const [effectiveToken, setEffectiveToken] = useState<string | null>(token)
 
   const [categories, setCategories] = useState<ManualCategory[]>([])
   const [articles, setArticles] = useState<ManualArticle[]>([])
@@ -52,21 +53,59 @@ export default function AjudaPortalPage() {
   const [votedArticleId, setVotedArticleId] = useState<string | null>(null)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
 
-  // Inicialização de Auth
+  // Inicialização de Auth com resiliência a subdomínio
   useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
+    let cand = token
+    if (!cand && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      cand = urlParams.get('token')
+      if (!cand) {
+        const match = document.cookie.match(/(?:^|;\s*)x-auth-token=([^;]+)/)
+        if (match) cand = match[1]
+      }
+    }
+
+    if (cand) {
+      setEffectiveToken(cand)
+      if (typeof document !== 'undefined') {
+        const isProd = window.location.hostname.includes('acaidarose.pt')
+        const domainStr = isProd ? '; domain=.acaidarose.pt' : ''
+        document.cookie = `x-auth-token=${cand}; path=/${domainStr}; max-age=2592000; SameSite=Lax`
+      }
+      fetch('/api/auth/me', { headers: { 'x-auth-token': cand } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d?.user) {
+            login(cand!, d.user)
+          }
+        })
+        .catch(() => {})
+    } else {
+      checkAuth()
+    }
+  }, [token, checkAuth, login])
 
   // Carregar Categorias e Artigos
   const loadPortalData = useCallback(async () => {
     setLoading(true)
     try {
+      const activeToken =
+        effectiveToken ||
+        useAuthStore.getState().token ||
+        (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') : null)
+
       const activeRole = simulatedRole === 'ALL' ? user?.role : simulatedRole
       const roleParam = activeRole ? `&role=${activeRole}` : ''
+      const tokenParam = activeToken ? `&token=${encodeURIComponent(activeToken)}` : ''
+
+      const headers: Record<string, string> = {}
+      if (activeToken) {
+        headers['x-auth-token'] = activeToken
+      }
 
       const [catsRes, artsRes] = await Promise.all([
-        fetch(`/api/manuals/categories?onlyPublished=true${roleParam}`),
-        fetch(`/api/manuals?onlyPublished=true${roleParam}`),
+        fetch(`/api/manuals/categories?onlyPublished=true${roleParam}${tokenParam}`, { headers }),
+        fetch(`/api/manuals?onlyPublished=true${roleParam}${tokenParam}`, { headers }),
       ])
 
       const catsData = await catsRes.json()
@@ -86,7 +125,7 @@ export default function AjudaPortalPage() {
     } finally {
       setLoading(false)
     }
-  }, [user, simulatedRole, selectedCatId])
+  }, [user, simulatedRole, selectedCatId, effectiveToken])
 
   useEffect(() => {
     loadPortalData()
@@ -102,7 +141,10 @@ export default function AjudaPortalPage() {
     const timer = setTimeout(async () => {
       setSearchLoading(true)
       try {
-        const res = await fetch(`/api/manuals/search?q=${encodeURIComponent(searchQuery.trim())}`)
+        const activeToken = effectiveToken || useAuthStore.getState().token
+        const headers: Record<string, string> = activeToken ? { 'x-auth-token': activeToken } : {}
+        const tokenParam = activeToken ? `&token=${encodeURIComponent(activeToken)}` : ''
+        const res = await fetch(`/api/manuals/search?q=${encodeURIComponent(searchQuery.trim())}${tokenParam}`, { headers })
         const data = await res.json()
         if (Array.isArray(data.results)) {
           setSearchResults(data.results)
@@ -115,7 +157,7 @@ export default function AjudaPortalPage() {
     }, 250)
 
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, effectiveToken])
 
   // Selecionar Artigo a partir da busca
   const handleSelectFromSearch = async (artId: string) => {
@@ -127,7 +169,10 @@ export default function AjudaPortalPage() {
       setSelectedCatId(found.categoryId)
     } else {
       try {
-        const res = await fetch(`/api/manuals/${artId}`)
+        const activeToken = effectiveToken || useAuthStore.getState().token
+        const headers: Record<string, string> = activeToken ? { 'x-auth-token': activeToken } : {}
+        const tokenParam = activeToken ? `?token=${encodeURIComponent(activeToken)}` : ''
+        const res = await fetch(`/api/manuals/${artId}${tokenParam}`, { headers })
         const data = await res.json()
         if (data.article) {
           setActiveArticle(data.article)
@@ -144,9 +189,15 @@ export default function AjudaPortalPage() {
     if (votedArticleId === articleId) return
     setFeedbackLoading(true)
     try {
-      const res = await fetch(`/api/manuals/${articleId}/feedback`, {
+      const activeToken = effectiveToken || useAuthStore.getState().token
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(activeToken ? { 'x-auth-token': activeToken } : {}),
+      }
+      const tokenParam = activeToken ? `?token=${encodeURIComponent(activeToken)}` : ''
+      const res = await fetch(`/api/manuals/${articleId}/feedback${tokenParam}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ isHelpful }),
       })
       if (!res.ok) throw new Error()

@@ -14,10 +14,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const categoryId = searchParams.get('categoryId')
     const onlyPublished = searchParams.get('onlyPublished') !== 'false'
+    const requestedRole = searchParams.get('role') as any
+
+    const effectiveRole =
+      user.role === 'SUPER_ADMIN' && requestedRole && requestedRole !== 'ALL'
+        ? requestedRole
+        : user.role
 
     const articles = await getManualArticles({
       categoryId,
-      userRole: user.role,
+      userRole: effectiveRole,
       onlyPublished,
     })
 

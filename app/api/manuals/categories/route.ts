@@ -11,7 +11,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 401 })
     }
 
-    const categories = await getManualCategories(user.role)
+    const { searchParams } = new URL(request.url)
+    const requestedRole = searchParams.get('role') as any
+
+    const effectiveRole =
+      user.role === 'SUPER_ADMIN' && requestedRole && requestedRole !== 'ALL'
+        ? requestedRole
+        : user.role
+
+    const categories = await getManualCategories(effectiveRole)
     return NextResponse.json({ categories })
   } catch (err: any) {
     console.error('Erro ao listar categorias de manuais:', err)
