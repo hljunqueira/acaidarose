@@ -1,5 +1,46 @@
 # SCRATCHPAD - Açaí da Rose
 
+- **Logótipo Oficial na Central de Ajuda & Mapeamento Canónico dos Manuais da Franqueadora e Franquias [CONCLUÍDO & EM PRODUÇÃO]**:
+  - **Ações Realizadas**:
+    1. *Logótipo Oficial (`app/ajuda/page.tsx`)*:
+       - Substituído o ícone genérico de livro no cabeçalho superior esquerdo pelo logótipo oficial `/logo-oficial-1.png`, exatamente conforme solicitado na captura pelo Henrique.
+    2. *Mapeamento Canónico e Semeio no Banco de Dados (`scripts/seed_official_manuals.js`)*:
+       - Criadas 7 categorias organizadas e 20 manuais passo a passo cobrindo 100% dos fluxos e páginas da Franqueadora Master, Franquias e Caixa.
+       - Cada manual conta com passos detalhados, rotas do sistema (`routePath`), callouts de atenção e sem mídias (`media: null`), prontos para inserção posterior de prints (`Ctrl + V`), GIFs e vídeos.
+       - Semeio persistido com sucesso diretamente no PostgreSQL da produção via UUIDs determinísticos.
+    3. *Validação & Gate de Qualidade*:
+       - `npm run build` compilou com sucesso 46/46 rotas (0 erros).
+       - Tabelas no PostgreSQL verificadas via consulta SQL: 7 categorias e 20 manuais sincronizados.
+
+- **Central de Manuais e Ajuda Privada (`ajuda.acaidarose.pt`) & Painel CMS do Super Admin [CONCLUÍDO & EM PRODUÇÃO]**:
+  - **Ações Realizadas**:
+    1. *Infraestrutura & Banco de Dados PostgreSQL 16*:
+       - Criadas tabelas `manual_categories` e `manual_articles` no PostgreSQL da VPS com campos para target_roles, steps JSONB, feedback e índices otimizados.
+       - Configurado `/etc/icontainer/apps/nginx/nginx/conf/conf.d/ajuda.acaidarose.pt.conf` na VPS com proxy reverso HTTP 1.1 para `127.0.0.1:3000`. Testado e recarregado com sucesso.
+       - `middleware.ts`: Roteamento automático de `ajuda.acaidarose.pt` para `/ajuda` com bloqueio estrito de acesso anônimo (redireciona para login em `app.acaidarose.pt`), proteção anti-indexação `X-Robots-Tag: noindex, nofollow, noarchive` e suporte a token em query parameter / cookies `.acaidarose.pt`.
+    2. *Backend & Repositório Puro (`manualsRepository.ts` & APIs)*:
+       - 100% dinâmico no PostgreSQL (zero dados mockados, zero arrays default/initial no código).
+       - Criadas rotas `/api/manuals`, `/api/manuals/categories`, `/api/manuals/[id]`, `/api/manuals/[id]/feedback` e `/api/manuals/search` (busca textual aprofundada em títulos e dentro dos passos JSONB).
+       - Cookie de sessão com `domain=.acaidarose.pt` implementado no login e logout para Single Sign-On transparente entre subdomínios.
+    3. *Painel do Super Admin (Henrique) (`ManualsAdminView.tsx` & `AppSidebar.tsx`)*:
+       - Item `Gestão da Central de Ajuda` (subtítulo `Manuais`) adicionado à secção `CENTRAL MASTER TI & INFRAESTRUTURA`.
+       - Abas de filtro por público (`Todos`, `Caixa & Atendimento`, `Franqueados`, `Franqueadora`).
+       - Editor ágil com ordenação de passos (`▲ / ▼`), suporte a colar print com `Ctrl + V`, upload de GIFs/vídeos MP4 e campo dedicado para links do YouTube (com extração automática de ID).
+    4. *Portal Privado de Leitura (`app/ajuda/page.tsx`)*:
+       - Estética sóbria corporativa inspirada no Linear/Stripe (zero emojis decorativos, tipografia refinada e alto contraste).
+       - Seletor de auditoria exclusivo para Henrique (`[ Visualizar como: Todos | Franqueadora | Franqueado | Caixa ]`).
+       - Busca instantânea `Ctrl + K`, visualizador com Lightbox para imagens, player embed do YouTube e player HTML5 em loop silencioso para MP4.
+       - Botão de impressão diagramada em folha A4 (`@media print`) e votação de utilidade (`[ Sim ] [ Não ]`).
+    5. *Botão Flutuante Minimalista (`AppHelpFloatingButton.tsx`)*:
+       - Botão discreto no canto inferior direito (`bottom-5 right-5`) de `app.acaidarose.pt`, abrindo a central em nova aba sem interromper vendas ou comandas no PDV.
+    6. *Validação & Deploy*:
+       - `npx tsc --noEmit` executado com código 0 (zero erros de TypeScript).
+       - `npm run build` gerou com sucesso 46/46 páginas estáticas e dinâmicas.
+       - Git commit `fe677645` enviado para `origin/main`.
+       - Deploy executado na VPS (`198.50.117.110`) com container Docker `acaidarose-app` reiniciado e ativo.
+       - Testes em produção: `https://app.acaidarose.pt/api/health` respondendo HTTP 200 (latência 1ms); `https://ajuda.acaidarose.pt` bloqueando acessos anônimos com HTTP 307 para login e renderizando HTTP 200 com `x-robots-tag: noindex` para sessões autenticadas.
+
+
 - **Correção da Cobrança de Creme no Copo 250gr no PDV e Alinhamento dos Modelos de Opção [CONCLUÍDO & EM PRODUÇÃO]**:
   - **Ações Realizadas**:
     1. *Correção do Cálculo no PDV / Comanda (`cartStore.ts`, `BaseSelector.tsx` e `PDVView.tsx`)*:

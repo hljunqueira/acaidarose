@@ -176,9 +176,11 @@ export default function AjudaPortalPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Logo & Título */}
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black shadow-xs">
-              <BookOpen className="h-4 w-4" />
-            </div>
+            <img
+              src="/logo-oficial-1.png"
+              alt="Açaí da Rose"
+              className="h-9 w-auto object-contain drop-shadow-xs"
+            />
             <div>
               <div className="text-sm font-black text-foreground tracking-tight leading-none">
                 Açaí da Rose
