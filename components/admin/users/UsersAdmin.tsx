@@ -28,11 +28,13 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
   const { tenants, fetchTenants } = useFranchiseStore()
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN'
+  const isFranchisorAdmin = currentUser?.role === 'FRANCHISOR_ADMIN'
   const isTenantAdmin = currentUser?.role === 'TENANT_ADMIN'
+  const canManageNetwork = isSuperAdmin || isFranchisorAdmin
 
-  // Para SUPER_ADMIN, padrão é 'all' para exibir todos os utilizadores da rede
+  // Para Administradores da Rede (Super Admin e Franqueadora), padrão é 'all' para exibir utilizadores da rede
   const [selectedTenantFilter, setSelectedTenantFilter] = useState<string>(
-    isSuperAdmin ? 'all' : (currentUser?.tenantId || tenantId || 'all')
+    canManageNetwork ? 'all' : (currentUser?.tenantId || tenantId || 'all')
   )
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
   const loadUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const targetTenant = isSuperAdmin ? selectedTenantFilter : (currentUser?.tenantId || tenantId)
+      const targetTenant = canManageNetwork ? selectedTenantFilter : (currentUser?.tenantId || tenantId)
       const url = targetTenant && targetTenant !== 'all'
         ? `/api/users?tenantId=${targetTenant}`
         : `/api/users?tenantId=all`
@@ -64,7 +66,7 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
     } finally {
       setLoading(false)
     }
-  }, [selectedTenantFilter, tenantId, currentUser, isSuperAdmin, authFetch])
+  }, [canManageNetwork, selectedTenantFilter, tenantId, currentUser, authFetch])
 
   useEffect(() => {
     loadUsers()
@@ -105,10 +107,19 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
   })
 
   const handleDelete = (id: string) => {
+    const target = users.find((u) => u.id === id)
+    if (
+      target?.role === 'SUPER_ADMIN' ||
+      target?.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
+    ) {
+      toast.error('O Super Admin não pode ser desativado nem excluído.')
+      return
+    }
+
     setConfirmState({
       open: true,
-      title: 'Desativar Utilizador da Loja',
-      description: 'Deseja realmente desativar este operador? O acesso ao sistema será revogado.',
+      title: 'Desativar Utilizador',
+      description: `Deseja realmente desativar ${target?.name || 'este utilizador'}? O acesso ao sistema será revogado.`,
       onConfirm: async () => {
         try {
           const res = await authFetch(`/api/users/${id}`, { method: 'DELETE' })
@@ -163,20 +174,20 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
             </Badge>
           </div>
           <p className="text-xs text-purple-700/80 dark:text-purple-200/70 mt-0.5">
-            {isSuperAdmin
-              ? 'Gestão total de acessos, credenciais e palavras-passe de toda a rede'
+            {canManageNetwork
+              ? 'Gestão total de acessos, credenciais e palavras-passe da rede'
               : 'Gestão da equipa de operadores e acessos da sua loja'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {(!isLimitReached || isSuperAdmin) ? (
+          {(!isLimitReached || canManageNetwork) ? (
             <Button
               size="sm"
               onClick={handleOpenNew}
               className="h-9 text-xs font-bold bg-purple-900 hover:bg-purple-950 dark:bg-pink-600 dark:hover:bg-pink-700 text-white rounded-xl shadow-xs cursor-pointer px-3.5"
             >
-              <span>{isSuperAdmin ? 'Novo Utilizador' : 'Novo Operador de Caixa'}</span>
+              <span>{canManageNetwork ? 'Novo Utilizador' : 'Novo Operador de Caixa'}</span>
             </Button>
           ) : (
             <Badge className="bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border-amber-300 text-xs py-1.5 px-3 rounded-xl font-bold">
@@ -186,8 +197,8 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
         </div>
       </div>
 
-      {/* 2. Filtro de Lojas Dinâmico (Exclusivo Super Admin) */}
-      {isSuperAdmin && (
+      {/* 2. Filtro de Lojas Dinâmico */}
+      {canManageNetwork && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
             type="button"

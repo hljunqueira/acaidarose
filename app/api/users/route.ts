@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request)
-  if (!hasRole(user, ['SUPER_ADMIN', 'TENANT_ADMIN'])) {
+  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
     return errorResponse('Sem permissão', 403)
   }
 
@@ -38,9 +38,22 @@ export async function POST(request: NextRequest) {
       return errorResponse('Dados incompletos: Nome, email, cargo e palavra-passe são obrigatórios.', 400)
     }
 
-    // Regra estrita: Apenas SUPER_ADMIN pode criar e definir senhas de utilizadores
-    if (user?.role !== 'SUPER_ADMIN') {
-      return errorResponse('Apenas o Super Admin tem permissão para criar utilizadores e definir palavras-passe.', 403)
+    // Regras de Autorização para Criação de Utilizadores:
+    if (user?.role === 'FRANCHISOR_ADMIN') {
+      // O Administrador da Franqueadora pode criar utilizadores das franquias (Gerente de Loja e Operador de Caixa)
+      if (body.role === 'SUPER_ADMIN' || body.role === 'FRANCHISOR_ADMIN') {
+        return errorResponse('O Administrador da Franqueadora só pode criar utilizadores das unidades franqueadas (Gerente de Loja e Operador de Caixa).', 403)
+      }
+      if (!body.tenantId) {
+        return errorResponse('É obrigatório vincular o utilizador da franquia a uma unidade/loja.', 400)
+      }
+    } else if (user?.role === 'TENANT_ADMIN') {
+      // O Gerente de Loja pode criar apenas operadores de caixa (CASHIER) para a sua unidade
+      if (body.role !== 'CASHIER' || (body.tenantId && body.tenantId !== user.tenantId)) {
+        return errorResponse('O Gerente de Loja só pode criar operadores de caixa para a sua própria unidade.', 403)
+      }
+    } else if (user?.role !== 'SUPER_ADMIN') {
+      return errorResponse('Sem permissão para criar utilizadores.', 403)
     }
 
     const tenantId = body.tenantId || null

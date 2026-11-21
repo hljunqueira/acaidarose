@@ -39,6 +39,8 @@ export default function UserEditDialog({
   const [saving, setSaving] = useState(false)
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN'
+  const isFranchisorAdmin = currentUser?.role === 'FRANCHISOR_ADMIN'
+  const canManageRoles = isSuperAdmin || isFranchisorAdmin
   const isPasswordOnly = mode === 'PASSWORD_ONLY'
 
   useEffect(() => {
@@ -75,8 +77,8 @@ export default function UserEditDialog({
           ...user,
           name,
           email,
-          role: isSuperAdmin ? role : (user ? user.role : 'CASHIER'),
-          tenantId: isSuperAdmin ? (userTenantId || null) : (user?.tenantId || tenantId),
+          role: canManageRoles ? role : (user ? user.role : 'CASHIER'),
+          tenantId: canManageRoles ? (userTenantId ? userTenantId : null) : (user?.tenantId || tenantId),
           ...(password ? { password } : {}),
         })
       }
@@ -141,7 +143,7 @@ export default function UserEditDialog({
                 />
               </div>
 
-              {isSuperAdmin && (
+              {canManageRoles && (
                 <div>
                   <Label className="text-xs font-bold text-purple-950 dark:text-white">Perfil de Acesso (Cargo):</Label>
                   <select
@@ -149,15 +151,19 @@ export default function UserEditDialog({
                     onChange={(e) => setRole(e.target.value as any)}
                     className="w-full h-9 text-xs mt-1 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-purple-950 dark:text-white px-3 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 dark:focus:ring-pink-500 [&>option]:bg-white dark:[&>option]:bg-[#160228]"
                   >
-                    <option value="CASHIER">CASHIER (Operador de Caixa / Salão)</option>
-                    <option value="TENANT_ADMIN">TENANT_ADMIN (Gerente de Loja)</option>
-                    <option value="FRANCHISOR_ADMIN">FRANCHISOR_ADMIN (Administrador da Franqueadora)</option>
-                    <option value="SUPER_ADMIN">SUPER_ADMIN (Franqueadora Matriz / Holding)</option>
+                    <option value="CASHIER">Operador de Caixa / Salão</option>
+                    <option value="TENANT_ADMIN">Gerente de Loja</option>
+                    {isSuperAdmin && (
+                      <>
+                        <option value="FRANCHISOR_ADMIN">Administrador da Franqueadora</option>
+                        <option value="SUPER_ADMIN">Franqueadora Matriz / Holding</option>
+                      </>
+                    )}
                   </select>
                 </div>
               )}
 
-              {isSuperAdmin && tenants.length > 0 && (
+              {canManageRoles && tenants.length > 0 && (
                 <div>
                   <Label className="text-xs font-bold text-purple-950 dark:text-white">Unidade / Loja Vinculada:</Label>
                   <select
@@ -165,7 +171,9 @@ export default function UserEditDialog({
                     onChange={(e) => setUserTenantId(e.target.value)}
                     className="w-full h-9 text-xs mt-1 rounded-xl border border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 text-purple-950 dark:text-white px-3 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 dark:focus:ring-pink-500 [&>option]:bg-white dark:[&>option]:bg-[#160228]"
                   >
-                    <option value="">Holding / Franqueadora Geral (Sem Loja Fixa)</option>
+                    {isSuperAdmin && (
+                      <option value="">Holding / Franqueadora Geral (Sem Loja Fixa)</option>
+                    )}
                     {tenants.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}

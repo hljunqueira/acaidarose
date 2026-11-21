@@ -14,32 +14,50 @@ export async function PUT(
 
   const { id } = await params
   try {
+    const targetUser = await getUserById(id)
+    if (!targetUser) return errorResponse('Utilizador não encontrado', 404)
+
+    const isTargetSuperAdmin =
+      targetUser.role === 'SUPER_ADMIN' ||
+      targetUser.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
+
     const body = await request.json()
-    // Regra estrita de alteração de palavra-passe:
-    // Henrique pode alterar e definir de qualquer utilizador;
-    // SUPER_ADMIN pode alterar de lojas franqueadas e da sua conta;
-    // Os restantes não têm essa função.
+
+    // Regra estrita: O Super Admin não pode ser editado (apenas alterar a própria palavra-passe)
+    if (isTargetSuperAdmin) {
+      const isHenrique = user?.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
+      const isSelf = user?.id === id
+
+      if ((isHenrique || isSelf) && body.password && !body.name && !body.role && !body.tenantId && !body.email) {
+        const updated = await updateUser(id, { password: body.password })
+        return jsonResponse(updated)
+      }
+
+      return errorResponse('O Super Admin não pode ser editado.', 403)
+    }
+
+    // Regra de alteração de palavra-passe para demais utilizadores:
     if (body.password) {
       const isHenrique = user?.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
       const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+      const isFranchisorAdmin = user?.role === 'FRANCHISOR_ADMIN'
+      const isSelf = user?.id === id
 
-      if (!isHenrique && !isSuperAdmin) {
-        return errorResponse('Apenas o Super Admin tem permissão para alterar a palavra-passe de utilizadores.', 403)
-      }
-
-      if (!isHenrique) {
-        const targetUser = await getUserById(id)
-        if (targetUser?.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com') {
-          return errorResponse('Apenas o próprio Henrique pode alterar suas credenciais.', 403)
-        }
+      if (!isHenrique && !isSuperAdmin && !isFranchisorAdmin && !isSelf) {
+        return errorResponse('Sem permissão para alterar a palavra-passe deste utilizador.', 403)
       }
     }
 
+    // Franchisor Admin não pode promover ninguém a SUPER_ADMIN
+    if (user?.role === 'FRANCHISOR_ADMIN' && body.role === 'SUPER_ADMIN') {
+      return errorResponse('O Administrador da Franqueadora não pode promover utilizadores a Super Admin.', 403)
+    }
+
     const updated = await updateUser(id, body)
-    if (!updated) return errorResponse('Usuário não encontrado', 404)
+    if (!updated) return errorResponse('Utilizador não encontrado', 404)
     return jsonResponse(updated)
   } catch (err: any) {
-    return errorResponse(err?.message || 'Erro ao atualizar usuário', 500)
+    return errorResponse(err?.message || 'Erro ao atualizar utilizador', 500)
   }
 }
 
@@ -48,13 +66,24 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser(request)
-  if (!hasRole(user, ['SUPER_ADMIN', 'TENANT_ADMIN'])) {
+  if (!hasRole(user, ['SUPER_ADMIN', 'FRANCHISOR_ADMIN', 'TENANT_ADMIN'])) {
     return errorResponse('Sem permissão', 403)
   }
 
   const { id } = await params
   if (user?.id === id) return errorResponse('Não podes remover o teu próprio utilizador', 400)
   
+  const targetUser = await getUserById(id)
+  if (!targetUser) return errorResponse('Utilizador não encontrado', 404)
+
+  // Proteção absoluta: O Super Admin não pode ser excluído
+  if (
+    targetUser.role === 'SUPER_ADMIN' ||
+    targetUser.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
+  ) {
+    return errorResponse('O Super Admin não pode ser excluído.', 403)
+  }
+
   await deleteUser(id)
   return jsonResponse({ ok: true })
 }

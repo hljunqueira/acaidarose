@@ -26,32 +26,33 @@ export default function UserTable({
 }: UserTableProps) {
   const isHenrique = currentUser?.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN'
+  const isFranchisorAdmin = currentUser?.role === 'FRANCHISOR_ADMIN'
 
   const getBadge = (role: string) => {
     if (role === 'SUPER_ADMIN') {
       return (
         <Badge className="bg-purple-900 dark:bg-pink-600 text-white text-[10px] font-bold border-0">
-          SUPER_ADMIN (Holding)
+          Franqueadora Matriz / Holding
         </Badge>
       )
     }
     if (role === 'FRANCHISOR_ADMIN') {
       return (
         <Badge className="bg-indigo-900 dark:bg-indigo-700 text-white text-[10px] font-bold border-0">
-          ADMIN FRANQUEADORA
+          Administrador da Franqueadora
         </Badge>
       )
     }
     if (role === 'TENANT_ADMIN') {
       return (
         <Badge variant="secondary" className="bg-purple-100 dark:bg-fuchsia-950/60 text-purple-900 dark:text-fuchsia-300 border border-purple-200 dark:border-fuchsia-800 text-[10px] font-bold">
-          GERENTE DE LOJA
+          Gerente de Loja
         </Badge>
       )
     }
     return (
       <Badge variant="outline" className="text-[10px] text-purple-700 dark:text-purple-300 border-purple-200 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 font-bold">
-        OPERADOR DE CAIXA
+        Operador de Caixa / Salão
       </Badge>
     )
   }
@@ -74,16 +75,32 @@ export default function UserTable({
       {users.map((u) => {
         const isSelf = u.id === currentUser?.id
         const isTargetHenrique = u.email?.toLowerCase().trim() === 'henriquelinharesjunqueira@gmail.com'
-        const isTargetAdmin = u.role === 'SUPER_ADMIN' || u.role === 'TENANT_ADMIN'
-        const canDelete = isSuperAdmin && !isSelf && !isTargetHenrique
-        const canEditFull = isSuperAdmin || (!isTargetAdmin && currentUser?.role === 'TENANT_ADMIN')
+        const isTargetSuperAdmin = u.role === 'SUPER_ADMIN' || isTargetHenrique
+        
+        // Regra Estrita: O Super Admin NÃO PODE ser editado e NEM excluído
+        // O Super Admin pode editar e excluir qualquer utilizador (exceto o próprio Super Admin)
+        // O Franchisor Admin pode editar e excluir utilizadores das franquias (Gerente de Loja e Operador de Caixa)
+        // O Tenant Admin pode editar e excluir apenas CASHIER da sua loja
+        const canDelete =
+          !isTargetSuperAdmin &&
+          !isSelf &&
+          (isSuperAdmin ||
+            (isFranchisorAdmin && (u.role === 'CASHIER' || u.role === 'TENANT_ADMIN')) ||
+            (currentUser?.role === 'TENANT_ADMIN' && u.role === 'CASHIER'))
 
-        // Henrique pode alterar a senha de qualquer um;
-        // SUPER_ADMIN pode alterar senhas de lojas franqueadas e a sua própria;
-        // Os demais não têm permissão.
+        const canEditFull =
+          !isTargetSuperAdmin &&
+          (isSuperAdmin ||
+            (isFranchisorAdmin && (u.role === 'CASHIER' || u.role === 'TENANT_ADMIN')) ||
+            (currentUser?.role === 'TENANT_ADMIN' && u.role === 'CASHIER'))
+
+        // Henrique ou SUPER_ADMIN podem alterar senhas de qualquer outro utilizador e a sua própria;
+        // FRANCHISOR_ADMIN pode alterar senhas de colaboradores das franquias e a sua própria;
+        // Demais utilizadores podem alterar apenas a sua própria senha se aplicável.
         const canChangePassword =
           isHenrique ||
-          (isSuperAdmin && !isTargetHenrique) ||
+          (isSuperAdmin && !isTargetSuperAdmin) ||
+          (isFranchisorAdmin && (u.role === 'CASHIER' || u.role === 'TENANT_ADMIN')) ||
           isSelf
 
         const storeLabel =

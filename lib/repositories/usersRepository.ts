@@ -119,23 +119,36 @@ export async function updateUser(id: string, payload: any): Promise<User | null>
     passwordHash = bcrypt.hashSync(String(payload.password).trim(), 10)
   }
 
+  const cleanTenantId =
+    payload.tenantId && String(payload.tenantId).trim() !== ''
+      ? String(payload.tenantId).trim()
+      : null
+  const shouldUpdateTenant = payload.tenantId !== undefined
+  const cleanEmail =
+    payload.email && String(payload.email).trim() !== ''
+      ? String(payload.email).toLowerCase().trim()
+      : null
+
   const res = await query(
     `UPDATE users 
      SET name = COALESCE($2, name),
-         role = COALESCE($3, role),
-         active = COALESCE($4, active),
-         password_hash = CASE WHEN $5::text IS NOT NULL THEN $5 ELSE password_hash END,
-         tenant_id = CASE WHEN $6::text IS NOT NULL THEN $6::uuid ELSE tenant_id END,
+         email = COALESCE($3, email),
+         role = COALESCE($4, role),
+         active = COALESCE($5, active),
+         password_hash = CASE WHEN $6::text IS NOT NULL THEN $6 ELSE password_hash END,
+         tenant_id = CASE WHEN $7::boolean = true THEN $8::uuid ELSE tenant_id END,
          updated_at = timezone('utc'::text, now())
      WHERE id::text = $1 AND deleted_at IS NULL
      RETURNING id, email, name, role, tenant_id, active, created_at, updated_at`,
     [
       id,
       payload.name || null,
+      cleanEmail,
       payload.role || null,
       payload.active !== undefined ? payload.active : null,
       passwordHash,
-      payload.tenantId || null,
+      shouldUpdateTenant,
+      cleanTenantId,
     ]
   )
 
