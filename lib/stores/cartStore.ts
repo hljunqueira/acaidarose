@@ -38,7 +38,9 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
         ? Number(basesModel.maxQty)
         : (item.container.limiteCremes !== undefined && item.container.limiteCremes !== null
             ? Number(item.container.limiteCremes)
-            : 1)
+            : (item.container.limiteBases !== undefined && item.container.limiteBases !== null
+                ? Number(item.container.limiteBases)
+                : 0))
     extraBasesCount = Math.max(0, cremesCount - maxCremesGratis)
   } else {
     const maxBases =
@@ -48,7 +50,7 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
             ? Number(item.container.limiteCremes)
             : (item.container.limiteBases !== undefined && item.container.limiteBases !== null
                 ? Number(item.container.limiteBases)
-                : 2))
+                : 0))
     extraBasesCount = Math.max(0, (item.bases?.length || 0) - maxBases)
   }
   const extraBasesPrice = extraBasesCount * additionalBasePrice
@@ -59,14 +61,16 @@ export function computeItemLineTotal(item: CartDraftItem | CartItem | null | und
       ? Number(frutasModel.maxQty)
       : (item.container.limiteFrutas !== undefined && item.container.limiteFrutas !== null
           ? Number(item.container.limiteFrutas)
-          : (isUnlimited ? 999 : weight === 250 ? 2 : 3))
+          : (isUnlimited ? 999 : 0))
 
   const maxToppings =
     toppingsModel?.maxQty !== undefined && toppingsModel?.maxQty !== null
       ? Number(toppingsModel.maxQty)
       : (item.container.limiteToppings !== undefined && item.container.limiteToppings !== null
           ? Number(item.container.limiteToppings)
-          : (isUnlimited ? 999 : weight === 250 ? 3 : 4))
+          : (item.container.limiteComplementosGratis !== undefined && item.container.limiteComplementosGratis !== null
+              ? Number(item.container.limiteComplementosGratis)
+              : (isUnlimited ? 999 : 0)))
 
   let frutasCount = 0
   let toppingsTradicionaisCount = 0
@@ -108,14 +112,16 @@ export function computeToppingBreakdown(item: CartDraftItem | CartItem): OrderIt
       ? Number(frutasModel.maxQty)
       : (item.container?.limiteFrutas !== undefined && item.container?.limiteFrutas !== null
           ? Number(item.container.limiteFrutas)
-          : (isUnlimited ? 999 : weight === 250 ? 2 : 3))
+          : (isUnlimited ? 999 : 0))
 
   const maxToppings =
     toppingsModel?.maxQty !== undefined && toppingsModel?.maxQty !== null
       ? Number(toppingsModel.maxQty)
       : (item.container?.limiteToppings !== undefined && item.container?.limiteToppings !== null
           ? Number(item.container.limiteToppings)
-          : (isUnlimited ? 999 : weight === 250 ? 3 : 4))
+          : (item.container?.limiteComplementosGratis !== undefined && item.container?.limiteComplementosGratis !== null
+              ? Number(item.container.limiteComplementosGratis)
+              : (isUnlimited ? 999 : 0)))
 
   let frutasVistas = 0
   let toppingsVistos = 0

@@ -297,7 +297,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                 priceType: canonicalModel.price_type || g.priceType,
                 additionalPrice: Number(canonicalModel.additional_price ?? g.additionalPrice ?? 0),
                 minQty: Number(canonicalModel.min_qty ?? g.minQty ?? 0),
-                maxQty: Number(g.maxQty ?? canonicalModel.max_qty ?? 1),
+                maxQty: g.maxQty !== undefined && g.maxQty !== null ? Number(g.maxQty) : Number(canonicalModel.max_qty ?? 0),
                 allowItemQuantity: canonicalModel.allow_item_quantity !== undefined ? !!canonicalModel.allow_item_quantity : !!g.allowItemQuantity,
                 isRequired: canonicalModel.is_required !== undefined ? !!canonicalModel.is_required : !!g.isRequired,
                 showDetailed: canonicalModel.show_detailed !== undefined ? !!canonicalModel.show_detailed : !!g.showDetailed,
@@ -349,25 +349,25 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           ? Boolean(basesGroup.isBaseFixed)
           : !isSomenteCreme
 
-        const limiteBases = (row.limite_bases !== null && row.limite_bases !== undefined && Number(row.limite_bases) >= 2)
+        const limiteBases = (row.limite_bases !== null && row.limite_bases !== undefined)
           ? Number(row.limite_bases)
-          : 2
+          : (basesGroup?.maxQty !== undefined && basesGroup?.maxQty !== null ? Number(basesGroup.maxQty) : 0)
 
-        const limiteCremes = basesGroup?.maxQty !== undefined
+        const limiteCremes = (basesGroup?.maxQty !== undefined && basesGroup?.maxQty !== null)
           ? Number(basesGroup.maxQty)
-          : (isBaseFixed ? 1 : 2)
+          : limiteBases
 
-        const limiteFrutas = frutasGroup?.maxQty !== undefined
+        const limiteFrutas = (frutasGroup?.maxQty !== undefined && frutasGroup?.maxQty !== null)
           ? Number(frutasGroup.maxQty)
           : (row.limite_frutas !== null && row.limite_frutas !== undefined
               ? Number(row.limite_frutas)
-              : null)
+              : 0)
 
-        const limiteToppings = toppingsGroup?.maxQty !== undefined
+        const limiteToppings = (toppingsGroup?.maxQty !== undefined && toppingsGroup?.maxQty !== null)
           ? Number(toppingsGroup.maxQty)
           : (row.limite_complementos_gratis !== null && row.limite_complementos_gratis !== undefined
               ? Number(row.limite_complementos_gratis)
-              : null)
+              : 0)
 
         containers.push({
           id: row.id,
@@ -382,7 +382,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
           price: customPrice !== undefined ? customPrice : Number(row.preco_base),
           limiteBases,
           limiteToppings,
-          limiteCremes: limiteBases,
+          limiteCremes,
           limiteFrutas,
           isBaseFixed,
           emoji: '',
@@ -1136,22 +1136,27 @@ export async function updateProductItem(category: string, id: string, item: any)
       const targetProductType = item.productType || item.product_type || (item.weightGrams ? 'CONTAINER' : 'ITEM')
       const hasProductType = item.productType !== undefined || item.product_type !== undefined || item.weightGrams !== undefined
 
+      const hasLimiteBases = item.limiteBases !== undefined && item.limiteBases !== null
+      const targetLimiteBases = hasLimiteBases ? Number(item.limiteBases) : null
+      const hasLimiteToppings = (item.limiteToppings !== undefined && item.limiteToppings !== null) || (item.limiteComplementosGratis !== undefined && item.limiteComplementosGratis !== null)
+      const targetLimiteToppings = hasLimiteToppings ? Number(item.limiteToppings ?? item.limiteComplementosGratis) : null
+
       const res = await query(
         `UPDATE product_containers
          SET name = COALESCE($2, name),
              description = CASE WHEN $3 = true THEN $4 ELSE description END,
              weight_grams = CASE WHEN $5 = true THEN $6 ELSE weight_grams END,
              preco_base = COALESCE($7, preco_base),
-             limite_bases = COALESCE($8, limite_bases),
-             limite_complementos_gratis = COALESCE($9, limite_complementos_gratis),
-             image_url = COALESCE($10, image_url),
-             video_url = COALESCE($11, video_url),
-             video_poster = COALESCE($12, video_poster),
-             available_hours = COALESCE($13, available_hours),
-             display_order = COALESCE($14, display_order),
-             option_groups = CASE WHEN $15 = true THEN $16::jsonb ELSE option_groups END,
-             category_id = CASE WHEN $17 = true THEN $18 ELSE category_id END,
-             product_type = CASE WHEN $19 = true THEN $20 ELSE product_type END,
+             limite_bases = CASE WHEN $8 = true THEN $9 ELSE limite_bases END,
+             limite_complementos_gratis = CASE WHEN $10 = true THEN $11 ELSE limite_complementos_gratis END,
+             image_url = COALESCE($12, image_url),
+             video_url = COALESCE($13, video_url),
+             video_poster = COALESCE($14, video_poster),
+             available_hours = COALESCE($15, available_hours),
+             display_order = COALESCE($16, display_order),
+             option_groups = CASE WHEN $17 = true THEN $18::jsonb ELSE option_groups END,
+             category_id = CASE WHEN $19 = true THEN $20 ELSE category_id END,
+             product_type = CASE WHEN $21 = true THEN $22 ELSE product_type END,
              updated_at = timezone('utc'::text, now())
          WHERE id::text = $1
          RETURNING *`,
@@ -1163,8 +1168,10 @@ export async function updateProductItem(category: string, id: string, item: any)
           item.weightGrams !== undefined,
           item.weightGrams ? Number(item.weightGrams) : null,
           item.precoBase !== undefined ? Number(item.precoBase) : (item.price !== undefined ? Number(item.price) : null),
-          item.limiteBases !== undefined ? Number(item.limiteBases) : null,
-          item.limiteToppings !== undefined ? Number(item.limiteToppings) : null,
+          hasLimiteBases,
+          targetLimiteBases,
+          hasLimiteToppings,
+          targetLimiteToppings,
           item.image || item.imageUrl || null,
           item.videoUrl || null,
           item.videoPoster || null,

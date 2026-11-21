@@ -234,9 +234,23 @@ export default function ProductEditDialog({
         image: item.image || item.imageUrl || '',
         videoUrl: item.videoUrl || '',
         availableHours: item.availableHours || null,
-        limiteBases: item.limiteBases ?? item.limite_bases ?? basesGroup?.maxQty ?? 1,
-        limiteFrutas: item.limiteFrutas ?? item.limite_frutas ?? frutasGroup?.maxQty ?? 2,
-        limiteToppings: item.limiteToppings ?? item.limite_toppings ?? item.limiteComplementosGratis ?? item.limite_complementos_gratis ?? toppingsGroup?.maxQty ?? 3,
+        limiteBases: item.limiteBases !== undefined && item.limiteBases !== null
+          ? Number(item.limiteBases)
+          : (item.limite_bases !== undefined && item.limite_bases !== null
+              ? Number(item.limite_bases)
+              : (basesGroup?.maxQty !== undefined && basesGroup?.maxQty !== null ? Number(basesGroup.maxQty) : 0)),
+        limiteFrutas: item.limiteFrutas !== undefined && item.limiteFrutas !== null
+          ? Number(item.limiteFrutas)
+          : (item.limite_frutas !== undefined && item.limite_frutas !== null
+              ? Number(item.limite_frutas)
+              : (frutasGroup?.maxQty !== undefined && frutasGroup?.maxQty !== null ? Number(frutasGroup.maxQty) : 0)),
+        limiteToppings: item.limiteToppings !== undefined && item.limiteToppings !== null
+          ? Number(item.limiteToppings)
+          : (item.limite_toppings !== undefined && item.limite_toppings !== null
+              ? Number(item.limite_toppings)
+              : (item.limiteComplementosGratis !== undefined && item.limiteComplementosGratis !== null
+                  ? Number(item.limiteComplementosGratis)
+                  : (toppingsGroup?.maxQty !== undefined && toppingsGroup?.maxQty !== null ? Number(toppingsGroup.maxQty) : 0))),
       })
     } else {
       // Novo item SEMPRE inicia sem modelos de opções vinculados (o usuário vincula se quiser)
@@ -260,9 +274,9 @@ export default function ProductEditDialog({
         image: '',
         videoUrl: '',
         availableHours: null,
-        limiteBases: 1,
-        limiteFrutas: 2,
-        limiteToppings: 3,
+        limiteBases: 0,
+        limiteFrutas: 0,
+        limiteToppings: 0,
       })
     }
   }, [item, collection, catalog, open, defaultCategoryId, allCategories])
@@ -341,22 +355,23 @@ export default function ProductEditDialog({
         payload.productType = isAcaiContainer ? 'CONTAINER' : 'ITEM'
         const syncedOptionGroups = (linkedOptionGroups || []).map((g) => {
           if (g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))) {
-            return { ...g, maxQty: Number(form.limiteBases ?? 1) }
+            return { ...g, maxQty: Number(form.limiteBases ?? 0) }
           }
           if (g.id === 'model-frutas' || (g.name && g.name.toLowerCase().includes('fruta'))) {
-            return { ...g, maxQty: Number(form.limiteFrutas ?? 2) }
+            return { ...g, maxQty: Number(form.limiteFrutas ?? 0) }
           }
           if (g.id === 'model-toppings' || (g.name && (g.name.toLowerCase().includes('acompanhamento') || g.name.toLowerCase().includes('topping')))) {
-            return { ...g, maxQty: Number(form.limiteToppings ?? 3) }
+            return { ...g, maxQty: Number(form.limiteToppings ?? 0) }
           }
           return g
         })
         payload.optionGroups = syncedOptionGroups
 
         if (isAcaiContainer) {
-          payload.limiteBases = Number(form.limiteBases ?? 1)
-          payload.limiteFrutas = Number(form.limiteFrutas ?? 2)
-          payload.limiteToppings = Number(form.limiteToppings ?? 3)
+          payload.limiteBases = Number(form.limiteBases ?? 0)
+          payload.limiteFrutas = Number(form.limiteFrutas ?? 0)
+          payload.limiteToppings = Number(form.limiteToppings ?? 0)
+          payload.limiteComplementosGratis = Number(form.limiteToppings ?? 0)
         } else {
           payload.limiteBases = 0
           payload.limiteFrutas = 0
@@ -756,7 +771,7 @@ export default function ProductEditDialog({
                       min="0"
                       max="10"
                       disabled={!isSuperAdmin}
-                      value={form.limiteBases ?? 1}
+                      value={form.limiteBases ?? 0}
                       onChange={(e) => {
                         const val = Number(e.target.value)
                         setForm({ ...form, limiteBases: val })
@@ -785,7 +800,7 @@ export default function ProductEditDialog({
                       min="0"
                       max="999"
                       disabled={!isSuperAdmin}
-                      value={form.limiteFrutas ?? 2}
+                      value={form.limiteFrutas ?? 0}
                       onChange={(e) => {
                         const val = Number(e.target.value)
                         setForm({ ...form, limiteFrutas: val })
@@ -814,7 +829,7 @@ export default function ProductEditDialog({
                       min="0"
                       max="999"
                       disabled={!isSuperAdmin}
-                      value={form.limiteToppings ?? 3}
+                      value={form.limiteToppings ?? 0}
                       onChange={(e) => {
                         const val = Number(e.target.value)
                         setForm({ ...form, limiteToppings: val })

@@ -80,17 +80,19 @@ export default function ContainerAssemblyRulesDialog({
                 ? Boolean(basesGroup.isBaseFixed)
                 : !isSomenteCreme
 
-              const limiteBases = basesGroup?.maxQty !== undefined
+              const limiteBases = basesGroup?.maxQty !== undefined && basesGroup?.maxQty !== null
                 ? Number(basesGroup.maxQty)
-                : Number(c.limiteBases) || (isBaseFixed ? 1 : 2)
+                : (c.limiteBases !== undefined && c.limiteBases !== null ? Number(c.limiteBases) : 0)
 
-              const limiteFrutas = frutasGroup
-                ? Number(frutasGroup.maxQty) || (weight >= 500 ? 999 : weight === 250 ? 2 : 3)
-                : weight >= 500 ? 999 : weight === 250 ? 2 : 3
+              const limiteFrutas = frutasGroup?.maxQty !== undefined && frutasGroup?.maxQty !== null
+                ? Number(frutasGroup.maxQty)
+                : (c.limiteFrutas !== undefined && c.limiteFrutas !== null ? Number(c.limiteFrutas) : 0)
 
-              const limiteToppings = toppingsGroup
-                ? Number(toppingsGroup.maxQty) || (weight >= 500 ? 999 : weight === 250 ? 3 : 4)
-                : weight >= 500 ? 999 : weight === 250 ? 3 : 4
+              const limiteToppings = toppingsGroup?.maxQty !== undefined && toppingsGroup?.maxQty !== null
+                ? Number(toppingsGroup.maxQty)
+                : (c.limiteToppings !== undefined && c.limiteToppings !== null
+                    ? Number(c.limiteToppings)
+                    : (c.limiteComplementosGratis !== undefined && c.limiteComplementosGratis !== null ? Number(c.limiteComplementosGratis) : 0))
 
               return {
                 id: c.id,

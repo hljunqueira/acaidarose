@@ -127,8 +127,26 @@ export default function CustomerProductDetail({
     ))
   const [containerFormat, setContainerFormat] = useState<'TACA' | 'CAIXA' | null>(null)
   const isUnlimited = weight >= 500
-  const maxFrutas = container.limiteFrutas || (isUnlimited ? 999 : weight === 250 ? 2 : 3)
-  const maxToppingsGratis = container.limiteToppings || (isUnlimited ? 999 : weight === 350 ? 4 : 3)
+
+  // Regras de Preços e Modelos Canônicos / Dinâmicos
+  const basePrice = container.precoBase
+  const basesModel = (container.optionGroups || []).find((g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme'))
+  const toppingsModel = (container.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
+  const frutasModel = (container.optionGroups || []).find((g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta'))
+
+  const additionalBasePrice = basesModel?.additionalPrice !== undefined ? Number(basesModel.additionalPrice) : 2.0
+  const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.50
+  const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
+
+  const maxFrutas = (container.limiteFrutas !== undefined && container.limiteFrutas !== null && !isNaN(Number(container.limiteFrutas)))
+    ? Number(container.limiteFrutas)
+    : (frutasModel?.maxQty !== undefined && frutasModel?.maxQty !== null ? Number(frutasModel.maxQty) : (isUnlimited ? 999 : 0))
+
+  const maxToppingsGratis = (container.limiteToppings !== undefined && container.limiteToppings !== null && !isNaN(Number(container.limiteToppings)))
+    ? Number(container.limiteToppings)
+    : (container.limiteComplementosGratis !== undefined && container.limiteComplementosGratis !== null && !isNaN(Number(container.limiteComplementosGratis))
+        ? Number(container.limiteComplementosGratis)
+        : (toppingsModel?.maxQty !== undefined && toppingsModel?.maxQty !== null ? Number(toppingsModel.maxQty) : (isUnlimited ? 999 : 0)))
 
   const frutas = useMemo(() => {
     return allToppings.filter((t) =>
@@ -158,25 +176,22 @@ export default function CustomerProductDetail({
   const selectedExtras = selectedToppings.filter((t) => toppingsTradicionais.some((top) => top.id === t.id))
   const selectedPremiums = selectedToppings.filter((t) => caldasPremium.some((p) => p.id === t.id))
 
-  // Regras de Preços Canônicas / Dinâmicas
-  const basePrice = container.precoBase
-  const basesModel = (container.optionGroups || []).find((g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme'))
-  const toppingsModel = (container.optionGroups || []).find((g: any) => g.id === 'model-toppings' || g.name?.toLowerCase().includes('acompanhamento') || g.name?.toLowerCase().includes('topping'))
-  const frutasModel = (container.optionGroups || []).find((g: any) => g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta'))
-
-  const additionalBasePrice = basesModel?.additionalPrice !== undefined ? Number(basesModel.additionalPrice) : 2.0
-  const additionalToppingPrice = toppingsModel?.additionalPrice !== undefined ? Number(toppingsModel.additionalPrice) : 0.50
-  const additionalFrutaPrice = frutasModel?.additionalPrice !== undefined ? Number(frutasModel.additionalPrice) : 0.50
 
   const extraBasesCount = useMemo(() => {
     if (isBaseFixed) {
       const cremesCount = selectedBases.filter((b) => !acaiBase || b.id !== acaiBase.id).length
-      const maxCremesGratis = Number(container.limiteCremes) || 1
+      const maxCremesGratis = (container.limiteCremes !== undefined && container.limiteCremes !== null && !isNaN(Number(container.limiteCremes)))
+        ? Number(container.limiteCremes)
+        : (basesModel?.maxQty !== undefined && basesModel?.maxQty !== null ? Number(basesModel.maxQty) : 0)
       return Math.max(0, cremesCount - maxCremesGratis)
     }
-    const maxBases = Number(container.limiteCremes) || Number(container.limiteBases) || 2
+    const maxBases = (container.limiteCremes !== undefined && container.limiteCremes !== null && !isNaN(Number(container.limiteCremes)))
+      ? Number(container.limiteCremes)
+      : (container.limiteBases !== undefined && container.limiteBases !== null && !isNaN(Number(container.limiteBases))
+          ? Number(container.limiteBases)
+          : (basesModel?.maxQty !== undefined && basesModel?.maxQty !== null ? Number(basesModel.maxQty) : 0))
     return Math.max(0, selectedBases.length - maxBases)
-  }, [isBaseFixed, selectedBases, acaiBase, container.limiteCremes, container.limiteBases])
+  }, [isBaseFixed, selectedBases, acaiBase, container.limiteCremes, container.limiteBases, basesModel?.maxQty])
 
   const extraBasesPrice = extraBasesCount * additionalBasePrice
   const extraToppingsCount = isUnlimited ? 0 : Math.max(0, selectedExtras.length - maxToppingsGratis)

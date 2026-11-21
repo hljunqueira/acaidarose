@@ -231,16 +231,18 @@ export default function ProductRowItem({
               )
             }
             const weight = product.weightGrams || 500
-            const basesLimit = product.limiteBases || (weight >= 1000 ? 3 : weight >= 500 ? 2 : 1)
-            const frutasLimit = product.limiteFrutas !== undefined
-              ? product.limiteFrutas
-              : (weight === 250 ? 2 : weight === 350 ? 3 : 99)
-            const toppingsLimit = product.limiteToppings !== undefined
-              ? product.limiteToppings
-              : (weight === 250 ? 3 : weight === 350 ? 4 : 99)
+            const basesLimit = (product.limiteBases !== undefined && product.limiteBases !== null)
+              ? Number(product.limiteBases)
+              : (product.limiteCremes !== undefined && product.limiteCremes !== null ? Number(product.limiteCremes) : 0)
+            const frutasLimit = product.limiteFrutas !== undefined && product.limiteFrutas !== null
+              ? Number(product.limiteFrutas)
+              : 0
+            const toppingsLimit = product.limiteToppings !== undefined && product.limiteToppings !== null
+              ? Number(product.limiteToppings)
+              : (product.limiteComplementosGratis !== undefined && product.limiteComplementosGratis !== null ? Number(product.limiteComplementosGratis) : 0)
 
-            const isFrutasLivre = weight >= 500 || frutasLimit >= 50
-            const isToppingsLivre = weight >= 500 || toppingsLimit >= 50
+            const isFrutasLivre = frutasLimit >= 50 || frutasLimit === 999
+            const isToppingsLivre = toppingsLimit >= 50 || toppingsLimit === 999
 
             const basesText = `${basesLimit} ${basesLimit === 1 ? 'Base' : 'Bases'}`
             const frutasText = isFrutasLivre ? 'Frutas livres' : `Até ${frutasLimit} ${frutasLimit === 1 ? 'Fruta' : 'Frutas'}`
