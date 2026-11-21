@@ -35,7 +35,7 @@ export async function getUsersByTenant(tenantId?: string | null): Promise<User[]
                     t.name as tenant_name
              FROM users u
              LEFT JOIN tenants t ON u.tenant_id = t.id
-             WHERE u.deleted_at IS NULL`
+             WHERE u.deleted_at IS NULL AND u.active = true`
   const params: any[] = []
 
   if (tenantId && tenantId !== 'all') {
@@ -76,6 +76,7 @@ export async function getStoreOperatorCount(tenantId: string): Promise<{ current
 export async function createUser(payload: any): Promise<User> {
   const tenantId = payload.tenantId || null
   const role = payload.role || 'CASHIER'
+  const cleanEmail = String(payload.email).toLowerCase().trim()
 
   // Regra de Negócio: Limite de até 3 Operadores de Caixa por loja
   if (tenantId && role === 'CASHIER') {
@@ -89,10 +90,49 @@ export async function createUser(payload: any): Promise<User> {
     throw new Error('A palavra-passe deve ser informada explicitamente pelo administrador.')
   }
 
-  const id = uuidv4()
-  const cleanEmail = String(payload.email).toLowerCase().trim()
   const passwordHash = bcrypt.hashSync(String(payload.password).trim(), 10)
 
+  // 1. Verifica se já existe utilizador com este email (mesmo soft-deleted ou inativo)
+  const existingRes = await query(
+    `SELECT id, email, active, deleted_at FROM users WHERE email = $1 LIMIT 1`,
+    [cleanEmail]
+  )
+
+  if (existingRes.rows && existingRes.rows.length > 0) {
+    const existing = existingRes.rows[0]
+    // Se estiver desativado ou soft-deleted, reativa e atualiza os dados
+    if (existing.deleted_at || !existing.active) {
+      const res = await query(
+        `UPDATE users 
+         SET name = $2,
+             role = $3,
+             tenant_id = $4::uuid,
+             password_hash = $5,
+             active = true,
+             deleted_at = NULL,
+             updated_at = timezone('utc'::text, now())
+         WHERE id = $1
+         RETURNING id, email, name, role, tenant_id, active, created_at, updated_at`,
+        [existing.id, payload.name, role, tenantId, passwordHash]
+      )
+      const u = res.rows[0]
+      return {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role as UserRole,
+        tenantId: u.tenant_id,
+        active: u.active,
+        createdAt: u.created_at,
+        updatedAt: u.updated_at,
+      }
+    }
+
+    // Se já estiver ativo, retorna aviso amigável
+    throw new Error(`O email ${cleanEmail} já está em uso por outro utilizador ativo. Utilize a opção "Editar" para alterar os dados.`)
+  }
+
+  const id = uuidv4()
   const res = await query(
     `INSERT INTO users (id, email, name, password_hash, role, tenant_id, active)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -168,11 +208,22 @@ export async function updateUser(id: string, payload: any): Promise<User | null>
 }
 
 export async function deleteUser(id: string): Promise<boolean> {
-  const res = await query(
-    `UPDATE users 
-     SET deleted_at = timezone('utc'::text, now()), active = false 
-     WHERE id::text = $1`,
-    [id]
-  )
-  return (res.rowCount || 0) > 0
+  // 1. Tenta exclusão física completa no banco de dados
+  try {
+    const res = await query(`DELETE FROM users WHERE id::text = $1`, [id])
+    if ((res.rowCount || 0) > 0) return true
+  } catch {
+    // 2. Se houver restrições de chave estrangeira (pedidos/auditoria), realiza soft delete
+    // e libera o email no índice único users_email_key
+    const res = await query(
+      `UPDATE users 
+       SET deleted_at = timezone('utc'::text, now()),
+           active = false,
+           email = email || '_deleted_' || floor(extract(epoch from now()))
+       WHERE id::text = $1`,
+      [id]
+    )
+    return (res.rowCount || 0) > 0
+  }
+  return false
 }

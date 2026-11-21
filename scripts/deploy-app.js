@@ -80,6 +80,7 @@ try {
     `rm -f ${REMOTE_TAR}`,
     `docker stop acaidarose-app 2>/dev/null || true`,
     `docker rm acaidarose-app 2>/dev/null || true`,
+    `docker exec acaidarose-db psql -U acai_admin -d acaidarose_prod -c "DELETE FROM users WHERE deleted_at IS NOT NULL;" 2>/dev/null || true`,
     `docker run -d --name acaidarose-app --restart always --network host --env-file ${VPS_APP_DIR}/.env -e PORT=3000 -e HOSTNAME=0.0.0.0 -e NODE_ENV=production -v ${VPS_APP_DIR}:/app -w /app node:20-alpine node server.js`,
     `docker exec ic-nginx-PHXo nginx -s reload 2>/dev/null || true`
   ].join(' && ');

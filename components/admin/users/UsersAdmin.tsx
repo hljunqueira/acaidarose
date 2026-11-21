@@ -84,14 +84,18 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
         : await authFetch('/api/users', { method: 'POST', body: JSON.stringify(payload) })
 
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Erro ao guardar utilizador')
+        const err = await res.json().catch(() => ({}))
+        let msg = err.error || 'Não foi possível guardar o utilizador.'
+        if (msg.includes('duplicate key') || msg.includes('users_email_key')) {
+          msg = 'Este endereço de email já se encontra registado. Por favor, utilize outro email ou edite o utilizador existente.'
+        }
+        throw new Error(msg)
       }
 
-      toast.success('Utilizador e credenciais guardadas com sucesso!')
+      toast.success('Utilizador e credenciais guardados com sucesso!')
       loadUsers()
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao salvar utilizador')
+      toast.error(e.message || 'Erro ao guardar o utilizador.')
     }
   }
 
@@ -124,14 +128,18 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
         try {
           const res = await authFetch(`/api/users/${id}`, { method: 'DELETE' })
           if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.error || 'Erro ao desativar utilizador')
+            const err = await res.json().catch(() => ({}))
+            let msg = err.error || 'Não foi possível desativar o utilizador.'
+            if (msg.includes('foreign key') || msg.includes('vinculados')) {
+              msg = 'Não é possível remover este utilizador porque existem registos associados a ele.'
+            }
+            throw new Error(msg)
           }
           toast.success('Utilizador desativado com sucesso!')
           setConfirmState((prev) => ({ ...prev, open: false }))
           loadUsers()
         } catch (e: any) {
-          toast.error(e.message || 'Erro ao remover utilizador')
+          toast.error(e.message || 'Erro ao desativar o utilizador.')
         }
       },
     })
