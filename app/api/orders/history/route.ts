@@ -27,9 +27,15 @@ export async function GET(request: NextRequest) {
     const mesaParam = request.nextUrl.searchParams.get('mesa') || request.nextUrl.searchParams.get('table') || 'ALL'
     const q = (request.nextUrl.searchParams.get('q') || '').trim()
 
+    const isExport =
+      request.nextUrl.searchParams.get('export') === 'true' ||
+      request.nextUrl.searchParams.get('all') === 'true'
+
     const page = Math.max(1, parseInt(request.nextUrl.searchParams.get('page') || '1', 10) || 1)
-    const limit = Math.min(100, Math.max(10, parseInt(request.nextUrl.searchParams.get('limit') || '25', 10) || 25))
-    const offset = (page - 1) * limit
+    const limit = isExport
+      ? 10000
+      : Math.min(100, Math.max(10, parseInt(request.nextUrl.searchParams.get('limit') || '25', 10) || 25))
+    const offset = isExport ? 0 : (page - 1) * limit
 
     const whereClauses: string[] = []
     const params: any[] = []

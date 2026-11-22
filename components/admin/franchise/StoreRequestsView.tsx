@@ -32,7 +32,7 @@ export interface FranchisePriceRequest {
   tenantId: string
   storeName: string
   managerName: string
-  type: 'PRICE_CHANGE' | 'NEW_PRODUCT' | 'NEW_ITEM_PROPOSAL' | 'SPECIAL_PROMO' | 'ITEM_AVAILABILITY'
+  type: 'PRICE_CHANGE' | 'NEW_PRODUCT' | 'NEW_ITEM_PROPOSAL' | 'SPECIAL_PROMO' | 'ITEM_AVAILABILITY' | 'CONFIG_CHANGE'
   actionRequested?: 'DISABLE' | 'ENABLE'
   productId: string
   productName: string
@@ -40,6 +40,8 @@ export interface FranchisePriceRequest {
   category: string
   currentPrice: number
   suggestedPrice: number
+  currentQuotas?: { limiteBases?: number; limiteFrutas?: number; limiteToppings?: number } | null
+  suggestedQuotas?: { limiteBases?: number; limiteFrutas?: number; limiteToppings?: number } | null
   reason: string
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
   createdAt: string
@@ -357,26 +359,38 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
                           <Badge
                             className={`text-[9px] font-extrabold ${req.type === 'ITEM_AVAILABILITY'
                                 ? req.actionRequested === 'ENABLE' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                                : req.type === 'SPECIAL_PROMO'
-                                  ? 'bg-pink-600 text-white'
-                                  : req.type === 'NEW_ITEM_PROPOSAL' || req.type === 'NEW_PRODUCT'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-purple-600 text-white'
+                                : req.type === 'CONFIG_CHANGE'
+                                  ? 'bg-amber-600 text-white'
+                                  : req.type === 'SPECIAL_PROMO'
+                                    ? 'bg-pink-600 text-white'
+                                    : req.type === 'NEW_ITEM_PROPOSAL' || req.type === 'NEW_PRODUCT'
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-purple-600 text-white'
                               }`}
                           >
                             {req.type === 'ITEM_AVAILABILITY'
                               ? (req.actionRequested === 'ENABLE' ? 'Reativar Opcional' : 'Desativar Opcional')
-                              : req.type === 'SPECIAL_PROMO'
-                                ? 'Destaque Sugerido'
-                                : req.type === 'NEW_ITEM_PROPOSAL' || req.type === 'NEW_PRODUCT'
-                                  ? 'Novo Produto'
-                                  : 'Alteração Preço'}
+                              : req.type === 'CONFIG_CHANGE'
+                                ? 'Cotas & Regras'
+                                : req.type === 'SPECIAL_PROMO'
+                                  ? 'Destaque Sugerido'
+                                  : req.type === 'NEW_ITEM_PROPOSAL' || req.type === 'NEW_PRODUCT'
+                                    ? 'Novo Produto'
+                                    : 'Alteração Preço'}
                           </Badge>
                           <span>{req.productName}</span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 font-mono font-black text-purple-950 dark:text-pink-300 text-sm">
-                        {formatCurrency(req.suggestedPrice)}
+                        {req.type === 'CONFIG_CHANGE' && req.suggestedQuotas ? (
+                          <div className="text-[11px] font-mono leading-tight">
+                            <span className="text-purple-700 dark:text-pink-300">C:{req.suggestedQuotas.limiteBases ?? 2}</span> |{' '}
+                            <span className="text-purple-700 dark:text-pink-300">F:{req.suggestedQuotas.limiteFrutas ?? 2}</span> |{' '}
+                            <span className="text-purple-700 dark:text-pink-300">A:{req.suggestedQuotas.limiteToppings ?? 3}</span>
+                          </div>
+                        ) : (
+                          formatCurrency(req.suggestedPrice)
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-purple-700/80 dark:text-purple-300/70 text-xs max-w-xs truncate font-medium">
                         {req.reason}
@@ -411,9 +425,11 @@ export default function StoreRequestsView({ tenantId }: StoreRequestsViewProps) 
                                     ? req.actionRequested === 'ENABLE'
                                       ? 'Aprovada reativação do opcional para a loja conforme solicitado.'
                                       : 'Aprovada desativação do opcional para a loja conforme solicitado.'
-                                    : req.type === 'SPECIAL_PROMO'
-                                      ? 'Aprovado e publicado nos destaques da rede.'
-                                      : 'Aprovado para a filial conforme solicitado.'
+                                    : req.type === 'CONFIG_CHANGE'
+                                      ? 'Aprovado ajuste de cotas e regras para a loja conforme solicitado.'
+                                      : req.type === 'SPECIAL_PROMO'
+                                        ? 'Aprovado e publicado nos destaques da rede.'
+                                        : 'Aprovado para a filial conforme solicitado.'
                                 )
                                 setDeliberateModalOpen(true)
                               }}

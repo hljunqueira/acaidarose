@@ -225,6 +225,7 @@ export default function OrderHistoryAdminView({
   const [totalPages, setTotalPages] = useState<number>(1)
   const [dateFormatted, setDateFormatted] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
+  const [isExporting, setIsExporting] = useState<boolean>(false)
 
   // Modal de Detalhes da Comanda
   const [selectedOrder, setSelectedOrder] = useState<HistoryOrder | null>(null)
@@ -412,57 +413,184 @@ export default function OrderHistoryAdminView({
     window.open(`/receipt/${orderId}?print=true`, '_blank', 'width=450,height=700')
   }
 
-  // Exportação CSV Profissional (Excel PT-PT / Sheets)
-  const handleExportCSV = () => {
-    if (orders.length === 0) {
+  // Exportação CSV Profissional com Detalhes Completos dos Pedidos (Excel PT-PT / Sheets)
+  const handleExportCSV = async () => {
+    if (summary.grandTotalCount === 0) {
       toast.error('Nenhum pedido para exportar no período selecionado')
       return
     }
 
-    const headers = [
-      'Comanda',
-      'Data e Hora',
-      'Unidade / Loja',
-      'Cliente',
-      'Telefone',
-      'NIF',
-      'Tipo de Consumo',
-      'Mesa',
-      'Método de Pagamento',
-      'Subtotal (€)',
-      'IVA 13% (€)',
-      'Total (€)',
-      'Situação',
-      'Motivo Cancelamento',
-    ]
+    setIsExporting(true)
+    const toastId = toast.loading('A descarregar todos os pedidos do filtro...')
 
-    const rows = orders.map((o) => {
-      const isTableOrder = o.tableNumber && String(o.tableNumber).toLowerCase() !== 'balcão' && String(o.tableNumber).toLowerCase() !== 'balcao'
-      const consumptionLabel = o.consumptionType === 'TAKEAWAY' ? 'Takeaway' : isTableOrder ? `Esplanada ${o.tableNumber}` : 'Balcão'
-      return [
-        `#${o.orderNumber}`,
-        formatDateTime(o.createdAt),
-        o.tenantName || selectedBranch,
-        o.customerName || 'Anónimo',
-        o.customerPhone || '',
-        o.customerNif || '',
-        consumptionLabel,
-        o.tableNumber || '',
-        getPaymentMethodLabel(o.paymentMethod),
-        o.subtotal,
-        o.vatTotal,
-        o.total,
-        formatStatusLabel(o.status),
-        o.cancelReason || '',
+    try {
+      const q = new URLSearchParams()
+      if (isMaster && selectedBranch && selectedBranch !== 'ALL') {
+        q.set('loja', selectedBranch)
+      } else if (!isMaster && user?.tenantId) {
+        q.set('loja', user.tenantId)
+      }
+
+      q.set('periodo', period)
+      if (period === 'custom') {
+        q.set('startDate', startDate)
+        q.set('endDate', endDate)
+      }
+
+      if (statusFilter !== 'ALL') q.set('status', statusFilter)
+      if (paymentFilter !== 'ALL') q.set('paymentMethod', paymentFilter)
+      if (consumptionFilter !== 'ALL') q.set('consumptionType', consumptionFilter)
+      if (tableFilter !== 'ALL') q.set('mesa', tableFilter)
+      if (searchTerm.trim()) q.set('q', searchTerm.trim())
+
+      // Solicita todos os pedidos correspondentes ao filtro ativo
+      q.set('export', 'true')
+
+      const res = await fetch(`/api/orders/history?${q.toString()}`)
+      if (!res.ok) throw new Error('Falha ao descarregar pedidos para exportação')
+
+      const data = await res.json()
+      const allOrders: HistoryOrder[] = data.orders || []
+
+      if (allOrders.length === 0) {
+        toast.dismiss(toastId)
+        toast.error('Nenhum pedido retornado para o filtro selecionado')
+        return
+      }
+
+      const headers = [
+        'Comanda',
+        'Data e Hora',
+        'Unidade / Loja',
+        'Cliente',
+        'Telefone',
+        'NIF',
+        'Tipo de Consumo',
+        'Mesa',
+        'Atendente / Caixa',
+        'Método de Pagamento',
+        'Subtotal (€)',
+        'Taxa Saco (€)',
+        'IVA 13% (€)',
+        'Total (€)',
+        'Situação',
+        'Motivo Cancelamento',
+        'Qtd Itens',
+        'Produtos / Recipientes',
+        'Bases e Cremes',
+        'Acompanhamentos e Frutas',
+        'Observações dos Itens',
+        'Detalhamento Completo do Pedido',
       ]
-    })
 
-    exportToCsv({
-      filename: `historico-pedidos-${period}-${new Date().toISOString().slice(0, 10)}.csv`,
-      headers,
-      rows,
-    })
-    toast.success('Relatório de pedidos exportado com sucesso!')
+      const rows = allOrders.map((o) => {
+        const isTableOrder =
+          o.tableNumber &&
+          String(o.tableNumber).toLowerCase() !== 'balcão' &&
+          String(o.tableNumber).toLowerCase() !== 'balcao'
+        const consumptionLabel =
+          o.consumptionType === 'TAKEAWAY'
+            ? 'Takeaway'
+            : isTableOrder
+            ? `Esplanada ${o.tableNumber}`
+            : 'Balcão'
+
+        const orderItems = Array.isArray(o.items) ? o.items : []
+        const totalItemsQty = orderItems.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0)
+
+        // Resumo dos nomes dos produtos com quantidade e preço
+        const productsSummary = orderItems
+          .map((it) => {
+            const name = it.containerName || it.productName || it.name || 'Produto'
+            const sizeStr = it.size ? ` (${it.size})` : ''
+            const price = Number(it.lineTotal || Number(it.unitPrice || it.price || 0) * (it.quantity || 1))
+              .toFixed(2)
+              .replace('.', ',')
+            return `${it.quantity || 1}x ${name}${sizeStr} (${price} €)`
+          })
+          .join('; ')
+
+        // Todas as bases selecionadas em todos os itens
+        const allBases = orderItems
+          .flatMap((it) => (it.bases || []).map((b) => b.name))
+          .filter(Boolean)
+        const basesSummary = Array.from(new Set(allBases)).join(', ')
+
+        // Todos os acompanhamentos/toppings selecionados em todos os itens
+        const allToppings = orderItems
+          .flatMap((it) => (it.toppings || []).map((t) => t.name))
+          .filter(Boolean)
+        const toppingsSummary = Array.from(new Set(allToppings)).join(', ')
+
+        // Observações registradas nos itens
+        const itemNotes = orderItems
+          .map((it) => it.notes)
+          .filter(Boolean)
+          .join('; ')
+
+        // Detalhamento individual completo com estrutura legível
+        const detailedDescription = orderItems
+          .map((it, idx) => {
+            const name = it.containerName || it.productName || it.name || 'Produto'
+            const sizeStr = it.size ? ` (${it.size})` : ''
+            const linePrice = Number(it.lineTotal || Number(it.unitPrice || it.price || 0) * (it.quantity || 1))
+              .toFixed(2)
+              .replace('.', ',')
+            const parts: string[] = [`[Item ${idx + 1}] ${it.quantity || 1}x ${name}${sizeStr} - ${linePrice} €`]
+
+            if (it.bases && it.bases.length > 0) {
+              parts.push(`Bases: ${it.bases.map((b) => b.name).join(', ')}`)
+            }
+            if (it.toppings && it.toppings.length > 0) {
+              parts.push(`Acompanhamentos: ${it.toppings.map((t) => t.name).join(', ')}`)
+            }
+            if (it.notes) {
+              parts.push(`Obs: ${it.notes}`)
+            }
+            return parts.join(' | ')
+          })
+          .join(' // ')
+
+        return [
+          `#${o.orderNumber}`,
+          formatDateTime(o.createdAt),
+          o.tenantName || selectedBranch,
+          o.customerName || 'Anónimo',
+          o.customerPhone || '',
+          o.customerNif || '',
+          consumptionLabel,
+          o.tableNumber || '',
+          o.cashierName || 'Balcão',
+          getPaymentMethodLabel(o.paymentMethod),
+          o.subtotal,
+          o.bagFee || 0,
+          o.vatTotal,
+          o.total,
+          formatStatusLabel(o.status),
+          o.cancelReason || '',
+          totalItemsQty,
+          productsSummary || '—',
+          basesSummary || '—',
+          toppingsSummary || '—',
+          itemNotes || '—',
+          detailedDescription || '—',
+        ]
+      })
+
+      exportToCsv({
+        filename: `historico-pedidos-detalhado-${period}-${new Date().toISOString().slice(0, 10)}.csv`,
+        headers,
+        rows,
+      })
+
+      toast.dismiss(toastId)
+      toast.success(`Exportados ${allOrders.length} pedidos com detalhes completos!`)
+    } catch (err: any) {
+      toast.dismiss(toastId)
+      toast.error(err.message || 'Erro ao exportar pedidos')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const tableOptions = useMemo<FilterOption[]>(
@@ -560,10 +688,11 @@ export default function OrderHistoryAdminView({
             type="button"
             size="sm"
             onClick={handleExportCSV}
-            className="h-10 rounded-xl text-xs font-bold bg-purple-900 hover:bg-purple-800 text-white cursor-pointer shadow-xs flex items-center gap-1.5"
+            disabled={isExporting || summary.grandTotalCount === 0}
+            className="h-10 rounded-xl text-xs font-bold bg-purple-900 hover:bg-purple-800 text-white cursor-pointer shadow-xs flex items-center gap-1.5 disabled:opacity-50"
           >
-            <Download className="h-3.5 w-3.5" />
-            <span>Exportar relatório</span>
+            <Download className={`h-3.5 w-3.5 ${isExporting ? 'animate-bounce' : ''}`} />
+            <span>{isExporting ? 'A exportar...' : 'Exportar com detalhes do pedido'}</span>
           </Button>
         </div>
       </div>

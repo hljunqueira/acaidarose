@@ -48,7 +48,7 @@ export async function GET() {
         tenantId: r.tenant_id,
         storeName: r.tenant_name || data.storeName || 'Loja Franqueada',
         managerName: data.managerName || 'Gerente da Loja',
-        type: r.request_type || data.type || 'PRICE_CHANGE',
+        type: data.type || r.request_type || 'PRICE_CHANGE',
         productId: data.productId || '',
         productName: data.productName || r.title || 'Item do Cardápio',
         productImage: data.productImage || '',
@@ -56,6 +56,8 @@ export async function GET() {
         currentPrice: data.currentPrice !== undefined && data.currentPrice !== null ? Number(data.currentPrice) : 0,
         suggestedPrice: data.suggestedPrice !== undefined && data.suggestedPrice !== null ? Number(data.suggestedPrice) : 0,
         actionRequested: data.actionRequested || data.action || (r.request_type === 'ITEM_AVAILABILITY' ? 'DISABLE' : undefined),
+        currentQuotas: data.currentQuotas || null,
+        suggestedQuotas: data.suggestedQuotas || null,
         reason: r.description || data.reason || 'Solicitação de cardápio',
         status: r.status || 'PENDING',
         responseNotes: r.response_notes,
@@ -96,6 +98,8 @@ export async function POST(req: NextRequest) {
       requestType = 'FRANCHISE_APPLICATION'
     } else if (body.type === 'ITEM_AVAILABILITY' || body.type === 'OPTION_STATUS_CHANGE') {
       requestType = 'ITEM_AVAILABILITY'
+    } else if (body.type === 'CONFIG_CHANGE') {
+      requestType = 'ITEM_AVAILABILITY' // mapeia para ITEM_AVAILABILITY para respeitar a constraint chk_franchise_request_type
     } else if (body.type === 'NEW_PRODUCT' || body.type === 'NEW_ITEM_PROPOSAL') {
       requestType = 'NEW_ITEM_PROPOSAL'
     } else if (body.type === 'PRICE_CHANGE') {
@@ -104,6 +108,8 @@ export async function POST(req: NextRequest) {
 
     const title = isApplication 
       ? (body.type === 'CONTACT_REQUEST' ? `Contacto: ${body.nome || 'Novo Utilizador'}` : `Candidatura: ${body.nome || body.name || 'Novo Interessado'}`) 
+      : body.type === 'CONFIG_CHANGE'
+      ? `Cotas & Regras: ${body.productName || 'Produto'}`
       : requestType === 'ITEM_AVAILABILITY'
       ? `Disponibilidade: ${body.productName || 'Opcional / Item'} (${body.actionRequested === 'DISABLE' ? 'Desativação' : 'Ativação'})`
       : (body.productName || 'Alteração de Preço')
@@ -202,6 +208,24 @@ export async function PATCH(req: NextRequest) {
       if (r.tenant_id && (r.request_type === 'ITEM_AVAILABILITY' || data.type === 'ITEM_AVAILABILITY') && data.productId) {
         const isEnable = data.actionRequested === 'ENABLE' || data.action === 'ENABLE'
         await toggleStoreItemStatus(r.tenant_id, data.productId, { isAvailable: isEnable, isVisible: isEnable })
+      }
+
+      // 5. Se for CONFIG_CHANGE (alteração de cotas de cremes, frutas ou acompanhamentos na filial)
+      if (r.tenant_id && data.type === 'CONFIG_CHANGE' && data.productId && data.suggestedQuotas) {
+        const { limiteBases, limiteFrutas, limiteToppings } = data.suggestedQuotas
+        await query(
+          `UPDATE product_containers 
+           SET limite_bases = COALESCE($1, limite_bases),
+               limite_frutas = COALESCE($2, limite_frutas),
+               limite_toppings = COALESCE($3, limite_toppings)
+           WHERE id::text = $4`,
+          [
+            limiteBases !== undefined && limiteBases !== null ? Number(limiteBases) : null,
+            limiteFrutas !== undefined && limiteFrutas !== null ? Number(limiteFrutas) : null,
+            limiteToppings !== undefined && limiteToppings !== null ? Number(limiteToppings) : null,
+            data.productId,
+          ]
+        )
       }
     }
 
