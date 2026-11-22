@@ -653,8 +653,9 @@ export default function CustomerProductDetail({
             )}
 
             {hasDynamicGroups ? (
-              container.optionGroups!
+              [...container.optionGroups!]
                 .filter((g) => g.active !== false && (g.options || []).some((o: any) => o.active !== false))
+                .sort((a, b) => (a.displayOrder ?? a.display_order ?? 99) - (b.displayOrder ?? b.display_order ?? 99))
                 .map((group, groupIdx) => {
                   const groupId = group.id || group.name
                   const groupSelections = customSelections[groupId] || {}

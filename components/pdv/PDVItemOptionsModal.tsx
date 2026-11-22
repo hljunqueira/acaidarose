@@ -165,7 +165,10 @@ export default function PDVItemOptionsModal({
         <div className="space-y-4 py-2">
           {/* GRUPOS DE OPÇÕES (MODIFICADORES) */}
           {Array.isArray(product.optionGroups) && product.optionGroups.some((g: any) => g.active !== false && (g.options || []).some((o: any) => o.active !== false)) ? (
-            product.optionGroups.filter((g: any) => g.active !== false && (g.options || []).some((o: any) => o.active !== false)).map((grp: any) => {
+            [...product.optionGroups]
+              .filter((g: any) => g.active !== false && (g.options || []).some((o: any) => o.active !== false))
+              .sort((a: any, b: any) => (a.displayOrder ?? a.display_order ?? 99) - (b.displayOrder ?? b.display_order ?? 99))
+              .map((grp: any) => {
               const selected = selectedMap[grp.id] || []
               const max = grp.max || 1
               const isRequired = grp.required || (grp.min && grp.min > 0)

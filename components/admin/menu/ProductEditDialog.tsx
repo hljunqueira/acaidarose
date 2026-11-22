@@ -415,7 +415,7 @@ export default function ProductEditDialog({
         )
 
         payload.productType = isAcaiContainer ? 'CONTAINER' : 'ITEM'
-        const syncedOptionGroups = (linkedOptionGroups || []).map((g) => {
+        const syncedOptionGroups = (linkedOptionGroups || []).map((g, idx) => {
           let maxQty = g.maxQty
           if (g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))) {
             maxQty = Number(form.limiteBases ?? 0)
@@ -425,52 +425,22 @@ export default function ProductEditDialog({
             maxQty = Number(form.limiteToppings ?? 0)
           }
 
-          // No template mestre do produto, as opções padrão mantêm active: true.
-          // Desativações por loja ficam isoladas na tabela store_product_overrides!
+          // No template mestre do produto, as opções mantêm os preços e visibilidade padrão
+          // Desativações por loja ficam isoladas na tabela store_product_overrides através dos cliques no botão de visibilidade
           const cleanOptions = (g.options || []).map((opt: any) => ({
             ...opt,
             active: true,
           }))
 
-          return { ...g, maxQty, options: cleanOptions }
+          return {
+            ...g,
+            displayOrder: idx + 1,
+            display_order: idx + 1,
+            maxQty,
+            options: cleanOptions,
+          }
         })
         payload.optionGroups = syncedOptionGroups
-
-        // Se o Super Admin estiver editando em uma loja específica, também registra os overrides de visibilidade na loja
-        const targetTenant = effectiveTenant || user?.tenantId
-        if (targetTenant) {
-          for (const grp of linkedOptionGroups) {
-            if (grp.id && grp.active !== undefined) {
-              await authFetch('/api/products/toggle-availability', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  tenantId: targetTenant,
-                  productId: grp.id,
-                  visible: grp.active !== false,
-                  applyToAll: false,
-                }),
-              })
-            }
-            if (Array.isArray(grp.options)) {
-              for (const opt of grp.options) {
-                const optKey = opt.code || opt.id || opt.name
-                if (optKey && opt.active !== undefined) {
-                  await authFetch('/api/products/toggle-availability', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      tenantId: targetTenant,
-                      productId: optKey,
-                      visible: opt.active !== false,
-                      applyToAll: false,
-                    }),
-                  })
-                }
-              }
-            }
-          }
-        }
 
         if (isAcaiContainer) {
           payload.limiteBases = Number(form.limiteBases ?? 0)
