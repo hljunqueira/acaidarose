@@ -113,178 +113,6 @@ function getCategoryScope(cat: ManualCategory): 'FRANCHISOR' | 'FRANCHISEE' | 'P
   return 'SHARED'
 }
 
-// Moldura de Janela de Navegador / SO com Reprodução em HTML da Tela & Botões
-interface ScreenWindowFrameProps {
-  title: string
-  routePath: string | null
-  mediaUrl: string | null
-  mediaType: string | null
-  youtubeId: string | null
-  instruction: string
-  onOpenLightbox?: (url: string) => void
-}
-
-function ScreenWindowFrame({
-  title,
-  routePath,
-  mediaUrl,
-  mediaType,
-  youtubeId,
-  instruction,
-  onOpenLightbox,
-}: ScreenWindowFrameProps) {
-  // Extrai botões descritos na instrução (linhas no formato • [ Nome do Botão ]: ...)
-  const buttonMatches: string[] = []
-  if (instruction) {
-    const lines = instruction.split('\n')
-    for (const line of lines) {
-      const match = line.match(/^\s*•\s*\[\s*([^\]]+)\s*\]\s*:/)
-      if (match && match[1]) {
-        buttonMatches.push(match[1].trim())
-      }
-    }
-  }
-
-  const hasRealMedia = Boolean(youtubeId || mediaUrl)
-
-  return (
-    <div className="rounded-2xl border border-slate-300/80 dark:border-white/10 shadow-md overflow-hidden bg-slate-900 text-slate-100 my-4">
-      {/* Moldura Superior (Barra de Janela de Navegador / SO) */}
-      <div className="px-4 py-2.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between gap-3">
-        {/* Controles de Janela Mac-Style */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e]" />
-          <div className="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123]" />
-          <div className="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29]" />
-        </div>
-
-        {/* Barra de Endereço / Título da Rota */}
-        <div className="px-3.5 py-1 rounded-full bg-slate-900 border border-slate-700/60 text-[11px] font-mono text-purple-300 flex items-center gap-1.5 shadow-inner max-w-sm sm:max-w-md truncate">
-          <span className="text-emerald-400 font-bold">🔒</span>
-          <span className="text-slate-400">app.acaidarose.pt</span>
-          {routePath && <span className="text-purple-300 font-bold">{routePath}</span>}
-        </div>
-
-        {/* Badge da Interface */}
-        <div className="shrink-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
-          {hasRealMedia ? 'Captura Oficial' : 'Mockup da Tela'}
-        </div>
-      </div>
-
-      {/* Conteúdo da Janela */}
-      <div className="p-4 sm:p-5 bg-gradient-to-b from-slate-900 via-slate-900 to-[#170c26]">
-        {youtubeId ? (
-          <div className="relative rounded-xl overflow-hidden aspect-video bg-black">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${youtubeId}?rel=0&modestbranding=1&controls=1&playsinline=1`}
-              title={title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full border-0"
-            />
-          </div>
-        ) : mediaUrl ? (
-          <div className="relative group rounded-xl overflow-hidden bg-black/40">
-            {mediaType === 'VIDEO' ? (
-              <video
-                src={mediaUrl}
-                controls
-                muted
-                loop
-                playsInline
-                className="w-full h-auto max-h-[460px] object-contain rounded-lg"
-              />
-            ) : (
-              <div className="relative">
-                <img
-                  src={mediaUrl}
-                  alt={title}
-                  className="w-full h-auto max-h-[460px] object-contain rounded-lg cursor-zoom-in"
-                  onClick={() => onOpenLightbox?.(mediaUrl)}
-                />
-                <button
-                  type="button"
-                  onClick={() => onOpenLightbox?.(mediaUrl)}
-                  className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white text-xs opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                  title="Ampliar imagem"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* MOCKUP INTERATIVO EM HTML NATIVO DA TELA */
-          <div className="space-y-4">
-            {/* Barra de Ações Simulada com os Botões Reais */}
-            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-              <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full bg-purple-500 animate-pulse" />
-                <span className="text-xs font-bold text-white tracking-tight">{title}</span>
-              </div>
-
-              {/* Botões Mapeados na Barra da Tela */}
-              {buttonMatches.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  {buttonMatches.map((btn, bIdx) => {
-                    const isPrimary =
-                      btn.toLowerCase().includes('nova') ||
-                      btn.toLowerCase().includes('novo') ||
-                      btn.toLowerCase().includes('criar') ||
-                      btn.toLowerCase().includes('guardar') ||
-                      btn.toLowerCase().includes('adicionar') ||
-                      btn.toLowerCase().includes('confirmar')
-
-                    return (
-                      <span
-                        key={bIdx}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow-xs tracking-tight transition ${
-                          isPrimary
-                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white ring-1 ring-white/20'
-                            : 'bg-slate-800/90 text-purple-200 border border-purple-500/30'
-                        }`}
-                      >
-                        <span className="h-4 w-4 rounded-full bg-black/40 text-white text-[10px] font-mono flex items-center justify-center font-bold">
-                          {bIdx + 1}
-                        </span>
-                        <span>[ {btn} ]</span>
-                      </span>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Simulação Visual do Ecrã */}
-            <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 space-y-3">
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span className="font-semibold">Área de Visualização do Sistema</span>
-                <span className="text-emerald-400 font-mono">Status: Operacional</span>
-              </div>
-
-              {/* Grid de simulação visual (3 cards rápidos de pré-visualização) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-left space-y-1">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Estrutura Canónica</div>
-                  <div className="text-xs font-bold text-white">PostgreSQL 16 Multi-Tenant</div>
-                </div>
-                <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-left space-y-1">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Segurança & RBAC</div>
-                  <div className="text-xs font-bold text-emerald-400">Permissão Verificada</div>
-                </div>
-                <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-left space-y-1">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Padrão da Rede</div>
-                  <div className="text-xs font-bold text-purple-300">Açaí da Rose • Portugal</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // Renderizador visual estilo Goomer para botões, cards, passos e explicações
 function FormattedInstruction({ text }: { text: string }) {
   if (!text) return null
@@ -721,6 +549,37 @@ export default function AjudaPortalPage() {
     return roleAllowedCategories
   }, [roleAllowedCategories, activeScope])
 
+  // Escopos disponíveis no seletor de visão, estritamente limitados pelo perfil do utilizador
+  const availableScopes = useMemo(() => {
+    const scopes: Array<{ value: PortalScope; label: string }> = [
+      { value: 'ALL', label: 'Todas as Telas' },
+    ]
+
+    const canSeeFranchisor =
+      currentEffectiveRole === 'SUPER_ADMIN' || currentEffectiveRole === 'FRANCHISOR_ADMIN'
+    const canSeeFranchisee =
+      currentEffectiveRole === 'SUPER_ADMIN' ||
+      currentEffectiveRole === 'FRANCHISOR_ADMIN' ||
+      currentEffectiveRole === 'TENANT_ADMIN'
+
+    if (canSeeFranchisor) {
+      scopes.push({ value: 'FRANCHISOR', label: 'Franqueadora Master' })
+    }
+    if (canSeeFranchisee) {
+      scopes.push({ value: 'FRANCHISEE', label: 'Franquias (Lojas)' })
+    }
+    scopes.push({ value: 'POS', label: 'Operação de Caixa' })
+
+    return scopes
+  }, [currentEffectiveRole])
+
+  // Se o escopo atual não for permitido para o papel, volta para 'ALL'
+  useEffect(() => {
+    if (!availableScopes.some((s) => s.value === activeScope)) {
+      setActiveScope('ALL')
+    }
+  }, [availableScopes, activeScope])
+
   // Mantém categorias recolhidas por padrão, abrindo apenas sob clique do usuário
   useEffect(() => {
     if (scopedCategories.length > 0 && selectedCatId) {
@@ -803,22 +662,25 @@ export default function AjudaPortalPage() {
             {/* Ações da Direita: Seletor de Perfil, Usuário e Botão Plataforma */}
             <div className="flex items-center gap-3 text-xs">
               {/* Seletor de Visão de Perfil (Franqueadora vs Franquias vs Caixa) */}
-              <div className="hidden sm:flex items-center gap-1.5 bg-muted/60 px-2 py-1.5 rounded-xl border border-border">
-                <span className="text-[10.5px] text-muted-foreground font-bold">Visão:</span>
-                <select
-                  value={activeScope}
-                  onChange={(e) => {
-                    setActiveScope(e.target.value as any)
-                    setActiveArticle(null)
-                  }}
-                  className="bg-transparent text-[11px] font-bold text-foreground focus:outline-hidden cursor-pointer"
-                >
-                  <option value="ALL">Todas as Telas</option>
-                  <option value="FRANCHISOR">Franqueadora Master</option>
-                  <option value="FRANCHISEE">Franquias (Lojas)</option>
-                  <option value="POS">Operação de Caixa</option>
-                </select>
-              </div>
+              {availableScopes.length > 1 && (
+                <div className="hidden sm:flex items-center gap-1.5 bg-muted/60 px-2 py-1.5 rounded-xl border border-border">
+                  <span className="text-[10.5px] text-muted-foreground font-bold">Visão:</span>
+                  <select
+                    value={activeScope}
+                    onChange={(e) => {
+                      setActiveScope(e.target.value as any)
+                      setActiveArticle(null)
+                    }}
+                    className="bg-transparent text-[11px] font-bold text-foreground focus:outline-hidden cursor-pointer"
+                  >
+                    {availableScopes.map((scope) => (
+                      <option key={scope.value} value={scope.value} className="bg-background text-foreground">
+                        {scope.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Auditoria Super Admin */}
               {isSuperAdmin && (
@@ -841,9 +703,6 @@ export default function AjudaPortalPage() {
               {user && (
                 <div className="hidden md:block text-right">
                   <div className="font-bold text-foreground leading-none">{user.name}</div>
-                  <div className="text-[10px] text-muted-foreground uppercase font-semibold mt-0.5">
-                    {user.role}
-                  </div>
                 </div>
               )}
 
@@ -1063,6 +922,12 @@ export default function AjudaPortalPage() {
                       {activeArticle.categoryTitle}
                     </Badge>
 
+                    {activeArticle.highlightCategory && (
+                      <span className="px-2.5 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider">
+                        {activeArticle.highlightCategory}
+                      </span>
+                    )}
+
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       Leitura: {activeArticle.readTimeMinutes || 4} min
@@ -1090,41 +955,92 @@ export default function AjudaPortalPage() {
                         key={section.stepNumber}
                         className="space-y-4 p-5 sm:p-6 rounded-2xl border border-border bg-card shadow-xs break-inside-avoid"
                       >
-                        {/* Título da Seção */}
-                        <div className="space-y-1.5">
+                        {/* Título da Seção com Número do Passo */}
+                        <div className="flex items-center gap-2.5">
+                          <span className="h-6 w-6 rounded-full bg-purple-700 text-white flex items-center justify-center text-xs font-black shrink-0">
+                            {section.stepNumber}
+                          </span>
                           <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight">
                             {section.title}
                           </h2>
                         </div>
 
-                        {/* Callout / Dica / Alerta no Topo da Seção se Houver */}
+                        {/* Callout / Destaque do Passo (4 Categorias) */}
                         {section.calloutMessage && (
                           <div
-                            className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs sm:text-[13px] leading-relaxed ${
+                            className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs sm:text-[13px] leading-relaxed my-2 ${
                               section.calloutType === 'ALERT'
                                 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-900 dark:text-amber-200'
+                                : section.calloutType === 'CRITICAL'
+                                ? 'bg-red-50 dark:bg-red-950/30 border-red-300 text-red-900 dark:text-red-200'
+                                : section.calloutType === 'SUCCESS'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 text-emerald-900 dark:text-emerald-200'
                                 : 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 text-purple-900 dark:text-purple-200'
                             }`}
                           >
                             {section.calloutType === 'ALERT' ? (
                               <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                            ) : section.calloutType === 'CRITICAL' ? (
+                              <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+                            ) : section.calloutType === 'SUCCESS' ? (
+                              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
                             ) : (
                               <Info className="h-4 w-4 shrink-0 text-purple-700 mt-0.5" />
                             )}
-                            <span>{section.calloutMessage}</span>
+                            <div className="flex-1">
+                              <span className="font-bold mr-1">
+                                {section.calloutType === 'ALERT'
+                                  ? 'Atenção Operacional:'
+                                  : section.calloutType === 'CRITICAL'
+                                  ? 'Ponto Crítico:'
+                                  : section.calloutType === 'SUCCESS'
+                                  ? 'Boa Prática:'
+                                  : 'Dica Informativa:'}
+                              </span>
+                              <span>{section.calloutMessage}</span>
+                            </div>
                           </div>
                         )}
 
-                        {/* Moldura de Janela de Navegador / SO (Mockup HTML dos Botões & Tela ou Mídia) */}
-                        <ScreenWindowFrame
-                          title={section.title}
-                          routePath={section.routePath || activeScreenRoute}
-                          mediaUrl={section.mediaUrl}
-                          mediaType={section.mediaType}
-                          youtubeId={section.youtubeId}
-                          instruction={section.instruction}
-                          onOpenLightbox={(url) => setLightboxImg(url)}
-                        />
+                        {/* Mídia Real do Passo (Imagem, Vídeo ou YouTube - Apenas quando cadastrado) */}
+                        {section.youtubeId ? (
+                          <div className="relative rounded-2xl overflow-hidden aspect-video bg-black border border-border shadow-sm my-3">
+                            <iframe
+                              src={`https://www.youtube-nocookie.com/embed/${section.youtubeId}?rel=0&modestbranding=1&controls=1&playsinline=1`}
+                              title={section.title}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              className="w-full h-full border-0"
+                            />
+                          </div>
+                        ) : section.mediaUrl ? (
+                          <div className="my-3 rounded-2xl overflow-hidden border border-border bg-black/5 dark:bg-black/40 shadow-sm relative group">
+                            {section.mediaType === 'VIDEO' ? (
+                              <video
+                                src={section.mediaUrl}
+                                controls
+                                muted
+                                loop
+                                playsInline
+                                className="w-full max-h-[500px] object-contain rounded-xl"
+                              />
+                            ) : (
+                              <div
+                                className="relative cursor-zoom-in"
+                                onClick={() => section.mediaUrl && setLightboxImg(section.mediaUrl)}
+                              >
+                                <img
+                                  src={section.mediaUrl}
+                                  alt={section.title}
+                                  className="w-full max-h-[500px] object-contain rounded-xl transition group-hover:opacity-95"
+                                />
+                                <div className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 text-white text-xs opacity-0 group-hover:opacity-100 transition shadow">
+                                  <Maximize2 className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
 
                         {/* Raio-X Detalhado de Botões & Instruções da Seção */}
                         {section.instruction && (

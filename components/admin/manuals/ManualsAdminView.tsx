@@ -26,22 +26,163 @@ import {
   Search,
   FolderPlus,
   Layers,
-  Sparkles,
+  ArrowLeft,
   ThumbsUp,
   ThumbsDown,
   BarChart3,
   MessageSquare,
   Clock,
   RotateCcw,
+  Maximize2,
+  X,
 } from 'lucide-react'
 
 type FilterRole = 'ALL' | 'FRANCHISOR_ADMIN' | 'TENANT_ADMIN' | 'CASHIER'
+
+const HIGHLIGHT_PRESETS = [
+  'Essencial para Operação',
+  'Atenção Crítica',
+  'Novidade da Rede',
+  'Procedimento Obrigatório',
+  'Dica de Atendimento',
+  'Regra Fiscal / IVA',
+]
 
 function extractYoutubeId(url: string): string | null {
   if (!url) return null
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
   const match = url.match(regExp)
   return match && match[2].length === 11 ? match[2] : null
+}
+
+function FormattedInstruction({ text }: { text: string }) {
+  if (!text) return null
+
+  const paragraphs = text.split('\n\n')
+  let buttonCount = 0
+
+  return (
+    <div className="space-y-4 text-xs sm:text-sm text-foreground/85 leading-relaxed">
+      {paragraphs.map((para, pIdx) => {
+        const lines = para.split('\n')
+
+        // 1. Detecta itens de botão: • [ Nome do Botão ]: Explicação
+        const hasButtonItems = lines.some((l) => /^\s*•\s*\[\s*([^\]]+)\s*\]\s*:\s*(.+)/.test(l))
+
+        if (hasButtonItems) {
+          return (
+            <div key={pIdx} className="space-y-2.5 my-2">
+              {lines.map((line, lIdx) => {
+                const matchBtn = line.match(/^\s*•\s*\[\s*([^\]]+)\s*\]\s*:\s*(.+)/)
+                if (matchBtn) {
+                  buttonCount++
+                  const currentBtnIndex = buttonCount
+                  const [, btnLabel, btnDesc] = matchBtn
+                  return (
+                    <div
+                      key={lIdx}
+                      className="p-3.5 rounded-xl border border-border/80 bg-background/80 hover:border-purple-300 dark:hover:border-purple-800 transition flex flex-col sm:flex-row sm:items-start gap-3 shadow-2xs"
+                    >
+                      <div className="shrink-0 pt-0.5 flex items-center gap-2">
+                        <span className="h-5 w-5 rounded-full bg-purple-700 text-white text-[10px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+                          {currentBtnIndex}
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-950/70 border border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-xs font-black shadow-xs tracking-tight">
+                          <span>[ {btnLabel} ]</span>
+                        </span>
+                      </div>
+                      <div className="text-xs sm:text-[13px] text-foreground/90 leading-relaxed pt-0.5">
+                        {btnDesc}
+                      </div>
+                    </div>
+                  )
+                }
+
+                if (line.trim().startsWith('•')) {
+                  return (
+                    <div key={lIdx} className="flex items-start gap-2 text-xs sm:text-[13px] text-foreground/90 pl-1">
+                      <span className="text-purple-600 font-bold shrink-0 mt-0.5">•</span>
+                      <span>{line.replace(/^\s*•\s*/, '')}</span>
+                    </div>
+                  )
+                }
+
+                return (
+                  <p key={lIdx} className="text-xs sm:text-[13px] text-foreground/90 font-medium">
+                    {line}
+                  </p>
+                )
+              })}
+            </div>
+          )
+        }
+
+        // 2. Detecta passos numerados (1. ... 2. ...)
+        const hasNumberedSteps = lines.some((l) => /^\s*\d+\.\s*(.+)/.test(l))
+        if (hasNumberedSteps) {
+          return (
+            <div key={pIdx} className="space-y-3 my-2">
+              {lines.map((line, lIdx) => {
+                const matchNum = line.match(/^\s*(\d+)\.\s*(.+)/)
+                if (matchNum) {
+                  const [, stepNum, stepContent] = matchNum
+                  return (
+                    <div
+                      key={lIdx}
+                      className="p-3.5 rounded-xl border border-border/70 bg-background/60 flex items-start gap-3 shadow-2xs"
+                    >
+                      <span className="h-6 w-6 rounded-full bg-purple-700 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                        {stepNum}
+                      </span>
+                      <div className="text-xs sm:text-[13px] text-foreground/90 leading-relaxed pt-0.5">
+                        {stepContent}
+                      </div>
+                    </div>
+                  )
+                }
+
+                if (line.trim().startsWith('•')) {
+                  return (
+                    <div key={lIdx} className="flex items-start gap-2 text-xs sm:text-[13px] text-foreground/90 pl-4">
+                      <span className="text-purple-600 font-bold shrink-0 mt-0.5">•</span>
+                      <span>{line.replace(/^\s*•\s*/, '')}</span>
+                    </div>
+                  )
+                }
+
+                return (
+                  <p key={lIdx} className="text-xs sm:text-[13px] text-foreground/90 font-medium">
+                    {line}
+                  </p>
+                )
+              })}
+            </div>
+          )
+        }
+
+        // 3. Parágrafo padrão com suporte a marcadores
+        return (
+          <div key={pIdx} className="space-y-1.5">
+            {lines.map((line, lIdx) => {
+              if (line.trim().startsWith('•')) {
+                return (
+                  <div key={lIdx} className="flex items-start gap-2 text-xs sm:text-[13px] text-foreground/90 pl-1">
+                    <span className="text-purple-600 font-bold shrink-0 mt-0.5">•</span>
+                    <span>{line.replace(/^\s*•\s*/, '')}</span>
+                  </div>
+                )
+              }
+              return (
+                <p key={lIdx} className="text-xs sm:text-[13px] text-foreground/90 leading-relaxed">
+                  {line}
+                </p>
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function ManualsAdminView() {
@@ -67,8 +208,10 @@ export default function ManualsAdminView() {
   const [metricsLoading, setMetricsLoading] = useState(false)
   const [suggestionStatusFilter, setSuggestionStatusFilter] = useState<'ALL' | 'PENDING' | 'IMPLEMENTED'>('ALL')
 
-  // Modais
-  const [editArticleOpen, setEditArticleOpen] = useState(false)
+  // Modais e Estados de Navegação do Editor
+  const [isEditingArticle, setIsEditingArticle] = useState(false)
+  const [editorMode, setEditorMode] = useState<'EDIT' | 'PREVIEW'>('EDIT')
+  const [previewLightboxImg, setPreviewLightboxImg] = useState<string | null>(null)
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<ManualArticle | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<ManualCategory | null>(null)
@@ -80,6 +223,7 @@ export default function ManualsAdminView() {
     title: string
     slug: string
     summary: string
+    highlightCategory: string
     readTimeMinutes: number
     targetRoles: UserRole[]
     orderIndex: number
@@ -90,6 +234,7 @@ export default function ManualsAdminView() {
     title: '',
     slug: '',
     summary: '',
+    highlightCategory: '',
     readTimeMinutes: 3,
     targetRoles: ['CASHIER', 'TENANT_ADMIN', 'FRANCHISOR_ADMIN', 'SUPER_ADMIN'],
     orderIndex: 0,
@@ -226,6 +371,7 @@ export default function ManualsAdminView() {
         title: article.title,
         slug: article.slug,
         summary: article.summary || '',
+        highlightCategory: article.highlightCategory || '',
         readTimeMinutes: article.readTimeMinutes || 3,
         targetRoles: article.targetRoles || ['CASHIER', 'TENANT_ADMIN', 'FRANCHISOR_ADMIN', 'SUPER_ADMIN'],
         orderIndex: article.orderIndex || 0,
@@ -239,6 +385,7 @@ export default function ManualsAdminView() {
         title: '',
         slug: '',
         summary: '',
+        highlightCategory: '',
         readTimeMinutes: 3,
         targetRoles: ['CASHIER', 'TENANT_ADMIN', 'FRANCHISOR_ADMIN', 'SUPER_ADMIN'],
         orderIndex: articles.length,
@@ -259,7 +406,8 @@ export default function ManualsAdminView() {
         ],
       })
     }
-    setEditArticleOpen(true)
+    setIsEditingArticle(true)
+    setEditorMode('EDIT')
   }
 
   // Abertura de Categoria
@@ -467,7 +615,7 @@ export default function ManualsAdminView() {
       if (!res.ok) throw new Error('Falha ao salvar manual')
 
       toast.success(isEdit ? 'Manual atualizado com sucesso' : 'Manual publicado com sucesso')
-      setEditArticleOpen(false)
+      setIsEditingArticle(false)
       loadData()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao persistir manual')
@@ -504,6 +652,746 @@ export default function ManualsAdminView() {
     }
     return true
   })
+
+  // Caso o usuário esteja criando ou editando um manual, exibe a página dedicada com Modos Edição e Preview
+  if (isEditingArticle) {
+    const activeCategory = categories.find((c) => c.id === formData.categoryId)
+
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto pb-24">
+        {/* LIGHTBOX DE PREVIEW DE IMAGEM */}
+        {previewLightboxImg && (
+          <div
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+            onClick={() => setPreviewLightboxImg(null)}
+          >
+            <div className="relative max-w-5xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={previewLightboxImg}
+                alt="Preview ampliado"
+                className="max-h-[85vh] max-w-full object-contain rounded-xl shadow-2xl"
+              />
+              <button
+                type="button"
+                onClick={() => setPreviewLightboxImg(null)}
+                className="absolute top-3 right-3 p-2 rounded-full bg-black/70 hover:bg-black/90 text-white cursor-pointer"
+                title="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* BARRA SUPERIOR FIXA / STICKY DO EDITOR */}
+        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border py-3 px-4 -mx-4 sm:-mx-6 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditingArticle(false)}
+              className="text-xs font-bold rounded-xl cursor-pointer shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1.5" />
+              <span>Voltar aos Manuais</span>
+            </Button>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {formData.id ? 'Editar Manual' : 'Novo Manual'}
+                </span>
+                {activeCategory && (
+                  <Badge variant="outline" className="text-[10px] font-bold text-purple-700 border-purple-200">
+                    {activeCategory.title}
+                  </Badge>
+                )}
+                {formData.highlightCategory && (
+                  <span className="px-2 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider">
+                    {formData.highlightCategory}
+                  </span>
+                )}
+                {!formData.published && (
+                  <span className="px-2 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 uppercase tracking-wider">
+                    Rascunho
+                  </span>
+                )}
+              </div>
+              <h2 className="text-sm sm:text-base font-black text-foreground truncate max-w-xl">
+                {formData.title.trim() || 'Manual sem título'}
+              </h2>
+            </div>
+          </div>
+
+          {/* ALTERNADOR DE MODO: EDIÇÃO VS VISUALIZAÇÃO */}
+          <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0">
+            <div className="inline-flex p-1 rounded-xl bg-muted border border-border">
+              <button
+                type="button"
+                onClick={() => setEditorMode('EDIT')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  editorMode === 'EDIT'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                <span>Modo Edição</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEditorMode('PREVIEW')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  editorMode === 'PREVIEW'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                <span>Modo Visualização (Preview)</span>
+              </button>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditingArticle(false)}
+              className="text-xs font-bold rounded-xl cursor-pointer"
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              disabled={saving}
+              onClick={handleSaveArticle}
+              className="text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white rounded-xl cursor-pointer shadow-xs"
+            >
+              {saving ? 'A salvar...' : 'Salvar Manual'}
+            </Button>
+          </div>
+        </div>
+
+        {editorMode === 'EDIT' ? (
+          /* ======================================================== */
+          /* MODO EDIÇÃO: FORMULÁRIO COMPLETO COM PASSOS E DESTAQUES  */
+          /* ======================================================== */
+          <div className="space-y-6">
+            {/* 1. DADOS BÁSICOS & METADADOS DO MANUAL */}
+            <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
+              <div className="border-b border-border pb-3">
+                <h3 className="text-sm font-black text-foreground tracking-tight flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-purple-700" />
+                  <span>Configurações Gerais & Metadados do Artigo</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Defina o título, categoria mãe, perfis com acesso e se o manual possui uma categoria de destaque.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Título do Guia *</label>
+                  <Input
+                    value={formData.title}
+                    onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
+                    placeholder="Ex: Como Montar Copos de Açaí no PDV"
+                    className="text-xs rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Categoria *</label>
+                  <select
+                    value={formData.categoryId}
+                    onChange={(e) => setFormData((p) => ({ ...p, categoryId: e.target.value }))}
+                    className="w-full text-xs rounded-xl border border-input bg-background px-3 py-2 text-foreground focus:outline-hidden"
+                  >
+                    <option value="">Selecione uma categoria...</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* CATEGORIA DE DESTAQUE NO ARTIGO */}
+                <div className="space-y-2 md:col-span-2 p-3.5 rounded-xl border border-border/80 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-foreground">
+                        Categoria de Destaque no Artigo (Opcional)
+                      </label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Destaque temas prioritários na Central de Ajuda com uma classificação visual no topo do artigo.
+                      </p>
+                    </div>
+                    {formData.highlightCategory && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData((p) => ({ ...p, highlightCategory: '' }))}
+                        className="text-[11px] font-bold text-red-600 hover:underline cursor-pointer"
+                      >
+                        Limpar Destaque
+                      </button>
+                    )}
+                  </div>
+
+                  <Input
+                    value={formData.highlightCategory}
+                    onChange={(e) => setFormData((p) => ({ ...p, highlightCategory: e.target.value }))}
+                    placeholder="Ex: Essencial para Operação, Atenção Crítica, Novidade da Rede..."
+                    className="text-xs rounded-xl bg-background"
+                  />
+
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[10.5px] text-muted-foreground mr-1">Sugestões rápidas:</span>
+                    {HIGHLIGHT_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setFormData((p) => ({ ...p, highlightCategory: preset }))}
+                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold border transition cursor-pointer ${
+                          formData.highlightCategory === preset
+                            ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700'
+                            : 'bg-card text-muted-foreground border-border hover:bg-muted'
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Resumo do Objetivo (1 linha)</label>
+                  <Input
+                    value={formData.summary}
+                    onChange={(e) => setFormData((p) => ({ ...p, summary: e.target.value }))}
+                    placeholder="Ex: Instrução de montagem, cotas de acompanhamentos e cobrança de cremes extras."
+                    className="text-xs rounded-xl"
+                  />
+                </div>
+
+                {/* Perfis com Acesso */}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-foreground">Quem pode visualizar este manual?</label>
+                  <div className="flex flex-wrap gap-4 pt-1">
+                    {[
+                      { id: 'CASHIER' as UserRole, label: 'Operadores de Caixa & Atendimento' },
+                      { id: 'TENANT_ADMIN' as UserRole, label: 'Gerentes de Franquia (Lojas)' },
+                      { id: 'FRANCHISOR_ADMIN' as UserRole, label: 'Franqueadora Master (Matriz)' },
+                    ].map((roleItem) => {
+                      const checked = formData.targetRoles.includes(roleItem.id)
+                      return (
+                        <label key={roleItem.id} className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData((p) => ({ ...p, targetRoles: [...p.targetRoles, roleItem.id] }))
+                              } else {
+                                setFormData((p) => ({
+                                  ...p,
+                                  targetRoles: p.targetRoles.filter((r) => r !== roleItem.id),
+                                }))
+                              }
+                            }}
+                            className="rounded border-input text-purple-700"
+                          />
+                          <span>{roleItem.label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Publicado & Tempo de Leitura */}
+                <div className="flex items-center gap-4">
+                  <div className="space-y-1.5 flex-1">
+                    <label className="text-xs font-bold text-foreground">Tempo Estimado (min)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={60}
+                      value={formData.readTimeMinutes}
+                      onChange={(e) => setFormData((p) => ({ ...p, readTimeMinutes: Number(e.target.value) || 1 }))}
+                      className="text-xs rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 flex-1">
+                    <label className="text-xs font-bold text-foreground">Estado de Publicação</label>
+                    <div className="pt-2">
+                      <label className="inline-flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.published}
+                          onChange={(e) => setFormData((p) => ({ ...p, published: e.target.checked }))}
+                          className="rounded border-input text-purple-700"
+                        />
+                        <span className="font-bold">{formData.published ? 'Publicado' : 'Salvar como Rascunho'}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. PASSOS SEQUENCIAIS */}
+            <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+                <div>
+                  <h3 className="text-sm font-black text-foreground tracking-tight flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-purple-700" />
+                    <span>Passos Sequenciais ({formData.steps.length})</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Monte o fluxo passo a passo. Pode colar prints diretamente com Ctrl+V na área da mídia.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddStep}
+                  className="text-xs font-bold rounded-xl cursor-pointer self-start sm:self-auto"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Adicionar Passo
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {formData.steps.map((step, idx) => (
+                  <div
+                    key={idx}
+                    onPaste={(e) => handlePasteOnStep(e, idx)}
+                    className="p-4 sm:p-5 rounded-2xl border border-border bg-muted/20 space-y-3.5 relative group"
+                  >
+                    {/* Header do Passo */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-6 w-6 rounded-full bg-purple-700 text-white flex items-center justify-center text-xs font-black shadow-2xs">
+                          {step.step_number}
+                        </span>
+                        <span className="text-xs font-black text-foreground">Passo {step.step_number}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveStep(idx, 'UP')}
+                          disabled={idx === 0}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+                          title="Mover para cima"
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveStep(idx, 'DOWN')}
+                          disabled={idx === formData.steps.length - 1}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+                          title="Mover para baixo"
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStep(idx)}
+                          className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer ml-2"
+                          title="Remover passo"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Título & Texto */}
+                    <div className="space-y-2">
+                      <Input
+                        value={step.title}
+                        onChange={(e) => handleUpdateStep(idx, { title: e.target.value })}
+                        placeholder={`Título do Passo ${step.step_number} (ex: Aceder à Tela de Fecho)`}
+                        className="text-xs font-bold rounded-xl bg-background"
+                      />
+
+                      <textarea
+                        value={step.description}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleUpdateStep(idx, { description: e.target.value })}
+                        placeholder="Descreva exatamente o que o utilizador deve fazer. Para destacar botões na tela, use o formato: • [ Nome do Botão ]: ação realizada..."
+                        rows={3}
+                        className="w-full text-xs rounded-xl border border-input bg-background p-3 text-foreground focus:outline-hidden leading-relaxed"
+                      />
+                    </div>
+
+                    {/* MÍDIA DO PASSO (Upload / Ctrl+V vs YouTube) */}
+                    <div className="p-3.5 rounded-xl border border-border/80 bg-background space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-muted-foreground">Mídia do Passo</span>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStep(idx, { media_source: 'UPLOAD' })}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition ${
+                              step.media_source !== 'YOUTUBE'
+                                ? 'bg-purple-100 text-purple-900 dark:bg-purple-900/50 dark:text-purple-200'
+                                : 'text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            Upload / Ctrl+V
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStep(idx, { media_source: 'YOUTUBE' })}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition ${
+                              step.media_source === 'YOUTUBE'
+                                ? 'bg-purple-100 text-purple-900 dark:bg-purple-900/50 dark:text-purple-200'
+                                : 'text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            Vídeo do YouTube
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Caso A: Upload / Colar Ctrl+V */}
+                      {step.media_source !== 'YOUTUBE' ? (
+                        <div className="space-y-2">
+                          {step.media_url ? (
+                            <div className="relative rounded-xl border border-border overflow-hidden bg-black/5 dark:bg-black/40 p-2.5 flex items-center justify-between gap-3">
+                              {step.media_type === 'VIDEO' ? (
+                                <video
+                                  src={step.media_url}
+                                  muted
+                                  playsInline
+                                  loop
+                                  autoPlay
+                                  className="h-20 w-32 object-cover rounded-lg border border-border"
+                                />
+                              ) : (
+                                <img
+                                  src={step.media_url}
+                                  alt=""
+                                  className="h-20 w-32 object-cover rounded-lg border border-border"
+                                />
+                              )}
+
+                              <div className="flex-1 min-w-0 text-xs">
+                                <div className="font-mono text-[10px] text-muted-foreground truncate">
+                                  {step.media_url}
+                                </div>
+                                <div className="text-[11px] text-emerald-600 font-bold mt-1">
+                                  {step.media_type === 'VIDEO' ? 'Vídeo Carregado' : 'Imagem / Print Carregado'}
+                                </div>
+                              </div>
+
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdateStep(idx, { media_url: null })}
+                                className="text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl"
+                              >
+                                Remover
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="border border-dashed border-border rounded-xl p-4 text-center space-y-2 bg-muted/10">
+                              <p className="text-xs text-muted-foreground">
+                                Cole um print com <kbd className="px-1.5 py-0.5 rounded bg-muted border font-mono">Ctrl + V</kbd> ou selecione um ficheiro:
+                              </p>
+
+                              <label className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-card border border-border hover:bg-muted cursor-pointer transition">
+                                <Upload className="h-3.5 w-3.5" />
+                                <span>{uploadingStepIdx === idx ? 'A carregar...' : 'Selecionar Imagem, GIF ou Vídeo MP4'}</span>
+                                <input
+                                  type="file"
+                                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
+                                  className="hidden"
+                                  disabled={uploadingStepIdx === idx}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) handleFileUpload(idx, file)
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* Caso B: Link Específico do YouTube */
+                        <div className="space-y-2">
+                          <Input
+                            value={step.media_url || ''}
+                            onChange={(e) => {
+                              const url = e.target.value
+                              const ytid = extractYoutubeId(url)
+                              handleUpdateStep(idx, {
+                                media_source: 'YOUTUBE',
+                                media_type: 'VIDEO',
+                                media_url: url,
+                                youtube_id: ytid,
+                              })
+                            }}
+                            placeholder="Cole o link do YouTube (ex: https://www.youtube.com/watch?v=... ou https://youtu.be/...)"
+                            className="text-xs rounded-xl"
+                          />
+
+                          {step.youtube_id && (
+                            <div className="relative rounded-xl overflow-hidden border border-border aspect-video max-w-sm">
+                              <iframe
+                                src={`https://www.youtube-nocookie.com/embed/${step.youtube_id}?modestbranding=1&rel=0`}
+                                title="Pré-visualização do YouTube"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                className="w-full h-full border-0"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* DICA / ATENÇÃO (CALLOUT COM 4 CATEGORIAS) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                      <div>
+                        <select
+                          value={step.callout_type || ''}
+                          onChange={(e) =>
+                            handleUpdateStep(idx, {
+                              callout_type: (e.target.value as any) || null,
+                            })
+                          }
+                          className="w-full text-xs rounded-xl border border-input bg-background px-3 py-2 text-foreground focus:outline-hidden"
+                        >
+                          <option value="">Sem nota de destaque</option>
+                          <option value="INFO">Dica Informativa (Roxo/Azul)</option>
+                          <option value="ALERT">Atenção Operacional (Âmbar)</option>
+                          <option value="CRITICAL">Ponto Crítico (Vermelho)</option>
+                          <option value="SUCCESS">Boa Prática (Verde)</option>
+                        </select>
+                      </div>
+
+                      {step.callout_type && (
+                        <div className="sm:col-span-2">
+                          <Input
+                            value={step.callout_text || ''}
+                            onChange={(e) => handleUpdateStep(idx, { callout_text: e.target.value })}
+                            placeholder="Texto da nota / observação para este passo..."
+                            className="text-xs rounded-xl bg-background"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ======================================================== */
+          /* MODO VISUALIZAÇÃO: RÉPLICA EM TEMPO REAL DA TELA /ajuda */
+          /* ======================================================== */
+          <div className="space-y-6 animate-fadeIn">
+            <div className="p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-xs text-purple-900 dark:text-purple-200 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4 shrink-0 text-purple-700" />
+                <span className="font-bold">Pré-visualização em Tempo Real</span>
+                <span className="text-muted-foreground hidden sm:inline">
+                  • Exibição idêntica à que os operadores e gerentes visualizam na Central de Ajuda.
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setEditorMode('EDIT')}
+                className="text-xs font-bold rounded-xl cursor-pointer"
+              >
+                <Edit2 className="h-3.5 w-3.5 mr-1" />
+                Voltar à Edição
+              </Button>
+            </div>
+
+            {/* ARTIGO COMPLETO ESTILIZADO */}
+            <article className="bg-card border border-border rounded-3xl p-6 sm:p-10 space-y-8 shadow-sm">
+              {/* Header do Artigo */}
+              <div className="space-y-3 border-b border-border pb-6">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="text-[11px] font-bold text-purple-700 border-purple-200">
+                    {activeCategory?.title || 'Sem Categoria'}
+                  </Badge>
+
+                  {formData.highlightCategory && (
+                    <span className="px-2.5 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider">
+                      {formData.highlightCategory}
+                    </span>
+                  )}
+
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Leitura: {formData.readTimeMinutes || 3} min
+                  </span>
+
+                  {!formData.published && (
+                    <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase tracking-wider">
+                      Rascunho (Não Publicado)
+                    </span>
+                  )}
+                </div>
+
+                <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight leading-tight">
+                  {formData.title || 'Título do Guia Passo a Passo'}
+                </h1>
+
+                {formData.summary && (
+                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed font-normal">
+                    {formData.summary}
+                  </p>
+                )}
+              </div>
+
+              {/* Lista dos Passos no Preview */}
+              <div className="space-y-8">
+                {formData.steps.map((step, idx) => (
+                  <section
+                    key={idx}
+                    className="p-5 sm:p-7 rounded-2xl border border-border/80 bg-background/50 space-y-4 shadow-2xs"
+                  >
+                    {/* Cabeçalho do Passo */}
+                    <div className="flex items-center gap-3">
+                      <span className="h-7 w-7 rounded-full bg-purple-700 text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
+                        {step.step_number}
+                      </span>
+                      <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+                        {step.title || `Passo ${step.step_number}`}
+                      </h2>
+                    </div>
+
+                    {/* Callout de Destaque do Passo (INFO, ALERT, CRITICAL, SUCCESS) */}
+                    {step.callout_type && step.callout_text && (
+                      <div
+                        className={`p-3.5 rounded-xl border text-xs sm:text-[13px] flex items-start gap-2.5 leading-relaxed ${
+                          step.callout_type === 'ALERT'
+                            ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 text-amber-900 dark:text-amber-200'
+                            : step.callout_type === 'CRITICAL'
+                            ? 'bg-red-50 dark:bg-red-950/30 border-red-200 text-red-900 dark:text-red-200'
+                            : step.callout_type === 'SUCCESS'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 text-emerald-900 dark:text-emerald-200'
+                            : 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 text-purple-900 dark:text-purple-200'
+                        }`}
+                      >
+                        {step.callout_type === 'ALERT' ? (
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                        ) : step.callout_type === 'CRITICAL' ? (
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+                        ) : step.callout_type === 'SUCCESS' ? (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                        ) : (
+                          <Info className="h-4 w-4 shrink-0 text-purple-700 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                          <span className="font-bold mr-1">
+                            {step.callout_type === 'ALERT'
+                              ? 'Atenção Operacional:'
+                              : step.callout_type === 'CRITICAL'
+                              ? 'Ponto Crítico:'
+                              : step.callout_type === 'SUCCESS'
+                              ? 'Boa Prática:'
+                              : 'Dica Informativa:'}
+                          </span>
+                          <span>{step.callout_text}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mídia do Passo */}
+                    {step.youtube_id ? (
+                      <div className="relative rounded-2xl overflow-hidden aspect-video bg-black border border-border shadow-sm my-3 max-w-2xl mx-auto">
+                        <iframe
+                          src={`https://www.youtube-nocookie.com/embed/${step.youtube_id}?rel=0&modestbranding=1&controls=1&playsinline=1`}
+                          title={step.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="w-full h-full border-0"
+                        />
+                      </div>
+                    ) : step.media_url ? (
+                      <div className="my-3 rounded-2xl overflow-hidden border border-border bg-black/5 dark:bg-black/40 shadow-sm relative group max-w-2xl mx-auto">
+                        {step.media_type === 'VIDEO' ? (
+                          <video
+                            src={step.media_url}
+                            controls
+                            muted
+                            loop
+                            playsInline
+                            className="w-full max-h-[500px] object-contain rounded-xl"
+                          />
+                        ) : (
+                          <div
+                            className="relative cursor-zoom-in"
+                            onClick={() => step.media_url && setPreviewLightboxImg(step.media_url)}
+                          >
+                            <img
+                              src={step.media_url}
+                              alt={step.title}
+                              className="w-full max-h-[500px] object-contain rounded-xl transition group-hover:opacity-95"
+                            />
+                            <div className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 text-white text-xs opacity-0 group-hover:opacity-100 transition shadow">
+                              <Maximize2 className="h-3.5 w-3.5" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {/* Instruções Detalhadas Formatadas */}
+                    {step.description && (
+                      <div className="pt-2">
+                        <FormattedInstruction text={step.description} />
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+
+              {/* Rodapé da Visualização */}
+              <div className="pt-6 border-t border-border flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditorMode('EDIT')}
+                  className="text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  <Edit2 className="h-3.5 w-3.5 mr-1.5" />
+                  Voltar ao Modo Edição
+                </Button>
+
+                <Button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleSaveArticle}
+                  className="text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white rounded-xl cursor-pointer shadow-xs"
+                >
+                  {saving ? 'A salvar...' : 'Salvar Manual'}
+                </Button>
+              </div>
+            </article>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -1025,9 +1913,16 @@ export default function ManualsAdminView() {
               <div className="space-y-2.5">
                 {/* Cabeçalho do Card */}
                 <div className="flex items-center justify-between gap-2">
-                  <Badge variant="outline" className="text-[10px] font-bold text-purple-700 bg-purple-50 dark:bg-purple-950/40 border-purple-200">
-                    {art.categoryTitle || 'Sem categoria'}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant="outline" className="text-[10px] font-bold text-purple-700 bg-purple-50 dark:bg-purple-950/40 border-purple-200">
+                      {art.categoryTitle || 'Sem categoria'}
+                    </Badge>
+                    {art.highlightCategory && (
+                      <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider">
+                        {art.highlightCategory}
+                      </span>
+                    )}
+                  </div>
 
                   <Badge
                     variant="outline"
@@ -1106,391 +2001,6 @@ export default function ManualsAdminView() {
       )}
       </>
       )}
-
-      {/* DIÁLOGO: CRIAÇÃO / EDIÇÃO DE MANUAL */}
-      <Dialog open={editArticleOpen} onOpenChange={setEditArticleOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-6">
-          <DialogHeader className="border-b border-border pb-3">
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-purple-700" />
-              <span>{formData.id ? 'Editar Manual' : 'Novo Manual Passo a Passo'}</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            {/* 1. DADOS BÁSICOS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Título do Guia *</label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                  placeholder="Ex: Como Montar Copos de Açaí no PDV"
-                  className="text-xs rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Categoria *</label>
-                <select
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData((p) => ({ ...p, categoryId: e.target.value }))}
-                  className="w-full text-xs rounded-xl border border-input bg-background px-3 py-2 text-foreground focus:outline-hidden"
-                >
-                  <option value="">Selecione uma categoria...</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="md:col-span-2 space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Resumo do Objetivo (1 linha)</label>
-                <Input
-                  value={formData.summary}
-                  onChange={(e) => setFormData((p) => ({ ...p, summary: e.target.value }))}
-                  placeholder="Ex: Instrução de montagem, cotas de acompanhamentos e cobrança de cremes extras."
-                  className="text-xs rounded-xl"
-                />
-              </div>
-
-              {/* Perfis com Acesso */}
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="text-xs font-bold text-foreground">Quem pode visualizar este manual?</label>
-                <div className="flex flex-wrap gap-4 pt-1">
-                  {[
-                    { id: 'CASHIER' as UserRole, label: 'Operadores de Caixa & Atendimento' },
-                    { id: 'TENANT_ADMIN' as UserRole, label: 'Gerentes de Franquia (Lojas)' },
-                    { id: 'FRANCHISOR_ADMIN' as UserRole, label: 'Franqueadora Master (Matriz)' },
-                  ].map((roleItem) => {
-                    const checked = formData.targetRoles.includes(roleItem.id)
-                    return (
-                      <label key={roleItem.id} className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFormData((p) => ({ ...p, targetRoles: [...p.targetRoles, roleItem.id] }))
-                            } else {
-                              setFormData((p) => ({
-                                ...p,
-                                targetRoles: p.targetRoles.filter((r) => r !== roleItem.id),
-                              }))
-                            }
-                          }}
-                          className="rounded border-input text-purple-700"
-                        />
-                        <span>{roleItem.label}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Publicado & Tempo de Leitura */}
-              <div className="flex items-center gap-4">
-                <div className="space-y-1.5 flex-1">
-                  <label className="text-xs font-bold text-foreground">Tempo Estimado (min)</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={formData.readTimeMinutes}
-                    onChange={(e) => setFormData((p) => ({ ...p, readTimeMinutes: Number(e.target.value) || 1 }))}
-                    className="text-xs rounded-xl"
-                  />
-                </div>
-
-                <div className="space-y-1.5 flex-1">
-                  <label className="text-xs font-bold text-foreground">Estado de Publicação</label>
-                  <div className="pt-2">
-                    <label className="inline-flex items-center gap-2 text-xs cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.published}
-                        onChange={(e) => setFormData((p) => ({ ...p, published: e.target.checked }))}
-                        className="rounded border-input text-purple-700"
-                      />
-                      <span className="font-bold">{formData.published ? 'Publicado' : 'Salvar como Rascunho'}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. PASSOS SEQUENCIAIS */}
-            <div className="space-y-4 pt-4 border-t border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">Passos Sequenciais ({formData.steps.length})</h3>
-                  <p className="text-[11px] text-muted-foreground">
-                    Monte o fluxo passo a passo. Pode colar prints diretamente com Ctrl+V na área da mídia.
-                  </p>
-                </div>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAddStep}
-                  className="text-xs font-bold rounded-xl"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Adicionar Passo
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {formData.steps.map((step, idx) => (
-                  <div
-                    key={idx}
-                    onPaste={(e) => handlePasteOnStep(e, idx)}
-                    className="p-4 rounded-2xl border border-border bg-muted/20 space-y-3 relative group"
-                  >
-                    {/* Header do Passo */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="h-6 w-6 rounded-full bg-purple-700 text-white flex items-center justify-center text-xs font-black">
-                          {step.step_number}
-                        </span>
-                        <span className="text-xs font-bold text-foreground">Passo {step.step_number}</span>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleMoveStep(idx, 'UP')}
-                          disabled={idx === 0}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
-                          title="Mover para cima"
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMoveStep(idx, 'DOWN')}
-                          disabled={idx === formData.steps.length - 1}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
-                          title="Mover para baixo"
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveStep(idx)}
-                          className="p-1 rounded text-red-600 hover:bg-red-50 cursor-pointer ml-2"
-                          title="Remover passo"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Título & Texto */}
-                    <div className="space-y-2">
-                      <Input
-                        value={step.title}
-                        onChange={(e) => handleUpdateStep(idx, { title: e.target.value })}
-                        placeholder={`Título do Passo ${step.step_number} (ex: Aceder à Tela de Fecho)`}
-                        className="text-xs font-bold rounded-xl"
-                      />
-
-                      <textarea
-                        value={step.description}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleUpdateStep(idx, { description: e.target.value })}
-                        placeholder="Descreva exatamente o que o utilizador deve fazer neste passo..."
-                        rows={2}
-                        className="w-full text-xs rounded-xl border border-input bg-background p-2.5 text-foreground focus:outline-hidden"
-                      />
-                    </div>
-
-                    {/* MÍDIA DO PASSO (SEM CAMPO GENÉRICO DE URL) */}
-                    <div className="p-3 rounded-xl border border-border/80 bg-background space-y-2.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-muted-foreground">Mídia do Passo</span>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStep(idx, { media_source: 'UPLOAD' })}
-                            className={`px-2 py-1 rounded-lg text-[10.5px] font-bold cursor-pointer transition ${
-                              step.media_source !== 'YOUTUBE'
-                                ? 'bg-purple-100 text-purple-900 dark:bg-purple-900/50'
-                                : 'text-muted-foreground hover:bg-muted'
-                            }`}
-                          >
-                            Upload / Ctrl+V
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStep(idx, { media_source: 'YOUTUBE' })}
-                            className={`px-2 py-1 rounded-lg text-[10.5px] font-bold cursor-pointer transition ${
-                              step.media_source === 'YOUTUBE'
-                                ? 'bg-purple-100 text-purple-900 dark:bg-purple-900/50'
-                                : 'text-muted-foreground hover:bg-muted'
-                            }`}
-                          >
-                            Vídeo do YouTube
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Caso A: Upload / Colar Ctrl+V */}
-                      {step.media_source !== 'YOUTUBE' ? (
-                        <div className="space-y-2">
-                          {step.media_url ? (
-                            <div className="relative rounded-xl border border-border overflow-hidden bg-black/5 dark:bg-black/40 p-2 flex items-center justify-between gap-3">
-                              {step.media_type === 'VIDEO' ? (
-                                <video
-                                  src={step.media_url}
-                                  muted
-                                  playsInline
-                                  loop
-                                  autoPlay
-                                  className="h-20 w-32 object-cover rounded-lg border border-border"
-                                />
-                              ) : (
-                                <img
-                                  src={step.media_url}
-                                  alt=""
-                                  className="h-20 w-32 object-cover rounded-lg border border-border"
-                                />
-                              )}
-
-                              <div className="flex-1 min-w-0 text-xs">
-                                <div className="font-mono text-[10px] text-muted-foreground truncate">
-                                  {step.media_url}
-                                </div>
-                                <div className="text-[10px] text-emerald-600 font-bold mt-1">
-                                  {step.media_type === 'VIDEO' ? 'Vídeo Carregado' : 'Imagem / Print Carregado'}
-                                </div>
-                              </div>
-
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleUpdateStep(idx, { media_url: null })}
-                                className="text-xs text-red-600 hover:bg-red-50"
-                              >
-                                Remover
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="border border-dashed border-border rounded-xl p-4 text-center space-y-2 bg-muted/10">
-                              <p className="text-xs text-muted-foreground">
-                                Cole um print com <kbd className="px-1.5 py-0.5 rounded bg-muted border font-mono">Ctrl + V</kbd> ou selecione um ficheiro:
-                              </p>
-
-                              <label className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-card border border-border hover:bg-muted cursor-pointer transition">
-                                <Upload className="h-3.5 w-3.5" />
-                                <span>{uploadingStepIdx === idx ? 'A carregar...' : 'Selecionar Imagem, GIF ou Vídeo MP4'}</span>
-                                <input
-                                  type="file"
-                                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
-                                  className="hidden"
-                                  disabled={uploadingStepIdx === idx}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0]
-                                    if (file) handleFileUpload(idx, file)
-                                  }}
-                                />
-                              </label>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        /* Caso B: Link Específico do YouTube */
-                        <div className="space-y-2">
-                          <Input
-                            value={step.media_url || ''}
-                            onChange={(e) => {
-                              const url = e.target.value
-                              const ytid = extractYoutubeId(url)
-                              handleUpdateStep(idx, {
-                                media_source: 'YOUTUBE',
-                                media_type: 'VIDEO',
-                                media_url: url,
-                                youtube_id: ytid,
-                              })
-                            }}
-                            placeholder="Cole o link do YouTube (ex: https://www.youtube.com/watch?v=... ou https://youtu.be/...)"
-                            className="text-xs rounded-xl"
-                          />
-
-                          {step.youtube_id && (
-                            <div className="relative rounded-xl overflow-hidden border border-border aspect-video max-w-sm">
-                              <iframe
-                                src={`https://www.youtube-nocookie.com/embed/${step.youtube_id}?modestbranding=1&rel=0`}
-                                title="Pré-visualização do YouTube"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                className="w-full h-full border-0"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* DICA / ATENÇÃO (CALLOUT OPCIONAL) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                      <div>
-                        <select
-                          value={step.callout_type || ''}
-                          onChange={(e) =>
-                            handleUpdateStep(idx, {
-                              callout_type: (e.target.value as any) || null,
-                            })
-                          }
-                          className="w-full text-xs rounded-xl border border-input bg-background px-2.5 py-1.5 text-foreground"
-                        >
-                          <option value="">Sem nota de destaque</option>
-                          <option value="INFO">Dica Informativa (Azul)</option>
-                          <option value="ALERT">Atenção Crítica (Âmbar)</option>
-                        </select>
-                      </div>
-
-                      {step.callout_type && (
-                        <div className="sm:col-span-2">
-                          <Input
-                            value={step.callout_text || ''}
-                            onChange={(e) => handleUpdateStep(idx, { callout_text: e.target.value })}
-                            placeholder="Texto da nota / dica para este passo..."
-                            className="text-xs rounded-xl"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="border-t border-border pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditArticleOpen(false)}
-              className="text-xs font-bold rounded-xl"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={saving}
-              onClick={handleSaveArticle}
-              className="text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white rounded-xl shadow-xs"
-            >
-              {saving ? 'A salvar...' : 'Salvar Manual'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* DIÁLOGO: CRIAÇÃO / EDIÇÃO DE CATEGORIA */}
       <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>

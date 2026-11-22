@@ -181,7 +181,7 @@ export async function getManualArticles(options: {
   const isMaster = userRole === 'SUPER_ADMIN'
 
   let sql = `
-    SELECT a.id, a.category_id, a.title, a.slug, a.summary, a.read_time_minutes, a.target_roles,
+    SELECT a.id, a.category_id, a.title, a.slug, a.summary, a.highlight_category, a.read_time_minutes, a.target_roles,
            a.order_index, a.published, a.steps, a.helpful_votes, a.unhelpful_votes, a.created_at, a.updated_at,
            c.title as category_title, c.slug as category_slug
     FROM manual_articles a
@@ -217,6 +217,7 @@ export async function getManualArticles(options: {
     title: row.title,
     slug: row.slug,
     summary: row.summary,
+    highlightCategory: row.highlight_category || null,
     readTimeMinutes: Number(row.read_time_minutes) || 3,
     targetRoles: Array.isArray(row.target_roles) ? row.target_roles : [],
     orderIndex: Number(row.order_index) || 0,
@@ -231,7 +232,7 @@ export async function getManualArticles(options: {
 
 export async function getManualArticleById(id: string): Promise<ManualArticle | null> {
   const res = await query(
-    `SELECT a.id, a.category_id, a.title, a.slug, a.summary, a.read_time_minutes, a.target_roles,
+    `SELECT a.id, a.category_id, a.title, a.slug, a.summary, a.highlight_category, a.read_time_minutes, a.target_roles,
             a.order_index, a.published, a.steps, a.helpful_votes, a.unhelpful_votes, a.created_at, a.updated_at,
             c.title as category_title, c.slug as category_slug
      FROM manual_articles a
@@ -251,6 +252,7 @@ export async function getManualArticleById(id: string): Promise<ManualArticle | 
     title: row.title,
     slug: row.slug,
     summary: row.summary,
+    highlightCategory: row.highlight_category || null,
     readTimeMinutes: Number(row.read_time_minutes) || 3,
     targetRoles: Array.isArray(row.target_roles) ? row.target_roles : [],
     orderIndex: Number(row.order_index) || 0,
@@ -270,7 +272,7 @@ export async function getManualArticleBySlug(
 ): Promise<ManualArticle | null> {
   const isMaster = userRole === 'SUPER_ADMIN'
   let sql = `
-    SELECT a.id, a.category_id, a.title, a.slug, a.summary, a.read_time_minutes, a.target_roles,
+    SELECT a.id, a.category_id, a.title, a.slug, a.summary, a.highlight_category, a.read_time_minutes, a.target_roles,
            a.order_index, a.published, a.steps, a.helpful_votes, a.unhelpful_votes, a.created_at, a.updated_at,
            c.title as category_title, c.slug as category_slug
     FROM manual_articles a
@@ -301,6 +303,7 @@ export async function getManualArticleBySlug(
     title: row.title,
     slug: row.slug,
     summary: row.summary,
+    highlightCategory: row.highlight_category || null,
     readTimeMinutes: Number(row.read_time_minutes) || 3,
     targetRoles: Array.isArray(row.target_roles) ? row.target_roles : [],
     orderIndex: Number(row.order_index) || 0,
@@ -323,6 +326,7 @@ export async function createManualArticle(data: Partial<ManualArticle>): Promise
   const title = (data.title || '').trim()
   const slug = (data.slug || slugify(title)).trim()
   const summary = data.summary?.trim() || null
+  const highlightCategory = data.highlightCategory?.trim() || null
   const readTimeMinutes = Number(data.readTimeMinutes) || 3
   const targetRoles = Array.isArray(data.targetRoles) && data.targetRoles.length > 0
     ? data.targetRoles
@@ -332,10 +336,10 @@ export async function createManualArticle(data: Partial<ManualArticle>): Promise
   const steps = Array.isArray(data.steps) ? data.steps : []
 
   const res = await query(
-    `INSERT INTO manual_articles (id, category_id, title, slug, summary, read_time_minutes, target_roles, order_index, published, steps)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-     RETURNING id, category_id, title, slug, summary, read_time_minutes, target_roles, order_index, published, steps, helpful_votes, unhelpful_votes, created_at, updated_at`,
-    [id, categoryId, title, slug, summary, readTimeMinutes, targetRoles, orderIndex, published, JSON.stringify(steps)]
+    `INSERT INTO manual_articles (id, category_id, title, slug, summary, highlight_category, read_time_minutes, target_roles, order_index, published, steps)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     RETURNING id, category_id, title, slug, summary, highlight_category, read_time_minutes, target_roles, order_index, published, steps, helpful_votes, unhelpful_votes, created_at, updated_at`,
+    [id, categoryId, title, slug, summary, highlightCategory, readTimeMinutes, targetRoles, orderIndex, published, JSON.stringify(steps)]
   )
 
   const row = res.rows[0]
@@ -345,6 +349,7 @@ export async function createManualArticle(data: Partial<ManualArticle>): Promise
     title: row.title,
     slug: row.slug,
     summary: row.summary,
+    highlightCategory: row.highlight_category || null,
     readTimeMinutes: Number(row.read_time_minutes) || 3,
     targetRoles: row.target_roles,
     orderIndex: Number(row.order_index) || 0,
@@ -378,6 +383,10 @@ export async function updateManualArticle(id: string, data: Partial<ManualArticl
     updates.push(`summary = $${paramIdx++}`)
     params.push(data.summary ? data.summary.trim() : null)
   }
+  if (data.highlightCategory !== undefined) {
+    updates.push(`highlight_category = $${paramIdx++}`)
+    params.push(data.highlightCategory ? data.highlightCategory.trim() : null)
+  }
   if (data.readTimeMinutes !== undefined) {
     updates.push(`read_time_minutes = $${paramIdx++}`)
     params.push(Number(data.readTimeMinutes) || 3)
@@ -406,7 +415,7 @@ export async function updateManualArticle(id: string, data: Partial<ManualArticl
     UPDATE manual_articles
     SET ${updates.join(', ')}
     WHERE id::text = $${paramIdx}
-    RETURNING id, category_id, title, slug, summary, read_time_minutes, target_roles, order_index, published, steps, helpful_votes, unhelpful_votes, created_at, updated_at
+    RETURNING id, category_id, title, slug, summary, highlight_category, read_time_minutes, target_roles, order_index, published, steps, helpful_votes, unhelpful_votes, created_at, updated_at
   `
 
   const res = await query(sql, params)
@@ -421,6 +430,7 @@ export async function updateManualArticle(id: string, data: Partial<ManualArticl
     title: row.title,
     slug: row.slug,
     summary: row.summary,
+    highlightCategory: row.highlight_category || null,
     readTimeMinutes: Number(row.read_time_minutes) || 3,
     targetRoles: row.target_roles,
     orderIndex: Number(row.order_index) || 0,

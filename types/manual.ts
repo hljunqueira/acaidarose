@@ -2,7 +2,7 @@ import { UserRole } from './auth'
 
 export type ManualMediaType = 'IMAGE' | 'GIF' | 'VIDEO'
 export type ManualMediaSource = 'UPLOAD' | 'YOUTUBE'
-export type ManualCalloutType = 'INFO' | 'ALERT'
+export type ManualCalloutType = 'INFO' | 'ALERT' | 'CRITICAL' | 'SUCCESS'
 
 export interface ManualStep {
   step_number: number
@@ -38,6 +38,7 @@ export interface ManualArticle {
   title: string
   slug: string
   summary?: string | null
+  highlightCategory?: string | null
   readTimeMinutes: number
   targetRoles: UserRole[]
   orderIndex: number
