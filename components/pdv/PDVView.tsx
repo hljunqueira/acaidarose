@@ -145,6 +145,37 @@ export default function PDVView({
     return list
   }, [currentMenuProducts, selectedCategoryId, lanchesSearchQuery])
 
+  // Grupos de opções dinâmicos do recipiente selecionado (ou do primeiro copo disponível)
+  const activeOptionGroups = useMemo(() => {
+    const target = draft?.container || displayedItems.find((it) => Array.isArray(it.optionGroups) && it.optionGroups.length > 0)
+    const groups = target?.optionGroups || []
+    return (groups || []).filter((g: any) => g.active !== false)
+  }, [draft?.container, displayedItems])
+
+  // Etapas dinâmicas do Montador Balcão respeitando a sequência de modelos
+  const wizardSteps = useMemo(() => {
+    const list: Array<{ id: number; label: string; desc: string }> = [
+      { id: 1, label: '1. Tamanho do Copo / Taça', desc: '250g a 1 Kg' },
+    ]
+    activeOptionGroups.forEach((g: any, idx: number) => {
+      const stepNum = idx + 2
+      let desc = g.subtitle || ''
+      if (!desc) {
+        if (g.priceType === 'Gratis') {
+          desc = g.maxQty ? `Até ${g.maxQty} inclusos` : 'Incluso'
+        } else {
+          desc = Number(g.additionalPrice) > 0 ? `+${formatCurrency(Number(g.additionalPrice))}/un.` : 'Adicionais'
+        }
+      }
+      list.push({
+        id: stepNum,
+        label: `${stepNum}. ${g.name}`,
+        desc,
+      })
+    })
+    return list
+  }, [activeOptionGroups])
+
   const draftBreakdown = useMemo(() => {
     if (!draft?.container) return null
     const weight = Number(draft.container.weightGrams) || 500
@@ -541,8 +572,13 @@ export default function PDVView({
               </div>
             ) : isAcaiMenu ? (
               <>
-                {/* WIZARD DE AÇAÍ: ETAPAS 1, 2 e 3 */}
-                <StepIndicator current={step} onSelectStep={setStep} canNavigateForward={Boolean(draft?.container)} />
+                {/* WIZARD DE AÇAÍ: ETAPAS DINÂMICAS CONFORME MODELOS DE OPÇÕES */}
+                <StepIndicator
+                  current={step}
+                  onSelectStep={setStep}
+                  canNavigateForward={Boolean(draft?.container)}
+                  steps={wizardSteps}
+                />
 
                 {/* Cabeçalho da Taça Sendo Montada com Preço em Tempo Real */}
                 {draft?.container && (
@@ -641,23 +677,79 @@ export default function PDVView({
                     />
                   )}
 
-                  {step === 2 && draft?.container && (
-                    <BaseSelector
-                      bases={catalog.bases}
-                      container={draft.container}
-                      selectedBases={draft.bases}
-                      onToggleBase={toggleBase}
-                    />
-                  )}
+                  {step > 1 && draft?.container && (() => {
+                    const currentGroup = activeOptionGroups[step - 2]
+                    if (!currentGroup) return null
 
-                  {step === 3 && draft?.container && (
-                    <ToppingSelector
-                      toppings={catalog.toppings}
-                      container={draft.container}
-                      selectedToppings={draft.toppings}
-                      onToggleTopping={toggleTopping}
-                    />
-                  )}
+                    const gId = (currentGroup.id || '').toLowerCase()
+                    const gName = (currentGroup.name || '').toLowerCase()
+
+                    const isBaseGroup = gId === 'model-bases' || gName.includes('base') || gName.includes('creme')
+                    const isFrutaGroup = gId === 'model-frutas' || gName.includes('fruta')
+                    const isToppingGroup = gId === 'model-toppings' || gName.includes('acompanhamento') || gName.includes('topping')
+                    const isCaldaGroup = gId === 'model-caldas' || gName.includes('calda') || gName.includes('adicionais')
+
+                    if (isBaseGroup) {
+                      return (
+                        <BaseSelector
+                          bases={catalog.bases}
+                          container={draft.container}
+                          selectedBases={draft.bases}
+                          onToggleBase={toggleBase}
+                        />
+                      )
+                    }
+
+                    if (isFrutaGroup) {
+                      return (
+                        <ToppingSelector
+                          toppings={catalog.toppings}
+                          container={draft.container}
+                          selectedToppings={draft.toppings}
+                          onToggleTopping={toggleTopping}
+                          allowedCategory="Frutas"
+                          stepTitle={currentGroup.name}
+                        />
+                      )
+                    }
+
+                    if (isToppingGroup) {
+                      return (
+                        <ToppingSelector
+                          toppings={catalog.toppings}
+                          container={draft.container}
+                          selectedToppings={draft.toppings}
+                          onToggleTopping={toggleTopping}
+                          allowedCategory="Toppings"
+                          stepTitle={currentGroup.name}
+                        />
+                      )
+                    }
+
+                    if (isCaldaGroup) {
+                      return (
+                        <ToppingSelector
+                          toppings={catalog.toppings}
+                          container={draft.container}
+                          selectedToppings={draft.toppings}
+                          onToggleTopping={toggleTopping}
+                          allowedCategory="Adicionais"
+                          stepTitle={currentGroup.name}
+                        />
+                      )
+                    }
+
+                    // Grupo genérico (ex: Quer talher extra?)
+                    return (
+                      <ToppingSelector
+                        toppings={catalog.toppings}
+                        container={draft.container}
+                        selectedToppings={draft.toppings}
+                        onToggleTopping={toggleTopping}
+                        stepTitle={currentGroup.name}
+                      />
+                    )
+                  })()}
                 </div>
 
                 {/* Rodapé de Ações do Montador de Açaí */}
@@ -684,18 +776,16 @@ export default function PDVView({
                         </Button>
                       )}
 
-                      {step < 3 ? (
+                      {step < wizardSteps.length ? (
                         <Button
                           size="sm"
                           onClick={() => setStep(step + 1)}
                           disabled={
-                            step === 2 &&
                             Boolean(
-                              (draft.container.optionGroups || []).some(
-                                (g: any) => g.id === 'model-bases' || g.name?.toLowerCase().includes('base')
-                              )
-                            ) &&
-                            draft.bases.length === 0
+                              activeOptionGroups[step - 2] &&
+                              (activeOptionGroups[step - 2].id === 'model-bases' || activeOptionGroups[step - 2].name?.toLowerCase().includes('base')) &&
+                              draft.bases.length === 0
+                            )
                           }
                           className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-5 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                         >

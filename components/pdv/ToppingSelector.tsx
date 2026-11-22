@@ -10,6 +10,8 @@ interface ToppingSelectorProps {
   container: ProductContainer
   selectedToppings: ProductTopping[]
   onToggleTopping: (topping: ProductTopping) => void
+  allowedCategory?: string
+  stepTitle?: string
 }
 
 const CATEGORIES = [
@@ -24,8 +26,17 @@ export default function ToppingSelector({
   container,
   selectedToppings,
   onToggleTopping,
+  allowedCategory,
+  stepTitle,
 }: ToppingSelectorProps) {
-  const [activeCategory, setActiveCategory] = useState('Todos')
+  const [activeCategory, setActiveCategory] = useState(allowedCategory || 'Todos')
+
+  // Se allowedCategory mudar externamente quando o operador troca de etapa, sincroniza
+  React.useEffect(() => {
+    if (allowedCategory) {
+      setActiveCategory(allowedCategory)
+    }
+  }, [allowedCategory])
 
   const weight = container.weightGrams || 500
   const isUnlimited = weight >= 500
@@ -66,7 +77,7 @@ export default function ToppingSelector({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-purple-50/70 p-3.5 rounded-2xl border border-purple-100">
         <div>
           <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-            Frutas, Toppings & Adicionais
+            {stepTitle || 'Frutas, Toppings & Adicionais'}
           </h2>
           <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
             {isUnlimited ? (
@@ -76,15 +87,19 @@ export default function ToppingSelector({
               </span>
             ) : (
               <>
-                <span className="bg-purple-100 text-purple-900 font-bold px-2 py-0.5 rounded-md">
-                  Frutas: {selectedFrutas.length}/{frutaLimit}
-                </span>
-                <span className="bg-fuchsia-100 text-fuchsia-900 font-bold px-2 py-0.5 rounded-md">
-                  Toppings: {selectedToppingsList.length}/{toppingLimit}
-                </span>
+                {(!allowedCategory || allowedCategory === 'Frutas') && (
+                  <span className="bg-purple-100 text-purple-900 font-bold px-2 py-0.5 rounded-md">
+                    Frutas: {selectedFrutas.length}/{frutaLimit}
+                  </span>
+                )}
+                {(!allowedCategory || allowedCategory === 'Toppings') && (
+                  <span className="bg-fuchsia-100 text-fuchsia-900 font-bold px-2 py-0.5 rounded-md">
+                    Toppings: {selectedToppingsList.length}/{toppingLimit}
+                  </span>
+                )}
               </>
             )}
-            {selectedAdicionais.length > 0 && (
+            {(!allowedCategory || allowedCategory === 'Adicionais') && selectedAdicionais.length > 0 && (
               <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-md">
                 Especiais: {selectedAdicionais.length}
               </span>
@@ -92,22 +107,25 @@ export default function ToppingSelector({
           </div>
         </div>
 
-        {/* Category Pills */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-full">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.key}
-              type="button"
-              onClick={() => setActiveCategory(cat.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-150 whitespace-nowrap cursor-pointer ${activeCategory === cat.key
-                  ? 'bg-purple-700 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-400/40'
-                  : 'bg-white hover:bg-purple-100 text-muted-foreground hover:text-purple-900 border border-purple-100'
+        {/* Category Pills (só exibe se não houver categoria fixa da etapa) */}
+        {!allowedCategory && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-full">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.key}
+                type="button"
+                onClick={() => setActiveCategory(cat.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-150 whitespace-nowrap cursor-pointer ${
+                  activeCategory === cat.key
+                    ? 'bg-purple-700 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-400/40'
+                    : 'bg-white hover:bg-purple-100 text-muted-foreground hover:text-purple-900 border border-purple-100'
                 }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Grid de Toppings em Cards Modernos */}

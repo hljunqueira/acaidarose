@@ -262,13 +262,15 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
               ? (groupOverride.isAvailable && groupOverride.isVisible)
               : (canonicalModel?.active !== false && g.active !== false)
 
-            // Ordem 100% dinâmica definida pelo admin no produto
+            // Ordem 100% dinâmica: prioriza o display_order atual do modelo de opções
             const groupDisplayOrder =
-              g.displayOrder !== undefined && g.displayOrder !== null
-                ? Number(g.displayOrder)
-                : (g.display_order !== undefined && g.display_order !== null
-                    ? Number(g.display_order)
-                    : originalIdx + 1)
+              canonicalModel?.display_order !== undefined && canonicalModel?.display_order !== null
+                ? Number(canonicalModel.display_order)
+                : (g.displayOrder !== undefined && g.displayOrder !== null
+                    ? Number(g.displayOrder)
+                    : (g.display_order !== undefined && g.display_order !== null
+                      ? Number(g.display_order)
+                      : originalIdx + 1))
 
             // Mapeia preços específicos que o produto já tenha em g.options
             const productOptPriceMap = new Map<string, number>()
@@ -303,19 +305,20 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                   isItemActive = opt.active !== false
                 }
 
-                // Cálculo proporcional do preço por tamanho SOMENTE para o grupo Caldas Nobres & Especiais
-                // Para 750g e 1kg: Nutella 2€, Ninho 2€, Pistache 4€
-                // Para copos até 500g (250g, 350g, 500g): Nutella 1€, Ninho 1€, Pistache 2€
-                const isLargeSize = weight !== null && weight > 500
-                let itemPrice = Number(opt.price || 0)
-                if (isCaldaMatch) {
-                  if (optNameLower.includes('pistache')) {
-                    itemPrice = isLargeSize ? 4.0 : 2.0
-                  } else if (optNameLower.includes('nutella') || optNameLower.includes('ninho')) {
-                    itemPrice = isLargeSize ? 2.0 : 1.0
-                  }
-                } else if (canonicalModel.price_type === 'Gratis' || g.priceType === 'Gratis') {
-                  // Em grupos de cota inclusa (Cremes, Acompanhamentos, Frutas), itens inclusos como Leite em pó e Creme de Ninho custam 0€
+                // Preço 100% configurável conforme o modelo de opções e configurações do produto
+                const customProdPrice =
+                  (optId && productOptPriceMap.get(optId)) ??
+                  (optCode && productOptPriceMap.get(optCode)) ??
+                  (optNameLower && productOptPriceMap.get(optNameLower))
+
+                let itemPrice = 0
+                if (customProdPrice !== undefined && !isNaN(customProdPrice)) {
+                  itemPrice = Number(customProdPrice)
+                } else if (opt.price !== undefined && opt.price !== null && !isNaN(Number(opt.price)) && Number(opt.price) > 0) {
+                  itemPrice = Number(opt.price)
+                } else if (canonicalModel.price_type === 'Individual' || g.priceType === 'Individual') {
+                  itemPrice = Number(canonicalModel.additional_price ?? g.additionalPrice ?? 0)
+                } else {
                   itemPrice = 0
                 }
 
@@ -380,15 +383,13 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                     opt.active === false
                 }
 
-                const isLargeSize = weight !== null && weight > 500
-                let itemPrice = Number(opt.price || 0)
-                if (isCaldaMatch) {
-                  if (optNameLower.includes('pistache')) {
-                    itemPrice = isLargeSize ? 4.0 : 2.0
-                  } else if (optNameLower.includes('nutella') || optNameLower.includes('ninho')) {
-                    itemPrice = isLargeSize ? 2.0 : 1.0
-                  }
-                } else if (g.priceType === 'Gratis') {
+                const groupIsIndividual = g.priceType === 'Individual'
+                let itemPrice = 0
+                if (opt.price !== undefined && opt.price !== null && !isNaN(Number(opt.price)) && Number(opt.price) > 0) {
+                  itemPrice = Number(opt.price)
+                } else if (groupIsIndividual) {
+                  itemPrice = Number(g.additionalPrice ?? g.additional_price ?? 0)
+                } else {
                   itemPrice = 0
                 }
 
@@ -436,14 +437,14 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         const limiteFrutas = (frutasGroup?.maxQty !== undefined && frutasGroup?.maxQty !== null)
           ? Number(frutasGroup.maxQty)
           : (row.limite_frutas !== null && row.limite_frutas !== undefined
-              ? Number(row.limite_frutas)
-              : 0)
+            ? Number(row.limite_frutas)
+            : 0)
 
         const limiteToppings = (toppingsGroup?.maxQty !== undefined && toppingsGroup?.maxQty !== null)
           ? Number(toppingsGroup.maxQty)
           : (row.limite_complementos_gratis !== null && row.limite_complementos_gratis !== undefined
-              ? Number(row.limite_complementos_gratis)
-              : 0)
+            ? Number(row.limite_complementos_gratis)
+            : 0)
 
         containers.push({
           id: row.id,

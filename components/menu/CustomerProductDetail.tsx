@@ -24,19 +24,7 @@ interface CustomerProductDetailProps {
 
 import { isProductTimeAvailable } from './CustomerMenuHome'
 
-function getToppingItemPrice(topping: ProductTopping, weightGrams?: number): number {
-  const nameLower = (topping.name || '').toLowerCase()
-  const isLarge = (weightGrams || 500) > 500 // 750g and 1000g
-
-  // Creme de Pistache: +2€ até 500g / +4€ acima de 500g
-  if (nameLower.includes('pistache')) {
-    return isLarge ? 4.0 : 2.0
-  }
-  // Creme de Leite em pó / Nutella: +1€ até 500g / +2€ acima de 500g
-  if (nameLower.includes('leite em p') || nameLower.includes('ninho') || nameLower.includes('nutella')) {
-    return isLarge ? 2.0 : 1.0
-  }
-
+function getToppingItemPrice(topping: ProductTopping, _weightGrams?: number): number {
   if (topping.precoExtra && Number(topping.precoExtra) > 0) {
     return Number(topping.precoExtra)
   }
