@@ -254,26 +254,33 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
               (isCaldaMatch && caldasOptionModel ? caldasOptionModel : null)
 
             const targetId = canonicalModel?.id || g.id
-            const override = targetId ? availabilityMap.get(targetId) : undefined
-            const isGroupAvailable = override !== undefined ? (override.isAvailable && override.isVisible) : true
+            const targetName = (canonicalModel?.name || g.name || '').toLowerCase().trim()
+            const groupOverride =
+              (targetId && availabilityMap.get(targetId)) ||
+              (targetName && availabilityMap.get(targetName))
+            const isGroupAvailable = groupOverride !== undefined
+              ? (groupOverride.isAvailable && groupOverride.isVisible)
+              : (canonicalModel?.active !== false && g.active !== false)
 
             if (canonicalModel) {
               const rawOpts = Array.isArray(canonicalModel.options) && canonicalModel.options.length > 0 ? canonicalModel.options : (g.options || [])
               const localizedOpts = rawOpts.map((opt: any) => {
                 const optId = opt.id ? String(opt.id) : ''
+                const optCode = opt.code ? String(opt.code).trim().toUpperCase() : ''
                 const optNameLower = (opt.name || '').toLowerCase().trim()
-                const optOverride = optId ? availabilityMap.get(optId) : undefined
 
-                const containerOpt = Array.isArray(g.options)
-                  ? g.options.find((o: any) => (o.id && String(o.id) === optId) || (o.name && o.name.toLowerCase().trim() === optNameLower))
-                  : null
+                // Procura override na loja ativa por ID, Código (ex: TOP-001) ou Nome
+                const optOverride =
+                  (optId && availabilityMap.get(optId)) ||
+                  (optCode && availabilityMap.get(optCode)) ||
+                  (optNameLower && availabilityMap.get(optNameLower))
 
-                const isPaused =
-                  (optOverride !== undefined && (!optOverride.isAvailable || !optOverride.isVisible)) ||
-                  (optId && pausedItemIds.has(optId)) ||
-                  (optNameLower && pausedItemNames.has(optNameLower)) ||
-                  (containerOpt && containerOpt.active === false) ||
-                  opt.active === false
+                let isItemActive: boolean
+                if (optOverride !== undefined) {
+                  isItemActive = Boolean(optOverride.isAvailable && optOverride.isVisible)
+                } else {
+                  isItemActive = opt.active !== false
+                }
 
                 return {
                   ...opt,
@@ -281,7 +288,7 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                   nameEs: opt.nameEs || opt.name_es || opt.name,
                   descriptionEn: opt.descriptionEn || opt.description_en || opt.description || '',
                   descriptionEs: opt.descriptionEs || opt.description_es || opt.description || '',
-                  active: !isPaused,
+                  active: isItemActive,
                 }
               })
 

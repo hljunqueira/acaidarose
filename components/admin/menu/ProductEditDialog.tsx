@@ -317,6 +317,25 @@ export default function ProductEditDialog({
               }),
             })
           }
+
+          // Salva cada opção individual do grupo na loja ativa
+          if (Array.isArray(grp.options)) {
+            for (const opt of grp.options) {
+              const optKey = opt.code || opt.id || opt.name
+              if (optKey && opt.active !== undefined) {
+                await authFetch('/api/products/toggle-availability', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    tenantId: targetTenant,
+                    productId: optKey,
+                    visible: opt.active !== false,
+                    applyToAll: false,
+                  }),
+                })
+              }
+            }
+          }
         }
 
         // 2. Notifica versão e marca pendência da loja
@@ -397,18 +416,61 @@ export default function ProductEditDialog({
 
         payload.productType = isAcaiContainer ? 'CONTAINER' : 'ITEM'
         const syncedOptionGroups = (linkedOptionGroups || []).map((g) => {
+          let maxQty = g.maxQty
           if (g.id === 'model-bases' || (g.name && (g.name.toLowerCase().includes('creme') || g.name.toLowerCase().includes('base')))) {
-            return { ...g, maxQty: Number(form.limiteBases ?? 0) }
+            maxQty = Number(form.limiteBases ?? 0)
+          } else if (g.id === 'model-frutas' || (g.name && g.name.toLowerCase().includes('fruta'))) {
+            maxQty = Number(form.limiteFrutas ?? 0)
+          } else if (g.id === 'model-toppings' || (g.name && (g.name.toLowerCase().includes('acompanhamento') || g.name.toLowerCase().includes('topping')))) {
+            maxQty = Number(form.limiteToppings ?? 0)
           }
-          if (g.id === 'model-frutas' || (g.name && g.name.toLowerCase().includes('fruta'))) {
-            return { ...g, maxQty: Number(form.limiteFrutas ?? 0) }
-          }
-          if (g.id === 'model-toppings' || (g.name && (g.name.toLowerCase().includes('acompanhamento') || g.name.toLowerCase().includes('topping')))) {
-            return { ...g, maxQty: Number(form.limiteToppings ?? 0) }
-          }
-          return g
+
+          // No template mestre do produto, as opções padrão mantêm active: true.
+          // Desativações por loja ficam isoladas na tabela store_product_overrides!
+          const cleanOptions = (g.options || []).map((opt: any) => ({
+            ...opt,
+            active: true,
+          }))
+
+          return { ...g, maxQty, options: cleanOptions }
         })
         payload.optionGroups = syncedOptionGroups
+
+        // Se o Super Admin estiver editando em uma loja específica, também registra os overrides de visibilidade na loja
+        const targetTenant = effectiveTenant || user?.tenantId
+        if (targetTenant) {
+          for (const grp of linkedOptionGroups) {
+            if (grp.id && grp.active !== undefined) {
+              await authFetch('/api/products/toggle-availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  tenantId: targetTenant,
+                  productId: grp.id,
+                  visible: grp.active !== false,
+                  applyToAll: false,
+                }),
+              })
+            }
+            if (Array.isArray(grp.options)) {
+              for (const opt of grp.options) {
+                const optKey = opt.code || opt.id || opt.name
+                if (optKey && opt.active !== undefined) {
+                  await authFetch('/api/products/toggle-availability', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      tenantId: targetTenant,
+                      productId: optKey,
+                      visible: opt.active !== false,
+                      applyToAll: false,
+                    }),
+                  })
+                }
+              }
+            }
+          }
+        }
 
         if (isAcaiContainer) {
           payload.limiteBases = Number(form.limiteBases ?? 0)
@@ -424,10 +486,10 @@ export default function ProductEditDialog({
       }
 
       await onSave(collection, payload)
-      toast.success(`"${form.name}" salvo com sucesso!`)
+      toast.success(`"${form.name}" guardado com sucesso!`)
       onOpenChange(false)
     } catch {
-      toast.error('Erro ao salvar produto')
+      toast.error('Erro ao guardar produto')
     } finally {
       setSaving(false)
     }

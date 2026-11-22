@@ -74,18 +74,18 @@ export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID, a
           (optCode && availabilityMap.get(optCode)) ||
           (optNameLower && availabilityMap.get(optNameLower))
 
-        const isPaused =
-          (override !== undefined && (!override.isAvailable || !override.isVisible)) ||
-          (optId && pausedIds.has(optId)) ||
-          (optCode && pausedIds.has(optCode))
-
-        const isExplicitActive = override !== undefined ? (override.isAvailable && override.isVisible) : undefined
+        let isItemActive: boolean
+        if (override !== undefined) {
+          isItemActive = Boolean(override.isAvailable && override.isVisible)
+        } else {
+          isItemActive = opt.active !== false
+        }
 
         return {
           ...opt,
           nameEn: opt.nameEn || opt.name_en || opt.name,
           nameEs: opt.nameEs || opt.name_es || opt.name,
-          active: isExplicitActive !== undefined ? isExplicitActive : (isPaused ? false : (opt.active !== false)),
+          active: isItemActive,
         }
       })
 
@@ -265,6 +265,13 @@ export async function updateOptionModel(
         }
 
         if (optName) {
+          await query(
+            `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+             VALUES ($1, $2, true, $3, timezone('utc'::text, now()))
+             ON CONFLICT (tenant_id, product_id)
+             DO UPDATE SET is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+            [tenantId, optName.toLowerCase().trim(), isOptActive]
+          )
           try {
             const matchRes = await query(
               `SELECT id FROM product_toppings WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))

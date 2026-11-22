@@ -248,7 +248,7 @@ export default function OptionModelDialog({
     }
 
     if (onSave) onSave(savedModel)
-    toast.success(`Modelo de opções "${name}" salvo com sucesso!`)
+    toast.success(`Modelo de opções "${name}" guardado com sucesso!`)
     onOpenChange(false)
   }
 
@@ -946,7 +946,7 @@ export default function OptionModelDialog({
               onClick={handleSave}
               className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold rounded-xl h-10 px-6 text-xs shadow-lg shadow-pink-600/30 cursor-pointer"
             >
-              Salvar Modelo
+              Guardar Modelo
             </Button>
           </div>
         </div>
