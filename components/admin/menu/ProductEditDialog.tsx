@@ -425,11 +425,10 @@ export default function ProductEditDialog({
             maxQty = Number(form.limiteToppings ?? 0)
           }
 
-          // No template mestre do produto, as opções mantêm os preços e visibilidade padrão
-          // Desativações por loja ficam isoladas na tabela store_product_overrides através dos cliques no botão de visibilidade
+          // No template mestre do produto, as opções mantêm os preços e a visibilidade configurada pelo operador
           const cleanOptions = (g.options || []).map((opt: any) => ({
             ...opt,
-            active: true,
+            active: opt.active !== false,
           }))
 
           return {

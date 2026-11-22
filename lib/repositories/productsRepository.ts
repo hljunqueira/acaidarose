@@ -239,20 +239,6 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
         // Produtos unitários prontos (lanches) não usam construtor de taça de açaí
         let optionGroups: any[] = []
         if (row.option_groups && Array.isArray(row.option_groups) && row.option_groups.length > 0) {
-          const canonicalPriority = (name: string, id: string) => {
-            const n = (name || '').toLowerCase()
-            if (id === 'model-bases' || n.includes('creme') || n.includes('base')) return 1
-            if (id === 'model-frutas' || n.includes('fruta')) return 2
-            if (id === 'model-toppings' || n.includes('acompanhamento') || n.includes('topping')) return 3
-            if (id === 'model-caldas' || n.includes('calda')) return 4
-            if (n.includes('talher') || n.includes('descart')) return 5
-            if (n.includes('preparação') || n.includes('preparacao')) return 6
-            if (n.includes('adoçamento') || n.includes('adocamento')) return 7
-            if (n.includes('gelo')) return 8
-            if (n.includes('leite')) return 9
-            return 99
-          }
-
           optionGroups = row.option_groups.map((g: any, originalIdx: number) => {
             const isBaseMatch = g.id === 'model-bases' || g.name?.toLowerCase().includes('base') || g.name?.toLowerCase().includes('creme')
             const isFrutaMatch = g.id === 'model-frutas' || g.name?.toLowerCase().includes('fruta')
@@ -276,11 +262,23 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
               ? (groupOverride.isAvailable && groupOverride.isVisible)
               : (canonicalModel?.active !== false && g.active !== false)
 
+            // Ordem 100% dinâmica definida pelo admin no produto
             const groupDisplayOrder =
-              g.displayOrder ??
-              g.display_order ??
-              (canonicalModel?.display_order !== undefined && canonicalModel?.display_order !== null ? Number(canonicalModel.display_order) : null) ??
-              canonicalPriority(g.name || canonicalModel?.name || '', targetId || '')
+              g.displayOrder !== undefined && g.displayOrder !== null
+                ? Number(g.displayOrder)
+                : (g.display_order !== undefined && g.display_order !== null
+                    ? Number(g.display_order)
+                    : originalIdx + 1)
+
+            // Mapeia preços específicos que o produto já tenha em g.options
+            const productOptPriceMap = new Map<string, number>()
+            if (Array.isArray(g.options)) {
+              for (const o of g.options) {
+                if (o.id && o.price !== undefined) productOptPriceMap.set(String(o.id), Number(o.price))
+                if (o.code && o.price !== undefined) productOptPriceMap.set(String(o.code).trim().toUpperCase(), Number(o.price))
+                if (o.name && o.price !== undefined) productOptPriceMap.set(String(o.name).toLowerCase().trim(), Number(o.price))
+              }
+            }
 
             if (canonicalModel) {
               const rawOpts = Array.isArray(canonicalModel.options) && canonicalModel.options.length > 0 ? canonicalModel.options : (g.options || [])
@@ -289,29 +287,36 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                 const optCode = opt.code ? String(opt.code).trim().toUpperCase() : ''
                 const optNameLower = (opt.name || '').toLowerCase().trim()
 
-                // Procura override na loja ativa. Prioridade absoluta para o Código oficial (ex: FRU-004),
-                // garantindo que resíduos legados de IDs obsoletos não anulem o status ativo.
-                const optOverride =
-                  (optCode && availabilityMap.get(optCode)) ||
-                  (optId && availabilityMap.get(optId)) ||
-                  (optNameLower && availabilityMap.get(optNameLower))
+                // Coleta overrides da loja ativa (por código, por ID e por nome)
+                const matchedOverrides = [
+                  optCode ? availabilityMap.get(optCode) : undefined,
+                  optId ? availabilityMap.get(optId) : undefined,
+                  optNameLower ? availabilityMap.get(optNameLower) : undefined,
+                ].filter(Boolean) as { isAvailable: boolean; isVisible: boolean }[]
 
                 let isItemActive: boolean
-                if (optOverride !== undefined) {
-                  isItemActive = Boolean(optOverride.isAvailable && optOverride.isVisible)
+                if (matchedOverrides.length > 0) {
+                  // Se o operador clicou nos botões para desativar/ocultar por qualquer identificador, respeita estritamente
+                  const hasDisabled = matchedOverrides.some((ov) => !ov.isAvailable || !ov.isVisible)
+                  isItemActive = !hasDisabled
                 } else {
                   isItemActive = opt.active !== false
                 }
 
-                // Cálculo proporcional do preço por tamanho (Caldas Nobres & Especiais)
+                // Cálculo proporcional do preço por tamanho SOMENTE para o grupo Caldas Nobres & Especiais
                 // Para 750g e 1kg: Nutella 2€, Ninho 2€, Pistache 4€
                 // Para copos até 500g (250g, 350g, 500g): Nutella 1€, Ninho 1€, Pistache 2€
                 const isLargeSize = weight !== null && weight > 500
                 let itemPrice = Number(opt.price || 0)
-                if (optNameLower.includes('pistache')) {
-                  itemPrice = isLargeSize ? 4.0 : 2.0
-                } else if (optNameLower.includes('nutella') || optNameLower.includes('ninho') || optNameLower.includes('leite em p')) {
-                  itemPrice = isLargeSize ? 2.0 : 1.0
+                if (isCaldaMatch) {
+                  if (optNameLower.includes('pistache')) {
+                    itemPrice = isLargeSize ? 4.0 : 2.0
+                  } else if (optNameLower.includes('nutella') || optNameLower.includes('ninho')) {
+                    itemPrice = isLargeSize ? 2.0 : 1.0
+                  }
+                } else if (canonicalModel.price_type === 'Gratis' || g.priceType === 'Gratis') {
+                  // Em grupos de cota inclusa (Cremes, Acompanhamentos, Frutas), itens inclusos como Leite em pó e Creme de Ninho custam 0€
+                  itemPrice = 0
                 }
 
                 return {
@@ -359,22 +364,32 @@ export async function getCatalogByTenant(tenantId: string = AVEIRO_HQ_ID): Promi
                 const optId = opt.id ? String(opt.id) : ''
                 const optCode = opt.code ? String(opt.code).trim().toUpperCase() : ''
                 const optNameLower = (opt.name || '').toLowerCase().trim()
-                const optOverride =
-                  (optCode && availabilityMap.get(optCode)) ||
-                  (optId && availabilityMap.get(optId)) ||
-                  (optNameLower && availabilityMap.get(optNameLower))
-                const isPaused =
-                  (optOverride !== undefined && (!optOverride.isAvailable || !optOverride.isVisible)) ||
-                  (optId && pausedItemIds.has(optId)) ||
-                  (optNameLower && pausedItemNames.has(optNameLower)) ||
-                  opt.active === false
+                const matchedOverrides = [
+                  optCode ? availabilityMap.get(optCode) : undefined,
+                  optId ? availabilityMap.get(optId) : undefined,
+                  optNameLower ? availabilityMap.get(optNameLower) : undefined,
+                ].filter(Boolean) as { isAvailable: boolean; isVisible: boolean }[]
+
+                let isPaused: boolean
+                if (matchedOverrides.length > 0) {
+                  isPaused = matchedOverrides.some((ov) => !ov.isAvailable || !ov.isVisible)
+                } else {
+                  isPaused =
+                    (optId && pausedItemIds.has(optId)) ||
+                    (optNameLower && pausedItemNames.has(optNameLower)) ||
+                    opt.active === false
+                }
 
                 const isLargeSize = weight !== null && weight > 500
                 let itemPrice = Number(opt.price || 0)
-                if (optNameLower.includes('pistache')) {
-                  itemPrice = isLargeSize ? 4.0 : 2.0
-                } else if (optNameLower.includes('nutella') || optNameLower.includes('ninho') || optNameLower.includes('leite em p')) {
-                  itemPrice = isLargeSize ? 2.0 : 1.0
+                if (isCaldaMatch) {
+                  if (optNameLower.includes('pistache')) {
+                    itemPrice = isLargeSize ? 4.0 : 2.0
+                  } else if (optNameLower.includes('nutella') || optNameLower.includes('ninho')) {
+                    itemPrice = isLargeSize ? 2.0 : 1.0
+                  }
+                } else if (g.priceType === 'Gratis') {
+                  itemPrice = 0
                 }
 
                 return {
@@ -618,6 +633,28 @@ export async function toggleStoreItemStatus(
                ON CONFLICT (tenant_id, product_id) 
                DO UPDATE SET is_available = EXCLUDED.is_available, is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
               [m.tenant_id, m.id, newAvailable, newVisible]
+            )
+          }
+        }
+
+        // Se houver código oficial da opção (ex: FRU-004), sincroniza também o override do código
+        const codeRes = await query(
+          `SELECT code FROM product_toppings WHERE (id::text = $1 OR LOWER(TRIM(name)) = LOWER(TRIM($2))) AND code IS NOT NULL
+           UNION ALL
+           SELECT elem->>'code' as code FROM product_option_models pom, jsonb_array_elements(pom.options) elem
+           WHERE (elem->>'id' = $1 OR elem->>'code' = $1 OR LOWER(TRIM(elem->>'name')) = LOWER(TRIM($2))) AND elem->>'code' IS NOT NULL
+           LIMIT 1`,
+          [productId, productName]
+        )
+        const foundCode = codeRes.rows?.[0]?.code ? String(codeRes.rows[0].code).trim().toUpperCase() : null
+        if (foundCode) {
+          for (const tId of targetTenants) {
+            await query(
+              `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+               VALUES ($1, $2, $3, $4, timezone('utc'::text, now()))
+               ON CONFLICT (tenant_id, product_id) 
+               DO UPDATE SET is_available = EXCLUDED.is_available, is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+              [tId, foundCode, newAvailable, newVisible]
             )
           }
         }

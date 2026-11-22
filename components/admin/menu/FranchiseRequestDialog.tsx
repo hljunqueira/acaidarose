@@ -161,7 +161,7 @@ export default function FranchiseRequestDialog({
 
       fetchMasterData()
     }
-  }, [open, initialType, selectedProductId, selectedModelId])
+  }, [open, initialType])
 
   // Atualiza produto selecionado quando o usuário escolhe outro item na lista master
   const handleSelectProduct = (prodId: string) => {

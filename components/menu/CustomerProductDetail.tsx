@@ -92,22 +92,13 @@ export default function CustomerProductDetail({
   const [notes, setNotes] = useState('')
   const quantity = 1
 
-  // Inicializa seleções dinâmicas pré-marcando o Açaí Tradicional inicialmente apenas 1x
+  // Inicializa seleções dinâmicas 100% limpas sem pré-seleções automáticas (sem default e sem initial)
   const [customSelections, setCustomSelections] = useState<Record<string, Record<string, number>>>(() => {
     const initial: Record<string, Record<string, number>> = {}
     if (container.optionGroups) {
       for (const group of container.optionGroups.filter((g) => g.active !== false)) {
         const gId = group.id || group.name
         initial[gId] = {}
-        const isBaseGroup = gId === 'model-bases' || group.name?.toLowerCase().includes('base') || group.name?.toLowerCase().includes('creme')
-        if (isBaseGroup && isBaseFixed) {
-          const acaiOpt = (group.options || []).filter((o: any) => o.active !== false).find(
-            (o: any) => (o.name || '').toLowerCase().includes('açaí') || (o.name || '').toLowerCase().includes('acai')
-          )
-          if (acaiOpt) {
-            initial[gId][acaiOpt.id] = 1
-          }
-        }
       }
     }
     return initial

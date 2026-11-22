@@ -420,6 +420,32 @@ export async function updateOptionModel(
 
         if (matches) {
           modified = true
+
+          // Preserva preços específicos já configurados neste container (evita vazar preço de 1kg para copo 250g)
+          const existingPriceMap = new Map<string, number>()
+          if (Array.isArray(g.options)) {
+            for (const o of g.options) {
+              if (o.id && o.price !== undefined) existingPriceMap.set(String(o.id), Number(o.price))
+              if (o.code && o.price !== undefined) existingPriceMap.set(String(o.code).trim().toUpperCase(), Number(o.price))
+              if (o.name && o.price !== undefined) existingPriceMap.set(String(o.name).toLowerCase().trim(), Number(o.price))
+            }
+          }
+
+          const mergedOpts = (updated.options || []).map((opt: any) => {
+            const optId = opt.id ? String(opt.id) : ''
+            const optCode = opt.code ? String(opt.code).trim().toUpperCase() : ''
+            const optNameLower = (opt.name || '').toLowerCase().trim()
+            const preservedPrice =
+              (optCode && existingPriceMap.get(optCode)) ??
+              (optId && existingPriceMap.get(optId)) ??
+              (optNameLower && existingPriceMap.get(optNameLower))
+
+            return {
+              ...opt,
+              price: preservedPrice !== undefined ? preservedPrice : Number(opt.price || 0),
+            }
+          })
+
           return {
             ...g,
             id: updated.id,
@@ -433,7 +459,7 @@ export async function updateOptionModel(
             allowItemQuantity: !!updated.allow_item_quantity,
             isRequired: !!updated.is_required,
             showDetailed: !!updated.show_detailed,
-            options: updated.options || [],
+            options: mergedOpts,
             active: updated.active !== false,
             subtitle: updated.subtitle !== undefined ? (updated.subtitle || undefined) : (g.subtitle || undefined),
             subtitleEn: updated.subtitle_en !== undefined ? (updated.subtitle_en || undefined) : (g.subtitleEn || undefined),
