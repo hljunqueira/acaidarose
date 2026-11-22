@@ -106,31 +106,183 @@ function normalizeSection(raw: any, index: number): NormalizedSection {
 }
 
 // Identifica a qual escopo a categoria pertence de forma dinâmica
-function getCategoryScope(cat: ManualCategory): 'FRANCHISOR' | 'FRANCHISEE' | 'POS' | 'SHARED' | 'DEV' {
-  const t = (cat.title || '').toLowerCase()
+function getCategoryScope(cat: ManualCategory): 'FRANCHISOR' | 'FRANCHISEE' | 'POS' | 'SHARED' {
   const s = (cat.slug || '').toLowerCase()
+  if (s.includes('franqueadora-master')) return 'FRANCHISOR'
+  if (s.includes('operacao-e-atendimento')) return 'POS'
+  return 'SHARED'
+}
 
-  // Central Master TI
-  if (t.includes('master ti') || t.includes('infraestrutura') || s.includes('master-ti')) {
-    return 'DEV'
+// Moldura de Janela de Navegador / SO com Reprodução em HTML da Tela & Botões
+interface ScreenWindowFrameProps {
+  title: string
+  routePath: string | null
+  mediaUrl: string | null
+  mediaType: string | null
+  youtubeId: string | null
+  instruction: string
+  onOpenLightbox?: (url: string) => void
+}
+
+function ScreenWindowFrame({
+  title,
+  routePath,
+  mediaUrl,
+  mediaType,
+  youtubeId,
+  instruction,
+  onOpenLightbox,
+}: ScreenWindowFrameProps) {
+  // Extrai botões descritos na instrução (linhas no formato • [ Nome do Botão ]: ...)
+  const buttonMatches: string[] = []
+  if (instruction) {
+    const lines = instruction.split('\n')
+    for (const line of lines) {
+      const match = line.match(/^\s*•\s*\[\s*([^\]]+)\s*\]\s*:/)
+      if (match && match[1]) {
+        buttonMatches.push(match[1].trim())
+      }
+    }
   }
 
-  // Cardápio, Mídias & Preços é compartilhado entre Franqueadora, Franquias e Caixas
-  if (t.includes('cardápio') || s.includes('cardapio') || t.includes('mídias') || t.includes('preços')) {
-    return 'SHARED'
-  }
+  const hasRealMedia = Boolean(youtubeId || mediaUrl)
 
-  if (t.startsWith('franqueadora') || s.startsWith('franqueadora')) return 'FRANCHISOR'
-  if (t.startsWith('franquia') || s.startsWith('franquia')) return 'FRANCHISEE'
-  if (t.includes('caixa') || t.includes('operação') || s.includes('caixa') || s.includes('operacao')) return 'POS'
+  return (
+    <div className="rounded-2xl border border-slate-300/80 dark:border-white/10 shadow-md overflow-hidden bg-slate-900 text-slate-100 my-4">
+      {/* Moldura Superior (Barra de Janela de Navegador / SO) */}
+      <div className="px-4 py-2.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between gap-3">
+        {/* Controles de Janela Mac-Style */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e]" />
+          <div className="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123]" />
+          <div className="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29]" />
+        </div>
 
-  if (cat.targetRoles.includes('FRANCHISOR_ADMIN') && !cat.targetRoles.includes('TENANT_ADMIN')) {
-    return 'FRANCHISOR'
-  }
-  if (cat.targetRoles.includes('CASHIER') && !cat.targetRoles.includes('FRANCHISOR_ADMIN')) {
-    return 'POS'
-  }
-  return 'FRANCHISEE'
+        {/* Barra de Endereço / Título da Rota */}
+        <div className="px-3.5 py-1 rounded-full bg-slate-900 border border-slate-700/60 text-[11px] font-mono text-purple-300 flex items-center gap-1.5 shadow-inner max-w-sm sm:max-w-md truncate">
+          <span className="text-emerald-400 font-bold">🔒</span>
+          <span className="text-slate-400">app.acaidarose.pt</span>
+          {routePath && <span className="text-purple-300 font-bold">{routePath}</span>}
+        </div>
+
+        {/* Badge da Interface */}
+        <div className="shrink-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
+          {hasRealMedia ? 'Captura Oficial' : 'Mockup da Tela'}
+        </div>
+      </div>
+
+      {/* Conteúdo da Janela */}
+      <div className="p-4 sm:p-5 bg-gradient-to-b from-slate-900 via-slate-900 to-[#170c26]">
+        {youtubeId ? (
+          <div className="relative rounded-xl overflow-hidden aspect-video bg-black">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${youtubeId}?rel=0&modestbranding=1&controls=1&playsinline=1`}
+              title={title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="w-full h-full border-0"
+            />
+          </div>
+        ) : mediaUrl ? (
+          <div className="relative group rounded-xl overflow-hidden bg-black/40">
+            {mediaType === 'VIDEO' ? (
+              <video
+                src={mediaUrl}
+                controls
+                muted
+                loop
+                playsInline
+                className="w-full h-auto max-h-[460px] object-contain rounded-lg"
+              />
+            ) : (
+              <div className="relative">
+                <img
+                  src={mediaUrl}
+                  alt={title}
+                  className="w-full h-auto max-h-[460px] object-contain rounded-lg cursor-zoom-in"
+                  onClick={() => onOpenLightbox?.(mediaUrl)}
+                />
+                <button
+                  type="button"
+                  onClick={() => onOpenLightbox?.(mediaUrl)}
+                  className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white text-xs opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                  title="Ampliar imagem"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* MOCKUP INTERATIVO EM HTML NATIVO DA TELA */
+          <div className="space-y-4">
+            {/* Barra de Ações Simulada com os Botões Reais */}
+            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-purple-500 animate-pulse" />
+                <span className="text-xs font-bold text-white tracking-tight">{title}</span>
+              </div>
+
+              {/* Botões Mapeados na Barra da Tela */}
+              {buttonMatches.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {buttonMatches.map((btn, bIdx) => {
+                    const isPrimary =
+                      btn.toLowerCase().includes('nova') ||
+                      btn.toLowerCase().includes('novo') ||
+                      btn.toLowerCase().includes('criar') ||
+                      btn.toLowerCase().includes('guardar') ||
+                      btn.toLowerCase().includes('adicionar') ||
+                      btn.toLowerCase().includes('confirmar')
+
+                    return (
+                      <span
+                        key={bIdx}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow-xs tracking-tight transition ${
+                          isPrimary
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white ring-1 ring-white/20'
+                            : 'bg-slate-800/90 text-purple-200 border border-purple-500/30'
+                        }`}
+                      >
+                        <span className="h-4 w-4 rounded-full bg-black/40 text-white text-[10px] font-mono flex items-center justify-center font-bold">
+                          {bIdx + 1}
+                        </span>
+                        <span>[ {btn} ]</span>
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Simulação Visual do Ecrã */}
+            <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 space-y-3">
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span className="font-semibold">Área de Visualização do Sistema</span>
+                <span className="text-emerald-400 font-mono">Status: Operacional</span>
+              </div>
+
+              {/* Grid de simulação visual (3 cards rápidos de pré-visualização) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-left space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Estrutura Canónica</div>
+                  <div className="text-xs font-bold text-white">PostgreSQL 16 Multi-Tenant</div>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-left space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Segurança & RBAC</div>
+                  <div className="text-xs font-bold text-emerald-400">Permissão Verificada</div>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-left space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Padrão da Rede</div>
+                  <div className="text-xs font-bold text-purple-300">Açaí da Rose • Portugal</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // Renderizador visual estilo Goomer para botões, cards, passos e explicações
@@ -138,6 +290,7 @@ function FormattedInstruction({ text }: { text: string }) {
   if (!text) return null
 
   const paragraphs = text.split('\n\n')
+  let buttonCount = 0
 
   return (
     <div className="space-y-4 text-xs sm:text-sm text-foreground/85 leading-relaxed">
@@ -153,18 +306,23 @@ function FormattedInstruction({ text }: { text: string }) {
               {lines.map((line, lIdx) => {
                 const matchBtn = line.match(/^\s*•\s*\[\s*([^\]]+)\s*\]\s*:\s*(.+)/)
                 if (matchBtn) {
+                  buttonCount++
+                  const currentBtnIndex = buttonCount
                   const [, btnLabel, btnDesc] = matchBtn
                   return (
                     <div
                       key={lIdx}
                       className="p-3.5 rounded-xl border border-border/80 bg-background/80 hover:border-purple-300 dark:hover:border-purple-800 transition flex flex-col sm:flex-row sm:items-start gap-3 shadow-2xs"
                     >
-                      <div className="shrink-0 pt-0.5">
+                      <div className="shrink-0 pt-0.5 flex items-center gap-2">
+                        <span className="h-5 w-5 rounded-full bg-purple-700 text-white text-[10px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+                          {currentBtnIndex}
+                        </span>
                         <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-950/70 border border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-xs font-black shadow-xs tracking-tight">
                           <span>[ {btnLabel} ]</span>
                         </span>
                       </div>
-                      <div className="text-xs sm:text-[13px] text-foreground/90 leading-relaxed">
+                      <div className="text-xs sm:text-[13px] text-foreground/90 leading-relaxed pt-0.5">
                         {btnDesc}
                       </div>
                     </div>
@@ -301,16 +459,22 @@ export default function AjudaPortalPage() {
     setSuggestionSubmitted(false)
   }, [activeArticle?.id])
 
-  // Inicialização de Auth com resiliência a subdomínio
+  // Inicialização de Auth com resiliência a subdomínio: URL toma SEMPRE precedência sobre token antigo
   useEffect(() => {
-    let cand = token
-    if (!cand && typeof window !== 'undefined') {
+    let cand: string | null = null
+    if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search)
-      cand = urlParams.get('token')
-      if (!cand) {
-        const match = document.cookie.match(/(?:^|;\s*)x-auth-token=([^;]+)/)
-        if (match) cand = match[1]
+      const urlToken = urlParams.get('token')
+      if (urlToken) {
+        cand = urlToken
       }
+    }
+    if (!cand) {
+      cand = token
+    }
+    if (!cand && typeof window !== 'undefined') {
+      const match = document.cookie.match(/(?:^|;\s*)x-auth-token=([^;]+)/)
+      if (match) cand = match[1]
     }
 
     if (cand) {
@@ -335,7 +499,6 @@ export default function AjudaPortalPage() {
 
   // Carregar Categorias e Artigos
   const loadPortalData = useCallback(async () => {
-    setLoading(true)
     try {
       const activeToken =
         effectiveToken ||
@@ -370,7 +533,7 @@ export default function AjudaPortalPage() {
     } finally {
       setLoading(false)
     }
-  }, [user, simulatedRole, selectedCatId, effectiveToken])
+  }, [user?.role, simulatedRole, effectiveToken])
 
   useEffect(() => {
     loadPortalData()
@@ -497,14 +660,43 @@ export default function AjudaPortalPage() {
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
-  // Categorias filtradas pelo escopo selecionado (com suporte a categorias compartilhadas como Cardápio)
-  const scopedCategories = useMemo(() => {
-    if (activeScope === 'ALL') return categories
+  // Perfil efetivo com suporte a simulação de papéis pelo Super Admin
+  const currentEffectiveRole: UserRole =
+    isSuperAdmin && simulatedRole !== 'ALL'
+      ? simulatedRole
+      : user?.role || 'CASHIER'
+
+  // 1. Filtro estrito de permissões (RBAC): Gerentes e Caixas NUNCA veem Franqueadora Master
+  const roleAllowedCategories = useMemo(() => {
     return categories.filter((c) => {
-      const s = getCategoryScope(c)
-      return s === activeScope || s === 'SHARED'
+      if (currentEffectiveRole === 'SUPER_ADMIN' || currentEffectiveRole === 'FRANCHISOR_ADMIN') {
+        return true
+      }
+      if (currentEffectiveRole === 'TENANT_ADMIN') {
+        if (c.slug.includes('franqueadora-master')) return false
+        return c.targetRoles.includes('TENANT_ADMIN')
+      }
+      if (currentEffectiveRole === 'CASHIER') {
+        return c.targetRoles.includes('CASHIER')
+      }
+      return false
     })
-  }, [categories, activeScope])
+  }, [categories, currentEffectiveRole])
+
+  // 2. Filtro adicional pelo seletor de escopo (Todas as Telas vs Franqueadora vs Franquias vs Caixa)
+  const scopedCategories = useMemo(() => {
+    if (activeScope === 'ALL') return roleAllowedCategories
+    if (activeScope === 'FRANCHISOR') {
+      return roleAllowedCategories.filter((c) => c.slug.includes('franqueadora-master'))
+    }
+    if (activeScope === 'FRANCHISEE') {
+      return roleAllowedCategories.filter((c) => !c.slug.includes('franqueadora-master'))
+    }
+    if (activeScope === 'POS') {
+      return roleAllowedCategories.filter((c) => c.slug.includes('operacao') || c.slug.includes('estoque'))
+    }
+    return roleAllowedCategories
+  }, [roleAllowedCategories, activeScope])
 
   // Mantém categorias recolhidas por padrão, abrindo apenas sob clique do usuário
   useEffect(() => {
@@ -518,18 +710,20 @@ export default function AjudaPortalPage() {
 
   // Categoria ativa atual (apenas se o usuário tiver clicado e aberto)
   const activeCategory = useMemo(() => {
-    return selectedCatId ? categories.find((c) => c.id === selectedCatId) || null : null
-  }, [categories, selectedCatId])
+    return selectedCatId ? scopedCategories.find((c) => c.id === selectedCatId) || null : null
+  }, [scopedCategories, selectedCatId])
 
-  // Artigos pertencentes à categoria ativa
+  // Artigos pertencentes à categoria ativa (respeitando o papel efetivo do usuário)
   const categoryArticles = useMemo(() => {
     if (!activeCategory) return []
     return articles.filter((a) => {
       if (a.categoryId !== activeCategory.id) return false
-      if (simulatedRole !== 'ALL' && !a.targetRoles.includes(simulatedRole)) return false
+      if (currentEffectiveRole !== 'SUPER_ADMIN') {
+        if (!a.targetRoles.includes(currentEffectiveRole)) return false
+      }
       return true
     })
-  }, [articles, activeCategory, simulatedRole])
+  }, [articles, activeCategory, currentEffectiveRole])
 
   // Navegação entre manuais (Anterior / Próximo)
   const currentArticleIndex = useMemo(() => {
@@ -729,7 +923,7 @@ export default function AjudaPortalPage() {
                     !activeArticle ? 'text-foreground font-bold' : ''
                   }`}
                 >
-                  {activeCategory.title.replace(/^(Franqueadora|Franquias):\s*/i, '')}
+                  {activeCategory.title}
                 </button>
               </>
             )}
@@ -775,8 +969,8 @@ export default function AjudaPortalPage() {
                           : 'text-foreground hover:bg-muted'
                       }`}
                     >
-                      <span className="truncate pr-2">
-                        {cat.title.replace(/^(Franqueadora|Franquias):\s*/i, '')}
+                      <span className="truncate pr-2 font-bold">
+                        {cat.title}
                       </span>
                       <ChevronRight
                         className={`h-3.5 w-3.5 shrink-0 transition-transform ${
@@ -898,53 +1092,23 @@ export default function AjudaPortalPage() {
                           </div>
                         )}
 
-                        {/* Texto e Componentes Formatados da Seção */}
-                        {section.instruction && (
-                          <FormattedInstruction text={section.instruction} />
-                        )}
+                        {/* Moldura de Janela de Navegador / SO (Mockup HTML dos Botões & Tela ou Mídia) */}
+                        <ScreenWindowFrame
+                          title={section.title}
+                          routePath={section.routePath || activeScreenRoute}
+                          mediaUrl={section.mediaUrl}
+                          mediaType={section.mediaType}
+                          youtubeId={section.youtubeId}
+                          instruction={section.instruction}
+                          onOpenLightbox={(url) => setLightboxImg(url)}
+                        />
 
-                        {/* Mídia do Componente (Vídeo ou Imagem com Lightbox) */}
-                        {section.mediaSource === 'YOUTUBE' && section.youtubeId ? (
-                          <div className="relative rounded-2xl overflow-hidden border border-border aspect-video max-w-2xl bg-black">
-                            <iframe
-                              src={`https://www.youtube-nocookie.com/embed/${section.youtubeId}?rel=0&modestbranding=1&controls=1&playsinline=1`}
-                              title={section.title}
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              className="w-full h-full border-0"
-                            />
+                        {/* Raio-X Detalhado de Botões & Instruções da Seção */}
+                        {section.instruction && (
+                          <div className="pt-2">
+                            <FormattedInstruction text={section.instruction} />
                           </div>
-                        ) : section.mediaUrl ? (
-                          <div className="relative group rounded-2xl overflow-hidden border border-border bg-black/5 dark:bg-black/30 max-w-2xl">
-                            {section.mediaType === 'VIDEO' ? (
-                              <video
-                                src={section.mediaUrl}
-                                controls
-                                muted
-                                loop
-                                playsInline
-                                className="w-full h-auto max-h-[460px] object-contain rounded-xl"
-                              />
-                            ) : (
-                              <div className="relative">
-                                <img
-                                  src={section.mediaUrl}
-                                  alt={section.title}
-                                  className="w-full h-auto max-h-[460px] object-contain rounded-xl cursor-zoom-in"
-                                  onClick={() => setLightboxImg(section.mediaUrl || null)}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setLightboxImg(section.mediaUrl || null)}
-                                  className="absolute top-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/80 text-white text-xs opacity-0 group-hover:opacity-100 transition print:hidden cursor-pointer"
-                                  title="Ampliar imagem"
-                                >
-                                  <Maximize2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
+                        )}
                       </section>
                     )
                   })}
@@ -1108,7 +1272,7 @@ export default function AjudaPortalPage() {
                 <div className="border-b border-border pb-4 space-y-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300">
-                      {activeCategory ? getCategoryScope(activeCategory) === 'SHARED' ? 'Cardápio & Preços' : getCategoryScope(activeCategory) === 'FRANCHISOR' ? 'Franqueadora Master' : getCategoryScope(activeCategory) === 'FRANCHISEE' ? 'Franquia (Loja)' : getCategoryScope(activeCategory) === 'DEV' ? 'Central Master TI' : 'Operação de Caixa' : 'Ajuda'}
+                      {activeCategory ? activeCategory.title : 'Ajuda'}
                     </span>
                     <span className="text-xs text-muted-foreground font-semibold">
                       {categoryArticles.length} guias disponíveis
@@ -1116,7 +1280,7 @@ export default function AjudaPortalPage() {
                   </div>
 
                   <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                    {activeCategory?.title.replace(/^(Franqueadora|Franquias):\s*/i, '') || 'Guias Operacionais'}
+                    {activeCategory?.title || 'Guias Operacionais'}
                   </h2>
 
                   {activeCategory?.description && (
