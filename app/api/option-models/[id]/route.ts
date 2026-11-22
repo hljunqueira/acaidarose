@@ -16,6 +16,7 @@ export async function PUT(
   try {
     const body = await request.json()
     const tenantId = body.tenantId || user?.tenantId || AVEIRO_HQ_ID
+    const applyToAll = isMaster && Boolean(body.applyToAll)
 
     let payloadToSave = body
 
@@ -61,11 +62,18 @@ export async function PUT(
       }
     }
 
-    const updated = await updateOptionModel(id, tenantId, payloadToSave, {
-      id: user?.id,
-      name: user?.name,
-      role: user?.role,
-    })
+    const updated = await updateOptionModel(
+      id,
+      tenantId,
+      payloadToSave,
+      {
+        id: user?.id,
+        name: user?.name,
+        role: user?.role,
+      },
+      applyToAll,
+      isMaster
+    )
     if (!updated) return errorResponse('Modelo de opção não encontrado', 404)
     return jsonResponse(updated)
   } catch (err: any) {

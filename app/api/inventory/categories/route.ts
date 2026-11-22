@@ -4,6 +4,7 @@ import {
   createInventoryCategory,
 } from '@/lib/repositories/inventoryRepository'
 import { recordAuditLog } from '@/lib/repositories/auditRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function GET() {
   try {
@@ -11,10 +12,7 @@ export async function GET() {
     return NextResponse.json({ categories })
   } catch (error) {
     console.error('Erro na rota GET /api/inventory/categories:', error)
-    return NextResponse.json(
-      { error: 'Falha ao buscar categorias de estoque' },
-      { status: 500 }
-    )
+    return errorResponse(error, 'Falha ao buscar categorias de estoque')
   }
 }
 
@@ -53,9 +51,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ category: created }, { status: 201 })
   } catch (error: any) {
     console.error('Erro na rota POST /api/inventory/categories:', error)
-    return NextResponse.json(
-      { error: error.message || 'Falha ao criar categoria de estoque' },
-      { status: 500 }
-    )
+    return errorResponse(error, 'Falha ao criar categoria de estoque')
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { Trash2 } from 'lucide-react'
+import { useAuthStore } from '@/lib/stores/authStore'
 import InventoryCategoriesDialog from './InventoryCategoriesDialog'
 
 export interface InventoryItemFormData {
@@ -64,37 +65,36 @@ export default function InventoryItemDialog({
   const [hasPurchaseTax, setHasPurchaseTax] = useState(true)
   const [netWeightKg, setNetWeightKg] = useState<number | ''>('')
   const [pricePerKg, setPricePerKg] = useState<number | ''>('')
+  const { authFetch } = useAuthStore()
   const [minAlertQuantity, setMinAlertQuantity] = useState(2)
   const [isCriticalChecklist, setIsCriticalChecklist] = useState(false)
   const [loading, setLoading] = useState(false)
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false)
-  const [categories, setCategories] = useState<{ id: string; name: string; code: string }[]>([
-    { id: 'cat-base', name: 'Bases & Cremes', code: 'BASE' },
-    { id: 'cat-calda', name: 'Caldas Nobres', code: 'CALDA' },
-    { id: 'cat-topping', name: 'Acompanhamentos & Crocantes', code: 'TOPPING' },
-    { id: 'cat-embalagem', name: 'Copos & Embalagens', code: 'EMBALAGEM' },
-    { id: 'cat-descartavel', name: 'Descartáveis', code: 'DESCARTAVEL' },
-    { id: 'cat-limpeza', name: 'Higiene & Limpeza', code: 'LIMPEZA' },
-    { id: 'cat-graficos', name: 'Produtos Gráficos & Merchandising', code: 'GRAFICOS' },
-  ])
+  const [categories, setCategories] = useState<{ id: string; name: string; code: string }[]>([])
 
   // Carregar categorias dinâmicas do banco
-  const reloadCategories = () => {
-    fetch('/api/inventory/categories')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data.categories) && data.categories.length > 0) {
+  const reloadCategories = useCallback(async () => {
+    try {
+      const res = await authFetch('/api/inventory/categories')
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.categories)) {
           setCategories(data.categories)
+          if (!category && data.categories.length > 0) {
+            setCategory(data.categories[0].code)
+          }
         }
-      })
-      .catch(() => { })
-  }
+      }
+    } catch {
+      // Ignora erro transitório de carregamento
+    }
+  }, [authFetch, category])
 
   useEffect(() => {
     if (open) {
       reloadCategories()
     }
-  }, [open])
+  }, [open, reloadCategories])
 
   useEffect(() => {
     if (item) {

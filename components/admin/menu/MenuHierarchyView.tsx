@@ -173,7 +173,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   }, [fetchCatalog])
 
   const handlePublishChanges = async () => {
-    if (pendingStores.length > 1 && isSuperAdmin) {
+    if (isSuperAdmin) {
       setPublishOptionsOpen(true)
       return
     }
@@ -187,9 +187,9 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   }
 
   const handlePublishAllStoresDirect = async () => {
-    const res = await publishAllPending(authFetch)
+    const res = await publish(tenantId, { replicateAll: true }, authFetch)
     if (res.success) {
-      toast.success(res.message || 'Todas as lojas da rede foram publicadas com sucesso!')
+      toast.success(res.message || 'Catálogo replicado e publicado para toda a rede com sucesso!')
       setHasPendingPublish(false)
       setPublishOptionsOpen(false)
     } else {
@@ -198,7 +198,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
   }
 
   const handlePublishCurrentStoreDirect = async () => {
-    const res = await publish(tenantId, {}, authFetch)
+    const res = await publish(tenantId, { replicateAll: false }, authFetch)
     if (res.success) {
       toast.success(res.message || 'Alterações publicadas com sucesso nesta unidade!')
       setHasPendingPublish(false)
@@ -1179,21 +1179,29 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             <span>Publicar Alterações do Cardápio</span>
           </DialogTitle>
           <div className="space-y-3 my-3 text-xs">
-            <p className="text-slate-600 dark:text-purple-200">
-              Foram detectadas alterações pendentes em <strong>{pendingStores.length} unidades</strong> da rede:
-            </p>
-            <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-1.5">
-              {pendingStores.map((s, idx) => (
-                <div key={idx} className="flex items-center justify-between font-bold">
-                  <span className="text-purple-950 dark:text-white">{s.storeName}</span>
-                  <Badge className="bg-purple-200/80 text-purple-900 dark:bg-purple-900/60 dark:text-purple-200 text-[10px]">
-                    {s.pendingCount} pendente(s)
-                  </Badge>
+            {pendingStores.length > 1 ? (
+              <>
+                <p className="text-slate-600 dark:text-purple-200">
+                  Foram detectadas alterações pendentes em <strong>{pendingStores.length} unidades</strong> da rede:
+                </p>
+                <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-white/5 border border-purple-150 dark:border-white/10 space-y-1.5">
+                  {pendingStores.map((s, idx) => (
+                    <div key={idx} className="flex items-center justify-between font-bold">
+                      <span className="text-purple-950 dark:text-white">{s.storeName}</span>
+                      <Badge className="bg-purple-200/80 text-purple-900 dark:bg-purple-900/60 dark:text-purple-200 text-[10px]">
+                        {s.pendingCount} pendente(s)
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <p className="text-slate-600 dark:text-purple-200">
+                Você está a publicar na unidade <strong>{storeBadgeName}</strong>. Como Franqueadora Master, você pode aplicar esta publicação apenas nesta unidade ou replicar para toda a rede de lojas.
+              </p>
+            )}
             <p className="text-slate-500 dark:text-purple-300 text-[11px]">
-              Deseja publicar em todas as lojas pendentes de uma só vez ou apenas na unidade ativa ({storeBadgeName})?
+              Deseja publicar somente na unidade ativa ({storeBadgeName}) ou replicar para toda a rede de lojas?
             </p>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-purple-100 dark:border-white/10">
@@ -1214,7 +1222,7 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
               onClick={handlePublishAllStoresDirect}
               className="rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold text-xs shadow-md"
             >
-              {isPublishing ? 'Publicando...' : `Publicar em Todas as Lojas (${pendingStores.length})`}
+              {isPublishing ? 'Publicando...' : 'Replicar & Publicar na Rede Toda'}
             </Button>
           </DialogFooter>
         </DialogContent>

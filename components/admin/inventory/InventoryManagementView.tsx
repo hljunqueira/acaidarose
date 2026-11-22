@@ -20,11 +20,13 @@ import {
   ShoppingCart,
   Truck,
   ArrowDownToLine,
+  Download,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { usePublishStore } from '@/lib/stores/publishStore'
 import { InventoryItemRow } from '@/lib/repositories/inventoryRepository'
+import { exportToCsv } from '@/lib/utils/csvExport'
 import {
   Dialog,
   DialogContent,
@@ -37,22 +39,33 @@ import InventoryCategoriesDialog from './InventoryCategoriesDialog'
 import StockAdjustDialog from './StockAdjustDialog'
 import ShiftChecklistDialog from './ShiftChecklistDialog'
 import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
+import { useFranchiseStore, resolveTenant, FIGUEIRA_HQ_ID } from '@/lib/stores/franchiseStore'
 
 export default function InventoryManagementView({
-  tenantId = '11111111-1111-1111-1111-111111111111',
+  tenantId: propTenantId,
   onNavigateToSupplyOrders,
 }: {
   tenantId?: string
   onNavigateToSupplyOrders?: () => void
 }) {
   const { authFetch, user } = useAuthStore()
+  const { currentTenant, tenants } = useFranchiseStore()
+  const activeTenant = resolveTenant(propTenantId || currentTenant?.id, tenants)
+  const tenantId = activeTenant?.id || propTenantId || FIGUEIRA_HQ_ID
   const markDirty = usePublishStore((s) => s.markDirty)
+
+  const isFranchisorStaff = user?.role === 'SUPER_ADMIN' || user?.role === 'FRANCHISOR_ADMIN'
+  const isMatriz = isFranchisorStaff && (
+    activeTenant?.id === FIGUEIRA_HQ_ID ||
+    activeTenant?.slug === 'figueira-da-foz' ||
+    activeTenant?.slug === 'figueira' ||
+    Boolean(activeTenant?.isHeadquarters)
+  )
+
   const [items, setItems] = useState<InventoryItemRow[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
-
-  const isMatriz = tenantId === '11111111-1111-1111-1111-111111111111'
 
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0)
   const [transferModalOpen, setTransferModalOpen] = useState(false)
@@ -68,7 +81,7 @@ export default function InventoryManagementView({
   }>({
     open: false,
     title: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   })
 
   // Modais de Controle
@@ -113,7 +126,7 @@ export default function InventoryManagementView({
               setPendingOrdersCount(pending)
             }
           })
-          .catch(() => {})
+          .catch(() => { })
       }
 
       if (isManual) toast.success('Estoque sincronizado!')
@@ -298,6 +311,46 @@ export default function InventoryManagementView({
     }
   }
 
+  const handleExportInventory = () => {
+    if (items.length === 0) {
+      toast.error('Nenhum insumo para exportar')
+      return
+    }
+
+    const headers = [
+      'Insumo / Artigo',
+      'Código Suprimento',
+      'Categoria',
+      'Unidade',
+      'Saldo Atual',
+      'Limite Mínimo',
+      'Estado',
+      'Preço Franquia (€)',
+      'Preço Mercado (€)',
+      'Crítico Checklist',
+    ]
+
+    const rows = filteredItems.map((it) => [
+      it.name,
+      it.supplyCode || '',
+      it.category,
+      it.unit,
+      it.currentQuantity,
+      it.minAlertQuantity,
+      it.status === 'NORMAL' ? 'Normal' : it.status === 'ALERT' ? 'Alerta' : 'Crítico',
+      it.supplyPrice,
+      it.marketPrice,
+      it.isCriticalChecklist ? 'Sim' : 'Não',
+    ])
+
+    exportToCsv({
+      filename: `estoque_loja_${activeTenant?.slug || tenantId}_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
+    toast.success('Relatório de estoque exportado com sucesso!')
+  }
+
   const filteredItems = items.filter((i) => {
     const matchSearch =
       i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -372,6 +425,16 @@ export default function InventoryManagementView({
           )}
 
           <Button
+            variant="outline"
+            onClick={handleExportInventory}
+            className="h-10 text-xs font-bold gap-1.5 px-3.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-xs shrink-0"
+            title="Exportar inventário físico para folha de cálculo Excel"
+          >
+            <Download className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+            <span>Exportar Estoque</span>
+          </Button>
+
+          <Button
             onClick={() => setChecklistOpen(true)}
             className="h-10 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white rounded-xl text-xs font-black gap-2 px-4 cursor-pointer shadow-xs shrink-0"
           >
@@ -416,11 +479,10 @@ export default function InventoryManagementView({
         <button
           type="button"
           onClick={() => setCategoryFilter('ALL')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            categoryFilter === 'ALL'
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${categoryFilter === 'ALL'
               ? 'bg-purple-800 text-white shadow-xs'
               : 'bg-purple-50/70 dark:bg-white/5 text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-150 dark:border-white/10'
-          }`}
+            }`}
         >
           Todas as Categorias
         </button>
@@ -429,11 +491,10 @@ export default function InventoryManagementView({
             key={cat.code}
             type="button"
             onClick={() => setCategoryFilter(cat.code)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              categoryFilter.toUpperCase() === cat.code.toUpperCase()
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${categoryFilter.toUpperCase() === cat.code.toUpperCase()
                 ? 'bg-purple-800 text-white shadow-xs'
                 : 'bg-purple-50/70 dark:bg-white/5 text-purple-900 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-white/10 border border-purple-150 dark:border-white/10'
-            }`}
+              }`}
           >
             {cat.name}
           </button>

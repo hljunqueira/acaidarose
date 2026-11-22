@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adjustStoreStock } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,6 +28,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (err: any) {
     console.error('Erro na rota POST /api/inventory/adjust:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao ajustar estoque' }, { status: 500 })
+    return errorResponse(err, 'Erro ao ajustar saldo de estoque')
   }
 }

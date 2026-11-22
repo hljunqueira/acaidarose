@@ -4,6 +4,7 @@ import {
   deleteInventoryCategory,
 } from '@/lib/repositories/inventoryRepository'
 import { recordAuditLog } from '@/lib/repositories/auditRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function PUT(
   req: NextRequest,
@@ -44,10 +45,7 @@ export async function PUT(
     return NextResponse.json({ category: updated })
   } catch (error: any) {
     console.error('Erro na rota PUT /api/inventory/categories/[id]:', error)
-    return NextResponse.json(
-      { error: error.message || 'Falha ao atualizar categoria' },
-      { status: 500 }
-    )
+    return errorResponse(error, 'Falha ao atualizar categoria de estoque')
   }
 }
 
@@ -79,9 +77,6 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Erro na rota DELETE /api/inventory/categories/[id]:', error)
-    return NextResponse.json(
-      { error: error.message || 'Falha ao excluir categoria' },
-      { status: 500 }
-    )
+    return errorResponse(error, 'Falha ao excluir categoria de estoque')
   }
 }

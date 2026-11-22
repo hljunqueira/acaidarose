@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { transferCentralToLocal } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +27,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (err: any) {
     console.error('Erro na rota POST /api/inventory/transfer:', err)
-    return NextResponse.json({ error: err.message || 'Erro interno' }, { status: 500 })
+    return errorResponse(err, 'Erro ao processar transferência interna para o balcão')
   }
 }

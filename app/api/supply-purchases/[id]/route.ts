@@ -3,6 +3,7 @@ import {
   updateSupplierPurchase,
   deleteSupplierPurchase,
 } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -37,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: true, purchase: updated })
   } catch (err: any) {
     console.error('Erro na rota PUT /api/supply-purchases/[id]:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao atualizar compra' }, { status: 500 })
+    return errorResponse(err, 'Erro ao atualizar compra com fornecedor')
   }
 }
 
@@ -51,6 +52,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ success: true })
   } catch (err: any) {
     console.error('Erro na rota DELETE /api/supply-purchases/[id]:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao excluir compra' }, { status: 500 })
+    return errorResponse(err, 'Erro ao excluir compra com fornecedor')
   }
 }

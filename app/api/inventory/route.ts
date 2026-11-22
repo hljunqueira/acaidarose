@@ -4,6 +4,7 @@ import {
   getStoreInventory,
   createMasterItem,
 } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function GET(req: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items })
   } catch (err: any) {
     console.error('Erro na rota GET /api/inventory:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao buscar inventário' }, { status: 500 })
+    return errorResponse(err, 'Erro ao buscar inventário de insumos')
   }
 }
 
@@ -81,6 +82,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ item: newItem }, { status: 201 })
   } catch (err: any) {
     console.error('Erro na rota POST /api/inventory:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao criar insumo' }, { status: 500 })
+    return errorResponse(err, 'Erro ao criar insumo')
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { updateSupplier, deleteSupplier } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function PUT(
   req: NextRequest,
@@ -31,7 +32,7 @@ export async function PUT(
     return NextResponse.json({ supplier: updated })
   } catch (err: any) {
     console.error('Erro na rota PUT /api/suppliers/[id]:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao atualizar fornecedor' }, { status: 500 })
+    return errorResponse(err, 'Erro ao atualizar fornecedor')
   }
 }
 
@@ -53,6 +54,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: 'Fornecedor desativado com sucesso' })
   } catch (err: any) {
     console.error('Erro na rota DELETE /api/suppliers/[id]:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao remover fornecedor' }, { status: 500 })
+    return errorResponse(err, 'Erro ao remover fornecedor')
   }
 }

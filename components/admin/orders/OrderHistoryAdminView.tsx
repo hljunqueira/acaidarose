@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
+import { exportToCsv, formatStatusLabel } from '@/lib/utils/csvExport'
 
 interface OrderItemOption {
   id: string
@@ -411,7 +412,7 @@ export default function OrderHistoryAdminView({
     window.open(`/receipt/${orderId}?print=true`, '_blank', 'width=450,height=700')
   }
 
-  // Exportação CSV Profissional
+  // Exportação CSV Profissional (Excel PT-PT / Sheets)
   const handleExportCSV = () => {
     if (orders.length === 0) {
       toast.error('Nenhum pedido para exportar no período selecionado')
@@ -439,33 +440,29 @@ export default function OrderHistoryAdminView({
       const isTableOrder = o.tableNumber && String(o.tableNumber).toLowerCase() !== 'balcão' && String(o.tableNumber).toLowerCase() !== 'balcao'
       const consumptionLabel = o.consumptionType === 'TAKEAWAY' ? 'Takeaway' : isTableOrder ? `Esplanada ${o.tableNumber}` : 'Balcão'
       return [
-        `"#${o.orderNumber}"`,
-        `"${formatDateTime(o.createdAt)}"`,
-        `"${o.tenantName || selectedBranch}"`,
-        `"${o.customerName || 'Anónimo'}"`,
-        `"${o.customerPhone || ''}"`,
-        `"${o.customerNif || ''}"`,
-        `"${consumptionLabel}"`,
-        `"${o.tableNumber || ''}"`,
-        `"${getPaymentMethodLabel(o.paymentMethod)}"`,
-        o.subtotal.toFixed(2),
-        o.vatTotal.toFixed(2),
-        o.total.toFixed(2),
-        `"${o.status}"`,
-        `"${o.cancelReason || ''}"`,
+        `#${o.orderNumber}`,
+        formatDateTime(o.createdAt),
+        o.tenantName || selectedBranch,
+        o.customerName || 'Anónimo',
+        o.customerPhone || '',
+        o.customerNif || '',
+        consumptionLabel,
+        o.tableNumber || '',
+        getPaymentMethodLabel(o.paymentMethod),
+        o.subtotal,
+        o.vatTotal,
+        o.total,
+        formatStatusLabel(o.status),
+        o.cancelReason || '',
       ]
     })
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `historico-pedidos-${period}-${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    toast.success('Relatório CSV de pedidos gerado com sucesso!')
+    exportToCsv({
+      filename: `historico-pedidos-${period}-${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
+    toast.success('Relatório de pedidos exportado com sucesso!')
   }
 
   const tableOptions = useMemo<FilterOption[]>(

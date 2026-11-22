@@ -218,7 +218,11 @@ export default function OptionModelsManagerDialog({
         const res = await authFetch(`/api/option-models/${savedModel.id}?tenantId=${encodeURIComponent(effectiveTenant)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...savedModel, tenantId: effectiveTenant }),
+          body: JSON.stringify({
+            ...savedModel,
+            tenantId: effectiveTenant,
+            applyToAll: isSuperAdmin && Boolean((savedModel as any).applyToAll),
+          }),
         })
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))

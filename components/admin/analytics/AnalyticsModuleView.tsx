@@ -14,6 +14,7 @@ import {
   Layers,
   Star,
   ChevronRight,
+  Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +23,7 @@ import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import OrderHistoryAdminView from '../orders/OrderHistoryAdminView'
+import { exportToCsv } from '@/lib/utils/csvExport'
 
 export type AnalyticsTab = 'overview' | 'products' | 'toppings' | 'orders'
 
@@ -153,6 +155,52 @@ export default function AnalyticsModuleView({
   }, [hourlyData])
 
   // Componente de controle dos filtros de período com suporte a datas customizadas
+  const handleExportProducts = () => {
+    const list = rankingSort === 'most' ? productsData.mostSold : productsData.leastSold
+    if (list.length === 0) {
+      toast.error('Nenhum dado de produtos para exportar')
+      return
+    }
+
+    const headers = ['Posição', 'Produto', 'Quantidade Vendida', 'Receita Gerada (€)']
+    const rows = list.map((item, idx) => [
+      idx + 1,
+      item.name,
+      item.quantity,
+      item.revenue,
+    ])
+
+    exportToCsv({
+      filename: `ranking_produtos_${period}_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
+    toast.success('Relatório de produtos exportado com sucesso!')
+  }
+
+  const handleExportToppings = () => {
+    const list = rankingSort === 'most' ? toppingsData.mostSold : toppingsData.leastSold
+    if (list.length === 0) {
+      toast.error('Nenhum dado de opcionais para exportar')
+      return
+    }
+
+    const headers = ['Posição', 'Opcional / Acompanhamento', 'Quantidade Consumida', 'Receita Adicional (€)']
+    const rows = list.map((item, idx) => [
+      idx + 1,
+      item.name,
+      item.quantity,
+      item.revenue,
+    ])
+
+    exportToCsv({
+      filename: `ranking_opcionais_${period}_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
+    toast.success('Relatório de opcionais exportado com sucesso!')
+  }
+
   const renderPeriodSelector = () => (
     <div className="flex flex-col items-start sm:items-end gap-2 w-fit">
       <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10 w-fit">
@@ -474,7 +522,7 @@ export default function AnalyticsModuleView({
                 </button>
               </div>
 
-              <div className="pb-3">
+              <div className="pb-3 flex items-center gap-2">
                 <input
                   type="text"
                   placeholder="Filtrar produto por nome..."
@@ -482,6 +530,17 @@ export default function AnalyticsModuleView({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="h-8 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-56"
                 />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportProducts}
+                  className="h-8 px-3 rounded-xl text-xs font-bold border-slate-200 dark:border-white/15 cursor-pointer flex items-center gap-1.5 shrink-0"
+                  title="Exportar ranking de produtos para Excel"
+                >
+                  <Download className="h-3.5 w-3.5 text-blue-600 dark:text-pink-400" />
+                  <span>Exportar</span>
+                </Button>
               </div>
             </div>
 
@@ -578,7 +637,7 @@ export default function AnalyticsModuleView({
                 </button>
               </div>
 
-              <div className="pb-3">
+              <div className="pb-3 flex items-center gap-2">
                 <input
                   type="text"
                   placeholder="Filtrar acompanhamento por nome..."
@@ -586,6 +645,17 @@ export default function AnalyticsModuleView({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="h-8 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-56"
                 />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportToppings}
+                  className="h-8 px-3 rounded-xl text-xs font-bold border-slate-200 dark:border-white/15 cursor-pointer flex items-center gap-1.5 shrink-0"
+                  title="Exportar ranking de opcionais para Excel"
+                >
+                  <Download className="h-3.5 w-3.5 text-blue-600 dark:text-pink-400" />
+                  <span>Exportar</span>
+                </Button>
               </div>
             </div>
 

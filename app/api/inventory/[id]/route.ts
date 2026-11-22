@@ -4,6 +4,7 @@ import {
   deleteMasterItem,
   updateStoreMinAlert,
 } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -28,9 +29,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       isCriticalChecklist,
     } = body
 
-    if (minAlertQuantity !== undefined) {
-      const targetTenant = tenantId || '11111111-1111-1111-1111-111111111111'
-      await updateStoreMinAlert(targetTenant, id, Number(minAlertQuantity))
+    if (minAlertQuantity !== undefined && tenantId) {
+      await updateStoreMinAlert(tenantId, id, Number(minAlertQuantity))
     }
 
     const updated = await updateMasterItem(id, {
@@ -54,7 +54,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: true, item: updated })
   } catch (err: any) {
     console.error('Erro na rota PUT /api/inventory/[id]:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao atualizar insumo' }, { status: 500 })
+    return errorResponse(err, 'Erro ao atualizar insumo')
   }
 }
 
@@ -68,6 +68,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ success: true })
   } catch (err: any) {
     console.error('Erro na rota DELETE /api/inventory/[id]:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao excluir insumo' }, { status: 500 })
+    return errorResponse(err, 'Erro ao excluir insumo')
   }
 }

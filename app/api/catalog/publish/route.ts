@@ -36,6 +36,27 @@ export async function POST(request: NextRequest) {
 
     // Se for publicação para toda a rede ou em lote para todas as lojas com pendências
     if ((replicateAll || publishAllPending) && isSuperOrFranchisor) {
+      // Se a intenção for replicar o catálogo da loja ativa para toda a rede, propaga os overrides de produtos
+      if (replicateAll && targetTenantId) {
+        try {
+          const otherTenants = await query(`SELECT id FROM tenants WHERE deleted_at IS NULL AND id != $1`, [targetTenantId])
+          const activeOverrides = await query(`SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`, [targetTenantId])
+          for (const t of otherTenants.rows || []) {
+            for (const ov of activeOverrides.rows || []) {
+              await query(
+                `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+                 VALUES ($1, $2, $3, $4, NOW())
+                 ON CONFLICT (tenant_id, product_id)
+                 DO UPDATE SET is_available = EXCLUDED.is_available, is_visible = EXCLUDED.is_visible, updated_at = NOW()`,
+                [t.id, ov.product_id, ov.is_available, ov.is_visible]
+              )
+            }
+          }
+        } catch (errSync) {
+          console.warn('Erro ao propagar overrides na publicação em rede:', errSync)
+        }
+      }
+
       const sql = replicateAll
         ? `UPDATE store_catalog_versions
            SET version = version + 1,

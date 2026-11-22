@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/api/authGuard'
 import { toggleStoreItemStatus } from '@/lib/repositories/productsRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +11,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const tenantId = body.tenantId || user.tenantId || 'tenant-torres-novas'
+    const tenantId = body.tenantId || user.tenantId
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Identificador de loja (tenantId) é obrigatório' }, { status: 400 })
+    }
     const productId = body.productId || body.id
 
     const updates: { isAvailable?: boolean; isVisible?: boolean } = {}
@@ -37,6 +41,6 @@ export async function POST(request: NextRequest) {
     const result = await toggleStoreItemStatus(tenantId, productId, updates, applyToAll)
     return NextResponse.json(result)
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erro ao alterar status' }, { status: 500 })
+    return errorResponse(err, 'Erro ao alterar disponibilidade do item no cardápio')
   }
 }

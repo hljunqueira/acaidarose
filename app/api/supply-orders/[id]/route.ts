@@ -5,6 +5,7 @@ import {
   receiveSupplyOrder,
   deleteSupplyOrder,
 } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -30,7 +31,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Nenhuma ação informada' }, { status: 400 })
   } catch (err: any) {
     console.error('Erro na rota PUT /api/supply-orders/[id]:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao atualizar pedido B2B' }, { status: 500 })
+    return errorResponse(err, 'Erro ao atualizar pedido de reposição')
   }
 }
 
@@ -46,6 +47,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ success: true })
   } catch (err: any) {
     console.error('Erro na rota DELETE /api/supply-orders/[id]:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao excluir pedido B2B' }, { status: 500 })
+    return errorResponse(err, 'Erro ao excluir pedido de reposição')
   }
 }

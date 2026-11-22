@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSuppliers, createSupplier } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function GET() {
   try {
@@ -7,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ suppliers })
   } catch (err: any) {
     console.error('Erro na rota GET /api/suppliers:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao consultar fornecedores' }, { status: 500 })
+    return errorResponse(err, 'Erro ao consultar fornecedores')
   }
 }
 
@@ -32,6 +33,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ supplier }, { status: 201 })
   } catch (err: any) {
     console.error('Erro na rota POST /api/suppliers:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao criar fornecedor' }, { status: 500 })
+    return errorResponse(err, 'Erro ao criar fornecedor')
   }
 }

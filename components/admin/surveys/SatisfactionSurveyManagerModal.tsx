@@ -37,6 +37,7 @@ import { toast } from 'sonner'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import { useAuthStore } from '@/lib/stores/authStore'
 import SurveyEditorView, { SurveyModel } from './SurveyEditorView'
+import { exportToCsv } from '@/lib/utils/csvExport'
 
 interface SatisfactionSurveyManagerModalProps {
   open: boolean
@@ -234,7 +235,7 @@ export default function SatisfactionSurveyManagerModal({
     }
   }
 
-  // Exportar respostas da pesquisa em CSV
+  // Exportar respostas da pesquisa em CSV (Excel PT-PT / Sheets)
   const handleExportCSV = () => {
     if (surveyResponses.length === 0) {
       toast.error('Nenhuma resposta disponível para exportar.')
@@ -256,30 +257,24 @@ export default function SatisfactionSurveyManagerModal({
     ]
 
     const rows = surveyResponses.map((r) => [
-      `"${r.id}"`,
-      `"${new Date(r.created_at).toLocaleString('pt-PT')}"`,
-      `"${r.store_name || r.tenant_id}"`,
-      `"${r.table_number || 'Balcão'}"`,
-      `"${r.customer_name || 'Anónimo'}"`,
-      `"${r.customer_phone || ''}"`,
-      `"${r.customer_email || ''}"`,
-      `"${r.customer_birthday || ''}"`,
+      r.id,
+      new Date(r.created_at).toLocaleString('pt-PT'),
+      r.store_name || r.tenant_id,
+      r.table_number || 'Balcão',
+      r.customer_name || 'Anónimo',
+      r.customer_phone || '',
+      r.customer_email || '',
+      r.customer_birthday || '',
       r.nps_score !== null && r.nps_score !== undefined ? r.nps_score : '',
-      `"${r.language || 'pt'}"`,
-      `"${JSON.stringify(r.answers || []).replace(/"/g, '""')}"`,
+      r.language || 'pt',
+      JSON.stringify(r.answers || []),
     ])
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,\uFEFF' +
-      [headers.join(';'), ...rows.map((row) => row.join(';'))].join('\n')
-
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `pesquisa_respostas_${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    exportToCsv({
+      filename: `pesquisa_respostas_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
     toast.success('Respostas exportadas com sucesso!')
   }
 

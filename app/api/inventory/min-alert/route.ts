@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { updateStoreMinAlert } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,6 +24,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, minAlert: val })
   } catch (err: any) {
     console.error('Erro na rota POST /api/inventory/min-alert:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao atualizar limite mínimo' }, { status: 500 })
+    return errorResponse(err, 'Erro ao atualizar limite mínimo de estoque')
   }
 }

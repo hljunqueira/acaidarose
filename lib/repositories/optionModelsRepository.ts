@@ -29,37 +29,89 @@ export interface OptionModelRecord {
 export async function getOptionModelsByTenant(tenantId: string = AVEIRO_HQ_ID, activeOnly: boolean = false): Promise<OptionModelRecord[]> {
   try {
     const activeFilter = activeOnly ? 'AND active = true' : ''
-    const res = await query(
-      `SELECT id, tenant_id, name, name_en, name_es, price_type, additional_price, min_qty, max_qty, 
+    const [res, overridesRes] = await Promise.all([
+      query(
+        `SELECT id, tenant_id, name, name_en, name_es, price_type, additional_price, min_qty, max_qty, 
               allow_item_quantity, is_required, show_detailed, options, active, display_order, subtitle, subtitle_en, subtitle_es, created_at, updated_at
        FROM product_option_models
        WHERE (tenant_id = $1 OR tenant_id = $2 OR tenant_id IS NULL) ${activeFilter}
        ORDER BY display_order ASC, created_at ASC`,
-      [tenantId, AVEIRO_HQ_ID]
-    )
+        [tenantId, AVEIRO_HQ_ID]
+      ),
+      query(
+        `SELECT product_id, is_available, is_visible FROM store_product_overrides WHERE tenant_id = $1`,
+        [tenantId]
+      ),
+    ])
 
-    return (res.rows || []).map((r: any) => ({
-      id: r.id,
-      tenantId: r.tenant_id,
-      name: r.name,
-      nameEn: r.name_en || null,
-      nameEs: r.name_es || null,
-      priceType: r.price_type === 'Individual' ? 'Individual' : 'Gratis',
-      additionalPrice: Number(r.additional_price || 0),
-      minQty: Number(r.min_qty || 0),
-      maxQty: Number(r.max_qty || 1),
-      allowItemQuantity: !!r.allow_item_quantity,
-      isRequired: !!r.is_required,
-      showDetailed: !!r.show_detailed,
-      options: Array.isArray(r.options) ? r.options : [],
-      active: r.active !== false,
-      displayOrder: Number(r.display_order || 0),
-      subtitle: r.subtitle || null,
-      subtitleEn: r.subtitle_en || null,
-      subtitleEs: r.subtitle_es || null,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    }))
+    const availabilityMap = new Map<string, { isAvailable: boolean; isVisible: boolean }>()
+    const pausedIds = new Set<string>()
+
+    if (overridesRes && overridesRes.rows) {
+      overridesRes.rows.forEach((r: any) => {
+        const isAvail = r.is_available !== false
+        const isVis = r.is_visible !== false
+        availabilityMap.set(String(r.product_id), { isAvailable: isAvail, isVisible: isVis })
+        if (!isAvail || !isVis) {
+          pausedIds.add(String(r.product_id))
+        }
+      })
+    }
+
+    return (res.rows || []).map((r: any) => {
+      const modelOverride = availabilityMap.get(r.id)
+      const isModelActive = modelOverride !== undefined
+        ? (modelOverride.isVisible && modelOverride.isAvailable)
+        : (r.active !== false)
+
+      const rawOptions = Array.isArray(r.options) ? r.options : []
+      const mergedOptions = rawOptions.map((opt: any) => {
+        const optId = opt.id ? String(opt.id) : ''
+        const optCode = opt.code ? String(opt.code).trim().toUpperCase() : ''
+        const optNameLower = (opt.name || '').toLowerCase().trim()
+
+        const override = (optId && availabilityMap.get(optId)) ||
+          (optCode && availabilityMap.get(optCode)) ||
+          (optNameLower && availabilityMap.get(optNameLower))
+
+        const isPaused =
+          (override !== undefined && (!override.isAvailable || !override.isVisible)) ||
+          (optId && pausedIds.has(optId)) ||
+          (optCode && pausedIds.has(optCode))
+
+        const isExplicitActive = override !== undefined ? (override.isAvailable && override.isVisible) : undefined
+
+        return {
+          ...opt,
+          nameEn: opt.nameEn || opt.name_en || opt.name,
+          nameEs: opt.nameEs || opt.name_es || opt.name,
+          active: isExplicitActive !== undefined ? isExplicitActive : (isPaused ? false : (opt.active !== false)),
+        }
+      })
+
+      return {
+        id: r.id,
+        tenantId: r.tenant_id,
+        name: r.name,
+        nameEn: r.name_en || null,
+        nameEs: r.name_es || null,
+        priceType: r.price_type === 'Individual' ? 'Individual' : 'Gratis',
+        additionalPrice: Number(r.additional_price || 0),
+        minQty: Number(r.min_qty || 0),
+        maxQty: Number(r.max_qty || 1),
+        allowItemQuantity: !!r.allow_item_quantity,
+        isRequired: !!r.is_required,
+        showDetailed: !!r.show_detailed,
+        options: mergedOptions,
+        active: isModelActive,
+        displayOrder: Number(r.display_order || 0),
+        subtitle: r.subtitle || null,
+        subtitleEn: r.subtitle_en || null,
+        subtitleEs: r.subtitle_es || null,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }
+    })
   } catch (err: any) {
     console.error('Erro ao buscar modelos de opções:', err)
     return []
@@ -157,7 +209,111 @@ export async function createOptionModel(tenantId: string = AVEIRO_HQ_ID, modelDa
   }
 }
 
-export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ_ID, modelData: any, author?: { name?: string; role?: string; id?: string }): Promise<OptionModelRecord | null> {
+export async function updateOptionModel(
+  id: string,
+  tenantId: string = AVEIRO_HQ_ID,
+  modelData: any,
+  author?: { name?: string; role?: string; id?: string },
+  applyToAll: boolean = false,
+  isMaster: boolean = true
+): Promise<OptionModelRecord | null> {
+  // Se for alteração por franquia ou sem replicação total da rede, grava EXCLUSIVAMENTE em store_product_overrides
+  if (!isMaster || !applyToAll) {
+    const existing = await query(`SELECT * FROM product_option_models WHERE id::text = $1`, [id])
+    if (!existing.rows || existing.rows.length === 0) return null
+    const currentModel = existing.rows[0]
+
+    // 1. Override do modelo inteiro (se informado)
+    if (modelData.active !== undefined) {
+      const isModelActive = Boolean(modelData.active)
+      await query(
+        `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+         VALUES ($1, $2, true, $3, timezone('utc'::text, now()))
+         ON CONFLICT (tenant_id, product_id)
+         DO UPDATE SET is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+        [tenantId, id, isModelActive]
+      )
+    }
+
+    // 2. Overrides de cada opção do modelo na loja ativa
+    const incomingOptions = Array.isArray(modelData.options) ? modelData.options : []
+    for (const opt of incomingOptions) {
+      if (opt.active !== undefined) {
+        const isOptActive = Boolean(opt.active)
+        const optId = opt.id ? String(opt.id) : ''
+        const optCode = opt.code ? String(opt.code).trim().toUpperCase() : ''
+        const optName = opt.name ? String(opt.name).trim() : ''
+
+        if (optId) {
+          await query(
+            `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+             VALUES ($1, $2, true, $3, timezone('utc'::text, now()))
+             ON CONFLICT (tenant_id, product_id)
+             DO UPDATE SET is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+            [tenantId, optId, isOptActive]
+          )
+        }
+
+        if (optCode) {
+          await query(
+            `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+             VALUES ($1, $2, true, $3, timezone('utc'::text, now()))
+             ON CONFLICT (tenant_id, product_id)
+             DO UPDATE SET is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+            [tenantId, optCode, isOptActive]
+          )
+        }
+
+        if (optName) {
+          try {
+            const matchRes = await query(
+              `SELECT id FROM product_toppings WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+               UNION ALL
+               SELECT id FROM product_bases WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))`,
+              [optName]
+            )
+            for (const m of matchRes.rows || []) {
+              await query(
+                `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+                 VALUES ($1, $2, true, $3, timezone('utc'::text, now()))
+                 ON CONFLICT (tenant_id, product_id)
+                 DO UPDATE SET is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+                [tenantId, m.id, isOptActive]
+              )
+            }
+          } catch (errMatch) {
+            console.warn('Erro ao propagar override por nome na loja:', errMatch)
+          }
+        }
+      }
+    }
+
+    try {
+      const { bumpStoreCatalogVersion } = await import('@/lib/repositories/productsRepository')
+      await bumpStoreCatalogVersion([tenantId])
+    } catch {}
+
+    await recordAuditLog({
+      tenantId,
+      userId: author?.id,
+      authorName: author?.name,
+      userRole: author?.role || 'STORE_OPERATOR',
+      action: 'OPTION_MODEL_STORE_OVERRIDE_UPDATED',
+      entity: 'store_product_overrides',
+      entityId: id,
+      message: `Visibilidade das opções do modelo "${currentModel.name}" atualizada exclusivamente na loja`,
+      metadata: {
+        modelId: id,
+        tenantId,
+        applyToAll: false,
+        optionsCount: incomingOptions.length,
+      },
+    })
+
+    const refreshed = await getOptionModelsByTenant(tenantId)
+    return refreshed.find((m) => m.id === id) || null
+  }
+
   const priceType = modelData.priceType === 'Individual' ? 'Individual' : 'Gratis'
   const additionalPrice = Number(modelData.additionalPrice || 0)
   const minQty = Number(modelData.minQty || 0)
@@ -321,6 +477,31 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
       }
     } catch (orderErr) {
       console.error('Erro ao sincronizar display_order e active dos itens do modelo:', orderErr)
+    }
+  }
+
+  // Se foi aplicado a toda a rede pela Franqueadora Master, propaga em store_product_overrides para todos os tenants
+  if (applyToAll && isMaster) {
+    try {
+      const tenantsRes = await query(`SELECT id FROM tenants WHERE deleted_at IS NULL`)
+      for (const t of tenantsRes.rows || []) {
+        for (const opt of options) {
+          if (opt.active !== undefined) {
+            const isOptActive = Boolean(opt.active)
+            if (opt.id) {
+              await query(
+                `INSERT INTO store_product_overrides (tenant_id, product_id, is_available, is_visible, updated_at)
+                 VALUES ($1, $2, true, $3, timezone('utc'::text, now()))
+                 ON CONFLICT (tenant_id, product_id)
+                 DO UPDATE SET is_visible = EXCLUDED.is_visible, updated_at = timezone('utc'::text, now())`,
+                [t.id, opt.id, isOptActive]
+              )
+            }
+          }
+        }
+      }
+    } catch (errReplicate) {
+      console.warn('Erro ao replicar overrides de opções para toda a rede:', errReplicate)
     }
   }
 

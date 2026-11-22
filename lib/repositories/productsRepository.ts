@@ -490,6 +490,8 @@ export async function toggleStoreItemStatus(
        SELECT name FROM product_toppings WHERE id::text = $1
        UNION ALL
        SELECT name FROM product_option_models WHERE id::text = $1
+       UNION ALL
+       SELECT name FROM inventory_items WHERE id::text = $1
        LIMIT 1`,
       [productId]
     )
@@ -522,7 +524,9 @@ export async function toggleStoreItemStatus(
         const matchRes = await query(
           `SELECT id, tenant_id FROM product_toppings WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
            UNION ALL
-           SELECT id, tenant_id FROM product_bases WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))`,
+           SELECT id, tenant_id FROM product_bases WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+           UNION ALL
+           SELECT id, tenant_id FROM product_containers WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))`,
           [productName]
         )
         for (const m of matchRes.rows || []) {

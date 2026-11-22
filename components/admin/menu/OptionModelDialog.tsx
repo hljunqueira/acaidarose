@@ -80,10 +80,12 @@ export default function OptionModelDialog({
   const [showDetailed, setShowDetailed] = useState<boolean>(false)
   const [options, setOptions] = useState<OptionItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [applyToAll, setApplyToAll] = useState(false)
 
   useEffect(() => {
     if (open) {
       setSearchTerm('')
+      setApplyToAll(false)
       if (initialModel) {
         setName(initialModel.name || '')
         setSubtitle(initialModel.subtitle || '')
@@ -225,7 +227,7 @@ export default function OptionModelDialog({
 
     const filteredOptions = options.filter((o) => o.name.trim() !== '')
 
-    const savedModel: OptionModelData = {
+    const savedModel: OptionModelData & { applyToAll?: boolean } = {
       id: initialModel?.id || `model-${Date.now()}`,
       name: name.trim(),
       subtitle: subtitle.trim() ? subtitle.trim() : null,
@@ -242,6 +244,7 @@ export default function OptionModelDialog({
       showDetailed,
       active: initialModel?.active !== undefined ? initialModel.active : true,
       options: filteredOptions.length > 0 ? filteredOptions : options,
+      applyToAll: isSuperAdmin ? applyToAll : false,
     }
 
     if (onSave) onSave(savedModel)
@@ -908,22 +911,44 @@ export default function OptionModelDialog({
         </div>
 
         {/* Rodapé */}
-        <div className="p-4 px-6 bg-purple-50/50 dark:bg-white/5 border-t border-purple-100 dark:border-white/10 flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="border border-purple-200 dark:border-white/15 bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-950 dark:text-white rounded-xl h-10 px-5 text-xs font-bold cursor-pointer"
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSave}
-            className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold rounded-xl h-10 px-6 text-xs shadow-lg shadow-pink-600/30 cursor-pointer"
-          >
-            Salvar Modelo
-          </Button>
+        <div className="p-4 px-6 bg-purple-50/50 dark:bg-white/5 border-t border-purple-100 dark:border-white/10 flex items-center justify-between gap-2">
+          <div>
+            {isSuperAdmin ? (
+              <label className="flex items-center gap-2 text-xs font-bold text-purple-950 dark:text-purple-200 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={applyToAll}
+                  onChange={(e) => setApplyToAll(e.target.checked)}
+                  className="h-4 w-4 rounded accent-pink-600 cursor-pointer"
+                />
+                <span className="flex items-center gap-1">
+                  <span>Replicar para toda a rede</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">(todas as lojas)</span>
+                </span>
+              </label>
+            ) : (
+              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                🔒 Alterações aplicadas apenas nesta franquia
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="border border-purple-200 dark:border-white/15 bg-purple-50 dark:bg-white/5 hover:bg-purple-100 dark:hover:bg-white/10 text-purple-950 dark:text-white rounded-xl h-10 px-5 text-xs font-bold cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSave}
+              className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold rounded-xl h-10 px-6 text-xs shadow-lg shadow-pink-600/30 cursor-pointer"
+            >
+              Salvar Modelo
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

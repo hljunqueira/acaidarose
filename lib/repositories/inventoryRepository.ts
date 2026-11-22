@@ -493,8 +493,8 @@ export async function getStoreInventory(tenantId: string): Promise<InventoryItem
               ii.net_weight_kg,
               ii.price_per_kg,
               ii.is_critical_checklist,
-              COALESCE(si.current_quantity, 10.00) as current_quantity,
-              COALESCE(si.min_alert_quantity, ii.min_alert_quantity, 2.00) as min_alert_quantity
+              COALESCE(si.current_quantity, 0.00) as current_quantity,
+              COALESCE(si.min_alert_quantity, ii.min_alert_quantity, 0.00) as min_alert_quantity
        FROM inventory_items ii
        LEFT JOIN store_inventory si ON ii.id = si.item_id AND si.tenant_id::text = $1
        ORDER BY ii.category, ii.name`,

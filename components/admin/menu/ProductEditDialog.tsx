@@ -297,7 +297,50 @@ export default function ProductEditDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isSuperAdmin) {
-      toast.error('Franquias não alteram cadastros de produtos diretamente. Solicite à Franqueadora.')
+      setSaving(true)
+      try {
+        const targetTenant = effectiveTenant || user?.tenantId
+        if (!targetTenant) throw new Error('Identificador da loja não encontrado')
+
+        // 1. Salva a visibilidade de cada grupo vinculado na tabela store_product_overrides
+        for (const grp of linkedOptionGroups) {
+          if (grp.id) {
+            const isGroupActive = grp.active !== false
+            await authFetch('/api/products/toggle-availability', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tenantId: targetTenant,
+                productId: grp.id,
+                visible: isGroupActive,
+                applyToAll: false,
+              }),
+            })
+          }
+        }
+
+        // 2. Notifica versão e marca pendência da loja
+        await markDirty(
+          targetTenant,
+          `Visibilidade de opcionais do produto "${form.name}" atualizada nesta loja`,
+          {
+            entity: 'product_option_groups',
+            entityId: item?.id,
+            productName: form.name,
+          },
+          authFetch
+        )
+
+        toast.success(`Visibilidade dos opcionais de "${form.name}" guardada com sucesso nesta loja!`)
+        onOpenChange(false)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('catalog_sync', { detail: { tenantId: targetTenant } }))
+        }
+      } catch (err: any) {
+        toast.error(err.message || 'Erro ao guardar alterações da loja')
+      } finally {
+        setSaving(false)
+      }
       return
     }
     setSaving(true)
@@ -429,7 +472,11 @@ export default function ProductEditDialog({
         const res = await authFetch(`/api/option-models/${savedModel.id}?tenantId=${encodeURIComponent(targetTenant)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...savedModel, tenantId: targetTenant }),
+          body: JSON.stringify({
+            ...savedModel,
+            tenantId: targetTenant,
+            applyToAll: isSuperAdmin && Boolean((savedModel as any).applyToAll),
+          }),
         })
         if (res.ok) {
           const updated = await res.json()
@@ -586,13 +633,13 @@ export default function ProductEditDialog({
                 ? item
                   ? 'Editar Produto — Franqueadora Master'
                   : 'Novo Produto — Franqueadora Master'
-                : 'Detalhes do Produto — Filial'}
+                : 'Editar Produto — Modo Franquia'}
             </DialogTitle>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isSuperAdmin
                 ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-700/50'
-                : 'bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/15'
+                : 'bg-amber-100 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800/40'
               }`}>
-              {isSuperAdmin ? 'Modo Master' : 'Visualização de Filial'}
+              {isSuperAdmin ? 'Modo Master' : 'Modo Franquia (Apenas Visibilidade)'}
             </span>
           </div>
           <button
@@ -1081,7 +1128,7 @@ export default function ProductEditDialog({
           <div className="flex items-center gap-2">
             {!isSuperAdmin && (
               <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                <span>🔒 Modo Filial — Apenas visibilidade local</span>
+                <span>🔒 Modo Franquia — Apenas visibilidade local</span>
               </span>
             )}
           </div>
@@ -1101,18 +1148,16 @@ export default function ProductEditDialog({
               onClick={() => onOpenChange(false)}
               className="px-4 py-2 text-xs font-bold text-purple-900 dark:text-purple-200 bg-white dark:bg-white/5 border border-purple-200 dark:border-white/15 rounded-xl hover:bg-purple-100 dark:hover:bg-white/10 cursor-pointer transition"
             >
-              {isSuperAdmin ? 'Cancelar' : 'Fechar'}
+              Cancelar
             </button>
-            {isSuperAdmin && (
-              <button
-                type="button"
-                disabled={saving}
-                onClick={handleSubmit}
-                className="px-6 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 rounded-xl cursor-pointer shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition"
-              >
-                {saving ? 'Guardando...' : item ? 'Guardar Alterações' : 'Criar Produto'}
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleSubmit}
+              className="px-6 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 rounded-xl cursor-pointer shadow-md shadow-purple-700/20 dark:shadow-pink-600/30 transition"
+            >
+              {saving ? 'Guardando...' : item ? 'Guardar Alterações' : 'Criar Produto'}
+            </button>
           </div>
         </div>
       </DialogContent>

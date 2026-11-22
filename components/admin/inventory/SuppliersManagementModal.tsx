@@ -29,13 +29,14 @@ export default function SuppliersManagementModal({
 }: SuppliersManagementModalProps) {
   const { authFetch } = useAuthStore()
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([])
+  const [categories, setCategories] = useState<{ id: string; name: string; code: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
 
   // Formulário de Criação / Edição
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [category, setCategory] = useState('BASE')
+  const [category, setCategory] = useState('')
   const [nif, setNif] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -46,11 +47,23 @@ export default function SuppliersManagementModal({
   const loadSuppliers = async () => {
     setLoading(true)
     try {
-      const res = await authFetch('/api/suppliers')
-      if (res.ok) {
-        const data = await res.json()
+      const [resSuppliers, resCats] = await Promise.all([
+        authFetch('/api/suppliers'),
+        authFetch('/api/inventory/categories'),
+      ])
+      if (resSuppliers.ok) {
+        const data = await resSuppliers.json()
         if (Array.isArray(data.suppliers)) {
           setSuppliers(data.suppliers)
+        }
+      }
+      if (resCats.ok) {
+        const catData = await resCats.json()
+        if (Array.isArray(catData.categories)) {
+          setCategories(catData.categories)
+          if (!category && catData.categories.length > 0) {
+            setCategory(catData.categories[0].code)
+          }
         }
       }
     } catch {
@@ -70,7 +83,7 @@ export default function SuppliersManagementModal({
   const resetForm = () => {
     setEditingId(null)
     setName('')
-    setCategory('BASE')
+    setCategory(categories[0]?.code || '')
     setNif('')
     setEmail('')
     setPhone('')
@@ -81,7 +94,7 @@ export default function SuppliersManagementModal({
   const handleStartEdit = (s: SupplierRow) => {
     setEditingId(s.id)
     setName(s.name)
-    setCategory(s.category || 'BASE')
+    setCategory(s.category || categories[0]?.code || '')
     setNif(s.nif || '')
     setEmail(s.email || '')
     setPhone(s.phone || '')
@@ -222,13 +235,11 @@ export default function SuppliersManagementModal({
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full h-9 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#1a0230] px-3 text-xs font-bold text-purple-950 dark:text-white"
                 >
-                  <option value="BASE">Bases & Cremes</option>
-                  <option value="CALDA">Caldas Nobres</option>
-                  <option value="TOPPING">Acompanhamentos & Crocantes</option>
-                  <option value="EMBALAGEM">Copos & Embalagens</option>
-                  <option value="DESCARTAVEL">Descartáveis</option>
-                  <option value="LIMPEZA">Higiene & Limpeza</option>
-                  <option value="GRAFICOS">Produtos Gráficos & Merchandising</option>
+                  {categories.map((c) => (
+                    <option key={c.id || c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 

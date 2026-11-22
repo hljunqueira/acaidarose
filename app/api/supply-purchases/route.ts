@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupplierPurchases, recordSupplierPurchase } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function GET() {
   try {
@@ -7,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ purchases })
   } catch (err: any) {
     console.error('Erro na rota GET /api/supply-purchases:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao consultar compras' }, { status: 500 })
+    return errorResponse(err, 'Erro ao consultar compras com fornecedores')
   }
 }
 
@@ -38,6 +39,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ purchase }, { status: 201 })
   } catch (err: any) {
     console.error('Erro na rota POST /api/supply-purchases:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao registrar compra com fornecedor' }, { status: 500 })
+    return errorResponse(err, 'Erro ao registrar compra com fornecedor')
   }
 }

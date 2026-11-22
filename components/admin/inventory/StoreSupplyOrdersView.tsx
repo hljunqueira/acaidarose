@@ -39,6 +39,7 @@ import {
   Eye,
   LayoutGrid,
   List,
+  Download,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
@@ -52,6 +53,7 @@ import {
 import InventoryItemDialog, { InventoryItemFormData } from './InventoryItemDialog'
 import { useFranchiseStore, resolveTenant, FIGUEIRA_HQ_ID } from '@/lib/stores/franchiseStore'
 import SuppliersManagementModal from './SuppliersManagementModal'
+import { exportToCsv, formatStatusLabel } from '@/lib/utils/csvExport'
 
 export default function StoreSupplyOrdersView({
   tenantId = '11111111-1111-1111-1111-111111111111',
@@ -497,6 +499,140 @@ export default function StoreSupplyOrdersView({
     }
   }
 
+  // Exportação CSV de Pedidos de Reposição B2B (Excel PT-PT / Sheets)
+  const handleExportOrders = () => {
+    if (orders.length === 0) {
+      toast.error('Nenhum pedido de reposição para exportar')
+      return
+    }
+
+    const headers = [
+      'Nº Pedido',
+      'Data do Pedido',
+      'Loja Solicitante',
+      'Itens',
+      'Subtotal Líquido (€)',
+      'IVA (€)',
+      'Frete (€)',
+      'Total Faturado (€)',
+      'Situação',
+      'Pagamento',
+      'Notas',
+    ]
+
+    const rows = orders.map((o) => {
+      const itemsSummary = (o.items || [])
+        .map((it) => `${it.quantity}x ${it.name}`)
+        .join(' | ')
+      return [
+        `#${o.orderNumber}`,
+        new Date(o.createdAt).toLocaleString('pt-PT'),
+        o.tenantName || 'Loja',
+        itemsSummary,
+        o.subtotalNet ?? (o.totalAmount - (o.taxTotal || 0) - (o.shippingFee || 0)),
+        o.taxTotal || 0,
+        o.shippingFee || 0,
+        o.totalAmount,
+        formatStatusLabel(o.status),
+        o.paymentStatus === 'PAID' ? 'Pago' : o.paymentStatus === 'INVOICED_30D' ? 'Faturado 30D' : 'Pendente',
+        o.notes || '',
+      ]
+    })
+
+    exportToCsv({
+      filename: `pedidos_reposicao_${isMatriz ? 'todas_lojas' : activeTenant?.slug || 'loja'}_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
+    toast.success('Relatório de pedidos de reposição exportado com sucesso!')
+  }
+
+  // Exportação CSV de Compras com Fornecedores (Matriz)
+  const handleExportPurchases = () => {
+    if (purchases.length === 0) {
+      toast.error('Nenhuma compra registrada para exportar')
+      return
+    }
+
+    const headers = [
+      'Data de Entrada',
+      'Fornecedor',
+      'Insumo / Matéria-Prima',
+      'Cód. Suprimento',
+      'Quantidade',
+      'Preço Custo Unit. (€)',
+      'Total Compra Líquido (€)',
+      'Taxa IVA (%)',
+      'Total c/ IVA (€)',
+      'Nº Fatura',
+      'Lote',
+      'Validade',
+      'Observações',
+    ]
+
+    const rows = purchases.map((p) => [
+      p.purchasedAt ? new Date(p.purchasedAt).toLocaleDateString('pt-PT') : '',
+      p.supplierName || '—',
+      p.itemName || '—',
+      p.supplyCode || '—',
+      p.quantity,
+      p.costUnitPrice,
+      p.totalCost,
+      p.taxRate ?? 23,
+      p.totalCostIncTax ?? p.totalCost,
+      p.invoiceNumber || '',
+      p.batchNumber || '',
+      p.expirationDate ? new Date(p.expirationDate).toLocaleDateString('pt-PT') : '',
+      p.notes || '',
+    ])
+
+    exportToCsv({
+      filename: `compras_fornecedores_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
+    toast.success('Relatório de compras com fornecedores exportado com sucesso!')
+  }
+
+  // Exportação CSV do Catálogo B2B Homologado
+  const handleExportCatalog = () => {
+    if (catalog.length === 0) {
+      toast.error('Nenhum insumo no catálogo para exportar')
+      return
+    }
+
+    const headers = [
+      'Cód. Suprimento',
+      'Insumo Homologado',
+      'Categoria',
+      'Unidade',
+      'Preço Franquia Líquido (€)',
+      'Alíquota IVA (%)',
+      'Preço Franquia c/ IVA (€)',
+      'Preço Mercado (€)',
+      ...(isMatriz ? ['Último Custo Fornecedor (€)', 'Estoque Armazém Central'] : []),
+    ]
+
+    const rows = catalog.map((it) => [
+      it.supplyCode || '',
+      it.name,
+      it.category,
+      it.unit,
+      it.supplyPrice,
+      it.taxRate,
+      it.supplyPriceWithTax,
+      it.marketPrice,
+      ...(isMatriz ? [it.lastCostPrice || 0, it.centralStock || 0] : []),
+    ])
+
+    exportToCsv({
+      filename: `catalogo_b2b_suprimentos_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
+    toast.success('Catálogo de suprimentos exportado com sucesso!')
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-200 pb-24">
       {/* HEADER MINIMALISTA COM TÍTULO NA LINHA SUPERIOR */}
@@ -581,6 +717,42 @@ export default function StoreSupplyOrdersView({
 
         {/* Botões de Ação na mesma linha com h-10 padronizado */}
         <div className="flex items-center gap-2 shrink-0">
+          {activeTab === 'catalog' && (
+            <Button
+              variant="outline"
+              onClick={handleExportCatalog}
+              className="h-10 px-3.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-xs font-bold text-purple-950 dark:text-white cursor-pointer shadow-xs flex items-center gap-2"
+              title="Exportar catálogo homologado para folha de cálculo Excel"
+            >
+              <Download className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+              <span>Exportar Catálogo</span>
+            </Button>
+          )}
+
+          {activeTab === 'orders' && (
+            <Button
+              variant="outline"
+              onClick={handleExportOrders}
+              className="h-10 px-3.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-xs font-bold text-purple-950 dark:text-white cursor-pointer shadow-xs flex items-center gap-2"
+              title="Exportar pedidos de reposição para folha de cálculo Excel"
+            >
+              <Download className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+              <span>Exportar Pedidos</span>
+            </Button>
+          )}
+
+          {isMatriz && activeTab === 'purchases' && (
+            <Button
+              variant="outline"
+              onClick={handleExportPurchases}
+              className="h-10 px-3.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-xs font-bold text-purple-950 dark:text-white cursor-pointer shadow-xs flex items-center gap-2"
+              title="Exportar histórico de compras para folha de cálculo Excel"
+            >
+              <Download className="h-4 w-4 text-purple-600 dark:text-pink-400" />
+              <span>Exportar Compras</span>
+            </Button>
+          )}
+
           {isMatriz && activeTab === 'catalog' && (
             <Button
               onClick={() => {

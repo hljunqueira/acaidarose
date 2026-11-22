@@ -32,6 +32,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useFranchiseStore } from '@/lib/stores/franchiseStore'
 import SatisfactionSurveyManagerModal from '../surveys/SatisfactionSurveyManagerModal'
+import { exportToCsv } from '@/lib/utils/csvExport'
 
 interface FeedbackItem {
   id: string
@@ -195,7 +196,7 @@ export default function CustomerFeedbackAdminView() {
 
 
 
-  // Exportação CSV
+  // Exportação CSV Profissional (Excel PT-PT / Sheets)
   const handleExportCSV = () => {
     if (filteredFeedbacks.length === 0) {
       toast.error('Nenhum dado para exportar no período selecionado')
@@ -225,31 +226,25 @@ export default function CustomerFeedbackAdminView() {
         : ''
 
       return [
-        `"${f.id}"`,
-        `"${formatDateTime(f.createdAt)}"`,
-        `"${f.tenantName || selectedBranch}"`,
-        `"${f.customerName || 'Anónimo'}"`,
-        `"${f.customerPhone || ''}"`,
-        `"${f.tableNumber || 'Balcão'}"`,
+        f.id,
+        formatDateTime(f.createdAt),
+        f.tenantName || selectedBranch,
+        f.customerName || 'Anónimo',
+        f.customerPhone || '',
+        f.tableNumber || 'Balcão',
         f.score,
-        `"${npsType}"`,
-        `"${criteriaStr}"`,
-        `"${(f.comment || '').replace(/"/g, '""')}"`,
-        `"${f.language || 'pt'}"`,
+        npsType,
+        criteriaStr,
+        f.comment || '',
+        f.language || 'pt',
       ]
     })
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,\uFEFF' +
-      [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n')
-
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `relatorio_feedbacks_${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    exportToCsv({
+      filename: `relatorio_feedbacks_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
     toast.success('Relatório de feedbacks exportado com sucesso!')
   }
 

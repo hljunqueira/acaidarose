@@ -21,8 +21,10 @@ import {
   Layers,
   Info,
   SlidersHorizontal,
+  Download,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { exportToCsv } from '@/lib/utils/csvExport'
 
 export interface AuditLogItem {
   id: string
@@ -135,6 +137,33 @@ export default function AuditLogsView() {
     return true
   })
 
+  const handleExportLogs = () => {
+    if (filteredLogs.length === 0) {
+      toast.error('Nenhum log para exportar')
+      return
+    }
+
+    const headers = ['Data / Hora', 'Nível', 'Escopo', 'Ação', 'Mensagem', 'Autor', 'Cargo', 'Loja', 'ID Entidade']
+    const rows = filteredLogs.map((l) => [
+      new Date(l.timestamp).toLocaleString('pt-PT'),
+      l.level,
+      l.scope,
+      l.action || '',
+      l.message,
+      l.author || 'Sistema',
+      l.role || '',
+      l.tenant,
+      l.entityId || '',
+    ])
+
+    exportToCsv({
+      filename: `logs_auditoria_${new Date().toISOString().slice(0, 10)}.csv`,
+      headers,
+      rows,
+    })
+    toast.success('Logs de auditoria exportados com sucesso!')
+  }
+
   return (
     <div className="space-y-5 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header */}
@@ -165,6 +194,18 @@ export default function AuditLogsView() {
           >
             <span className={`inline-block h-2 w-2 rounded-full mr-1.5 ${autoRefresh ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
             <span>{autoRefresh ? 'Ao Vivo (10s)' : 'Auto-Sync: Desligado'}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportLogs}
+            disabled={filteredLogs.length === 0}
+            className="h-9 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-xs font-bold text-purple-950 dark:text-white gap-2 cursor-pointer shadow-2xs"
+            title="Exportar logs de auditoria para folha de cálculo Excel"
+          >
+            <Download className="h-3.5 w-3.5 text-purple-600 dark:text-pink-400" />
+            <span>Exportar Logs</span>
           </Button>
 
           <Button

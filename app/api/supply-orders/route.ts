@@ -3,6 +3,7 @@ import {
   getSupplyOrders,
   createSupplyOrder,
 } from '@/lib/repositories/inventoryRepository'
+import { errorResponse } from '@/lib/api/response'
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ orders })
   } catch (err: any) {
     console.error('Erro na rota GET /api/supply-orders:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao buscar pedidos B2B' }, { status: 500 })
+    return errorResponse(err, 'Erro ao buscar pedidos de reposição')
   }
 }
 
@@ -40,6 +41,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ order }, { status: 201 })
   } catch (err: any) {
     console.error('Erro na rota POST /api/supply-orders:', err)
-    return NextResponse.json({ error: err.message || 'Erro ao criar pedido B2B' }, { status: 500 })
+    return errorResponse(err, 'Erro ao criar pedido de reposição')
   }
 }
