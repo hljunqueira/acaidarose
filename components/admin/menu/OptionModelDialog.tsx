@@ -59,6 +59,7 @@ interface OptionModelDialogProps {
   onOpenChange: (open: boolean) => void
   initialModel?: OptionModelData | null
   onSave?: (model: OptionModelData) => void
+  isSuperAdmin?: boolean
 }
 
 export default function OptionModelDialog({
@@ -66,6 +67,7 @@ export default function OptionModelDialog({
   onOpenChange,
   initialModel,
   onSave,
+  isSuperAdmin = true,
 }: OptionModelDialogProps) {
   const [name, setName] = useState('')
   const [subtitle, setSubtitle] = useState('')
@@ -256,9 +258,16 @@ export default function OptionModelDialog({
             <div className="h-8 w-8 rounded-xl bg-purple-100 dark:bg-white/10 flex items-center justify-center text-purple-700 dark:text-pink-400">
               <Layers className="h-4 w-4" />
             </div>
-            <DialogTitle className="text-sm sm:text-base font-black text-purple-950 dark:text-white tracking-tight">
-              Modelo de Opções
-            </DialogTitle>
+            <div className="flex items-center gap-2">
+              <DialogTitle className="text-sm sm:text-base font-black text-purple-950 dark:text-white tracking-tight">
+                Modelo de Opções
+              </DialogTitle>
+              {!isSuperAdmin && (
+                <Badge className="bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-400 dark:text-purple-950 font-bold text-[10px] py-0.5 px-2">
+                  Modo Franquia (Apenas Visibilidade)
+                </Badge>
+              )}
+            </div>
           </div>
           <button
             type="button"
@@ -283,10 +292,13 @@ export default function OptionModelDialog({
             <div className="sm:col-span-3">
               <Input
                 required
+                readOnly={!isSuperAdmin}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => isSuperAdmin && setName(e.target.value)}
                 placeholder="Ex: Tipo de Leite, Ponto da Textura, Caldas Nobres..."
-                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-bold"
+                className={`h-10 text-xs rounded-xl border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-bold ${
+                  !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-white/10'
+                }`}
               />
             </div>
           </div>
@@ -303,10 +315,13 @@ export default function OptionModelDialog({
             </div>
             <div className="sm:col-span-3">
               <Input
+                readOnly={!isSuperAdmin}
                 value={subtitle}
-                onChange={(e) => setSubtitle(e.target.value)}
+                onChange={(e) => isSuperAdmin && setSubtitle(e.target.value)}
                 placeholder="Ex: +0,10 € a partir da 2ª un. (deixe vazio para automático)"
-                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
+                className={`h-10 text-xs rounded-xl border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white ${
+                  !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-white/10'
+                }`}
               />
             </div>
           </div>
@@ -323,9 +338,12 @@ export default function OptionModelDialog({
             </div>
             <div className="sm:col-span-3">
               <select
+                disabled={!isSuperAdmin}
                 value={priceType}
                 onChange={(e) => setPriceType(e.target.value as any)}
-                className="w-full h-10 px-3 text-xs border border-purple-200 dark:border-white/15 rounded-xl bg-white dark:bg-[#1a0530] text-purple-950 dark:text-white focus:outline-none font-bold cursor-pointer"
+                className={`w-full h-10 px-3 text-xs border border-purple-200 dark:border-white/15 rounded-xl text-purple-950 dark:text-white focus:outline-none font-bold ${
+                  !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-[#1a0530] cursor-pointer'
+                }`}
               >
                 <option value="Individual">Individual (Cobrança por Adicional €)</option>
                 <option value="Gratis">Incluso no Copo (Grátis)</option>
@@ -357,13 +375,16 @@ export default function OptionModelDialog({
                   type="number"
                   step="0.01"
                   min="0"
+                  readOnly={!isSuperAdmin}
                   value={additionalPrice}
-                  onChange={(e) => setAdditionalPrice(e.target.value)}
+                  onChange={(e) => isSuperAdmin && setAdditionalPrice(e.target.value)}
                   placeholder="0.00"
-                  className="h-10 pl-7 text-xs font-mono font-bold rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/10 text-purple-950 dark:text-white w-full"
+                  className={`h-10 pl-7 text-xs font-mono font-bold rounded-xl border-purple-200 dark:border-white/15 text-purple-950 dark:text-white w-full ${
+                    !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-white/10'
+                  }`}
                 />
               </div>
-              {priceType === 'Individual' && (
+              {isSuperAdmin && priceType === 'Individual' && (
                 <button
                   type="button"
                   onClick={handleApplyAdditionalPriceToAll}
@@ -390,9 +411,12 @@ export default function OptionModelDialog({
               <Input
                 type="number"
                 min={0}
+                readOnly={!isSuperAdmin}
                 value={minQty}
-                onChange={(e) => setMinQty(Number(e.target.value))}
-                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-mono font-bold"
+                onChange={(e) => isSuperAdmin && setMinQty(Number(e.target.value))}
+                className={`h-10 text-xs rounded-xl border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-mono font-bold ${
+                  !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-white/10'
+                }`}
               />
             </div>
           </div>
@@ -418,9 +442,12 @@ export default function OptionModelDialog({
               <Input
                 type="number"
                 min={0}
+                readOnly={!isSuperAdmin}
                 value={maxQty}
-                onChange={(e) => setMaxQty(Number(e.target.value))}
-                className="h-10 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-mono font-bold"
+                onChange={(e) => isSuperAdmin && setMaxQty(Number(e.target.value))}
+                className={`h-10 text-xs rounded-xl border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white font-mono font-bold ${
+                  !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-white/10'
+                }`}
               />
             </div>
           </div>
@@ -442,9 +469,10 @@ export default function OptionModelDialog({
                   <input
                     type="radio"
                     name="allowItemQty"
+                    disabled={!isSuperAdmin}
                     checked={allowItemQuantity}
-                    onChange={() => setAllowItemQuantity(true)}
-                    className="text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    onChange={() => isSuperAdmin && setAllowItemQuantity(true)}
+                    className="text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-50"
                   />
                   <span>Sim</span>
                 </label>
@@ -452,9 +480,10 @@ export default function OptionModelDialog({
                   <input
                     type="radio"
                     name="allowItemQty"
+                    disabled={!isSuperAdmin}
                     checked={!allowItemQuantity}
-                    onChange={() => setAllowItemQuantity(false)}
-                    className="text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    onChange={() => isSuperAdmin && setAllowItemQuantity(false)}
+                    className="text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-50"
                   />
                   <span>Não</span>
                 </label>
@@ -476,9 +505,10 @@ export default function OptionModelDialog({
                   <input
                     type="radio"
                     name="reqRule"
+                    disabled={!isSuperAdmin}
                     checked={isRequired}
-                    onChange={() => setIsRequired(true)}
-                    className="text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    onChange={() => isSuperAdmin && setIsRequired(true)}
+                    className="text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-50"
                   />
                   <span>Sim</span>
                 </label>
@@ -486,9 +516,10 @@ export default function OptionModelDialog({
                   <input
                     type="radio"
                     name="reqRule"
+                    disabled={!isSuperAdmin}
                     checked={!isRequired}
-                    onChange={() => setIsRequired(false)}
-                    className="text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    onChange={() => isSuperAdmin && setIsRequired(false)}
+                    className="text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-50"
                   />
                   <span>Não</span>
                 </label>
@@ -510,9 +541,10 @@ export default function OptionModelDialog({
                   <input
                     type="radio"
                     name="detailed"
+                    disabled={!isSuperAdmin}
                     checked={showDetailed}
-                    onChange={() => setShowDetailed(true)}
-                    className="text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    onChange={() => isSuperAdmin && setShowDetailed(true)}
+                    className="text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-50"
                   />
                   <span>Sim</span>
                 </label>
@@ -520,9 +552,10 @@ export default function OptionModelDialog({
                   <input
                     type="radio"
                     name="detailed"
+                    disabled={!isSuperAdmin}
                     checked={!showDetailed}
-                    onChange={() => setShowDetailed(false)}
-                    className="text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    onChange={() => isSuperAdmin && setShowDetailed(false)}
+                    className="text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-50"
                   />
                   <span>Não</span>
                 </label>
@@ -661,13 +694,15 @@ export default function OptionModelDialog({
               <span className="font-bold text-purple-950 dark:text-white text-xs">
                 Opções:
               </span>
-              <button
-                type="button"
-                onClick={handleAddOption}
-                className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer"
-              >
-                + Adicionar Item
-              </button>
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={handleAddOption}
+                  className="text-purple-700 dark:text-pink-400 hover:underline font-bold text-xs cursor-pointer"
+                >
+                  + Adicionar Item
+                </button>
+              )}
             </div>
 
             {/* Buscador de Itens Contratados */}
@@ -676,8 +711,9 @@ export default function OptionModelDialog({
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={handleQuickAdd}
+                onKeyDown={isSuperAdmin ? handleQuickAdd : undefined}
                 className="h-10 pl-10 pr-8 text-xs rounded-xl bg-white dark:bg-white/10 border border-purple-200 dark:border-white/15 text-purple-950 dark:text-white"
+                placeholder={isSuperAdmin ? "Pesquisar ou digitar nome e pressionar Enter para adicionar..." : "Pesquisar opção..."}
               />
               {searchTerm && (
                 <button
@@ -698,7 +734,7 @@ export default function OptionModelDialog({
               <div className="flex-1 min-w-[140px]">Nome</div>
               <div className="w-24 flex-shrink-0">Código</div>
               <div className="w-20 flex-shrink-0 text-right">Valor (€)</div>
-              <div className="w-24 flex-shrink-0 text-right pr-1">Ações</div> {/* Olho, Reordenar, Lixeira */}
+              <div className={`${isSuperAdmin ? 'w-24' : 'w-10'} flex-shrink-0 text-right pr-1`}>Ações</div> {/* Olho, Reordenar, Lixeira */}
             </div>
 
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -718,14 +754,15 @@ export default function OptionModelDialog({
                 return (
                   <div
                     key={opt.id}
-                    draggable
-                    onDragStart={(e) => handleDragStartOption(e, opt.id)}
+                    draggable={isSuperAdmin}
+                    onDragStart={(e) => isSuperAdmin && handleDragStartOption(e, opt.id)}
                     onDragOver={(e) => {
+                      if (!isSuperAdmin) return
                       e.preventDefault()
                       e.dataTransfer.dropEffect = 'move'
                     }}
                     onDragEnd={() => setDraggedOptionId(null)}
-                    onDrop={(e) => handleDropOption(e, opt.id)}
+                    onDrop={(e) => isSuperAdmin && handleDropOption(e, opt.id)}
                     className={`p-2 border rounded-xl transition flex items-center gap-2 shadow-xs ${
                       isDragging
                         ? 'opacity-40 border-purple-500 border-dashed bg-white dark:bg-white/5'
@@ -734,24 +771,36 @@ export default function OptionModelDialog({
                         : 'border-purple-150 dark:border-white/10 bg-white dark:bg-white/5 hover:border-purple-300 dark:hover:border-white/20'
                     }`}
                   >
-                    <div className="cursor-grab active:cursor-grabbing p-1 text-purple-400 hover:text-purple-700 dark:hover:text-white transition flex-shrink-0" title="Arrastar para reordenar">
-                      <GripVertical className="h-4 w-4" />
-                    </div>
+                    {isSuperAdmin ? (
+                      <div className="cursor-grab active:cursor-grabbing p-1 text-purple-400 hover:text-purple-700 dark:hover:text-white transition flex-shrink-0" title="Arrastar para reordenar">
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+                    ) : (
+                      <div className="w-5 flex-shrink-0 text-center text-[10px] font-mono text-purple-400 font-bold">
+                        {idx + 1}
+                      </div>
+                    )}
 
                     {/* Botão [+] Foto */}
-                    <div className="h-8 w-8 rounded-lg bg-purple-50 dark:bg-white/5 border border-dashed border-purple-200 dark:border-white/20 flex items-center justify-center text-purple-400 hover:text-purple-700 dark:hover:text-white flex-shrink-0 cursor-pointer" title="Adicionar Foto">
+                    <div
+                      className={`h-8 w-8 rounded-lg bg-purple-50 dark:bg-white/5 border border-dashed border-purple-200 dark:border-white/20 flex items-center justify-center text-purple-400 flex-shrink-0 ${
+                        isSuperAdmin ? 'hover:text-purple-700 dark:hover:text-white cursor-pointer' : 'opacity-40 cursor-not-allowed'
+                      }`}
+                      title={isSuperAdmin ? "Adicionar Foto" : "Apenas a Franqueadora pode alterar mídias"}
+                    >
                       <Camera className="h-4 w-4" />
                     </div>
 
                     {/* Nome do Item */}
                     <div className="flex-1 min-w-[140px] relative">
                       <Input
+                        readOnly={!isSuperAdmin}
                         value={opt.name}
-                        onChange={(e) => handleUpdateOption(opt.id, 'name', e.target.value)}
+                        onChange={(e) => isSuperAdmin && handleUpdateOption(opt.id, 'name', e.target.value)}
                         placeholder={`Nome da opção ${idx + 1}`}
-                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40 w-full ${
-                          !isOptionActive ? 'line-through text-zinc-400 dark:text-zinc-500' : ''
-                        }`}
+                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-bold text-purple-950 dark:text-white placeholder:text-purple-300 dark:placeholder:text-white/40 w-full ${
+                          !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-white/10'
+                        } ${!isOptionActive ? 'line-through text-zinc-400 dark:text-zinc-500' : ''}`}
                       />
                       {!isOptionActive && (
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 rounded pointer-events-none">
@@ -763,11 +812,12 @@ export default function OptionModelDialog({
                     {/* Código ERP */}
                     <div className="w-24 flex-shrink-0">
                       <Input
+                        readOnly={!isSuperAdmin}
                         value={opt.code}
-                        onChange={(e) => handleUpdateOption(opt.id, 'code', e.target.value)}
-                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-mono font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white w-full ${
-                          !isOptionActive ? 'opacity-60' : ''
-                        }`}
+                        onChange={(e) => isSuperAdmin && handleUpdateOption(opt.id, 'code', e.target.value)}
+                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-mono font-bold text-purple-950 dark:text-white w-full ${
+                          !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-white/10'
+                        } ${!isOptionActive ? 'opacity-60' : ''}`}
                       />
                     </div>
 
@@ -776,17 +826,18 @@ export default function OptionModelDialog({
                       <Input
                         type="number"
                         step="0.01"
+                        readOnly={!isSuperAdmin}
                         value={opt.price}
-                        onChange={(e) => handleUpdateOption(opt.id, 'price', Number(e.target.value))}
-                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-mono font-bold bg-white dark:bg-white/10 text-purple-950 dark:text-white w-full text-right ${
-                          !isOptionActive ? 'opacity-60' : ''
-                        }`}
+                        onChange={(e) => isSuperAdmin && handleUpdateOption(opt.id, 'price', Number(e.target.value))}
+                        className={`h-8 text-xs rounded-lg border-purple-200 dark:border-white/15 font-mono font-bold text-purple-950 dark:text-white w-full text-right ${
+                          !isSuperAdmin ? 'bg-zinc-100 dark:bg-white/5 cursor-not-allowed' : 'bg-white dark:bg-white/10'
+                        } ${!isOptionActive ? 'opacity-60' : ''}`}
                       />
                     </div>
 
                     {/* Ações */}
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {/* Botão Olhinho (Visibilidade da Opção) */}
+                      {/* Botão Olhinho (Visibilidade da Opção) - 100% Interativo para Franquias e Franqueadora */}
                       <button
                         type="button"
                         onClick={() => handleUpdateOption(opt.id, 'active', !isOptionActive)}
@@ -804,34 +855,38 @@ export default function OptionModelDialog({
                         )}
                       </button>
 
-                      <div className="flex items-center gap-0.5 mr-0.5">
-                        <button
-                          type="button"
-                          disabled={idx === 0}
-                          onClick={() => handleMoveOption(idx, 'up')}
-                          className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
-                          title="Mover para cima"
-                        >
-                          <ChevronUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={idx === options.length - 1}
-                          onClick={() => handleMoveOption(idx, 'down')}
-                          className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
-                          title="Mover para baixo"
-                        >
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveOption(opt.id)}
-                        className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md cursor-pointer transition"
-                        title="Excluir Opção"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {isSuperAdmin && (
+                        <>
+                          <div className="flex items-center gap-0.5 mr-0.5">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveOption(idx, 'up')}
+                              className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
+                              title="Mover para cima"
+                            >
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === options.length - 1}
+                              onClick={() => handleMoveOption(idx, 'down')}
+                              className="p-1 text-purple-600 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition"
+                              title="Mover para baixo"
+                            >
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOption(opt.id)}
+                            className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md cursor-pointer transition"
+                            title="Excluir Opção"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )
@@ -839,14 +894,16 @@ export default function OptionModelDialog({
             </div>
 
             {/* Botão Adicionar Item no final da lista */}
-            <button
-              type="button"
-              onClick={handleAddOption}
-              className="w-full py-2.5 border-2 border-dashed border-purple-200 dark:border-white/15 rounded-xl text-xs font-bold text-purple-700 dark:text-pink-300 hover:bg-purple-50/70 dark:hover:bg-white/5 hover:border-purple-300 dark:hover:border-white/30 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs mt-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Adicionar Item</span>
-            </button>
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={handleAddOption}
+                className="w-full py-2.5 border-2 border-dashed border-purple-200 dark:border-white/15 rounded-xl text-xs font-bold text-purple-700 dark:text-pink-300 hover:bg-purple-50/70 dark:hover:bg-white/5 hover:border-purple-300 dark:hover:border-white/30 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs mt-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Adicionar Item</span>
+              </button>
+            )}
           </div>
         </div>
 

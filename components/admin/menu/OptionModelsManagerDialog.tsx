@@ -519,39 +519,41 @@ export default function OptionModelsManagerDialog({
                         </div>
                       )}
 
-                      {isSuperAdmin ? (
+                      {/* Botão de Visibilidade (Ativo/Inativo) - Livre para Franqueadora e Franquias */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleModelActive(m)}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border transition cursor-pointer ${isModelActive
+                            ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'
+                            : 'bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/30'
+                          }`}
+                        title={isModelActive ? 'Modelo Ativo (Visível nos Produtos) — Clique para Ocultar' : 'Modelo Oculto (Invisível nos Produtos) — Clique para Ativar'}
+                      >
+                        {isModelActive ? (
+                          <>
+                            <Eye className="w-3 h-3" />
+                            <span>Visível</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-3 h-3" />
+                            <span>Invisível</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Botão Editar Modelo - Abre para Franqueadora (completo) e Franquias (apenas visibilidade dos itens) */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModel(m)}
+                        className="p-1.5 text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-lg cursor-pointer transition"
+                        title={isSuperAdmin ? "Editar Modelo" : "Gerir Visibilidade dos Itens"}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+
+                      {isSuperAdmin && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleModelActive(m)}
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border transition cursor-pointer ${isModelActive
-                                ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'
-                                : 'bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/30'
-                              }`}
-                            title={isModelActive ? 'Modelo Ativo (Visível nos Produtos) — Clique para Ocultar' : 'Modelo Oculto (Invisível nos Produtos) — Clique para Ativar'}
-                          >
-                            {isModelActive ? (
-                              <>
-                                <Eye className="w-3 h-3" />
-                                <span>Visível</span>
-                              </>
-                            ) : (
-                              <>
-                                <EyeOff className="w-3 h-3" />
-                                <span>Invisível</span>
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModel(m)}
-                            className="p-1.5 text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-100/70 dark:hover:bg-white/10 rounded-lg cursor-pointer transition"
-                            title="Editar Modelo"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
-
                           <button
                             type="button"
                             onClick={() => handlePromptDuplicate(m)}
@@ -570,22 +572,6 @@ export default function OptionModelsManagerDialog({
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRequestTargetModel(m)
-                            setFranchiseRequestOpen(true)
-                          }}
-                          className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold flex items-center gap-1 border transition cursor-pointer shadow-xs ${isModelActive
-                              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-500/30'
-                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30'
-                            }`}
-                          title={isModelActive ? 'Solicitar à Franqueadora Master a desativação deste opcional na sua loja' : 'Solicitar à Franqueadora Master a reativação deste opcional na sua loja'}
-                        >
-                          <Building2 className="w-3 h-3" />
-                          <span>{isModelActive ? 'Solicitar Desativação' : 'Solicitar Reativação'}</span>
-                        </button>
                       )}
                     </div>
                   </div>
@@ -624,6 +610,7 @@ export default function OptionModelsManagerDialog({
           onOpenChange={setModelFormOpen}
           initialModel={editingModel}
           onSave={handleSaveModel}
+          isSuperAdmin={isSuperAdmin}
         />
       )}
 

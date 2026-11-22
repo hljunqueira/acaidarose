@@ -292,7 +292,7 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
     console.error('Erro ao sincronizar modelo atualizado nos recipientes:', syncErr)
   }
 
-  // Sincroniza a ordenação física dos itens em product_bases ou product_toppings
+  // Sincroniza a ordenação física e a visibilidade (active) dos itens em product_bases ou product_toppings
   if (Array.isArray(options) && options.length > 0) {
     try {
       const isBaseModel = id === 'ddcec6eb-6a9d-4266-93b2-954dfba2e75a' || 
@@ -301,24 +301,26 @@ export async function updateOptionModel(id: string, tenantId: string = AVEIRO_HQ
       if (isBaseModel) {
         for (let i = 0; i < options.length; i++) {
           const opt = options[i]
+          const optActive = opt.active !== false
           if (opt.id && opt.id.length === 36) {
-            await query(`UPDATE product_bases SET display_order = $1 WHERE id = $2`, [i, opt.id])
+            await query(`UPDATE product_bases SET display_order = $1, active = $2 WHERE id = $3`, [i, optActive, opt.id])
           } else if (opt.name) {
-            await query(`UPDATE product_bases SET display_order = $1 WHERE LOWER(TRIM(name)) = LOWER(TRIM($2))`, [i, opt.name])
+            await query(`UPDATE product_bases SET display_order = $1, active = $2 WHERE LOWER(TRIM(name)) = LOWER(TRIM($3))`, [i, optActive, opt.name])
           }
         }
       } else {
         for (let i = 0; i < options.length; i++) {
           const opt = options[i]
+          const optActive = opt.active !== false
           if (opt.id && opt.id.length === 36) {
-            await query(`UPDATE product_toppings SET display_order = $1 WHERE id = $2`, [i, opt.id])
+            await query(`UPDATE product_toppings SET display_order = $1, active = $2 WHERE id = $3`, [i, optActive, opt.id])
           } else if (opt.name) {
-            await query(`UPDATE product_toppings SET display_order = $1 WHERE LOWER(TRIM(name)) = LOWER(TRIM($2))`, [i, opt.name])
+            await query(`UPDATE product_toppings SET display_order = $1, active = $2 WHERE LOWER(TRIM(name)) = LOWER(TRIM($3))`, [i, optActive, opt.name])
           }
         }
       }
     } catch (orderErr) {
-      console.error('Erro ao sincronizar display_order dos itens do modelo:', orderErr)
+      console.error('Erro ao sincronizar display_order e active dos itens do modelo:', orderErr)
     }
   }
 

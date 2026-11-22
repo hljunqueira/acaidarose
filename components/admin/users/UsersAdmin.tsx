@@ -12,6 +12,7 @@ import UserTable from './UserTable'
 import UserEditDialog from './UserEditDialog'
 import ConfirmActionDialog from '@/components/ui/ConfirmActionDialog'
 import { Users, Building2, ShieldCheck, KeyRound, UserCheck } from 'lucide-react'
+import { formatFriendlyErrorMessage } from '@/lib/utils/friendlyError'
 
 interface UsersAdminProps {
   tenantId?: string
@@ -85,17 +86,14 @@ export default function UsersAdmin({ tenantId = '', currentUser }: UsersAdminPro
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        let msg = err.error || 'Não foi possível guardar o utilizador.'
-        if (msg.includes('duplicate key') || msg.includes('users_email_key')) {
-          msg = 'Este endereço de email já se encontra registado. Por favor, utilize outro email ou edite o utilizador existente.'
-        }
-        throw new Error(msg)
+        const rawMsg = err.error || 'Não foi possível guardar o utilizador.'
+        throw new Error(formatFriendlyErrorMessage(rawMsg))
       }
 
       toast.success('Utilizador e credenciais guardados com sucesso!')
       loadUsers()
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao guardar o utilizador.')
+      toast.error(formatFriendlyErrorMessage(e?.message || 'Erro ao guardar o utilizador.'))
     }
   }
 

@@ -726,17 +726,15 @@ export default function MenuHierarchyView({ tenantId }: MenuHierarchyViewProps) 
             </button>
           )}
 
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setOptionModelOpen(true)}
-              className="h-8 px-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1 cursor-pointer shadow-xs shrink-0 whitespace-nowrap transition"
-              title="Modelos de Opções e Regras de Montagem de Taça"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
-              <span>Modelos de Opções</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setOptionModelOpen(true)}
+            className="h-8 px-2.5 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 text-purple-950 dark:text-white text-xs font-bold hover:bg-purple-50 dark:hover:bg-white/10 flex items-center gap-1 cursor-pointer shadow-xs shrink-0 whitespace-nowrap transition"
+            title="Modelos de Opções e Regras de Montagem de Taça"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-purple-700 dark:text-pink-400" />
+            <span>Modelos de Opções</span>
+          </button>
 
           <button
             type="button"
