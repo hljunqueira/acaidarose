@@ -464,6 +464,12 @@ export async function voteManualFeedback(
   }
 
   let feedbackId: string | undefined
+  const isUUID = (str?: string | null) =>
+    Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str))
+
+  const safeUserId = isUUID(feedbackData?.userId) ? feedbackData?.userId : null
+  const safeTenantId = isUUID(feedbackData?.tenantId) ? feedbackData?.tenantId : null
+
   try {
     const feedbackRes = await query(
       `INSERT INTO manual_feedback_suggestions (
@@ -472,10 +478,10 @@ export async function voteManualFeedback(
       RETURNING id`,
       [
         id,
-        feedbackData?.userId || null,
+        safeUserId,
         feedbackData?.userName || null,
         feedbackData?.userRole || null,
-        feedbackData?.tenantId || null,
+        safeTenantId,
         isHelpful,
         feedbackData?.suggestionText?.trim() || null,
       ]
@@ -526,7 +532,7 @@ export async function getManualFeedbackMetrics(): Promise<{
   `)
   const pendingSuggestionsCount = Number(pendingRes.rows?.[0]?.count) || 0
 
-  // 3. Lista de sugestões recentes
+  // 3. Lista completa de avaliações e sugestões dos utilizadores
   const suggestionsRes = await query(`
     SELECT
       f.id,
@@ -534,21 +540,23 @@ export async function getManualFeedbackMetrics(): Promise<{
       f.user_id,
       f.user_name,
       f.user_role,
+      f.tenant_id,
       f.is_helpful,
       f.suggestion_text,
       f.status,
       f.created_at,
       a.title as article_title,
-      c.title as category_title
+      c.title as category_title,
+      t.name as tenant_name
     FROM manual_feedback_suggestions f
     JOIN manual_articles a ON a.id = f.article_id
     LEFT JOIN manual_categories c ON c.id = a.category_id
-    WHERE f.suggestion_text IS NOT NULL AND TRIM(f.suggestion_text) != ''
+    LEFT JOIN tenants t ON t.id = f.tenant_id
     ORDER BY f.created_at DESC
-    LIMIT 100
+    LIMIT 150
   `)
 
-  // 4. Artigos com mais dúvidas / menor aprovação
+  // 4. Artigos com mais dúvidas / menor aprovação (incluindo últimos votantes agregados)
   const lowestRatedRes = await query(`
     SELECT
       a.id,
@@ -557,12 +565,29 @@ export async function getManualFeedbackMetrics(): Promise<{
       a.helpful_votes,
       a.unhelpful_votes,
       (a.helpful_votes + a.unhelpful_votes) as total_votes,
-      ROUND((a.helpful_votes::float / NULLIF(a.helpful_votes + a.unhelpful_votes, 0) * 100)::numeric, 0) as approval_rate
+      ROUND((a.helpful_votes::float / NULLIF(a.helpful_votes + a.unhelpful_votes, 0) * 100)::numeric, 0) as approval_rate,
+      (
+        SELECT COALESCE(json_agg(json_build_object(
+          'id', f.id,
+          'user_name', f.user_name,
+          'user_role', f.user_role,
+          'is_helpful', f.is_helpful,
+          'suggestion_text', f.suggestion_text,
+          'created_at', f.created_at
+        )), '[]'::json)
+        FROM (
+          SELECT id, user_name, user_role, is_helpful, suggestion_text, created_at
+          FROM manual_feedback_suggestions
+          WHERE article_id = a.id
+          ORDER BY created_at DESC
+          LIMIT 5
+        ) f
+      ) as recent_voters
     FROM manual_articles a
     LEFT JOIN manual_categories c ON c.id = a.category_id
     WHERE (a.helpful_votes + a.unhelpful_votes) > 0
     ORDER BY a.unhelpful_votes DESC, a.helpful_votes ASC
-    LIMIT 10
+    LIMIT 15
   `)
 
   return {
@@ -576,12 +601,44 @@ export async function getManualFeedbackMetrics(): Promise<{
   }
 }
 
+export async function deleteFeedbackSuggestion(id: string): Promise<boolean> {
+  const check = await query(`SELECT article_id, is_helpful FROM manual_feedback_suggestions WHERE id::text = $1`, [id])
+  if (check.rows?.[0]) {
+    const { article_id, is_helpful } = check.rows[0]
+    const col = is_helpful ? 'helpful_votes' : 'unhelpful_votes'
+    await query(`UPDATE manual_articles SET ${col} = GREATEST(COALESCE(${col}, 0) - 1, 0) WHERE id = $1`, [article_id])
+  }
+  const res = await query(`DELETE FROM manual_feedback_suggestions WHERE id::text = $1`, [id])
+  return (res.rowCount || 0) > 0
+}
+
+export async function resetArticleVotes(articleId: string): Promise<boolean> {
+  await query(
+    `UPDATE manual_articles
+     SET helpful_votes = 0, unhelpful_votes = 0, updated_at = NOW()
+     WHERE id::text = $1`,
+    [articleId]
+  )
+  await query(`DELETE FROM manual_feedback_suggestions WHERE article_id::text = $1`, [articleId])
+  return true
+}
+
 export async function updateFeedbackSuggestionStatus(id: string, status: string): Promise<boolean> {
   const res = await query(
     `UPDATE manual_feedback_suggestions
      SET status = $1, updated_at = NOW()
      WHERE id::text = $2`,
     [status, id]
+  )
+  return (res.rowCount || 0) > 0
+}
+
+export async function updateFeedbackSuggestionText(id: string, text: string): Promise<boolean> {
+  const res = await query(
+    `UPDATE manual_feedback_suggestions
+     SET suggestion_text = $1
+     WHERE id::text = $2`,
+    [text.trim(), id]
   )
   return (res.rowCount || 0) > 0
 }

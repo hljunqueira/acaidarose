@@ -444,6 +444,7 @@ export default function AjudaPortalPage() {
 
   // Feedback Inteligente: Voto & Caixa de Sugestão
   const [votedArticleId, setVotedArticleId] = useState<string | null>(null)
+  const [votedFeedbackId, setVotedFeedbackId] = useState<string | null>(null)
   const [voteChoice, setVoteChoice] = useState<'YES' | 'NO' | null>(null)
   const [showSuggestionBox, setShowSuggestionBox] = useState(false)
   const [suggestionText, setSuggestionText] = useState('')
@@ -453,6 +454,7 @@ export default function AjudaPortalPage() {
   // Reseta estado de feedback ao trocar de artigo
   useEffect(() => {
     setVotedArticleId(null)
+    setVotedFeedbackId(null)
     setVoteChoice(null)
     setShowSuggestionBox(false)
     setSuggestionText('')
@@ -596,15 +598,16 @@ export default function AjudaPortalPage() {
   const handleVote = async (articleId: string, isHelpful: boolean) => {
     if (votedArticleId === articleId && !showSuggestionBox) return
 
-    if (isHelpful) {
-      setFeedbackLoading(true)
-      try {
-        const activeToken = effectiveToken || useAuthStore.getState().token
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          ...(activeToken ? { 'x-auth-token': activeToken } : {}),
-        }
-        const tokenParam = activeToken ? `?token=${encodeURIComponent(activeToken)}` : ''
+    setFeedbackLoading(true)
+    try {
+      const activeToken = effectiveToken || useAuthStore.getState().token
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(activeToken ? { 'x-auth-token': activeToken } : {}),
+      }
+      const tokenParam = activeToken ? `?token=${encodeURIComponent(activeToken)}` : ''
+
+      if (isHelpful) {
         const res = await fetch(`/api/manuals/${articleId}/feedback${tokenParam}`, {
           method: 'POST',
           headers,
@@ -615,15 +618,25 @@ export default function AjudaPortalPage() {
         setVoteChoice('YES')
         setShowSuggestionBox(false)
         toast.success('Obrigado! O seu voto foi registrado.')
-      } catch {
-        toast.error('Não foi possível registrar o feedback.')
-      } finally {
-        setFeedbackLoading(false)
+      } else {
+        // Registra o voto NÃO imediatamente no banco e salva feedbackId para vincular texto posterior
+        const res = await fetch(`/api/manuals/${articleId}/feedback${tokenParam}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ isHelpful: false }),
+        })
+        const data = await res.json()
+        if (data?.feedbackId) {
+          setVotedFeedbackId(data.feedbackId)
+        }
+        setVotedArticleId(articleId)
+        setVoteChoice('NO')
+        setShowSuggestionBox(true)
       }
-    } else {
-      setVotedArticleId(articleId)
-      setVoteChoice('NO')
-      setShowSuggestionBox(true)
+    } catch {
+      toast.error('Não foi possível registrar o feedback.')
+    } finally {
+      setFeedbackLoading(false)
     }
   }
 
@@ -642,12 +655,22 @@ export default function AjudaPortalPage() {
         ...(activeToken ? { 'x-auth-token': activeToken } : {}),
       }
       const tokenParam = activeToken ? `?token=${encodeURIComponent(activeToken)}` : ''
-      const res = await fetch(`/api/manuals/${articleId}/feedback${tokenParam}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ isHelpful: false, suggestionText: suggestionText.trim() }),
-      })
-      if (!res.ok) throw new Error()
+
+      if (votedFeedbackId) {
+        const res = await fetch(`/api/manuals/feedback/metrics${tokenParam}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ id: votedFeedbackId, suggestionText: suggestionText.trim() }),
+        })
+        if (!res.ok) throw new Error()
+      } else {
+        const res = await fetch(`/api/manuals/${articleId}/feedback${tokenParam}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ isHelpful: false, suggestionText: suggestionText.trim() }),
+        })
+        if (!res.ok) throw new Error()
+      }
       setSuggestionSubmitted(true)
       setShowSuggestionBox(false)
       toast.success('Sugestão enviada com sucesso!')

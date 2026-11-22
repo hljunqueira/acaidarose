@@ -32,6 +32,7 @@ import {
   BarChart3,
   MessageSquare,
   Clock,
+  RotateCcw,
 } from 'lucide-react'
 
 type FilterRole = 'ALL' | 'FRANCHISOR_ADMIN' | 'TENANT_ADMIN' | 'CASHIER'
@@ -44,7 +45,7 @@ function extractYoutubeId(url: string): string | null {
 }
 
 export default function ManualsAdminView() {
-  const { authFetch } = useAuthStore()
+  const { authFetch, user } = useAuthStore()
 
   const [categories, setCategories] = useState<ManualCategory[]>([])
   const [articles, setArticles] = useState<ManualArticle[]>([])
@@ -178,6 +179,40 @@ export default function ManualsAdminView() {
       }
     } catch {
       toast.error('Erro ao atualizar status da sugestão')
+    }
+  }
+
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    if (!confirm('Tem a certeza que deseja excluir esta avaliação de feedback?')) return
+    try {
+      const res = await authFetch(`/api/manuals/feedback/metrics?feedbackId=${feedbackId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        toast.success('Avaliação excluída com sucesso!')
+        loadMetrics()
+      } else {
+        throw new Error()
+      }
+    } catch {
+      toast.error('Erro ao excluir avaliação')
+    }
+  }
+
+  const handleResetArticleVotes = async (articleId: string, articleTitle: string) => {
+    if (!confirm(`Deseja zerar os votos e feedbacks da tela "${articleTitle}"? Isso redefinirá a contagem para 0 votos.`)) return
+    try {
+      const res = await authFetch(`/api/manuals/feedback/metrics?articleId=${articleId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        toast.success(`Votos da tela "${articleTitle}" foram zerados!`)
+        loadMetrics()
+      } else {
+        throw new Error()
+      }
+    } catch {
+      toast.error('Erro ao zerar votos da tela')
     }
   }
 
@@ -644,7 +679,8 @@ export default function ManualsAdminView() {
                           <th className="py-2.5 font-bold text-center">Votos Sim (👍)</th>
                           <th className="py-2.5 font-bold text-center">Votos Não (👎)</th>
                           <th className="py-2.5 font-bold text-center">Aprovação</th>
-                          <th className="py-2.5 font-bold text-right">Ação</th>
+                          <th className="py-2.5 font-bold">Últimos Avaliadores</th>
+                          <th className="py-2.5 font-bold text-right">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -659,19 +695,57 @@ export default function ManualsAdminView() {
                                 {art.approval_rate || 0}%
                               </Badge>
                             </td>
+                            <td className="py-2.5">
+                              {Array.isArray(art.recent_voters) && art.recent_voters.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 max-w-xs">
+                                  {art.recent_voters.map((v: any, vi: number) => (
+                                    <span
+                                      key={v.id || vi}
+                                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                        v.is_helpful
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40'
+                                          : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40'
+                                      }`}
+                                      title={v.created_at ? new Date(v.created_at).toLocaleString('pt-PT') : ''}
+                                    >
+                                      <span>{v.is_helpful ? '👍' : '👎'}</span>
+                                      <span>{v.user_name || 'Utilizador'}</span>
+                                      {v.user_role && <span className="opacity-70 font-normal">({v.user_role})</span>}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-muted-foreground italic">-</span>
+                              )}
+                            </td>
                             <td className="py-2.5 text-right">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  const found = articles.find((a) => a.id === art.id)
-                                  if (found) handleOpenArticleDialog(found)
-                                }}
-                                className="text-xs font-bold rounded-lg h-7 cursor-pointer"
-                              >
-                                Editar Tela
-                              </Button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const found = articles.find((a) => a.id === art.id)
+                                    if (found) handleOpenArticleDialog(found)
+                                  }}
+                                  className="text-xs font-bold rounded-lg h-7 cursor-pointer"
+                                >
+                                  Editar Tela
+                                </Button>
+                                {user?.role === 'SUPER_ADMIN' && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleResetArticleVotes(art.id, art.title)}
+                                    className="text-xs font-bold rounded-lg h-7 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                                    title="Zerar votos e limpar feedbacks desta tela"
+                                  >
+                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                    Zerar
+                                  </Button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -750,15 +824,32 @@ export default function ManualsAdminView() {
                           className="p-4 rounded-xl border border-border bg-background space-y-2.5 hover:border-purple-300 transition"
                         >
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-foreground">
-                                {sug.user_name || 'Usuário Anônimo'}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                sug.is_helpful
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40'
+                                  : 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40'
+                              }`}>
+                                {sug.is_helpful ? <ThumbsUp className="h-3 w-3" /> : <ThumbsDown className="h-3 w-3" />}
+                                <span>{sug.is_helpful ? 'Voto Útil' : 'Voto Não'}</span>
                               </span>
+
+                              <span className="font-bold text-xs text-foreground">
+                                {sug.user_name || 'Utilizador'}
+                              </span>
+
                               {sug.user_role && (
                                 <Badge variant="outline" className="text-[9.5px] font-bold text-muted-foreground">
                                   {sug.user_role}
                                 </Badge>
                               )}
+
+                              {sug.tenant_name && (
+                                <span className="text-[10px] font-medium text-purple-700 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                                  {sug.tenant_name}
+                                </span>
+                              )}
+
                               <span className="text-[10px] text-muted-foreground">
                                 • {new Date(sug.created_at).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                               </span>
@@ -780,31 +871,50 @@ export default function ManualsAdminView() {
                           </div>
 
                           <div className="text-xs text-foreground/90 bg-muted/30 p-3 rounded-lg border border-border/40 whitespace-pre-line leading-relaxed">
-                            &quot;{sug.suggestion_text}&quot;
+                            {sug.suggestion_text ? (
+                              <span>&quot;{sug.suggestion_text}&quot;</span>
+                            ) : (
+                              <span className="text-muted-foreground italic">Voto registrado sem comentário textual adicional.</span>
+                            )}
                           </div>
 
-                          <div className="flex items-center justify-end gap-2 pt-1">
-                            {sug.status === 'PENDING' ? (
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
+                            {user?.role === 'SUPER_ADMIN' ? (
                               <Button
                                 type="button"
                                 size="sm"
-                                onClick={() => handleUpdateSuggestionStatus(sug.id, 'IMPLEMENTED')}
-                                className="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold rounded-lg h-7 cursor-pointer"
+                                variant="ghost"
+                                onClick={() => handleDeleteFeedback(sug.id)}
+                                className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[11px] font-bold rounded-lg h-7 cursor-pointer"
                               >
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Marcar como Atendida
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Excluir Avaliação
                               </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleUpdateSuggestionStatus(sug.id, 'PENDING')}
-                                className="text-[11px] font-bold rounded-lg h-7 cursor-pointer"
-                              >
-                                Reabrir Sugestão
-                              </Button>
-                            )}
+                            ) : <div />}
+
+                            <div className="flex items-center gap-2">
+                              {sug.status === 'PENDING' ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleUpdateSuggestionStatus(sug.id, 'IMPLEMENTED')}
+                                  className="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold rounded-lg h-7 cursor-pointer"
+                                >
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Marcar como Atendida
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleUpdateSuggestionStatus(sug.id, 'PENDING')}
+                                  className="text-[11px] font-bold rounded-lg h-7 cursor-pointer"
+                                >
+                                  Reabrir Sugestão
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
