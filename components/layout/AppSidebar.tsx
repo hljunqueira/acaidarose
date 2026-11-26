@@ -28,6 +28,7 @@ import {
   Clock,
   PanelLeftClose,
   PanelLeftOpen,
+  Gift,
 } from 'lucide-react'
 
 export type AppViewId =
@@ -39,6 +40,7 @@ export type AppViewId =
   | 'franchise_candidates'
   | 'store_requests'
   | 'franchise_requests'
+  | 'loyalty_cashback'
   | 'supply_hub'
   | 'analytics_overview'
   | 'analytics_products'
@@ -72,6 +74,7 @@ const VIEW_ICONS: Record<AppViewId, any> = {
   franchise_candidates: Users,
   store_requests: Sparkles,
   franchise_requests: Building2,
+  loyalty_cashback: Gift,
   supply_hub: Truck,
   analytics_overview: TrendingUp,
   analytics_products: BarChart3,
@@ -273,6 +276,12 @@ export default function AppSidebar({
             badge: storeRequestsCount > 0 ? String(storeRequestsCount) : undefined,
             show: true,
           },
+          {
+            id: 'loyalty_cashback',
+            label: 'Gerenciamento Cashback',
+            subtitle: 'Regras, Prémios & Campanhas',
+            show: true,
+          },
         ],
       },
       {
@@ -377,6 +386,12 @@ export default function AppSidebar({
             label: 'Solicitações das Lojas',
             subtitle: 'Preços, Produtos & Destaques',
             badge: storeRequestsCount > 0 ? String(storeRequestsCount) : undefined,
+            show: true,
+          },
+          {
+            id: 'loyalty_cashback',
+            label: 'Gerenciamento Cashback',
+            subtitle: 'Regras, Prémios & Campanhas',
             show: true,
           },
         ],

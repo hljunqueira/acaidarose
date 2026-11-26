@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#FFFFFF;}body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 0.5rem);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"primary-fixed-dim":"#ebb2ff","tertiary-fixed":"#ffdbca","surface-container":"#ffe6ff","on-tertiary-fixed-variant":"#763300","background":"#ffffff","secondary-fixed-dim":"#4edea3","on-secondary-fixed":"#002113","surface-tint":"#9226bf","secondary-container":"#6cf8bb","surface-variant":"#f8d8fb","on-error-container":"#93000a","primary-container":"#8a1bb8","outline-variant":"#d2c1d4","on-primary-container":"#ffffff","on-primary-fixed":"#320047","tertiary-fixed-dim":"#ffb68e","surface-dim":"#efd0f2","on-secondary-container":"#00714d","inverse-on-surface":"#ffebfe","surface-container-highest":"#f8d8fb","secondary":"#006c49","on-tertiary":"#ffffff","on-error":"#ffffff","secondary-fixed":"#6ffbbe","surface-container-lowest":"#ffffff","on-tertiary-fixed":"#331200","primary":"#6a0092","outline":"#817283","tertiary":"#006c49","on-background":"#28142d","error-container":"#ffdad6","surface-container-low":"#fff7fb","on-surface-variant":"#4f4352","surface":"#ffffff","surface-bright":"#fff7fb","on-secondary-fixed-variant":"#005236","primary-fixed":"#f8d8ff","error":"#ba1a1a","on-secondary":"#ffffff","tertiary-container":"#914000","on-tertiary-container":"#ffc1a0","inverse-surface":"#3e2943","on-primary-fixed-variant":"#74009f","inverse-primary":"#ebb2ff","on-primary":"#ffffff","on-surface":"#28142d","surface-container-high":"#fddfff"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"margin":"1.25rem","space-xl":"2rem","space-md":"1rem","space-xs":"0.25rem","gutter":"1rem","space-sm":"0.5rem","space-lg":"1.5rem"},fontFamily:{"headline-sm":["Outfit"],"label-lg":["Plus Jakarta Sans"],"headline-lg":["Outfit"],"body-lg":["Plus Jakarta Sans"],"headline-md":["Outfit"],"body-sm":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"display-lg-mobile":["Outfit"],"label-badge":["Plus Jakarta Sans"],"points-stat":["Outfit"],"label-md":["Plus Jakarta Sans"],"display-lg":["Outfit"]},fontSize:{"headline-sm":["18px",{lineHeight:"24px",fontWeight:"600"}],"label-lg":["14px",{lineHeight:"20px",fontWeight:"600"}],"headline-lg":["28px",{lineHeight:"36px",fontWeight:"600"}],"body-lg":["16px",{lineHeight:"24px",fontWeight:"400"}],"headline-md":["22px",{lineHeight:"30px",fontWeight:"600"}],"body-sm":["12px",{lineHeight:"18px",fontWeight:"400"}],"body-md":["14px",{lineHeight:"20px",fontWeight:"400"}],"display-lg-mobile":["32px",{lineHeight:"40px",fontWeight:"700"}],"label-badge":["10px",{lineHeight:"14px",fontWeight:"700"}],"points-stat":["36px",{lineHeight:"42px",fontWeight:"800"}],"label-md":["12px",{lineHeight:"16px",fontWeight:"600"}],"display-lg":["40px",{lineHeight:"48px",fontWeight:"700"}]}}}}</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-white text-on-surface font-body-md text-body-md flex flex-col min-h-screen selection:bg-primary-container selection:text-white"><header class="fixed top-0 w-full z-50 pt-safe bg-white/90 backdrop-blur-xl border-b border-outline-variant/40 shadow-[0_2px_12px_rgba(40,20,45,0.06)]"><div class="h-20 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm"><img alt="logo.png" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrDtXVtRzLRa4ziVFXnxIE0BfUifhgxKLnjWbUqdk_AQH9hHPOzxEwR5bJKBBnEi7UtuQXCNBqorVhqmitkKcnb2yyWYDRiHjnpicV-kxkxy84VHvpd1MmMbXRgrp15H4X2E3wgthTfFhoOpF762cBCNsY7TFezBbfsWhyTEvdl94ooog_bONJx5XoHO72d8r30WfBTe3vmG8yWBwim7JKDaIxjHZxg2IULn7e3PeZof4RZrHOOkPfTJzlFy"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight leading-none">Açaí da Rose</span><span class="font-label-badge text-label-badge text-[#9A7200] uppercase tracking-widest">Cashback • Clube VIP</span></div></div><div class="flex items-center gap-space-sm"><div class="inline-flex items-center p-space-xs bg-surface-container-low border border-outline-variant/40 rounded-full shadow-inner"><button class="px-space-xs py-0.5 rounded-full bg-primary-container text-white font-label-badge text-label-badge transition-all"><span class="mr-0.5">🇵🇹</span>PT</button><button class="px-space-xs py-0.5 rounded-full text-on-surface-variant font-label-badge text-label-badge transition-all hover:text-on-surface"><span class="mr-0.5">🇬🇧</span>EN</button><button class="px-space-xs py-0.5 rounded-full text-on-surface-variant font-label-badge text-label-badge transition-all hover:text-on-surface"><span class="mr-0.5">🇪🇸</span>ES</button></div><div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center shadow-[0_2px_10px_rgba(138,27,184,0.3)]"><span class="material-symbols-outlined text-white text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full px-margin pt-20 pb-28 bg-white"><div class="flex flex-col w-full pb-8 space-y-space-lg">
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<div class="flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<button aria-label="Voltar" class="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Catálogo de Recompensas</span>
+</div>
+<div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFF7FB] border border-outline-variant/50 shadow-sm">
+<span class="material-symbols-outlined text-[#D4AF37] text-[18px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-lg text-label-lg text-[#9A7200] font-bold tracking-tight">1.053 pts</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-body-sm text-on-surface-variant px-0.5">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-[#006c49]">verified_user</span>
+        Nível Ouro VIP • Torres Novas
+      </span>
+<span class="font-label-badge text-label-badge text-primary uppercase tracking-wider bg-primary-fixed border border-primary/15 px-2.5 py-0.5 rounded-full">Resgates Imediatos</span>
+</div>
+</div>
+<div class="w-full overflow-x-auto no-scrollbar -mx-margin px-margin">
+<div class="flex items-center gap-space-sm w-max py-1" id="categoryFilterBar">
+<button class="filter-pill flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary-container text-white font-label-md text-label-md shadow-[0_4px_12px_rgba(138,27,184,0.3)] transition-all" data-category="all">
+<span class="material-symbols-outlined text-[16px]">apps</span>
+<span>Todos</span>
+</button>
+<button class="filter-pill flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/50 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all" data-category="acai">
+<span class="material-symbols-outlined text-[16px]">local_cafe</span>
+<span>Copos de Açaí</span>
+</button>
+<button class="filter-pill flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/50 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all" data-category="adicionais">
+<span class="material-symbols-outlined text-[16px]">nutrition</span>
+<span>Adicionais</span>
+</button>
+<button class="filter-pill flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/50 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all" data-category="shakes">
+<span class="material-symbols-outlined text-[16px]">icecream</span>
+<span>Shakes &amp; Potes</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-space-md" id="rewardsFeed">
+<div class="relative overflow-hidden rounded-2xl bg-[#FFF7FB] border border-outline-variant/50 shadow-sm p-space-md flex flex-col gap-space-md reward-card" data-category="acai">
+<div class="flex gap-space-md items-start">
+<div class="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-white border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="Copinho de açaí artesanal roxo aveludado de 250 gramas coberto com rodelas frescas de banana, morangos cortados e granola crocante dourada. Fotografia gastronómica profissional em fundo escuro de madeira rústica, iluminação suave realçando a textura cremosa do açaí brasileiro." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRxx8Gcez0wi60aBFVDxVvSOKnLUeEUgv7d_fWPRpAxmq7YWNdUkOxRuUkvjTZ_7fIofr7YRZyy5Due1fXziEqYfTQgOWtwKgKAieLbehkCV3Q6MqLYK0R9MJ3qDydBAfqerlCjU7ldfDNqP3ojkCQK-rPizWQCBTOD2tIXIwt3FcNEGm9vwIFy1w-Jr8eDCQ-hbkrk_e-UU5J_VK8RB4DicpGaoJW8W5WEqXGM6YQ"/>
+<span class="absolute bottom-1 right-1 font-label-badge text-label-badge px-1.5 py-0.5 rounded bg-white/90 text-on-surface border border-outline-variant/40 backdrop-blur-sm">250g</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-between h-24">
+<div>
+<div class="flex items-center justify-between gap-1">
+<span class="font-label-badge text-label-badge text-[#9A7200] uppercase tracking-widest">acai-001</span>
+<span class="inline-flex items-center gap-1 text-[#006c49] font-label-badge text-label-badge">
+<span class="w-1.5 h-1.5 rounded-full bg-[#006c49]"></span> Disponível
+              </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate mt-0.5">Copo de Açaí 250 gr</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Porção individual perfeita com 2 complementos grátis.</p>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md text-[#9A7200]">130</span>
+<span class="font-label-md text-label-md text-[#B8860B]">Pontos VIP</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-body-sm">
+<span class="font-label-badge text-label-badge text-[#006c49] uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Pronto para resgatar
+          </span>
+<span class="font-label-md text-label-md text-on-surface">100%</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-variant/60 overflow-hidden">
+<div class="h-full bg-[#006c49] rounded-full w-full"></div>
+</div>
+</div>
+<button class="redeem-btn w-full py-3 px-space-md rounded-full bg-primary-container text-white font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-[0_4px_14px_rgba(138,27,184,0.3)] active:scale-[0.98] transition-transform" data-cost="130" data-item="Copo de Açaí 250 gr" type="button">
+<span class="material-symbols-outlined text-[18px]">redeem</span>
+<span>Resgatar (130 pts)</span>
+</button>
+</div>
+<div class="relative overflow-hidden rounded-2xl bg-[#FFF7FB] border border-outline-variant/50 shadow-sm p-space-md flex flex-col gap-space-md reward-card" data-category="acai">
+<div class="flex gap-space-md items-start">
+<div class="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-white border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="Copo de 350 gramas de açaí puro cremoso com leite em pó condensado, lascas de kiwi e morango fresco no topo. Estilo de estúdio gastronómico com ambiente dark velvet luxuoso, tons violeta escuros e reflexos quentes dourados." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvnPdUj9wQ6DA7QWmia1AlaFC8CwGVjHfywBnqPF25DgX9BOJl6aLKVIKcnhqwrx5YmSgt5nnPfILTN8Yvn3x2UWJIKPPEm0WOb6bL01iKPV5lpIk023QWrQeuV0MvagNCo35Y4AyN0bXhsmjQGTqla96HwLaKm_VmGe6kaZGFV-m_qfFABbBJGI8AXUsT0O6QMp8vvkXsVueQI5K4UJ766KyIbaTaFcud0GAYPMCv"/>
+<span class="absolute bottom-1 right-1 font-label-badge text-label-badge px-1.5 py-0.5 rounded bg-white/90 text-on-surface border border-outline-variant/40 backdrop-blur-sm">350g</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-between h-24">
+<div>
+<div class="flex items-center justify-between gap-1">
+<span class="font-label-badge text-label-badge text-[#9A7200] uppercase tracking-widest">acai-003</span>
+<span class="inline-flex items-center gap-1 text-[#006c49] font-label-badge text-label-badge">
+<span class="w-1.5 h-1.5 rounded-full bg-[#006c49]"></span> Disponível
+              </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate mt-0.5">Copo de Açaí 350 gr</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Tamanho médio tradicional com açaí artesanal da Rose.</p>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md text-[#9A7200]">180</span>
+<span class="font-label-md text-label-md text-[#B8860B]">Pontos VIP</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-body-sm">
+<span class="font-label-badge text-label-badge text-[#006c49] uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Pronto para resgatar
+          </span>
+<span class="font-label-md text-label-md text-on-surface">100%</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-variant/60 overflow-hidden">
+<div class="h-full bg-[#006c49] rounded-full w-full"></div>
+</div>
+</div>
+<button class="redeem-btn w-full py-3 px-space-md rounded-full bg-primary-container text-white font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-[0_4px_14px_rgba(138,27,184,0.3)] active:scale-[0.98] transition-transform" data-cost="180" data-item="Copo de Açaí 350 gr" type="button">
+<span class="material-symbols-outlined text-[18px]">redeem</span>
+<span>Resgatar (180 pts)</span>
+</button>
+</div>
+<div class="relative overflow-hidden rounded-2xl bg-white border border-primary-container/30 p-space-md flex flex-col gap-space-md reward-card shadow-[0_6px_24px_rgba(138,27,184,0.1)]" data-category="acai">
+<div class="absolute -top-1 -right-1 z-10">
+<div class="bg-[#E9C349] text-[#28142d] font-label-badge text-label-badge uppercase tracking-wider px-3 py-1 rounded-bl-xl rounded-tr-xl flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[13px]" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+          Mais Popular
+        </div>
+</div>
+<div class="flex gap-space-md items-start pt-1">
+<div class="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-[#FFF7FB] border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="Copo grande de açaí de 500 gramas decorado com camadas visíveis de leite condensado, paçoca esfarelada, morangos fatiados e amoras silvestres no topo. Fundo escuro com estética de bar de açaí gourmet, luz pontual focada nas cores ricas." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAr-p6RFLxzGH8_t5pziaFywfXrmojduuWiKCKf_asSazxHPZTdq5uOjGzIyHJWgYbMXgM05RAEK63RJ-Lv9Bob4B7dQ33gOvgjjDKWuRzWrfQUtqMf8dDL6ml1b1DEA75VUFZ_iDiIIFd8ilOgoVbjNKSHl9D8UevuIZnwFXGcQ7ati2rnRWRDonpfH89oCc_5aH0hJ3cQDmdzMIqcPrIwpV0auqTwWsKL_pCV5ALR"/>
+<span class="absolute bottom-1 right-1 font-label-badge text-label-badge px-1.5 py-0.5 rounded bg-white/90 text-on-surface border border-outline-variant/40 backdrop-blur-sm">500g</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-between h-24">
+<div>
+<div class="flex items-center justify-between gap-1">
+<span class="font-label-badge text-label-badge text-[#9A7200] uppercase tracking-widest">acai-005</span>
+<span class="inline-flex items-center gap-1 text-[#006c49] font-label-badge text-label-badge">
+<span class="w-1.5 h-1.5 rounded-full bg-[#006c49]"></span> Disponível
+              </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate mt-0.5">Copo de Açaí 500 gr</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">O preferido dos clientes com 3 camadas livres de adicionais.</p>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md text-[#9A7200]">250</span>
+<span class="font-label-md text-label-md text-[#B8860B]">Pontos VIP</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-body-sm">
+<span class="font-label-badge text-label-badge text-[#006c49] uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Pronto para resgatar
+          </span>
+<span class="font-label-md text-label-md text-on-surface">100%</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-variant/60 overflow-hidden">
+<div class="h-full bg-[#006c49] rounded-full w-full"></div>
+</div>
+</div>
+<button class="redeem-btn w-full py-3.5 px-space-md rounded-full bg-primary-container text-white font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-[0_6px_18px_rgba(138,27,184,0.35)] hover:brightness-110 active:scale-[0.98] transition-all" data-cost="250" data-item="Copo de Açaí 500 gr" type="button">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">redeem</span>
+<span>Resgatar (250 pts)</span>
+</button>
+</div>
+<div class="relative overflow-hidden rounded-2xl bg-[#FFF7FB] border border-outline-variant/50 shadow-sm p-space-md flex flex-col gap-space-md reward-card" data-category="adicionais">
+<div class="flex gap-space-md items-start">
+<div class="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-white border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="Pote de Nutella cremosa sendo espalhada sobre avelãs torradas e calda densa de avelã com cacau, composição elegante com iluminação de destaque luxuosa e tons escuros aveludados." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK0DloZ3Md-IRkGd6Z0Ttx_OseDorEFhXveNdCYZcFpMlJqHZ6QH4ihEDQN60k4Zy-5Y5gFG_-bEbIuG2axZTQ8H6z0K0FBz6u9dMxarsW0I5wpl4hkwV-M8BRZ0flKlvbFlWSFrnU2CogYU5yscKvhmRoZ4Rz03z8TeN3BMETPv6nMd7J6yH_dZ1oiX5s2SkEIjQacY8GGZ4JVYX9Wkz0KupDohWruus_tzl1FZd4"/>
+<span class="absolute bottom-1 right-1 font-label-badge text-label-badge px-1.5 py-0.5 rounded bg-white/90 text-on-surface border border-outline-variant/40 backdrop-blur-sm">Extra</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-between h-24">
+<div>
+<div class="flex items-center justify-between gap-1">
+<span class="font-label-badge text-label-badge text-[#9A7200] uppercase tracking-widest">add-nutella</span>
+<span class="inline-flex items-center gap-1 text-[#006c49] font-label-badge text-label-badge">
+<span class="w-1.5 h-1.5 rounded-full bg-[#006c49]"></span> Disponível
+              </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate mt-0.5">Nutella até copo 500 Gr.</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Camada generosa de Nutella pura autêntica para o teu açaí.</p>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md text-[#9A7200]">20</span>
+<span class="font-label-md text-label-md text-[#B8860B]">Pontos VIP</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-body-sm">
+<span class="font-label-badge text-label-badge text-[#006c49] uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Pronto para resgatar
+          </span>
+<span class="font-label-md text-label-md text-on-surface">100%</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-variant/60 overflow-hidden">
+<div class="h-full bg-[#006c49] rounded-full w-full"></div>
+</div>
+</div>
+<button class="redeem-btn w-full py-3 px-space-md rounded-full bg-primary-container text-white font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-[0_4px_14px_rgba(138,27,184,0.3)] active:scale-[0.98] transition-transform" data-cost="20" data-item="Nutella até copo 500 Gr." type="button">
+<span class="material-symbols-outlined text-[18px]">redeem</span>
+<span>Resgatar (20 pts)</span>
+</button>
+</div>
+<div class="relative overflow-hidden rounded-2xl bg-[#FFF7FB] border border-outline-variant/50 shadow-sm p-space-md flex flex-col gap-space-md opacity-90 reward-card" data-category="shakes">
+<div class="flex gap-space-md items-start">
+<div class="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-white border border-outline-variant/30 grayscale-[25%]">
+<img class="w-full h-full object-cover" data-alt="Grande balde pote familiar de 1 quilo de açaí cremoso premium com tampa transparente selada e rótulo exclusivo Clube VIP Açaí da Rose, cercado por frutas frescas em fundo de mármore preto elegante." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChdYyCDIUmyhob75eRyv7szIFynGUxupvz33CXG5ruUld5ZnmrU2gfnBjLzB-ckyu4YeGb9Rvwf1YECTj0Jv1X57ENPGpZb3rQeR9hy-vc3KsgOKw8kjQ_NoDaZb0XH9Z56jHByc_uG6ilcYeRQFL1hMX82u4UOZUbwbb9aooHpIulVEsjL3EtMuXn0YjENeY1lsjZqbnlfo77ol0FNHO2ClVXlz1Gglxey79lkLSp"/>
+<span class="absolute bottom-1 right-1 font-label-badge text-label-badge px-1.5 py-0.5 rounded bg-white/90 text-on-surface border border-outline-variant/40 backdrop-blur-sm">1.000g</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-between h-24">
+<div>
+<div class="flex items-center justify-between gap-1">
+<span class="font-label-badge text-label-badge text-outline uppercase tracking-widest">pote-1kg</span>
+<span class="inline-flex items-center gap-1 text-on-surface-variant font-label-badge text-label-badge">
+<span class="material-symbols-outlined text-[13px]">lock</span> Bloqueado
+              </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate mt-0.5">Pote XGigabyte 1 kg</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Para levar e partilhar em família. Rendimento máximo.</p>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md text-on-surface">1.200</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Pontos VIP</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-body-sm">
+<span class="font-label-badge text-label-badge text-[#9A7200] uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">hourglass_top</span> Faltam 147 pontos
+          </span>
+<span class="font-label-md text-label-md text-on-surface-variant">87%</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-variant/60 overflow-hidden">
+<div class="h-full bg-[#D4AF37] rounded-full w-[87%]"></div>
+</div>
+</div>
+<button class="w-full py-3 px-space-md rounded-full bg-surface-variant/40 border border-outline-variant/40 text-on-surface-variant/70 font-label-lg text-label-lg flex items-center justify-center gap-space-xs cursor-not-allowed" disabled="" type="button">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+<span>Bloqueado (1.200 pts)</span>
+</button>
+</div>
+</div>
+<div class="rounded-2xl bg-[#FFF7FB] border border-outline-variant/50 shadow-sm p-space-md flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[24px]">storefront</span>
+</div>
+<div class="flex flex-col">
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Levantamento ao Balcão</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Ao clicares em resgatar, o voucher fica disponível na loja Açaí da Rose em Torres Novas.</p>
+</div>
+</div>
+<div class="fixed inset-0 z-50 flex items-end justify-center bg-on-surface/40 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300 px-margin pb-safe" id="voucherModal">
+<div class="w-full max-w-sm rounded-3xl bg-white border border-outline-variant/50 shadow-2xl p-space-lg flex flex-col items-center text-center transform translate-y-8 transition-transform duration-300 mb-8" id="modalBox">
+<div class="w-16 h-16 rounded-full bg-primary-container text-white flex items-center justify-center mb-space-sm shadow-[0_4px_20px_rgba(138,27,184,0.4)]">
+<span class="material-symbols-outlined text-[32px]">check</span>
+</div>
+<span class="font-label-badge text-label-badge text-[#9A7200] uppercase tracking-widest">Resgate com Sucesso</span>
+<h3 class="font-headline-md text-headline-md text-on-surface mt-1" id="modalItemTitle">Copo de Açaí</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2 mb-space-md">Apresenta o código abaixo ao operador no balcão de Torres Novas.</p>
+<div class="w-full bg-[#FFF7FB] border border-outline-variant/50 rounded-2xl p-space-md flex flex-col items-center gap-2 mb-space-lg shadow-inner">
+<span class="font-points-stat text-points-stat text-[#9A7200] tracking-widest" id="voucherCode">ROSE-9842</span>
+<span class="font-label-badge text-label-badge text-on-surface-variant">Válido por 30 minutos</span>
+</div>
+<button class="w-full py-3 rounded-full bg-primary-container text-white font-label-lg text-label-lg active:scale-95 transition-transform shadow-[0_4px_14px_rgba(138,27,184,0.3)]" id="closeModalBtn" type="button">
+        Concluir e Voltar
+      </button>
+</div>
+</div>
+</div>
+<script>
+  (function () {
+    const navItems = document.querySelectorAll('nav a');
+    navItems.forEach(item => {
+      if (item.getAttribute('data-path') === 'recompensas') {
+        item.classList.add('text-primary-container');
+        item.classList.remove('text-on-surface-variant');
+        const icon = item.querySelector('.material-symbols-outlined');
+        if (icon) icon.style.fontVariationSettings = "'FILL' 1";
+      } else {
+        item.classList.remove('text-primary-container');
+      }
+    });
+
+    const filterButtons = document.querySelectorAll('.filter-pill');
+    const cards = document.querySelectorAll('.reward-card');
+
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => {
+          b.className = 'filter-pill flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/50 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all';
+        });
+
+        btn.className = 'filter-pill flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary-container text-white font-label-md text-label-md shadow-[0_4px_12px_rgba(138,27,184,0.3)] transition-all';
+
+        const category = btn.getAttribute('data-category');
+        cards.forEach(card => {
+          if (category === 'all' || card.getAttribute('data-category') === category) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    const modal = document.getElementById('voucherModal');
+    const modalBox = document.getElementById('modalBox');
+    const modalItemTitle = document.getElementById('modalItemTitle');
+    const voucherCode = document.getElementById('voucherCode');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const redeemButtons = document.querySelectorAll('.redeem-btn');
+
+    redeemButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const itemTitle = btn.getAttribute('data-item');
+        modalItemTitle.textContent = itemTitle;
+        voucherCode.textContent = 'ROSE-' + Math.floor(1000 + Math.random() * 9000);
+
+        modal.classList.remove('pointer-events-none', 'opacity-0');
+        modal.classList.add('opacity-100');
+        modalBox.classList.remove('translate-y-8');
+        modalBox.classList.add('translate-y-0');
+      });
+    });
+
+    function closeModal() {
+      modal.classList.add('pointer-events-none', 'opacity-0');
+      modal.classList.remove('opacity-100');
+      modalBox.classList.add('translate-y-8');
+      modalBox.classList.remove('translate-y-0');
+    }
+
+    closeModalBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-white/95 backdrop-blur-xl border-t border-outline-variant/40 shadow-[0_-4px_20px_rgba(40,20,45,0.06)]" data-active-classes="text-primary-container"><div class="flex justify-around items-center h-16 px-space-xs"><a class="flex flex-col items-center justify-center gap-space-xs min-w-[56px] min-h-[44px] text-on-surface-variant transition-all hover:text-on-surface" data-path="inicio" href="#"><span class="material-symbols-outlined text-[22px]">stars</span><span class="font-label-md text-label-md">Início</span></a><a aria-current="page" class="flex flex-col items-center justify-center gap-space-xs min-w-[56px] min-h-[44px] transition-all text-primary-container" data-path="recompensas" href="#"><span class="material-symbols-outlined text-[22px]">redeem</span><span class="font-label-md text-label-md">Recompensas</span></a><a class="flex flex-col items-center justify-center gap-space-xs min-w-[56px] min-h-[44px] text-on-surface-variant transition-all hover:text-on-surface" data-path="extrato" href="#"><span class="material-symbols-outlined text-[22px]">receipt_long</span><span class="font-label-md text-label-md">Extrato</span></a><a class="flex flex-col items-center justify-center gap-space-xs min-w-[56px] min-h-[44px] text-on-surface-variant transition-all hover:text-on-surface" data-path="perfil" href="#"><span class="material-symbols-outlined text-[22px]">account_circle</span><span class="font-label-md text-label-md">Perfil</span></a></div></nav></body></html>

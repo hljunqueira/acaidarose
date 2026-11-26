@@ -9,10 +9,17 @@ import { CheckCircle2, Printer } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { generateOrderReceiptUrl } from '@/lib/services/qrCodeService'
 
+export interface OrderReceiptLoyaltySummary {
+  customerName: string
+  pointsCredited: number
+  newBalance: number
+}
+
 interface OrderReceiptModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   order: Order | null
+  loyaltySummary?: OrderReceiptLoyaltySummary | null
   onNewOrder: () => void
 }
 
@@ -20,6 +27,7 @@ export default function OrderReceiptModal({
   open,
   onOpenChange,
   order,
+  loyaltySummary,
   onNewOrder,
 }: OrderReceiptModalProps) {
   if (!order) return null
@@ -27,7 +35,10 @@ export default function OrderReceiptModal({
   const receiptUrl = generateOrderReceiptUrl(order.id)
 
   const handlePrint = () => {
-    window.open(`/receipt/${order.id}?print=true`, '_blank', 'width=400,height=600')
+    const loyaltyParams = loyaltySummary
+      ? `&lp=${encodeURIComponent(String(loyaltySummary.pointsCredited))}&lb=${encodeURIComponent(String(loyaltySummary.newBalance))}`
+      : ''
+    window.open(`/receipt/${order.id}?print=true${loyaltyParams}`, '_blank', 'width=400,height=600')
   }
 
   return (
@@ -49,6 +60,17 @@ export default function OrderReceiptModal({
           </div>
           <div className="text-[11px] text-muted-foreground">QR Code da comanda</div>
           <div className="font-bold text-sm text-purple-700 mt-1">{formatCurrency(order.total)}</div>
+
+          {loyaltySummary && (
+            <div className="mt-2.5 w-full pt-2.5 border-t border-purple-200/70 text-xs">
+              <div className="font-bold text-purple-900">
+                Cashback · {loyaltySummary.customerName}
+              </div>
+              <div className="font-mono font-black text-emerald-700 mt-0.5">
+                +{loyaltySummary.pointsCredited} pts ganhos · Saldo: {loyaltySummary.newBalance} pts
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">

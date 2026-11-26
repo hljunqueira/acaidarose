@@ -15,6 +15,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
   const [err, setErr] = useState<string | null>(null)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [activeLayout, setActiveLayout] = useState<'FULL_RECEIPT' | 'KITCHEN_SLIP'>('FULL_RECEIPT')
+  const [loyaltyReceipt, setLoyaltyReceipt] = useState<{ points: number; balance: number } | null>(null)
 
   useEffect(() => {
     fetch(`/api/orders/${id}`)
@@ -25,6 +26,11 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
         if (typeof window !== 'undefined') {
           const params = new URLSearchParams(window.location.search)
+          const lp = Number(params.get('lp'))
+          const lb = Number(params.get('lb'))
+          if (Number.isFinite(lp) && lp > 0 && Number.isFinite(lb)) {
+            setLoyaltyReceipt({ points: Math.round(lp), balance: Math.round(lb) })
+          }
           const layoutParam = params.get('layout')?.toUpperCase()
           if (layoutParam === 'KITCHEN' || layoutParam === 'KITCHEN_SLIP' || layoutParam === 'COZINHA') {
             setActiveLayout('KITCHEN_SLIP')
@@ -514,6 +520,20 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               <span>Pagamento</span>
               <span className="font-bold">{formatPaymentMethodPT(order.paymentMethod)}</span>
             </div>
+
+            {loyaltyReceipt && (
+              <div className="mt-2 pt-2 border-t border-dashed border-black text-[11px] space-y-0.5">
+                <div className="font-black uppercase text-center">Cashback Açaí da Rose</div>
+                <div className="flex justify-between">
+                  <span>Pontos ganhos:</span>
+                  <span className="font-bold">+{loyaltyReceipt.points} pts</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Saldo atual:</span>
+                  <span className="font-bold">{loyaltyReceipt.balance} pts</span>
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-dashed border-black my-2" />
 

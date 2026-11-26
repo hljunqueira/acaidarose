@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/lib/stores/authStore'
 import PaymentModal from './PaymentModal'
 import TableThermalReceiptDialog from './TableThermalReceiptDialog'
 import { ArrowLeft, Printer, Receipt, Trash2, Edit3, CheckCircle2 } from 'lucide-react'
@@ -301,6 +302,8 @@ export default function TableCheckoutDetail({
       bagQuantity?: number
       bagFee?: number
       totalWithBags?: number
+      loyaltyCustomerId?: string
+      loyaltyCustomerName?: string
     }
   ) => {
     setSubmitting(true)
@@ -351,7 +354,37 @@ export default function TableCheckoutDetail({
         }
       }
 
-      // 2. Liberar a mesa
+      // 2. Creditar pontos de Cashback se cliente fidelidade foi identificado
+      if (options?.loyaltyCustomerId && method !== 'POINTS') {
+        const eligibleTotal = options?.totalWithBags ?? total
+        try {
+          const authFetch = useAuthStore.getState().authFetch
+          const currentUser = useAuthStore.getState().user
+          const creditRes = await authFetch('/api/pdv/loyalty/credit', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-idempotency-key': `TABLE_CLOSE_${table.id}_${Date.now()}`,
+            },
+            body: JSON.stringify({
+              tenant_id: table.tenantId,
+              customer_id: options.loyaltyCustomerId,
+              cashier_user_id: currentUser?.id,
+              items: [{ line_total: eligibleTotal, cashback_enabled: true }],
+            }),
+          })
+          const creditJson = await creditRes.json()
+          if (creditRes.ok && creditJson?.pointsCredited > 0) {
+            toast.success(
+              `+${creditJson.pointsCredited} pts creditados em ${options.loyaltyCustomerName || customer.name} (Saldo: ${creditJson.newBalance} pts)`
+            )
+          }
+        } catch {
+          // Não bloqueia fecho da mesa
+        }
+      }
+
+      // 3. Liberar a mesa
       await fetch(`/api/tables/${table.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -832,6 +865,7 @@ export default function TableCheckoutDetail({
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         total={total}
+        tenantId={table.tenantId}
         storePhone={storePhone}
         submitting={submitting}
         initialCustomerName={tableOrders[0]?.customerName || `Cliente Mesa ${table.number}`}

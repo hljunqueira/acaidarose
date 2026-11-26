@@ -1,14 +1,26 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
 import { getAuthUser, hasRole } from '@/lib/api/authGuard'
 import { getTenants, createTenant } from '@/lib/repositories/tenantsRepository'
+import { loyaltyRepository } from '@/lib/repositories/loyaltyRepository'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
-    const tenants = await getTenants()
+    let tenants = await getTenants()
+
+    const cashbackOnly = request.nextUrl.searchParams.get('cashbackOnly') === 'true'
+    if (cashbackOnly) {
+      const cfg = await loyaltyRepository.getEnabledStoresConfig()
+      const disabledSet = new Set(cfg.disabled_tenant_ids || [])
+      tenants = tenants.filter((t) => t.active !== false && !disabledSet.has(t.id))
+      return NextResponse.json(
+        { tenants },
+        { status: 200, headers: { 'Cache-Control': 'no-store, max-age=0' } }
+      )
+    }
 
     if (user && user.role !== 'SUPER_ADMIN' && user.role !== 'FRANCHISOR_ADMIN') {
       const userTenants = tenants.filter((t) => t.id === user.tenantId)

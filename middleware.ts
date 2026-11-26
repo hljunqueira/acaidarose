@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set('Permissions-Policy', 'camera=(self), geolocation=(self), microphone=()')
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  return response
+}
+
 export function middleware(request: NextRequest) {
   // Extrai o host da requisição (compatível com proxies reversos Cloudflare / Vercel)
   const host =
@@ -81,7 +90,7 @@ export function middleware(request: NextRequest) {
     return response
   }
 
-  return NextResponse.next()
+  return applySecurityHeaders(NextResponse.next())
 }
 
 export const config = {

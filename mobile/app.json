@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Açaí da Rose",
+    "slug": "acaidarose",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "acaidarose",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4A0E4E"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "pt.acaidarose.fidelidade",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Usa o Face ID para entrar na tua conta e ver os teus pontos rapidamente.",
+        "NSPhotoLibraryUsageDescription": "Permite escolher uma foto da tua galeria para o teu perfil Açaí da Rose.",
+        "NSCameraUsageDescription": "Permite tirar uma fotografia para o teu perfil Açaí da Rose."
+      },
+      "associatedDomains": [
+        "applinks:acaidarose.pt",
+        "applinks:app.acaidarose.pt"
+      ]
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#4A0E4E"
+      },
+      "package": "pt.acaidarose.fidelidade",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "acaidarose.pt",
+              "pathPrefix": "/convite"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-video",
+      "expo-notifications"
+    ]
+  }
+}

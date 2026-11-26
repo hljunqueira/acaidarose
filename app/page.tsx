@@ -40,6 +40,7 @@ import FranchiseCorporateView from '@/components/admin/franchise/FranchiseCorpor
 import FranchiseCandidatesView from '@/components/admin/franchise/FranchiseCandidatesView'
 import StoreRequestsView from '@/components/admin/franchise/StoreRequestsView'
 import FranchiseRequestsView from '@/components/admin/franchise/FranchiseRequestsView'
+import CashbackManagementView from '@/components/admin/loyalty/CashbackManagementView'
 import StoreCompanySettingsView from '@/components/admin/company/StoreCompanySettingsView'
 import UsersAdmin from '@/components/admin/users/UsersAdmin'
 import PrinterSettingsView from '@/components/admin/printers/PrinterSettingsView'
@@ -291,6 +292,7 @@ export default function HomePage() {
           {/* 2. FRANQUEADORA MASTER */}
           {view === 'franchise' && (isSuperAdmin || isFranchisorAdmin) && <FranchiseCorporateView />}
           {view === 'franchise_candidates' && (isSuperAdmin || isFranchisorAdmin) && <FranchiseCandidatesView />}
+          {view === 'loyalty_cashback' && (isSuperAdmin || isFranchisorAdmin) && <CashbackManagementView />}
           {view === 'store_requests' && isAdmin && <StoreRequestsView tenantId={activeTenantId} />}
           {view === 'franchise_requests' && isAdmin && (
             <FranchiseRequestsView

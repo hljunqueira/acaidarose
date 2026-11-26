@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import TableCheckoutDetail from './TableCheckoutDetail'
 import PDVView from './PDVView'
+import PDVLoyaltyVoucherDialog from './PDVLoyaltyVoucherDialog'
 import { Store, ShoppingBag } from 'lucide-react'
 
 interface TablesHallViewProps {
@@ -37,6 +38,25 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
 
   // Mesa Inicial para Montador
   const [montadorTable, setMontadorTable] = useState<RestaurantTable | null>(null)
+  const [voucherDialogOpen, setVoucherDialogOpen] = useState(false)
+  const [cashbackEnabledForStore, setCashbackEnabledForStore] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/loyalty/settings')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!active) return
+        const disabled: string[] = Array.isArray(d?.stores?.disabled_tenant_ids)
+          ? d.stores.disabled_tenant_ids
+          : []
+        setCashbackEnabledForStore(!disabled.includes(tenantId))
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [tenantId])
 
   const fetchTables = useCallback(async () => {
     try {
@@ -245,6 +265,16 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
             <ShoppingBag className="h-3.5 w-3.5" />
             <span>MONTADOR BALCÃO</span>
           </button>
+
+          {cashbackEnabledForStore && (
+            <button
+              type="button"
+              onClick={() => setVoucherDialogOpen(true)}
+              className="px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer text-purple-800 dark:text-pink-300 hover:text-purple-950 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-white/10"
+            >
+              RESGATAR VOUCHER
+            </button>
+          )}
         </div>
 
         {/* 4 Contadores Rápidos na mesma linha */}
@@ -468,6 +498,13 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           )}
         </div>
       )}
+
+      <PDVLoyaltyVoucherDialog
+        open={voucherDialogOpen}
+        onOpenChange={setVoucherDialogOpen}
+        tenantId={tenantId}
+        cashierUserId={currentUser?.id}
+      />
     </div>
   )
 }

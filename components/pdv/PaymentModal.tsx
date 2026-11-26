@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/i18n/formatters'
+import { useAuthStore } from '@/lib/stores/authStore'
 import MBWayQRCodeView from './MBWayQRCodeView'
+import PDVQRCodeScanner from './PDVQRCodeScanner'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -18,12 +20,16 @@ export interface PaymentExtraOptions {
   bagQuantity: number
   bagFee: number
   totalWithBags: number
+  loyaltyCustomerId?: string
+  loyaltyCustomerName?: string
 }
 
 interface PaymentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   total: number
+  tenantId?: string
+  cashierUserId?: string
   storePhone?: string | null
   submitting: boolean
   initialCustomerName?: string
@@ -41,7 +47,6 @@ const METHODS: Array<{ code: PaymentMethodCode; label: string; hint: string }> =
   { code: 'NUMERARIO', label: 'Numerário (Dinheiro)', hint: 'Com cálculo de troco' },
   { code: 'MULTIBANCO', label: 'Multibanco (TPA)', hint: 'Cartão de débito/crédito' },
   { code: 'MB_WAY', label: 'MB Way', hint: 'QR Code / Telemóvel' },
-  { code: 'POINTS', label: 'Pontos (App Cashback)', hint: 'Resgate via NIF do cliente' },
   { code: 'PLATAFORMA', label: 'Takeaway / App', hint: 'Uber Eats / Glovo' },
 ]
 
@@ -49,6 +54,8 @@ export default function PaymentModal({
   open,
   onOpenChange,
   total,
+  tenantId,
+  cashierUserId,
   storePhone,
   submitting,
   initialCustomerName = '',
@@ -57,11 +64,29 @@ export default function PaymentModal({
   initialBagQuantity = 0,
   onPay,
 }: PaymentModalProps) {
+  const { authFetch } = useAuthStore()
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodCode | null>(null)
   const [customerName, setCustomerName] = useState(initialCustomerName)
   const [customerPhone, setCustomerPhone] = useState('')
   const [consumptionType, setConsumptionType] = useState<'DINE_IN' | 'TAKEAWAY'>(initialConsumptionType)
   const [bagQuantity, setBagQuantity] = useState<number>(initialBagQuantity)
+
+  // Identificação Cashback (para creditar pontos e resgatar vouchers ativos)
+  const [loyaltyQuery, setLoyaltyQuery] = useState('')
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false)
+  const [loyaltyCustomer, setLoyaltyCustomer] = useState<{
+    id: string
+    name: string
+    username: string
+    phone: string
+    points_balance: number
+  } | null>(null)
+  const [loyaltyVouchers, setLoyaltyVouchers] = useState<
+    Array<{ id: string; voucher_code: string; reward_name: string; expires_at: string }>
+  >([])
+  const [redeemingVoucher, setRedeemingVoucher] = useState<string | null>(null)
+  const [qrScannerOpen, setQrScannerOpen] = useState(false)
+  const [cashbackEnabledForStore, setCashbackEnabledForStore] = useState(true)
 
   // Sincronizar estado inicial ao abrir o modal
   useEffect(() => {
@@ -70,8 +95,93 @@ export default function PaymentModal({
       setSelectedMethod(null)
       setConsumptionType(initialConsumptionType || 'DINE_IN')
       setBagQuantity(initialBagQuantity || 0)
+      setLoyaltyQuery('')
+      setLoyaltyCustomer(null)
+      setLoyaltyVouchers([])
+      setQrScannerOpen(false)
+      if (tenantId) {
+        fetch('/api/loyalty/settings')
+          .then((r) => r.json())
+          .then((d) => {
+            const disabled: string[] = Array.isArray(d?.stores?.disabled_tenant_ids)
+              ? d.stores.disabled_tenant_ids
+              : []
+            setCashbackEnabledForStore(!disabled.includes(tenantId))
+          })
+          .catch(() => {})
+      }
     }
-  }, [open, initialCustomerName, initialConsumptionType, initialBagQuantity])
+  }, [open, initialCustomerName, initialConsumptionType, initialBagQuantity, tenantId])
+
+  const handleLoyaltyLookup = async (overrideQuery?: string) => {
+    const q = (overrideQuery ?? loyaltyQuery ?? customerPhone).trim()
+    if (!q) {
+      toast.error('Introduza o telemóvel, @username ou leia o QR Code do cliente.')
+      return
+    }
+    setLoyaltyLoading(true)
+    try {
+      const res = await authFetch('/api/pdv/loyalty/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json?.error || 'Erro ao consultar cliente Cashback.')
+        return
+      }
+      if (!json?.customer) {
+        setLoyaltyCustomer(null)
+        setLoyaltyVouchers([])
+        toast.error('Cliente não encontrado no programa Cashback.')
+        return
+      }
+      setLoyaltyCustomer(json.customer)
+      setLoyaltyVouchers(Array.isArray(json.active_vouchers) ? json.active_vouchers : [])
+      if (!customerName.trim() || customerName.startsWith('Cliente Mesa')) {
+        setCustomerName(json.customer.name)
+      }
+      if (!customerPhone.trim() && json.customer.phone) {
+        setCustomerPhone(json.customer.phone)
+      }
+      toast.success(`Cliente Cashback identificado: ${json.customer.name}`)
+    } catch {
+      toast.error('Erro de ligação ao consultar Cashback.')
+    } finally {
+      setLoyaltyLoading(false)
+    }
+  }
+
+  const handleRedeemInlineVoucher = async (voucherCode: string) => {
+    if (!tenantId) {
+      toast.error('Loja não identificada para resgate.')
+      return
+    }
+    setRedeemingVoucher(voucherCode)
+    try {
+      const res = await authFetch('/api/pdv/loyalty/redeem-voucher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voucher_code: voucherCode,
+          tenant_id: tenantId,
+          cashier_user_id: cashierUserId || undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json?.error || 'Não foi possível validar o voucher.')
+        return
+      }
+      setLoyaltyVouchers((prev) => prev.filter((v) => v.voucher_code !== voucherCode))
+      toast.success(`Voucher ${voucherCode} validado (${json?.rewardName || 'Prémio'})!`)
+    } catch {
+      toast.error('Erro de ligação ao validar voucher.')
+    } finally {
+      setRedeemingVoucher(null)
+    }
+  }
 
   // Cálculo de taxas de saco de transporte (0.10€ cada)
   const bagFee = +(bagQuantity * 0.10).toFixed(2)
@@ -87,6 +197,8 @@ export default function PaymentModal({
     bagQuantity,
     bagFee,
     totalWithBags: effectiveTotal,
+    loyaltyCustomerId: loyaltyCustomer?.id,
+    loyaltyCustomerName: loyaltyCustomer?.name,
   })
 
   const handleSelectMethod = (code: PaymentMethodCode) => {
@@ -253,6 +365,125 @@ export default function PaymentModal({
                 />
               </div>
             </div>
+
+            {/* Cashback do Cliente (Creditar Pontos & Vouchers Ativos) */}
+            {cashbackEnabledForStore && (
+            <div className="p-3 rounded-2xl border border-purple-150 dark:border-white/15 bg-purple-50/50 dark:bg-white/5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-black text-purple-950 dark:text-white">
+                  Cashback do Cliente (opcional)
+                </Label>
+                {loyaltyCustomer ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoyaltyCustomer(null)
+                      setLoyaltyVouchers([])
+                      setLoyaltyQuery('')
+                    }}
+                    className="text-[11px] font-bold text-purple-700 dark:text-pink-300 hover:underline cursor-pointer"
+                  >
+                    Remover
+                  </button>
+                ) : null}
+              </div>
+
+              {!loyaltyCustomer ? (
+                <div className="space-y-2">
+                  {qrScannerOpen ? (
+                    <PDVQRCodeScanner
+                      onScan={(raw) => {
+                        setQrScannerOpen(false)
+                        handleLoyaltyLookup(raw)
+                      }}
+                      onClose={() => setQrScannerOpen(false)}
+                      hint="Aponte para o QR Code do Cartão Cashback."
+                    />
+                  ) : (
+                    <div className="flex gap-1.5">
+                      <Input
+                        placeholder="Telemóvel, @username ou QR"
+                        value={loyaltyQuery}
+                        onChange={(e) => setLoyaltyQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleLoyaltyLookup()
+                          }
+                        }}
+                        className="h-9 text-xs rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-[#12061d]"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={loyaltyLoading}
+                        onClick={() => handleLoyaltyLookup()}
+                        className="h-9 px-2.5 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 cursor-pointer shrink-0"
+                      >
+                        {loyaltyLoading ? '...' : 'Buscar'}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setQrScannerOpen(true)}
+                        className="h-9 px-2.5 bg-gradient-to-r from-purple-700 to-pink-600 text-white text-xs font-black rounded-xl cursor-pointer shrink-0"
+                      >
+                        Ler QR
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-black text-purple-950 dark:text-white">
+                        {loyaltyCustomer.name}
+                      </span>{' '}
+                      <span className="text-purple-700/75 dark:text-purple-200/70">
+                        ({loyaltyCustomer.username})
+                      </span>
+                    </div>
+                    <span className="font-black font-mono text-purple-700 dark:text-pink-400">
+                      {loyaltyCustomer.points_balance} pts
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">
+                    Pontos desta compra serão creditados automaticamente ao confirmar o pagamento.
+                  </div>
+                  {loyaltyVouchers.length > 0 && (
+                    <div className="space-y-1.5 pt-1.5 border-t border-purple-200/60 dark:border-white/10">
+                      {loyaltyVouchers.map((v) => (
+                        <div
+                          key={v.id}
+                          className="flex items-center justify-between gap-2 bg-white dark:bg-[#12061d] px-2.5 py-1.5 rounded-xl border border-purple-150 dark:border-white/10"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-black text-purple-950 dark:text-white truncate">
+                              {v.reward_name}
+                            </div>
+                            <div className="text-[10px] font-mono text-purple-700 dark:text-pink-300">
+                              {v.voucher_code}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={redeemingVoucher === v.voucher_code}
+                            onClick={() => handleRedeemInlineVoucher(v.voucher_code)}
+                            className="h-7 px-2.5 bg-gradient-to-r from-purple-700 to-pink-600 text-white text-[10px] font-black rounded-lg cursor-pointer shrink-0"
+                          >
+                            {redeemingVoucher === v.voucher_code ? '...' : 'Validar Voucher'}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            )}
 
             {/* Tipo de Consumo (Local vs Takeaway) */}
             <div className="space-y-1.5">

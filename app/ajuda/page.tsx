@@ -928,6 +928,12 @@ export default function AjudaPortalPage() {
                       </span>
                     )}
 
+                    {activeArticle.highlightCategory && (
+                      <span className="px-2.5 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider">
+                        {activeArticle.highlightCategory}
+                      </span>
+                    )}
+
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       Leitura: {activeArticle.readTimeMinutes || 4} min

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { useCartStore, computeItemLineTotal, getPremiumToppingPrice } from '@/lib/stores/cartStore'
+import { useAuthStore } from '@/lib/stores/authStore'
 import { formatCurrency } from '@/lib/i18n/formatters'
 import StepIndicator from './StepIndicator'
 import ContainerSelector from './ContainerSelector'
@@ -15,7 +16,7 @@ import BaseSelector from './BaseSelector'
 import ToppingSelector from './ToppingSelector'
 import CartSummary from './CartSummary'
 import PaymentModal from './PaymentModal'
-import OrderReceiptModal from './OrderReceiptModal'
+import OrderReceiptModal, { OrderReceiptLoyaltySummary } from './OrderReceiptModal'
 import PDVItemOptionsModal from './PDVItemOptionsModal'
 import { ShoppingBag, Store, ArrowLeft, Search, Plus, SlidersHorizontal } from 'lucide-react'
 import { subscribeCatalogSync } from '@/lib/utils/catalogSync'
@@ -42,6 +43,7 @@ export default function PDVView({
   const [payOpen, setPayOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [lastOrder, setLastOrder] = useState<Order | null>(null)
+  const [lastLoyaltySummary, setLastLoyaltySummary] = useState<OrderReceiptLoyaltySummary | null>(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
 
   // Menu Selecionado no PDV (Dinâmico do Banco)
@@ -366,6 +368,8 @@ export default function PDVView({
       bagQuantity?: number
       bagFee?: number
       totalWithBags?: number
+      loyaltyCustomerId?: string
+      loyaltyCustomerName?: string
     }
   ) => {
     setSubmitting(true)
@@ -406,6 +410,47 @@ export default function PDVView({
       if (!res.ok) throw new Error('Falha ao registar comanda')
       const order = await res.json()
 
+      // 2. Creditar pontos de Cashback se cliente fidelidade foi identificado
+      let receiptLoyalty: OrderReceiptLoyaltySummary | null = null
+      if (options?.loyaltyCustomerId && method !== 'POINTS') {
+        const orderId = order?.id || order?.order?.id
+        const eligibleTotal = options?.totalWithBags ?? currentTotal
+        try {
+          const authFetch = useAuthStore.getState().authFetch
+          const currentUser = useAuthStore.getState().user
+          const creditRes = await authFetch('/api/pdv/loyalty/credit', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-idempotency-key': `POS_ORDER_${orderId || Date.now()}`,
+            },
+            body: JSON.stringify({
+              tenant_id: tenantId,
+              customer_id: options.loyaltyCustomerId,
+              order_id: orderId || undefined,
+              cashier_user_id: currentUser?.id,
+              items: [{ line_total: eligibleTotal, cashback_enabled: true }],
+            }),
+          })
+          const creditJson = await creditRes.json()
+          if (creditRes.ok && creditJson?.pointsCredited > 0) {
+            if (creditJson.showPointsOnReceipt !== false) {
+              receiptLoyalty = {
+                customerName: options.loyaltyCustomerName || finalCustomerName,
+                pointsCredited: creditJson.pointsCredited,
+                newBalance: creditJson.newBalance,
+              }
+            }
+            toast.success(
+              `+${creditJson.pointsCredited} pts creditados em ${options.loyaltyCustomerName || finalCustomerName} (Saldo: ${creditJson.newBalance} pts)`
+            )
+          }
+        } catch {
+          // Não bloqueia fecho da venda se o crédito falhar
+        }
+      }
+
+      setLastLoyaltySummary(receiptLoyalty)
       setLastOrder(order)
       clearCart()
       setCustomerNameInput('')
@@ -926,6 +971,7 @@ export default function PDVView({
         open={payOpen}
         onOpenChange={setPayOpen}
         total={currentTotal}
+        tenantId={tenantId}
         storePhone={storePhone}
         submitting={submitting}
         initialCustomerName={customerNameInput.trim() || (orderType === 'MESA' && selectedTable ? `Cliente Mesa ${selectedTable.number}` : '')}
@@ -938,9 +984,11 @@ export default function PDVView({
         open={receiptOpen}
         onOpenChange={setReceiptOpen}
         order={lastOrder}
+        loyaltySummary={lastLoyaltySummary}
         onNewOrder={() => {
           setReceiptOpen(false)
           setLastOrder(null)
+          setLastLoyaltySummary(null)
           clearCart()
         }}
       />
