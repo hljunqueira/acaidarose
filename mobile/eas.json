@@ -8,7 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.acaidarose.pt"
+        "EXPO_PUBLIC_API_URL": "https://app.acaidarose.pt"
       }
     },
     "preview": {
@@ -17,13 +17,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.acaidarose.pt"
+        "EXPO_PUBLIC_API_URL": "https://app.acaidarose.pt"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.acaidarose.pt"
+        "EXPO_PUBLIC_API_URL": "https://app.acaidarose.pt"
       }
     }
   },

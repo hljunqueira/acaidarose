@@ -18,7 +18,8 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "Usa o Face ID para entrar na tua conta e ver os teus pontos rapidamente.",
         "NSPhotoLibraryUsageDescription": "Permite escolher uma foto da tua galeria para o teu perfil Açaí da Rose.",
-        "NSCameraUsageDescription": "Permite tirar uma fotografia para o teu perfil Açaí da Rose."
+        "NSCameraUsageDescription": "Permite tirar uma fotografia para o teu perfil Açaí da Rose.",
+        "NSLocationWhenInUseUsageDescription": "Permite identificar a loja Açaí da Rose mais próxima de ti."
       },
       "associatedDomains": [
         "applinks:acaidarose.pt",
@@ -39,6 +40,11 @@
             {
               "scheme": "https",
               "host": "acaidarose.pt",
+              "pathPrefix": "/convite"
+            },
+            {
+              "scheme": "https",
+              "host": "app.acaidarose.pt",
               "pathPrefix": "/convite"
             }
           ],

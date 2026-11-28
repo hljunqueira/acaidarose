@@ -22,7 +22,13 @@ function resolveApiBaseUrl(): string {
     }
   }
 
-  return envUrl || 'http://localhost:3000';
+  const PRODUCTION_API_URL = 'https://app.acaidarose.pt';
+
+  if (!__DEV__) {
+    return envUrl && !isLocalEnvUrl ? envUrl : PRODUCTION_API_URL;
+  }
+
+  return envUrl || PRODUCTION_API_URL;
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();
