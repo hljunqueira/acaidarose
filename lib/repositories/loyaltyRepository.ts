@@ -382,8 +382,10 @@ export const loyaltyRepository = {
       .filter((item) => item.cashback_enabled !== false)
       .reduce((sum, item) => sum + (Number(item.line_total) || 0), 0);
 
+    const rateCfg = await this.getPointsRateConfig();
+    const pointsPerEuro = Number(rateCfg.points_per_euro) || 1;
     const multiplier = Number(input.campaign_multiplier) || 1.0;
-    const pointsToCredit = Math.floor(eligibleTotal * multiplier);
+    const pointsToCredit = Math.floor(eligibleTotal * pointsPerEuro * multiplier);
 
     if (pointsToCredit <= 0) {
       const cust = await this.findCustomerById(input.customer_id);
@@ -506,7 +508,7 @@ export const loyaltyRepository = {
         title: `Ganhaste +${awarded.bonus} pontos de convite!`,
         body: `${awarded.inviteeName} fez a primeira compra com o teu código de convite.`,
         data: { type: 'REFERRAL_BONUS', points: awarded.bonus },
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     return txResult;
@@ -770,6 +772,36 @@ export const loyaltyRepository = {
   // CONFIGURAÇÕES DO ADMIN (PROGRAMA DE INDICAÇÃO / FEATURE FLAGS)
   // ==========================================================================
 
+  async getPointsRateConfig(): Promise<{ points_per_euro: number }> {
+    try {
+      const res = await query(
+        `SELECT value FROM loyalty_settings WHERE key = 'feature_points_rate' LIMIT 1`
+      );
+      const val = res.rows[0]?.value;
+      const rate = Number(val?.points_per_euro);
+      if (Number.isFinite(rate) && rate > 0) {
+        return { points_per_euro: rate };
+      }
+    } catch { }
+    return { points_per_euro: 1 };
+  },
+
+  async updatePointsRateConfig(input: {
+    points_per_euro: number;
+  }): Promise<{ points_per_euro: number }> {
+    const raw = Number(input.points_per_euro);
+    const rate = Number.isFinite(raw) && raw > 0 ? Math.min(1000, Math.round(raw * 100) / 100) : 1;
+    const payload = { points_per_euro: rate };
+    await query(
+      `INSERT INTO loyalty_settings (key, value, description, updated_at)
+       VALUES ('feature_points_rate', $1::jsonb, 'Quantidade de pontos de cashback atribuídos por cada 1,00 € gasto no PDV', NOW())
+       ON CONFLICT (key)
+       DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [JSON.stringify(payload)]
+    );
+    return payload;
+  },
+
   async getReferralConfig(): Promise<{ enabled: boolean; bonus_points: number }> {
     try {
       const res = await query(
@@ -950,12 +982,12 @@ export const loyaltyRepository = {
       if (val && typeof val === 'object') {
         const faq = Array.isArray(val.faq)
           ? val.faq
-              .filter((i: any) => i && String(i.question || '').trim())
-              .map((i: any, idx: number) => ({
-                id: String(i.id || `faq-${idx + 1}`),
-                question: String(i.question || '').trim(),
-                answer: String(i.answer || '').trim(),
-              }))
+            .filter((i: any) => i && String(i.question || '').trim())
+            .map((i: any, idx: number) => ({
+              id: String(i.id || `faq-${idx + 1}`),
+              question: String(i.question || '').trim(),
+              answer: String(i.answer || '').trim(),
+            }))
           : [];
         return {
           faq,
@@ -982,12 +1014,12 @@ export const loyaltyRepository = {
     const nextFaq =
       input.faq !== undefined
         ? input.faq
-            .filter((i) => String(i?.question || '').trim())
-            .map((i, idx) => ({
-              id: String(i.id || `faq-${Date.now()}-${idx}`),
-              question: String(i.question || '').trim(),
-              answer: String(i.answer || '').trim(),
-            }))
+          .filter((i) => String(i?.question || '').trim())
+          .map((i, idx) => ({
+            id: String(i.id || `faq-${Date.now()}-${idx}`),
+            question: String(i.question || '').trim(),
+            answer: String(i.answer || '').trim(),
+          }))
         : current.faq;
     const nextTerms =
       input.terms_text !== undefined ? String(input.terms_text).trim() : current.terms_text;
@@ -1013,6 +1045,98 @@ export const loyaltyRepository = {
       ...payload,
       updated_at: res.rows[0]?.updated_at || new Date().toISOString(),
     };
+  },
+
+  async getPresentationConfig(): Promise<{
+    scenes: Array<{
+      index: number;
+      title: string;
+      subtitle: string;
+      video_url: string | null;
+      title_font?: string;
+      title_size?: number;
+      title_color?: string;
+      subtitle_font?: string;
+      subtitle_size?: number;
+      subtitle_color?: string;
+    }>;
+  }> {
+    try {
+      const res = await query(
+        `SELECT value FROM loyalty_settings WHERE key = 'app_presentation_scenes' LIMIT 1`
+      );
+      const val = res.rows[0]?.value;
+      if (val && typeof val === 'object' && Array.isArray(val.scenes)) {
+        return {
+          scenes: val.scenes.slice(0, 10).map((s: any, idx: number) => ({
+            index: typeof s?.index === 'number' ? s.index : idx,
+            title: typeof s?.title === 'string' ? s.title : '',
+            subtitle: typeof s?.subtitle === 'string' ? s.subtitle : '',
+            video_url: typeof s?.video_url === 'string' && s.video_url.trim() ? s.video_url.trim() : null,
+            title_font: typeof s?.title_font === 'string' ? s.title_font : 'system',
+            title_size: Number.isFinite(Number(s?.title_size)) ? Number(s.title_size) : 38,
+            title_color: typeof s?.title_color === 'string' && s.title_color.trim() ? s.title_color.trim() : '#FFFFFF',
+            subtitle_font: typeof s?.subtitle_font === 'string' ? s.subtitle_font : 'system',
+            subtitle_size: Number.isFinite(Number(s?.subtitle_size)) ? Number(s.subtitle_size) : 16,
+            subtitle_color: typeof s?.subtitle_color === 'string' && s.subtitle_color.trim() ? s.subtitle_color.trim() : '#F5E8FA',
+          })),
+        };
+      }
+    } catch { }
+    return { scenes: [] };
+  },
+
+  async updatePresentationConfig(input: {
+    scenes: Array<{
+      index?: number;
+      title?: string;
+      subtitle?: string;
+      video_url?: string | null;
+      title_font?: string;
+      title_size?: number;
+      title_color?: string;
+      subtitle_font?: string;
+      subtitle_size?: number;
+      subtitle_color?: string;
+    }>;
+  }): Promise<{
+    scenes: Array<{
+      index: number;
+      title: string;
+      subtitle: string;
+      video_url: string | null;
+      title_font: string;
+      title_size: number;
+      title_color: string;
+      subtitle_font: string;
+      subtitle_size: number;
+      subtitle_color: string;
+    }>;
+  }> {
+    const cleanScenes = (Array.isArray(input.scenes) ? input.scenes : [])
+      .slice(0, 10)
+      .map((s, idx) => ({
+        index: idx,
+        title: String(s?.title || '').trim(),
+        subtitle: String(s?.subtitle || '').trim(),
+        video_url: typeof s?.video_url === 'string' && s.video_url.trim() ? s.video_url.trim() : null,
+        title_font: typeof s?.title_font === 'string' ? s.title_font : 'system',
+        title_size: Math.min(64, Math.max(18, Math.round(Number(s?.title_size) || 38))),
+        title_color: typeof s?.title_color === 'string' && s.title_color.trim() ? s.title_color.trim() : '#FFFFFF',
+        subtitle_font: typeof s?.subtitle_font === 'string' ? s.subtitle_font : 'system',
+        subtitle_size: Math.min(32, Math.max(11, Math.round(Number(s?.subtitle_size) || 16))),
+        subtitle_color: typeof s?.subtitle_color === 'string' && s.subtitle_color.trim() ? s.subtitle_color.trim() : '#F5E8FA',
+      }));
+
+    const payload = { scenes: cleanScenes };
+    await query(
+      `INSERT INTO loyalty_settings (key, value, description, updated_at)
+       VALUES ('app_presentation_scenes', $1::jsonb, 'Vídeos, títulos, descrições e estilos das cenas de apresentação da app Cashback', NOW())
+       ON CONFLICT (key)
+       DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [JSON.stringify(payload)]
+    );
+    return payload;
   },
 
   async ensurePushLogsTable(): Promise<void> {

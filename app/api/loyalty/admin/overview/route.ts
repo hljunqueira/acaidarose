@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
       receiptConfig,
       storesConfig,
       contentConfig,
+      presentationConfig,
+      pointsRateConfig,
       pushLogs,
       statsRes,
       rewardsRes,
@@ -43,6 +45,8 @@ export async function GET(request: NextRequest) {
       loyaltyRepository.getReceiptConfig(),
       loyaltyRepository.getEnabledStoresConfig(),
       loyaltyRepository.getContentConfig(),
+      loyaltyRepository.getPresentationConfig(),
+      loyaltyRepository.getPointsRateConfig(),
       loyaltyRepository.listPushLogs(30),
       query(`
         SELECT
@@ -153,6 +157,8 @@ export async function GET(request: NextRequest) {
         receipt_config: receiptConfig,
         stores_config: storesConfig,
         content_config: contentConfig,
+        presentation_config: presentationConfig,
+        points_rate_config: pointsRateConfig,
         push_logs: pushLogs,
         rewards: rewardsRes.rows || [],
         campaigns: campaignsRes.rows || [],

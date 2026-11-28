@@ -25,7 +25,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Chamados de Garçom / Mesa
+  // Chamados de Garçom / Mesa (alertas sonoros e push centralizados em StoreNotificationCenter)
   const [waiterCalls, setWaiterCalls] = useState<Array<{
     id: string
     tableLabel: string
@@ -78,7 +78,9 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
         setTables(dataTables.tables)
       }
       if (dataCatalog) setCatalog(dataCatalog)
-      if (dataCalls?.calls) setWaiterCalls(dataCalls.calls)
+      if (Array.isArray(dataCalls?.calls)) {
+        setWaiterCalls(dataCalls.calls)
+      }
       if (Array.isArray(dataOrders?.orders)) {
         setOrders(dataOrders.orders)
       }
@@ -167,6 +169,81 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
     }
   }, [orders])
 
+  // Helper para obter pedidos ativos de Balcão (QR Code do Balcão ou lançamentos de balcão)
+  const balcaoActiveData = React.useMemo(() => {
+    const balcaoOrders = orders.filter((o) => {
+      const oTable = o.tableNumber ? String(o.tableNumber).trim().toLowerCase() : ''
+      const isBalcaoMatch =
+        oTable === 'balcão' ||
+        oTable === 'balcao' ||
+        (!o.isTableOrder && !oTable)
+      const isActive =
+        o.status === 'NEW' ||
+        o.status === 'PREPARING' ||
+        o.status === 'READY' ||
+        o.status === 'OPEN' ||
+        o.status === 'AWAITING_PAYMENT'
+      return isBalcaoMatch && isActive
+    })
+
+    const isOrderPaid = (o: any) =>
+      o.paymentStatus === 'PAID' ||
+      o.payment_status === 'PAID' ||
+      o.status === 'PAID' ||
+      o.status === 'COMPLETED'
+
+    const paidOrders = balcaoOrders.filter(isOrderPaid)
+    const pendingOrders = balcaoOrders.filter((o) => !isOrderPaid(o))
+    const paidAmount = paidOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+    const pendingAmount = pendingOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+    const totalValue = paidAmount + pendingAmount
+
+    const customerNames = Array.from(
+      new Set(
+        balcaoOrders
+          .map((o) => o.customerName?.trim())
+          .filter(
+            (name): name is string =>
+              Boolean(name && name.toLowerCase() !== 'balcão' && name.toLowerCase() !== 'balcao')
+          )
+      )
+    )
+
+    const activeItemsCount = balcaoOrders.reduce((sum, o) => {
+      if (Array.isArray(o.items)) return sum + o.items.length
+      return sum + 1
+    }, 0)
+
+    return {
+      activeOrders: balcaoOrders,
+      paidOrders,
+      pendingOrders,
+      paidAmount,
+      pendingAmount,
+      totalValue,
+      customerNames,
+      activeItemsCount,
+      isOccupied: balcaoOrders.length > 0,
+      isFullyPaid: balcaoOrders.length > 0 && pendingOrders.length === 0,
+      hasPendingPayment: pendingOrders.length > 0,
+    }
+  }, [orders])
+
+  const balcaoVirtualTable: RestaurantTable = React.useMemo(
+    () => ({
+      id: 'BALCAO_VIRTUAL',
+      tenantId,
+      number: 0,
+      code: 'BALCAO',
+      nickname: 'Balcão',
+      status: balcaoActiveData.isOccupied ? 'OCCUPIED' : 'AVAILABLE',
+      total: balcaoActiveData.totalValue,
+      items: [],
+      createdAt: new Date().toISOString(),
+    }),
+    [tenantId, balcaoActiveData.isOccupied, balcaoActiveData.totalValue]
+  )
+
   // Contadores Globais em Tempo Real
   const preparingOrdersCount = orders.filter((o) => o.status === 'PREPARING' || o.status === 'NEW').length
   const readyOrdersCount = orders.filter((o) => o.status === 'READY').length
@@ -186,20 +263,26 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
   const salesCount = completedOrders.length
   const totalRevenue = completedOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
 
-  const selectedTable = tables.find((t) => t.id === selectedTableId) || null
+  const selectedTable =
+    selectedTableId === 'BALCAO_VIRTUAL'
+      ? balcaoVirtualTable
+      : tables.find((t) => t.id === selectedTableId) || null
 
   const handleSelectTable = (t: RestaurantTable) => {
     setSelectedTableId(t.id)
   }
 
   const handleOpenFreeTable = (t: RestaurantTable) => {
-    setMontadorTable(t)
+    setMontadorTable(t.id === 'BALCAO_VIRTUAL' ? null : t)
     setActiveTab('BALCAO')
   }
 
-  // Se estiver na tela detalhada de fechamento da mesa
+  // Se estiver na tela detalhada de fechamento da mesa ou balcão
   if (selectedTable) {
-    const tableActiveInfo = getTableActiveData(selectedTable.number)
+    const tableActiveInfo =
+      selectedTable.id === 'BALCAO_VIRTUAL'
+        ? balcaoActiveData
+        : getTableActiveData(selectedTable.number)
     if (tableActiveInfo.isOccupied || selectedTable.status === 'OCCUPIED') {
       return (
         <TableCheckoutDetail
@@ -216,7 +299,7 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
           }}
           onSelectOtherTable={(other) => setSelectedTableId(other.id)}
           onAddMoreItems={() => {
-            setMontadorTable(selectedTable)
+            setMontadorTable(selectedTable.id === 'BALCAO_VIRTUAL' ? null : selectedTable)
             setActiveTab('BALCAO')
             setSelectedTableId(null)
           }}
@@ -494,6 +577,83 @@ export default function TablesHallView({ tenantId, storePhone, currentUser }: Ta
                   </button>
                 )
               })}
+
+              {/* Card de Balcão (QR Code do Balcão & Atendimento Presencial) */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (balcaoActiveData.isOccupied) {
+                    setSelectedTableId('BALCAO_VIRTUAL')
+                  } else {
+                    setMontadorTable(null)
+                    setActiveTab('BALCAO')
+                  }
+                }}
+                className={`min-h-[145px] rounded-2xl border flex flex-col items-center justify-between p-4 text-center transition-all duration-150 cursor-pointer ${
+                  balcaoActiveData.isOccupied
+                    ? 'bg-gradient-to-br from-purple-100/90 to-pink-100/90 dark:from-pink-950/80 dark:to-purple-950/90 border-purple-400 dark:border-pink-500 text-purple-950 dark:text-white shadow-md dark:shadow-pink-600/20 hover:scale-[1.02]'
+                    : 'bg-purple-50/50 dark:bg-white/[0.04] text-purple-950 dark:text-white border-purple-200 dark:border-white/15 hover:border-purple-400 dark:hover:border-pink-500/50 hover:bg-purple-100/60 dark:hover:bg-white/10 hover:scale-[1.02]'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-base font-black text-purple-950 dark:text-white">
+                    Balcão
+                  </span>
+                  {balcaoActiveData.isOccupied ? (
+                    balcaoActiveData.isFullyPaid ? (
+                      <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-xs">
+                        € {balcaoActiveData.totalValue.toFixed(2)} ✓
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-purple-700 dark:bg-pink-600 text-white font-extrabold text-[9px] py-0.5 px-2 rounded-full border-0 shadow-xs">
+                        € {balcaoActiveData.totalValue.toFixed(2)}
+                      </Badge>
+                    )
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] font-bold border-purple-200 dark:border-white/20 text-purple-700/80 dark:text-purple-300/80 py-0 px-1.5 bg-white/60 dark:bg-white/5"
+                    >
+                      Sem Pedidos
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="py-2.5 w-full text-center">
+                  {balcaoActiveData.isOccupied && balcaoActiveData.customerNames.length > 0 ? (
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-black text-purple-950 dark:text-pink-200 truncate px-1">
+                        {balcaoActiveData.customerNames.join(', ')}
+                      </div>
+                      <div className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold">
+                        {balcaoActiveData.activeItemsCount} pedido(s) ativo(s)
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs font-bold text-purple-700/70 dark:text-purple-200/60">
+                      {balcaoActiveData.isOccupied ? 'Pedidos no Balcão' : 'Balcão Pronto'}
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full pt-2 border-t border-purple-200/60 dark:border-white/10 text-[11px] font-black">
+                  {balcaoActiveData.isOccupied ? (
+                    balcaoActiveData.isFullyPaid ? (
+                      <span className="text-purple-900 dark:text-pink-200 block font-black">
+                        Ver Comanda ›
+                      </span>
+                    ) : (
+                      <span className="text-emerald-700 dark:text-emerald-300 block font-black">
+                        Cobrar no Caixa ›
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-purple-600/80 dark:text-purple-300/80 block font-bold">
+                      + Lançar Pedido
+                    </span>
+                  )}
+                </div>
+              </button>
             </div>
           )}
         </div>

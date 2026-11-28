@@ -441,12 +441,12 @@ function MenuContent() {
         qrConfig={qrConfig}
       />
 
-      {/* 7. Modal Chamada de Garçom */}
-      {isTable && (
+      {/* 7. Modal Chamada de Atendimento (Mesa ou Balcão) */}
+      {(isTable || isBalcao) && (
         <CallWaiterModal
           open={waiterModalOpen}
           onOpenChange={setWaiterModalOpen}
-          tableLabel={tableLabel}
+          tableLabel={isBalcao ? 'Balcão' : tableLabel}
           tenantId={tenant?.id || ''}
         />
       )}

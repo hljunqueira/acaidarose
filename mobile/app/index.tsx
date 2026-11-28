@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,40 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter, Redirect, useFocusEffect } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ArrowRight } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { api, resolveMediaUrl } from '@/services/api';
 import { Colors } from '@/constants/Colors';
+
+interface PresentationSceneConfig {
+  index: number;
+  title: string;
+  subtitle: string;
+  video_url: string | null;
+  title_font?: string;
+  title_size?: number;
+  title_color?: string;
+  subtitle_font?: string;
+  subtitle_size?: number;
+  subtitle_color?: string;
+}
+
+function resolveNativeFontFamily(fontKey?: string): string | undefined {
+  if (fontKey === 'serif') return Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia' });
+  if (fontKey === 'mono') return Platform.select({ ios: 'Courier New', android: 'monospace', default: 'monospace' });
+  if (fontKey === 'rounded') return Platform.select({ ios: 'Avenir Next', android: 'sans-serif-medium', default: undefined });
+  return undefined;
+}
 
 const VIDEO_SOURCES = [
   require('@/assets/hero_revealing_cup.mp4'),
@@ -36,11 +59,88 @@ export default function SplashScreen() {
   const scrollViewRef = useRef<any>(null);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
 
+  const { data: customScenes } = useQuery({
+    queryKey: ['loyalty_presentation_scenes'],
+    queryFn: async () => {
+      const res = await api.get('/api/loyalty/settings');
+      const list = res.data?.presentation?.scenes;
+      return Array.isArray(list) ? (list as PresentationSceneConfig[]) : [];
+    },
+    staleTime: 1000 * 60,
+  });
+
+  const activeScenes = useMemo(() => {
+    const defaultFallbacks = [
+      { title: t('onboardingScene1Title'), subtitle: t('onboardingScene1Sub') },
+      { title: t('onboardingScene2Title'), subtitle: t('onboardingScene2Sub') },
+      { title: t('onboardingScene3Title'), subtitle: t('onboardingScene3Sub') },
+      { title: t('onboardingScene4Title'), subtitle: t('onboardingScene4Sub') },
+    ];
+
+    const sourceList: Array<PresentationSceneConfig | null> =
+      customScenes && customScenes.length > 0 ? customScenes : [null, null, null, null];
+
+    return sourceList.map((custom, idx) => {
+      const fb = defaultFallbacks[idx % defaultFallbacks.length];
+      const titleStyle: any = {};
+      if (custom?.title_font) {
+        const ff = resolveNativeFontFamily(custom.title_font);
+        if (ff) titleStyle.fontFamily = ff;
+      }
+      if (custom?.title_size && Number.isFinite(Number(custom.title_size))) {
+        titleStyle.fontSize = Number(custom.title_size);
+        titleStyle.lineHeight = Math.round(Number(custom.title_size) * 1.12);
+      }
+      if (custom?.title_color) {
+        titleStyle.color = custom.title_color;
+      }
+
+      const subtitleStyle: any = {};
+      if (custom?.subtitle_font) {
+        const ff = resolveNativeFontFamily(custom.subtitle_font);
+        if (ff) subtitleStyle.fontFamily = ff;
+      }
+      if (custom?.subtitle_size && Number.isFinite(Number(custom.subtitle_size))) {
+        subtitleStyle.fontSize = Number(custom.subtitle_size);
+        subtitleStyle.lineHeight = Math.round(Number(custom.subtitle_size) * 1.4);
+      }
+      if (custom?.subtitle_color) {
+        subtitleStyle.color = custom.subtitle_color;
+      }
+
+      const customUrl = resolveMediaUrl(custom?.video_url);
+      const videoSource = customUrl
+        ? { uri: customUrl }
+        : idx < VIDEO_SOURCES.length
+          ? VIDEO_SOURCES[idx]
+          : null;
+
+      return {
+        key: `scene-${idx}`,
+        title: custom ? custom.title?.trim() || '' : fb.title,
+        subtitle: custom ? custom.subtitle?.trim() || '' : fb.subtitle,
+        titleStyle,
+        subtitleStyle,
+        videoSource,
+      };
+    });
+  }, [customScenes, t]);
+
   const player = useVideoPlayer(VIDEO_SOURCES[0], (p) => {
     p.loop = true;
     p.muted = true;
     p.play();
   });
+
+  useEffect(() => {
+    const safeIdx = Math.min(activeSceneIndex, Math.max(0, activeScenes.length - 1));
+    const targetSource = activeScenes[safeIdx]?.videoSource;
+    if (!targetSource) return;
+    try {
+      player.replace(targetSource);
+      player.play();
+    } catch { }
+  }, [activeScenes, activeSceneIndex, player]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,15 +173,11 @@ export default function SplashScreen() {
     const scrollY = event.nativeEvent.contentOffset.y;
     const index = Math.min(
       Math.max(Math.round(scrollY / Math.max(screenHeight, 1)), 0),
-      VIDEO_SOURCES.length - 1
+      Math.max(0, activeScenes.length - 1)
     );
 
     if (index !== activeSceneIndex) {
       setActiveSceneIndex(index);
-      try {
-        player.replace(VIDEO_SOURCES[index]);
-        player.play();
-      } catch { }
     }
   };
 
@@ -129,11 +225,11 @@ export default function SplashScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Indicador Vertical de Progresso das 4 Cenas */}
+      {/* Indicador Vertical de Progresso das Cenas */}
       <View style={styles.dotsColumn} pointerEvents="box-none">
-        {VIDEO_SOURCES.map((_, idx) => (
+        {activeScenes.map((scene, idx) => (
           <TouchableOpacity
-            key={idx}
+            key={scene.key}
             onPress={() => scrollToScene(idx)}
             hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
           >
@@ -147,7 +243,7 @@ export default function SplashScreen() {
         ))}
       </View>
 
-      {/* Scroll Vertical das 4 Cenas */}
+      {/* Scroll Vertical Dinâmico das Cenas */}
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -159,81 +255,72 @@ export default function SplashScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {/* CENA 1 */}
-        <View style={[styles.sceneContainer, { width: screenWidth, height: screenHeight }]}>
-          <View style={[styles.leftContentBlock, { maxWidth: screenWidth * 0.82 }]}>
-            <Text style={styles.sceneTitleWhite}>{t('onboardingScene1Title')}</Text>
-            <Text style={styles.sceneSubtitle}>{t('onboardingScene1Sub')}</Text>
-          </View>
+        {activeScenes.map((scene, idx) => {
+          const isLeft = idx % 2 === 0;
+          const isLast = idx === activeScenes.length - 1;
+          const defaultTitleStyle =
+            idx === 0
+              ? styles.sceneTitleWhite
+              : idx % 2 === 1
+                ? styles.sceneTitlePink
+                : styles.sceneTitlePurple;
 
-          <TouchableOpacity
-            style={styles.scrollPrompt}
-            onPress={() => scrollToScene(1)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.scrollPromptText}>{t('onboardingScrollDown')}</Text>
-            <ChevronDown size={22} color="#F472B6" />
-          </TouchableOpacity>
-        </View>
-
-        {/* CENA 2 */}
-        <View style={[styles.sceneContainer, { width: screenWidth, height: screenHeight }]}>
-          <View style={[styles.rightContentBlock, { maxWidth: screenWidth * 0.82 }]}>
-            <Text style={styles.sceneTitlePink}>{t('onboardingScene2Title')}</Text>
-            <Text style={styles.sceneSubtitleRight}>{t('onboardingScene2Sub')}</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.scrollPrompt}
-            onPress={() => scrollToScene(2)}
-            activeOpacity={0.8}
-          >
-            <ChevronDown size={22} color="#F472B6" />
-          </TouchableOpacity>
-        </View>
-
-        {/* CENA 3 */}
-        <View style={[styles.sceneContainer, { width: screenWidth, height: screenHeight }]}>
-          <View style={[styles.leftContentBlock, { maxWidth: screenWidth * 0.82 }]}>
-            <Text style={styles.sceneTitlePurple}>{t('onboardingScene3Title')}</Text>
-            <Text style={styles.sceneSubtitle}>{t('onboardingScene3Sub')}</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.scrollPrompt}
-            onPress={() => scrollToScene(3)}
-            activeOpacity={0.8}
-          >
-            <ChevronDown size={22} color="#E879F9" />
-          </TouchableOpacity>
-        </View>
-
-        {/* CENA 4 */}
-        <View style={[styles.sceneContainer, { width: screenWidth, height: screenHeight }]}>
-          <View style={[styles.rightContentBlock, { maxWidth: screenWidth * 0.82 }]}>
-            <Text style={styles.sceneTitlePink}>{t('onboardingScene4Title')}</Text>
-            <Text style={styles.sceneSubtitleRight}>{t('onboardingScene4Sub')}</Text>
-          </View>
-
-          <View style={styles.actionContainer}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => router.push('/(auth)/login')}
-              activeOpacity={0.85}
+          return (
+            <View
+              key={scene.key}
+              style={[styles.sceneContainer, { width: screenWidth, height: screenHeight }]}
             >
-              <Text style={styles.primaryButtonText}>{t('onboardingLoginBtn')}</Text>
-              <ArrowRight size={18} color={Colors.textInverse} />
-            </TouchableOpacity>
+              <View
+                style={[
+                  isLeft ? styles.leftContentBlock : styles.rightContentBlock,
+                  { maxWidth: screenWidth * 0.82 },
+                ]}
+              >
+                <Text style={[defaultTitleStyle, scene.titleStyle]}>{scene.title}</Text>
+                <Text
+                  style={[
+                    isLeft ? styles.sceneSubtitle : styles.sceneSubtitleRight,
+                    scene.subtitleStyle,
+                  ]}
+                >
+                  {scene.subtitle}
+                </Text>
+              </View>
 
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => router.push('/(auth)/registo')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.secondaryButtonText}>{t('onboardingRegisterBtn')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+              {isLast ? (
+                <View style={styles.actionContainer}>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    onPress={() => router.push('/(auth)/login')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.primaryButtonText}>{t('onboardingLoginBtn')}</Text>
+                    <ArrowRight size={18} color={Colors.textInverse} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={() => router.push('/(auth)/registo')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.secondaryButtonText}>{t('onboardingRegisterBtn')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.scrollPrompt}
+                  onPress={() => scrollToScene(idx + 1)}
+                  activeOpacity={0.8}
+                >
+                  {idx === 0 ? (
+                    <Text style={styles.scrollPromptText}>{t('onboardingScrollDown')}</Text>
+                  ) : null}
+                  <ChevronDown size={22} color={idx % 2 === 0 ? '#E879F9' : '#F472B6'} />
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })}
       </ScrollView>
     </View>
   );

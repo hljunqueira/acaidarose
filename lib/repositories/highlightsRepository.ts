@@ -6,10 +6,25 @@ import { v4 as uuidv4 } from 'uuid'
 import { HighlightItem } from '@/types/highlights'
 export type { HighlightItem }
 
+let bannerColumnsEnsured = false
+
+async function ensureBannerColumns() {
+  if (bannerColumnsEnsured) return
+  try {
+    await query(`ALTER TABLE store_stories ADD COLUMN IF NOT EXISTS mobile_thumbnail_url TEXT NULL`)
+    await query(`ALTER TABLE store_stories ADD COLUMN IF NOT EXISTS mobile_video_url TEXT NULL`)
+    await query(`ALTER TABLE store_stories ADD COLUMN IF NOT EXISTS display_mode VARCHAR(20) NOT NULL DEFAULT 'CARD'`)
+    bannerColumnsEnsured = true
+  } catch (err) {
+    console.error('Erro ao garantir colunas mobile em store_stories:', err)
+  }
+}
+
 export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Promise<HighlightItem[]> {
   try {
+    await ensureBannerColumns()
     const res = await query(
-      `SELECT id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, video_url, thumbnail_url, badge_text, badge_text_en, badge_text_es, badge_color, price, display_order, active, available_hours
+      `SELECT id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, video_url, thumbnail_url, mobile_thumbnail_url, mobile_video_url, display_mode, badge_text, badge_text_en, badge_text_es, badge_color, price, display_order, active, available_hours
        FROM store_stories
        WHERE tenant_id = $1 AND deleted_at IS NULL AND active = true
        ORDER BY display_order ASC, created_at ASC`,
@@ -36,6 +51,9 @@ export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Pr
       price: Number(r.price) || 0,
       imageUrl: r.thumbnail_url || '',
       videoUrl: r.video_url || undefined,
+      mobileImageUrl: r.mobile_thumbnail_url || null,
+      mobileVideoUrl: r.mobile_video_url || null,
+      displayMode: r.display_mode === 'BANNER' ? 'BANNER' : 'CARD',
       mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
       active: r.active !== false,
       displayOrder: Number(r.display_order) || 0,
@@ -49,8 +67,9 @@ export async function getHighlightsByTenant(tenantId: string = AVEIRO_HQ_ID): Pr
 
 export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Promise<HighlightItem[]> {
   try {
+    await ensureBannerColumns()
     const res = await query(
-      `SELECT id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, video_url, thumbnail_url, badge_text, badge_text_en, badge_text_es, badge_color, price, display_order, active, available_hours
+      `SELECT id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, video_url, thumbnail_url, mobile_thumbnail_url, mobile_video_url, display_mode, badge_text, badge_text_en, badge_text_es, badge_color, price, display_order, active, available_hours
        FROM store_stories
        WHERE tenant_id = $1 AND deleted_at IS NULL
        ORDER BY display_order ASC, created_at ASC`,
@@ -77,6 +96,9 @@ export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Pr
       price: Number(r.price) || 0,
       imageUrl: r.thumbnail_url || '',
       videoUrl: r.video_url || undefined,
+      mobileImageUrl: r.mobile_thumbnail_url || null,
+      mobileVideoUrl: r.mobile_video_url || null,
+      displayMode: r.display_mode === 'BANNER' ? 'BANNER' : 'CARD',
       mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
       active: r.active !== false,
       displayOrder: Number(r.display_order) || 0,
@@ -89,6 +111,7 @@ export async function getAllHighlightsAdmin(tenantId: string = AVEIRO_HQ_ID): Pr
 }
 
 export async function createHighlightItem(tenantId: string, item: Partial<HighlightItem>): Promise<HighlightItem> {
+  await ensureBannerColumns()
   const id = item.id && item.id.length === 36 ? item.id : uuidv4()
   const title = item.title || 'Novo Destaque'
   const titleEn = item.titleEn || null
@@ -103,15 +126,18 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
   const price = Number(item.price) || 0
   const imageUrl = item.imageUrl || null
   const videoUrl = item.videoUrl || null
+  const mobileImageUrl = item.mobileImageUrl || null
+  const mobileVideoUrl = item.mobileVideoUrl || null
+  const displayMode = item.displayMode === 'BANNER' ? 'BANNER' : 'CARD'
   const displayOrder = Number(item.displayOrder) || 1
   const active = item.active !== false
   const availableHours = item.availableHours ? (typeof item.availableHours === 'string' ? item.availableHours : JSON.stringify(item.availableHours)) : null
 
   const res = await query(
-    `INSERT INTO store_stories (id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, badge_text, badge_text_en, badge_text_es, badge_color, price, thumbnail_url, video_url, display_order, active, available_hours)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+    `INSERT INTO store_stories (id, tenant_id, title, title_en, title_es, subtitle, subtitle_en, subtitle_es, badge_text, badge_text_en, badge_text_es, badge_color, price, thumbnail_url, video_url, mobile_thumbnail_url, mobile_video_url, display_mode, display_order, active, available_hours)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
      RETURNING *`,
-    [id, tenantId, title, titleEn, titleEs, subtitle, subtitleEn, subtitleEs, badgeLabel, badgeLabelEn, badgeLabelEs, badgeColor, price, imageUrl, videoUrl, displayOrder, active, availableHours]
+    [id, tenantId, title, titleEn, titleEs, subtitle, subtitleEn, subtitleEs, badgeLabel, badgeLabelEn, badgeLabelEs, badgeColor, price, imageUrl, videoUrl, mobileImageUrl, mobileVideoUrl, displayMode, displayOrder, active, availableHours]
   )
 
   await recordAuditLog({
@@ -120,7 +146,7 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
     entity: 'store_stories',
     entityId: id,
     message: `Novo destaque criado: "${title}"`,
-    metadata: { title, price, badgeLabel, active },
+    metadata: { title, price, badgeLabel, active, displayMode },
   })
 
   const r = res.rows[0]
@@ -140,6 +166,9 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
     price: Number(r.price) || 0,
     imageUrl: r.thumbnail_url,
     videoUrl: r.video_url || undefined,
+    mobileImageUrl: r.mobile_thumbnail_url || null,
+    mobileVideoUrl: r.mobile_video_url || null,
+    displayMode: r.display_mode === 'BANNER' ? 'BANNER' : 'CARD',
     mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
     active: r.active,
     displayOrder: r.display_order,
@@ -148,9 +177,16 @@ export async function createHighlightItem(tenantId: string, item: Partial<Highli
 }
 
 export async function updateHighlightItem(id: string, item: Partial<HighlightItem>): Promise<HighlightItem> {
+  await ensureBannerColumns()
   const availableHoursParam = item.availableHours !== undefined
     ? (item.availableHours === null ? '__NULL__' : (typeof item.availableHours === 'string' ? item.availableHours : JSON.stringify(item.availableHours)))
     : null
+
+  const imageUrlParam = item.imageUrl !== undefined ? (item.imageUrl || '__NULL__') : null
+  const videoUrlParam = item.videoUrl !== undefined ? (item.videoUrl || '__NULL__') : null
+  const mobileImageUrlParam = item.mobileImageUrl !== undefined ? (item.mobileImageUrl || '__NULL__') : null
+  const mobileVideoUrlParam = item.mobileVideoUrl !== undefined ? (item.mobileVideoUrl || '__NULL__') : null
+  const displayModeParam = item.displayMode === 'BANNER' || item.displayMode === 'CARD' ? item.displayMode : null
 
   const res = await query(
     `UPDATE store_stories
@@ -165,8 +201,11 @@ export async function updateHighlightItem(id: string, item: Partial<HighlightIte
          badge_text_es = COALESCE($10, badge_text_es),
          badge_color = COALESCE($11, badge_color),
          price = COALESCE($12, price),
-         thumbnail_url = COALESCE($13, thumbnail_url),
-         video_url = COALESCE($14, video_url),
+         thumbnail_url = CASE WHEN $13::text = '__NULL__' THEN NULL WHEN $13 IS NOT NULL THEN $13 ELSE thumbnail_url END,
+         video_url = CASE WHEN $14::text = '__NULL__' THEN NULL WHEN $14 IS NOT NULL THEN $14 ELSE video_url END,
+         mobile_thumbnail_url = CASE WHEN $18::text = '__NULL__' THEN NULL WHEN $18 IS NOT NULL THEN $18 ELSE mobile_thumbnail_url END,
+         mobile_video_url = CASE WHEN $19::text = '__NULL__' THEN NULL WHEN $19 IS NOT NULL THEN $19 ELSE mobile_video_url END,
+         display_mode = COALESCE($20, display_mode),
          display_order = COALESCE($15, display_order),
          active = COALESCE($16, active),
          available_hours = CASE WHEN $17::text = '__NULL__' THEN NULL WHEN $17 IS NOT NULL THEN $17::jsonb ELSE available_hours END,
@@ -186,11 +225,14 @@ export async function updateHighlightItem(id: string, item: Partial<HighlightIte
       item.badgeLabelEs !== undefined ? item.badgeLabelEs : null,
       item.badgeColor || null,
       item.price !== undefined ? Number(item.price) : null,
-      item.imageUrl || null,
-      item.videoUrl !== undefined ? item.videoUrl : null,
+      imageUrlParam,
+      videoUrlParam,
       item.displayOrder !== undefined ? Number(item.displayOrder) : null,
       item.active !== undefined ? Boolean(item.active) : null,
       availableHoursParam,
+      mobileImageUrlParam,
+      mobileVideoUrlParam,
+      displayModeParam,
     ]
   )
 
@@ -216,6 +258,9 @@ export async function updateHighlightItem(id: string, item: Partial<HighlightIte
     price: Number(r.price) || 0,
     imageUrl: r.thumbnail_url,
     videoUrl: r.video_url || undefined,
+    mobileImageUrl: r.mobile_thumbnail_url || null,
+    mobileVideoUrl: r.mobile_video_url || null,
+    displayMode: r.display_mode === 'BANNER' ? 'BANNER' : 'CARD',
     mediaType: r.video_url ? 'VIDEO' : 'IMAGE',
     active: r.active,
     displayOrder: r.display_order,
@@ -257,8 +302,9 @@ export async function syncAllStoresHighlights(payload?: {
     targetIds = payload.targetTenantIds.filter((id) => id !== sourceTenantId)
   }
 
+  await ensureBannerColumns()
   const sourceRes = await query(
-    `SELECT title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active, available_hours
+    `SELECT title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, mobile_thumbnail_url, mobile_video_url, display_mode, display_order, active, available_hours
      FROM store_stories
      WHERE tenant_id = $1 AND deleted_at IS NULL AND active = true
      ORDER BY display_order ASC`,
@@ -273,9 +319,9 @@ export async function syncAllStoresHighlights(payload?: {
 
     for (const h of highlights) {
       await query(
-        `INSERT INTO store_stories (id, tenant_id, title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, display_order, active, available_hours)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [uuidv4(), targetId, h.title, h.subtitle, h.badge_text, h.badge_color, h.price, h.thumbnail_url, h.video_url, h.display_order, h.active, h.available_hours]
+        `INSERT INTO store_stories (id, tenant_id, title, subtitle, badge_text, badge_color, price, thumbnail_url, video_url, mobile_thumbnail_url, mobile_video_url, display_mode, display_order, active, available_hours)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+        [uuidv4(), targetId, h.title, h.subtitle, h.badge_text, h.badge_color, h.price, h.thumbnail_url, h.video_url, h.mobile_thumbnail_url, h.mobile_video_url, h.display_mode || 'CARD', h.display_order, h.active, h.available_hours]
       )
     }
   }

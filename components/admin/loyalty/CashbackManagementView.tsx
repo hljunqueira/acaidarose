@@ -53,6 +53,23 @@ interface OverviewData {
     privacy_text: string
     updated_at: string | null
   }
+  presentation_config?: {
+    scenes: Array<{
+      index: number
+      title: string
+      subtitle: string
+      video_url: string | null
+      title_font?: string
+      title_size?: number
+      title_color?: string
+      subtitle_font?: string
+      subtitle_size?: number
+      subtitle_color?: string
+    }>
+  }
+  points_rate_config?: {
+    points_per_euro: number
+  }
   push_logs?: Array<{
     id: string
     tenant_id: string | null
@@ -250,6 +267,8 @@ export default function CashbackManagementView() {
   const [savingEditPush, setSavingEditPush] = useState(false)
 
   // Birthday & Receipt settings
+  const [pointsPerEuro, setPointsPerEuro] = useState('1')
+  const [savingPointsRate, setSavingPointsRate] = useState(false)
   const [birthdayEnabled, setBirthdayEnabled] = useState(false)
   const [birthdayBonus, setBirthdayBonus] = useState('25')
   const [savingBirthday, setSavingBirthday] = useState(false)
@@ -261,6 +280,88 @@ export default function CashbackManagementView() {
   const [termsText, setTermsText] = useState('')
   const [privacyText, setPrivacyText] = useState('')
   const [savingContent, setSavingContent] = useState<'FAQ' | 'TERMS' | 'PRIVACY' | null>(null)
+
+  const DEFAULT_PRESENTATION_VIDEOS = useMemo(
+    () => [
+      '/videos/presentation/hero_revealing_cup.mp4',
+      '/videos/presentation/hero_orbiting_cup.mp4',
+      '/videos/presentation/hero_gliding_texture.mp4',
+      '/videos/presentation/hero_cup_rotation.mp4',
+    ],
+    []
+  )
+
+  const DEFAULT_PRESENTATION_SCENES = useMemo(
+    () => [
+      {
+        index: 0,
+        title: 'AÇAÍ NÃO\nSE EXPLICA',
+        subtitle: 'A essência autêntica e cremosa que conquistou Portugal.',
+        video_url: null as string | null,
+        title_font: 'system',
+        title_size: 38,
+        title_color: '#FFFFFF',
+        subtitle_font: 'system',
+        subtitle_size: 16,
+        subtitle_color: '#F5E8FA',
+      },
+      {
+        index: 1,
+        title: 'EXPERIMENTA',
+        subtitle: 'No copo, na taça ou para levar para casa. O melhor sabor todos os dias.',
+        video_url: null as string | null,
+        title_font: 'system',
+        title_size: 38,
+        title_color: '#F472B6',
+        subtitle_font: 'system',
+        subtitle_size: 16,
+        subtitle_color: '#F5E8FA',
+      },
+      {
+        index: 2,
+        title: 'APAIXONA',
+        subtitle: 'Ingredientes selecionados e combinações irresistíveis.',
+        video_url: null as string | null,
+        title_font: 'system',
+        title_size: 38,
+        title_color: '#E879F9',
+        subtitle_font: 'system',
+        subtitle_size: 16,
+        subtitle_color: '#F5E8FA',
+      },
+      {
+        index: 3,
+        title: 'E REPETE',
+        subtitle: 'Acumula pontos a cada pedido no balcão e troca por açaí grátis.',
+        video_url: null as string | null,
+        title_font: 'system',
+        title_size: 38,
+        title_color: '#F472B6',
+        subtitle_font: 'system',
+        subtitle_size: 16,
+        subtitle_color: '#F5E8FA',
+      },
+    ],
+    []
+  )
+  const [presentationOpen, setPresentationOpen] = useState(false)
+  const [presentationSceneIdx, setPresentationSceneIdx] = useState(0)
+  const [presentationScenes, setPresentationScenes] = useState<
+    Array<{
+      index: number
+      title: string
+      subtitle: string
+      video_url: string | null
+      title_font: string
+      title_size: number
+      title_color: string
+      subtitle_font: string
+      subtitle_size: number
+      subtitle_color: string
+    }>
+  >(() => DEFAULT_PRESENTATION_SCENES)
+  const [uploadingPresentationVideo, setUploadingPresentationVideo] = useState(false)
+  const [savingPresentation, setSavingPresentation] = useState(false)
 
   // Edit Reward modal
   const [editingReward, setEditingReward] = useState<OverviewData['rewards'][number] | null>(null)
@@ -327,6 +428,7 @@ export default function CashbackManagementView() {
       setCampMultiplier(campCfgMult)
       setBirthdayEnabled(Boolean(json?.birthday_config?.enabled))
       setBirthdayBonus(String(json?.birthday_config?.bonus_points ?? 25))
+      setPointsPerEuro(String(json?.points_rate_config?.points_per_euro ?? 1))
       setShowPointsOnReceipt(json?.receipt_config?.show_points_on_receipt !== false)
       setDisabledStoreIds(
         Array.isArray(json?.stores_config?.disabled_tenant_ids)
@@ -406,6 +508,36 @@ export default function CashbackManagementView() {
               'Podes eliminar integralmente a tua conta a qualquer momento diretamente na app (Perfil → Eliminar Minha Conta) com remoção e anonimização imediata dos teus registos identificáveis.',
             ].join('\n')
       )
+      const savedScenes = Array.isArray(json?.presentation_config?.scenes)
+        ? json.presentation_config.scenes
+        : []
+      if (savedScenes.length > 0) {
+        setPresentationScenes(
+          savedScenes.map((match: any, idx: number) => {
+            const def = DEFAULT_PRESENTATION_SCENES[idx % DEFAULT_PRESENTATION_SCENES.length]
+            return {
+              index: idx,
+              title: match?.title ? String(match.title) : def.title,
+              subtitle: match?.subtitle ? String(match.subtitle) : def.subtitle,
+              video_url: match?.video_url ? String(match.video_url) : null,
+              title_font: match?.title_font ? String(match.title_font) : def.title_font,
+              title_size: Number.isFinite(Number(match?.title_size))
+                ? Number(match.title_size)
+                : def.title_size,
+              title_color: match?.title_color ? String(match.title_color) : def.title_color,
+              subtitle_font: match?.subtitle_font ? String(match.subtitle_font) : def.subtitle_font,
+              subtitle_size: Number.isFinite(Number(match?.subtitle_size))
+                ? Number(match.subtitle_size)
+                : def.subtitle_size,
+              subtitle_color: match?.subtitle_color
+                ? String(match.subtitle_color)
+                : def.subtitle_color,
+            }
+          })
+        )
+      } else {
+        setPresentationScenes(DEFAULT_PRESENTATION_SCENES)
+      }
     } catch {
       toast.error('Erro de ligação ao carregar painel de cashback.')
     } finally {
@@ -1136,6 +1268,33 @@ export default function CashbackManagementView() {
     }
   }
 
+  const handleSavePointsRate = async () => {
+    const val = Number(pointsPerEuro)
+    if (!Number.isFinite(val) || val <= 0) {
+      toast.error('Indica uma taxa válida maior que zero (ex: 1 ponto por 1 €).')
+      return
+    }
+    setSavingPointsRate(true)
+    try {
+      const res = await authFetch('/api/loyalty/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points_rate: { points_per_euro: val } }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json?.error || 'Erro ao guardar taxa de acumulação.')
+        return
+      }
+      setPointsPerEuro(String(json?.points_rate?.points_per_euro ?? val))
+      toast.success(`Taxa atualizada: ${json?.points_rate?.points_per_euro ?? val} pt(s) por cada 1,00 €.`)
+    } catch {
+      toast.error('Erro de ligação ao guardar taxa.')
+    } finally {
+      setSavingPointsRate(false)
+    }
+  }
+
   const handleSaveBirthdayConfig = async (overrideEnabled?: boolean) => {
     const nextEnabled = overrideEnabled !== undefined ? overrideEnabled : birthdayEnabled
     setSavingBirthday(true)
@@ -1193,6 +1352,54 @@ export default function CashbackManagementView() {
       toast.error('Erro de ligação ao guardar conteúdo.')
     } finally {
       setSavingContent(null)
+    }
+  }
+
+  const handleUploadPresentationVideo = async (file: File, sceneIdx: number) => {
+    setUploadingPresentationVideo(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await authFetch('/api/upload', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok || !json?.url) {
+        toast.error(json?.error || 'Erro ao carregar vídeo.')
+        return
+      }
+      setPresentationScenes((prev) =>
+        prev.map((s, idx) => (idx === sceneIdx ? { ...s, video_url: json.url } : s))
+      )
+      toast.success(`Vídeo da Cena ${sceneIdx + 1} carregado.`)
+    } catch {
+      toast.error('Erro de ligação ao carregar vídeo.')
+    } finally {
+      setUploadingPresentationVideo(false)
+    }
+  }
+
+  const handleSavePresentation = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingPresentation(true)
+    try {
+      const res = await authFetch('/api/loyalty/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          presentation: { scenes: presentationScenes },
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json?.error || 'Erro ao guardar apresentação da app.')
+        return
+      }
+      toast.success('Apresentação da app atualizada com sucesso.')
+      setPresentationOpen(false)
+      await loadData()
+    } catch {
+      toast.error('Erro de ligação ao guardar apresentação.')
+    } finally {
+      setSavingPresentation(false)
     }
   }
 
@@ -1418,9 +1625,11 @@ export default function CashbackManagementView() {
     { id: 'CAMPAIGNS', label: 'Campanhas & Destaques' },
     { id: 'CUSTOMERS', label: 'Clientes' },
     { id: 'VOUCHERS', label: 'Vouchers' },
-    { id: 'CLEARING', label: 'Acerto entre Lojas' },
     { id: 'PUSH', label: 'Notificações Push' },
   ]
+
+  const activeRewardsCount = (data?.rewards || []).filter((r) => r.active).length
+  const activeCampaignsCount = (data?.campaigns || []).filter((c) => c.active).length
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 animate-in fade-in duration-200">
@@ -1432,18 +1641,18 @@ export default function CashbackManagementView() {
           </h1>
           <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 font-medium mt-0.5">
             Controlo central da Franqueadora sobre regras de indicação, catálogo de prémios,
-            campanhas multiplicadoras e compensação entre lojas.
+            campanhas e clientes.
           </p>
         </div>
         <Button
           size="sm"
-          variant="outline"
-          onClick={loadData}
-          disabled={loading}
-          className="h-9 px-3 text-xs font-bold gap-1.5 rounded-xl border-purple-200 dark:border-white/15 bg-white dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-purple-950 dark:text-white cursor-pointer shadow-2xs w-fit"
+          onClick={() => {
+            setPresentationSceneIdx(0)
+            setPresentationOpen(true)
+          }}
+          className="h-9 px-4 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-xs w-fit"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Atualizar</span>
+          Personalizar Apresentação
         </Button>
       </div>
 
@@ -1487,13 +1696,13 @@ export default function CashbackManagementView() {
 
         <Card className="p-5 bg-white dark:bg-[#160228] text-purple-950 dark:text-white rounded-3xl border border-purple-150 dark:border-white/15 shadow-xs">
           <div className="text-xs text-purple-700/80 dark:text-purple-300/70 font-bold">
-            Acerto entre Lojas
+            Prémios Ativos
           </div>
           <div className="text-2xl sm:text-3xl font-black mt-2 tracking-tight text-purple-950 dark:text-white font-mono">
-            {Number(data?.stats.pending_clearing_eur ?? 0).toFixed(2).replace('.', ',')} €
+            {activeRewardsCount}
           </div>
           <div className="text-[11px] text-purple-600/80 dark:text-purple-200/70 font-medium mt-1">
-            A compensar entre unidades
+            {activeCampaignsCount} campanha(s) e destaque(s) ativos
           </div>
         </Card>
       </div>
@@ -1523,6 +1732,43 @@ export default function CashbackManagementView() {
       {/* ABA 1: REGRAS & INDICAÇÃO */}
       {subTab === 'SETTINGS' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <Card className="rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] p-6 lg:col-span-2 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="flex-1">
+                <h2 className="text-base font-black text-purple-950 dark:text-white">
+                  Taxa de Acumulação de Pontos no PDV
+                </h2>
+                <p className="text-xs sm:text-sm text-purple-700/80 dark:text-purple-200/70 mt-1">
+                  Define quantos pontos o cliente ganha por cada 1,00 € gasto em compras pagas no
+                  balcão ou mesa (multiplicado automaticamente se houver campanha ativa).
+                </p>
+              </div>
+              <div className="flex items-end gap-3 shrink-0">
+                <div className="w-40">
+                  <label className="block text-[11px] font-bold text-purple-900 dark:text-purple-200 mb-1">
+                    Pontos por 1,00 €
+                  </label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min={0.1}
+                    value={pointsPerEuro}
+                    onChange={(e) => setPointsPerEuro(e.target.value)}
+                    className="rounded-xl border-purple-200 dark:border-white/15 font-mono"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSavePointsRate}
+                  disabled={savingPointsRate}
+                  className="h-10 px-4 bg-gradient-to-r from-purple-700 to-pink-600 dark:from-pink-600 dark:to-purple-600 hover:from-purple-800 hover:to-pink-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-md"
+                >
+                  {savingPointsRate ? 'A guardar...' : 'Guardar Taxa'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
           <Card className="rounded-3xl border border-purple-150 dark:border-white/15 bg-white dark:bg-[#160228] p-6 space-y-6 shadow-xs">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -4107,6 +4353,401 @@ export default function CashbackManagementView() {
                 className="bg-gradient-to-r from-purple-700 to-pink-600 text-white text-xs font-black rounded-xl cursor-pointer"
               >
                 {savingEditPush ? 'A guardar...' : 'Guardar Alterações'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: PERSONALIZAR APRESENTAÇÃO DA APP (4 CENAS DE VÍDEO) */}
+      <Dialog open={presentationOpen} onOpenChange={setPresentationOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-6 bg-white dark:bg-[#160228] border border-purple-150 dark:border-white/15 text-purple-950 dark:text-white rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black text-purple-950 dark:text-white">
+              Personalizar Apresentação da App
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSavePresentation} className="space-y-5 pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 p-1 bg-purple-50/80 dark:bg-white/5 rounded-2xl border border-purple-150 dark:border-white/10">
+                {presentationScenes.map((scene, idx) => (
+                  <button
+                    key={`${scene.index}-${idx}`}
+                    type="button"
+                    onClick={() => setPresentationSceneIdx(idx)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      presentationSceneIdx === idx
+                        ? 'bg-gradient-to-r from-purple-700 to-pink-600 text-white shadow-xs'
+                        : 'text-purple-900 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    Cena {idx + 1}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={presentationScenes.length >= 10}
+                  onClick={() => {
+                    const nextIdx = presentationScenes.length
+                    setPresentationScenes((prev) => [
+                      ...prev,
+                      {
+                        index: nextIdx,
+                        title: '',
+                        subtitle: '',
+                        video_url: null,
+                        title_font: 'system',
+                        title_size: 38,
+                        title_color: '#FFFFFF',
+                        subtitle_font: 'system',
+                        subtitle_size: 16,
+                        subtitle_color: '#F5E8FA',
+                      },
+                    ])
+                    setPresentationSceneIdx(nextIdx)
+                  }}
+                  className="h-9 px-3 text-xs font-bold rounded-xl border-purple-200 dark:border-white/15 cursor-pointer"
+                >
+                  + Nova Cena
+                </Button>
+                {presentationScenes.length > 1 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const nextScenes = presentationScenes
+                        .filter((_, idx) => idx !== presentationSceneIdx)
+                        .map((s, idx) => ({ ...s, index: idx }))
+                      setPresentationScenes(nextScenes)
+                      setPresentationSceneIdx(Math.max(0, Math.min(presentationSceneIdx, nextScenes.length - 1)))
+                    }}
+                    className="h-9 px-3 text-xs font-bold rounded-xl border-red-200 dark:border-red-500/30 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                  >
+                    Excluir Cena
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {(() => {
+              const activeScene = presentationScenes[presentationSceneIdx]
+              if (!activeScene) return null
+              const resolvePreviewFont = (fontKey: string) => {
+                if (fontKey === 'serif') return 'Georgia, "Times New Roman", serif'
+                if (fontKey === 'mono') return '"Courier New", ui-monospace, monospace'
+                if (fontKey === 'rounded') return '"Trebuchet MS", "Arial Rounded MT Bold", sans-serif'
+                return 'inherit'
+              }
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                  <div className="md:col-span-7 space-y-4">
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-purple-900/80 dark:text-purple-200/80">
+                        Título da Cena {presentationSceneIdx + 1}
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={activeScene.title}
+                        onChange={(e) =>
+                          setPresentationScenes((prev) =>
+                            prev.map((s, idx) =>
+                              idx === presentationSceneIdx ? { ...s, title: e.target.value } : s
+                            )
+                          )
+                        }
+                        placeholder="Ex: AÇAÍ NÃO SE EXPLICA"
+                        required
+                        className="w-full rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#12061d] px-3 py-2 text-sm font-bold text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-purple-700/75 dark:text-purple-200/65 mb-0.5">
+                            Fonte
+                          </label>
+                          <select
+                            value={activeScene.title_font}
+                            onChange={(e) =>
+                              setPresentationScenes((prev) =>
+                                prev.map((s, idx) =>
+                                  idx === presentationSceneIdx
+                                    ? { ...s, title_font: e.target.value }
+                                    : s
+                                )
+                              )
+                            }
+                            className="w-full h-9 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#12061d] px-2 text-xs text-purple-950 dark:text-white"
+                          >
+                            <option value="system">Padrão (Sans)</option>
+                            <option value="serif">Elegante (Serif)</option>
+                            <option value="rounded">Suave (Rounded)</option>
+                            <option value="mono">Moderna (Mono)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-purple-700/75 dark:text-purple-200/65 mb-0.5">
+                            Tamanho (px)
+                          </label>
+                          <Input
+                            type="number"
+                            min={18}
+                            max={64}
+                            value={activeScene.title_size}
+                            onChange={(e) =>
+                              setPresentationScenes((prev) =>
+                                prev.map((s, idx) =>
+                                  idx === presentationSceneIdx
+                                    ? { ...s, title_size: Number(e.target.value) || 38 }
+                                    : s
+                                )
+                              )
+                            }
+                            className="h-9 rounded-xl border-purple-200 dark:border-white/15 font-mono text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-purple-700/75 dark:text-purple-200/65 mb-0.5">
+                            Cor
+                          </label>
+                          <label className="flex items-center gap-2 h-9 px-2 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#12061d] cursor-pointer">
+                            <input
+                              type="color"
+                              value={activeScene.title_color}
+                              onChange={(e) =>
+                                setPresentationScenes((prev) =>
+                                  prev.map((s, idx) =>
+                                    idx === presentationSceneIdx
+                                      ? { ...s, title_color: e.target.value }
+                                      : s
+                                  )
+                                )
+                              }
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <span className="text-[11px] font-mono text-purple-900 dark:text-purple-100 uppercase">
+                              {activeScene.title_color}
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-purple-900/80 dark:text-purple-200/80">
+                        Descrição da Cena {presentationSceneIdx + 1}
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={activeScene.subtitle}
+                        onChange={(e) =>
+                          setPresentationScenes((prev) =>
+                            prev.map((s, idx) =>
+                              idx === presentationSceneIdx ? { ...s, subtitle: e.target.value } : s
+                            )
+                          )
+                        }
+                        placeholder="Descrição exibida abaixo do título..."
+                        className="w-full rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#12061d] px-3 py-2 text-sm text-purple-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-purple-700/75 dark:text-purple-200/65 mb-0.5">
+                            Fonte
+                          </label>
+                          <select
+                            value={activeScene.subtitle_font}
+                            onChange={(e) =>
+                              setPresentationScenes((prev) =>
+                                prev.map((s, idx) =>
+                                  idx === presentationSceneIdx
+                                    ? { ...s, subtitle_font: e.target.value }
+                                    : s
+                                )
+                              )
+                            }
+                            className="w-full h-9 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#12061d] px-2 text-xs text-purple-950 dark:text-white"
+                          >
+                            <option value="system">Padrão (Sans)</option>
+                            <option value="serif">Elegante (Serif)</option>
+                            <option value="rounded">Suave (Rounded)</option>
+                            <option value="mono">Moderna (Mono)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-purple-700/75 dark:text-purple-200/65 mb-0.5">
+                            Tamanho (px)
+                          </label>
+                          <Input
+                            type="number"
+                            min={11}
+                            max={32}
+                            value={activeScene.subtitle_size}
+                            onChange={(e) =>
+                              setPresentationScenes((prev) =>
+                                prev.map((s, idx) =>
+                                  idx === presentationSceneIdx
+                                    ? { ...s, subtitle_size: Number(e.target.value) || 16 }
+                                    : s
+                                )
+                              )
+                            }
+                            className="h-9 rounded-xl border-purple-200 dark:border-white/15 font-mono text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-purple-700/75 dark:text-purple-200/65 mb-0.5">
+                            Cor
+                          </label>
+                          <label className="flex items-center gap-2 h-9 px-2 rounded-xl border border-purple-200 dark:border-white/15 bg-white dark:bg-[#12061d] cursor-pointer">
+                            <input
+                              type="color"
+                              value={activeScene.subtitle_color}
+                              onChange={(e) =>
+                                setPresentationScenes((prev) =>
+                                  prev.map((s, idx) =>
+                                    idx === presentationSceneIdx
+                                      ? { ...s, subtitle_color: e.target.value }
+                                      : s
+                                  )
+                                )
+                              }
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <span className="text-[11px] font-mono text-purple-900 dark:text-purple-100 uppercase">
+                              {activeScene.subtitle_color}
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-purple-900/80 dark:text-purple-200/80 mb-1">
+                        Vídeo de Fundo da Cena {presentationSceneIdx + 1}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <label className="flex-1 inline-flex items-center justify-center h-11 px-4 rounded-xl border border-dashed border-purple-300 dark:border-white/20 bg-purple-50/40 dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-white/10 text-xs font-bold text-purple-900 dark:text-white cursor-pointer transition-colors">
+                          <span>
+                            {uploadingPresentationVideo
+                              ? 'A carregar vídeo...'
+                              : activeScene.video_url
+                                ? 'Alterar Vídeo'
+                                : 'Carregar Vídeo'}
+                          </span>
+                          <input
+                            type="file"
+                            accept="video/*"
+                            className="hidden"
+                            disabled={uploadingPresentationVideo}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                handleUploadPresentationVideo(file, presentationSceneIdx)
+                              }
+                              e.target.value = ''
+                            }}
+                          />
+                        </label>
+                        {activeScene.video_url ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setPresentationScenes((prev) =>
+                                prev.map((s, idx) =>
+                                  idx === presentationSceneIdx ? { ...s, video_url: null } : s
+                                )
+                              )
+                            }
+                            className="h-11 px-3 rounded-xl border-red-200 dark:border-red-500/30 text-xs font-bold text-red-600 hover:text-red-700 cursor-pointer shrink-0"
+                          >
+                            Usar Padrão
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-5">
+                    <div className="text-[11px] font-bold text-purple-900/80 dark:text-purple-200/80 mb-1.5">
+                      Pré-visualização — Cena {presentationSceneIdx + 1}
+                    </div>
+                    <div className="relative rounded-2xl overflow-hidden border border-purple-200 dark:border-white/15 bg-[#11011c] aspect-[9/14] flex flex-col justify-end p-4">
+                      {(() => {
+                        const previewVideoSrc =
+                          activeScene.video_url ||
+                          (presentationSceneIdx < DEFAULT_PRESENTATION_VIDEOS.length
+                            ? DEFAULT_PRESENTATION_VIDEOS[presentationSceneIdx]
+                            : null)
+                        return previewVideoSrc ? (
+                          <video
+                            key={previewVideoSrc}
+                            src={previewVideoSrc}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center px-4 text-center">
+                            <span className="text-xs font-medium text-purple-200/60">
+                              Nenhum vídeo carregado
+                            </span>
+                          </div>
+                        )
+                      })()}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/30" />
+                      <div className="relative z-10 space-y-1.5">
+                        <div
+                          className="font-black leading-tight whitespace-pre-line break-words"
+                          style={{
+                            fontFamily: resolvePreviewFont(activeScene.title_font),
+                            fontSize: `${Math.max(14, Math.round(activeScene.title_size * 0.55))}px`,
+                            color: activeScene.title_color,
+                          }}
+                        >
+                          {activeScene.title || `Cena ${presentationSceneIdx + 1}`}
+                        </div>
+                        <p
+                          className="leading-relaxed break-words"
+                          style={{
+                            fontFamily: resolvePreviewFont(activeScene.subtitle_font),
+                            fontSize: `${Math.max(10, Math.round(activeScene.subtitle_size * 0.78))}px`,
+                            color: activeScene.subtitle_color,
+                          }}
+                        >
+                          {activeScene.subtitle || 'Descrição da cena...'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            <DialogFooter className="pt-2 flex items-center justify-end gap-2 border-t border-purple-100 dark:border-white/10">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPresentationOpen(false)}
+                className="rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingPresentation || uploadingPresentationVideo}
+                className="bg-gradient-to-r from-purple-700 to-pink-600 text-white text-xs font-black rounded-xl cursor-pointer"
+              >
+                {savingPresentation ? 'A guardar...' : 'Guardar Apresentação'}
               </Button>
             </DialogFooter>
           </form>

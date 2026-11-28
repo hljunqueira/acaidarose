@@ -50,19 +50,10 @@ export default function CustomerPromoCarousel({
     return () => clearInterval(timer)
   }, [activeHighlights.length])
 
-  // Se não houver nenhum destaque ativo cadastrado, oculta o carrossel de forma limpa
   if (activeHighlights.length === 0) return null
 
   const banner = activeHighlights[currentIndex] || activeHighlights[0]
-  const videoSrc = banner.videoUrl || ''
-
-  const title = getLocalizedField(banner, 'title', language) || banner.title
-  const subtitle = getLocalizedField(banner, 'subtitle', language) || banner.subtitle
-  const defaultBadge = language === 'en' ? 'SPECIAL HIGHLIGHT' : language === 'es' ? 'DESTACADO OFICIAL' : 'DESTAQUE OFICIAL'
-  const badge = getLocalizedField(banner, 'badgeLabel', language) || banner.badgeLabel || defaultBadge
-
-  const ctaText = language === 'en' ? 'View in Menu' : language === 'es' ? 'Ver en la Carta' : 'Ver na Ementa'
-  const specialPriceText = language === 'en' ? 'Special Price' : language === 'es' ? 'Precio Especial' : 'Preço Especial'
+  const isFullBanner = banner.displayMode === 'BANNER'
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -74,17 +65,126 @@ export default function CustomerPromoCarousel({
     setCurrentIndex((prev) => (prev + 1) % activeHighlights.length)
   }
 
+  // =========================================================================
+  // MODO 1: BANNER ARTE PRONTA (Web 16:5 + Telemóvel 9:5)
+  // =========================================================================
+  if (isFullBanner) {
+    const desktopVideo = banner.videoUrl || (!banner.imageUrl ? banner.mobileVideoUrl : '') || ''
+    const desktopImage = banner.imageUrl || banner.mobileImageUrl || ''
+    const mobileVideo = banner.mobileVideoUrl || (!banner.mobileImageUrl ? banner.videoUrl : '') || ''
+    const mobileImage = banner.mobileImageUrl || banner.imageUrl || ''
+
+    return (
+      <div className="w-full max-w-[1440px] px-2 sm:px-4 md:px-8 mx-auto select-none my-3 sm:my-4">
+        <div
+          onClick={() => onSelectPromo && onSelectPromo(banner.id)}
+          className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-[#1a012c] border border-white/15 shadow-xl cursor-pointer group transition-all duration-300 hover:border-pink-500/50"
+        >
+          {/* Arte Web (1920 x 600 px — 16:5) */}
+          <div className="hidden md:block w-full aspect-[16/5] max-h-[420px] relative overflow-hidden">
+            {desktopVideo ? (
+              <video
+                key={`desktop-vid-${banner.id}`}
+                src={desktopVideo}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="w-full h-full object-cover group-hover:scale-[1.015] transition-transform duration-500"
+              />
+            ) : desktopImage ? (
+              <img
+                src={desktopImage}
+                alt={banner.title}
+                className="w-full h-full object-cover group-hover:scale-[1.015] transition-transform duration-500"
+              />
+            ) : null}
+          </div>
+
+          {/* Arte Telemóvel (1080 x 600 px — 9:5) */}
+          <div className="block md:hidden w-full aspect-[9/5] relative overflow-hidden">
+            {mobileVideo ? (
+              <video
+                key={`mobile-vid-${banner.id}`}
+                src={mobileVideo}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="w-full h-full object-cover"
+              />
+            ) : mobileImage ? (
+              <img
+                src={mobileImage}
+                alt={banner.title}
+                className="w-full h-full object-cover"
+              />
+            ) : null}
+          </div>
+
+          {activeHighlights.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={handlePrev}
+                className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-black/45 hover:bg-black/75 border border-white/20 text-white items-center justify-center backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
+                aria-label="Banner anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-black/45 hover:bg-black/75 border border-white/20 text-white items-center justify-center backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
+                aria-label="Próximo banner"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 px-2.5 py-1 rounded-full bg-black/35 backdrop-blur-sm">
+                {activeHighlights.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setCurrentIndex(idx)
+                    }}
+                    aria-label={`Ver banner ${idx + 1}`}
+                    className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                      idx === currentIndex ? 'w-6 bg-pink-400' : 'w-2 bg-white/50 hover:bg-white/80'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // =========================================================================
+  // MODO 2: DESTAQUE DE PRODUTO (Layout Automático com Título, Preço e Foto 1:1)
+  // =========================================================================
+  const videoSrc = banner.videoUrl || ''
+  const title = getLocalizedField(banner, 'title', language) || banner.title
+  const subtitle = getLocalizedField(banner, 'subtitle', language) || banner.subtitle
+  const defaultBadge = language === 'en' ? 'SPECIAL HIGHLIGHT' : language === 'es' ? 'DESTACADO OFICIAL' : 'DESTAQUE OFICIAL'
+  const badge = getLocalizedField(banner, 'badgeLabel', language) || banner.badgeLabel || defaultBadge
+  const ctaText = language === 'en' ? 'View in Menu' : language === 'es' ? 'Ver en la Carta' : 'Ver na Ementa'
+  const specialPriceText = language === 'en' ? 'Special Price' : language === 'es' ? 'Precio Especial' : 'Preço Especial'
+
   return (
     <div className="w-full max-w-[1440px] px-2 sm:px-4 md:px-8 mx-auto select-none my-3 sm:my-4">
       <div
         onClick={() => onSelectPromo && onSelectPromo(banner.id)}
         className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2c044e] via-[#3a065e] to-[#1a012c] border border-white/20 shadow-xl p-4 sm:p-6 md:p-10 flex flex-col-reverse md:flex-row items-center justify-between gap-4 sm:gap-6 md:gap-8 cursor-pointer group transition-all duration-300 hover:border-pink-500/50 hover:shadow-pink-600/20"
       >
-        {/* Glows de Fundo */}
         <div className="absolute -top-24 -left-24 w-72 h-72 bg-pink-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-fuchsia-600/20 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Coluna Texto & Call-to-Action */}
         <div className="relative z-10 space-y-3 sm:space-y-4 max-w-xl text-left w-full">
           <div>
             <span className="text-[10px] sm:text-[11px] font-bold uppercase px-3 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white tracking-wider shadow-sm">
@@ -96,17 +196,21 @@ export default function CustomerPromoCarousel({
             {title}
           </h2>
 
-          <p className="text-xs sm:text-sm text-purple-200/85 leading-relaxed line-clamp-2">
-            {subtitle}
-          </p>
+          {subtitle && (
+            <p className="text-xs sm:text-sm text-purple-200/85 leading-relaxed line-clamp-2">
+              {subtitle}
+            </p>
+          )}
 
           <div className="flex items-center justify-between gap-3 pt-3 sm:pt-4 pb-3">
-            <div className="flex flex-col">
-              <span className="text-[9px] sm:text-[10px] uppercase font-bold text-purple-300 tracking-wider">{specialPriceText}</span>
-              <span className="text-xl sm:text-2xl md:text-3xl font-black text-pink-300 font-mono tracking-tight">
-                {formatCurrency(banner.price)}
-              </span>
-            </div>
+            {Number(banner.price) > 0 && (
+              <div className="flex flex-col">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-purple-300 tracking-wider">{specialPriceText}</span>
+                <span className="text-xl sm:text-2xl md:text-3xl font-black text-pink-300 font-mono tracking-tight">
+                  {formatCurrency(banner.price)}
+                </span>
+              </div>
+            )}
 
             <button
               type="button"
@@ -118,7 +222,6 @@ export default function CustomerPromoCarousel({
           </div>
         </div>
 
-        {/* Coluna Vídeo / Imagem Oficial em Loop Contínuo */}
         {(videoSrc || banner.imageUrl) && (
           <div className="relative z-10 flex-shrink-0 w-40 h-40 sm:w-52 sm:h-52 md:w-64 md:h-64 lg:w-72 lg:h-72 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border border-white/20 bg-purple-950/50">
             {videoSrc ? (
@@ -141,13 +244,12 @@ export default function CustomerPromoCarousel({
           </div>
         )}
 
-        {/* Botões Laterais de Navegação (Desktop) */}
         {activeHighlights.length > 1 && (
           <>
             <button
               type="button"
               onClick={handlePrev}
-              className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white items-center justify-center backdrop-blur-md transition-all hover:scale-105"
+              className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white items-center justify-center backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
               aria-label="Anterior"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -155,31 +257,28 @@ export default function CustomerPromoCarousel({
             <button
               type="button"
               onClick={handleNext}
-              className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white items-center justify-center backdrop-blur-md transition-all hover:scale-105"
+              className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white items-center justify-center backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
               aria-label="Próximo"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
+            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20">
+              {activeHighlights.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setCurrentIndex(idx)
+                  }}
+                  aria-label={`Ver destaque ${idx + 1}`}
+                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                    idx === currentIndex ? 'w-6 bg-pink-400' : 'w-2 bg-white/30 hover:bg-white/60'
+                  }`}
+                />
+              ))}
+            </div>
           </>
-        )}
-
-        {/* Indicadores de Paginação do Carrossel */}
-        {activeHighlights.length > 1 && (
-          <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20">
-            {activeHighlights.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setCurrentIndex(idx)
-                }}
-                className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                  idx === currentIndex ? 'w-6 bg-pink-400' : 'w-2 bg-white/30 hover:bg-white/60'
-                }`}
-              />
-            ))}
-          </div>
         )}
       </div>
     </div>

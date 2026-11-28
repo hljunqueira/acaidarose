@@ -94,12 +94,15 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
     fetchProducts()
   }, [fetchHighlights, fetchProducts])
 
-  // Modal: Editar / Criar Destaque (Conforme layout da imagem do usuário)
+  // Modal: Editar / Criar Destaque
   const [editOpen, setEditOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<HighlightItem | null>(null)
-  const [mediaMode, setMediaMode] = useState<'URL' | 'UPLOAD'>('URL')
-  const [uploadFileName, setUploadFileName] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadWebFileName, setUploadWebFileName] = useState('')
+  const [uploadMobileFileName, setUploadMobileFileName] = useState('')
+  const [uploadingWeb, setUploadingWeb] = useState(false)
+  const [uploadingMobile, setUploadingMobile] = useState(false)
+  const webFileInputRef = useRef<HTMLInputElement>(null)
+  const mobileFileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     title: '',
@@ -110,6 +113,9 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
     price: 0,
     imageUrl: '',
     videoUrl: '',
+    mobileImageUrl: '',
+    mobileVideoUrl: '',
+    displayMode: 'BANNER' as 'CARD' | 'BANNER',
     active: true,
     displayOrder: 1,
   })
@@ -136,7 +142,8 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       return
     }
     setEditingItem(null)
-    setUploadFileName('')
+    setUploadWebFileName('')
+    setUploadMobileFileName('')
     setFormData({
       title: '',
       subtitle: '',
@@ -146,14 +153,16 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       price: 0,
       imageUrl: '',
       videoUrl: '',
+      mobileImageUrl: '',
+      mobileVideoUrl: '',
+      displayMode: 'BANNER',
       active: true,
       displayOrder: highlights.length + 1,
     })
-    setMediaMode('URL')
     setEditOpen(true)
   }
 
-  // Abrir Modal de Edição (layout "Editar Destaque" da imagem)
+  // Abrir Modal de Edição
   const handleOpenEdit = (item: HighlightItem) => {
     if (!isFranchisor) {
       setSelectedHighlightForRequest(item)
@@ -161,7 +170,8 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       return
     }
     setEditingItem(item)
-    setUploadFileName('')
+    setUploadWebFileName('')
+    setUploadMobileFileName('')
     setFormData({
       title: item.title,
       subtitle: item.subtitle || '',
@@ -171,10 +181,12 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
       price: item.price || 0,
       imageUrl: item.imageUrl || '',
       videoUrl: item.videoUrl || '',
+      mobileImageUrl: item.mobileImageUrl || '',
+      mobileVideoUrl: item.mobileVideoUrl || '',
+      displayMode: item.displayMode === 'BANNER' ? 'BANNER' : 'CARD',
       active: item.active,
       displayOrder: item.displayOrder,
     })
-    setMediaMode('URL')
     setEditOpen(true)
   }
 
@@ -188,34 +200,61 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         title: prev.title.trim() ? prev.title : p.name,
         subtitle: prev.subtitle.trim() ? prev.subtitle : (p.description || ''),
         price: prev.price > 0 ? prev.price : (p.price || 0),
-        imageUrl: p.image || p.videoPoster || '',
-        videoUrl: p.videoUrl || '',
+        imageUrl: prev.imageUrl || p.image || p.videoPoster || '',
+        videoUrl: prev.videoUrl || p.videoUrl || '',
       }))
     } else {
       setFormData((prev) => ({ ...prev, linkedProductId: '' }))
     }
   }
 
-  // Upload de arquivo local
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload de banner via /api/upload (Web ou Telemóvel)
+  const handleBannerUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: 'WEB' | 'MOBILE'
+  ) => {
     const file = e.target.files?.[0]
     if (!file) return
+    e.target.value = ''
 
-    setUploadFileName(file.name)
     const isVideo = file.type.startsWith('video/')
-    const reader = new FileReader()
-
-    reader.onload = (event) => {
-      const result = event.target?.result as string
-      if (isVideo) {
-        setFormData((prev) => ({ ...prev, videoUrl: result }))
-      } else {
-        setFormData((prev) => ({ ...prev, imageUrl: result, videoUrl: '' }))
-      }
-      toast.success(`Mídia "${file.name}" carregada com sucesso!`)
+    if (target === 'WEB') {
+      setUploadingWeb(true)
+      setUploadWebFileName(file.name)
+    } else {
+      setUploadingMobile(true)
+      setUploadMobileFileName(file.name)
     }
 
-    reader.readAsDataURL(file)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || 'Falha no upload do ficheiro')
+      }
+
+      if (target === 'WEB') {
+        setFormData((prev) => ({
+          ...prev,
+          imageUrl: isVideo ? prev.imageUrl : data.url,
+          videoUrl: isVideo ? data.url : '',
+        }))
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          mobileImageUrl: isVideo ? prev.mobileImageUrl : data.url,
+          mobileVideoUrl: isVideo ? data.url : '',
+        }))
+      }
+      toast.success(`Banner ${target === 'WEB' ? 'Web' : 'Telemóvel'} carregado com sucesso.`)
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao carregar ficheiro')
+    } finally {
+      if (target === 'WEB') setUploadingWeb(false)
+      else setUploadingMobile(false)
+    }
   }
 
   // Salvar Destaque (Novo ou Editado)
@@ -227,6 +266,10 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
     }
     if (!formData.title.trim()) {
       toast.error('Informe o título do destaque')
+      return
+    }
+    if (!formData.imageUrl && !formData.videoUrl && !formData.mobileImageUrl && !formData.mobileVideoUrl) {
+      toast.error('Carregue pelo menos o banner Web ou o banner Telemóvel.')
       return
     }
 
@@ -241,6 +284,9 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         price: Number(formData.price) || 0,
         imageUrl: formData.imageUrl || null,
         videoUrl: formData.videoUrl || null,
+        mobileImageUrl: formData.mobileImageUrl || null,
+        mobileVideoUrl: formData.mobileVideoUrl || null,
+        displayMode: formData.displayMode,
         active: formData.active,
         displayOrder: formData.displayOrder,
       }
@@ -408,10 +454,10 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
 
   return (
     <div className="space-y-4">
-      {/* 1. CABEÇALHO (Conforme Layout Imagem 3 da Referência) */}
+      {/* 1. CABEÇALHO */}
       <div className="flex items-center justify-between gap-4 py-2">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
-          Destaques
+          Destaques & Stories
         </h1>
 
         <div className="flex items-center gap-2.5">
@@ -453,6 +499,38 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
             <Filter className="h-3.5 w-3.5 text-slate-500" />
             <span>Filtro</span>
           </button>
+        </div>
+      </div>
+
+      {/* Guia de Recomendações de Artes (Banner Inteiro Web + Telemóvel) */}
+      <div className="bg-white dark:bg-[#18022b]/95 border border-purple-200/80 dark:border-white/10 rounded-xl p-4 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-purple-800 dark:text-purple-300">
+              Recomendações de Banner (Arte Pronta)
+            </p>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+              O carrossel da ementa exibe a arte completa sem sobrepor texto automático. Mantenha textos e preços dentro dos 80% centrais para evitar cortes nas setas e indicadores.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 shrink-0">
+            <div className="px-3 py-2 rounded-lg bg-purple-50/70 dark:bg-white/5 border border-purple-100 dark:border-white/10">
+              <p className="text-[11px] font-bold text-purple-950 dark:text-white">
+                Web / Desktop — 1920 × 600 px
+              </p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                Proporção 16:5 · WebP, JPG, PNG ou MP4 (loop)
+              </p>
+            </div>
+            <div className="px-3 py-2 rounded-lg bg-pink-50/70 dark:bg-white/5 border border-pink-100 dark:border-white/10">
+              <p className="text-[11px] font-bold text-pink-950 dark:text-white">
+                Telemóvel / Mobile — 1080 × 600 px
+              </p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                Proporção 9:5 · Opcional (usa Web se vazio)
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -547,9 +625,18 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
 
                   {/* Nome e Descrição */}
                   <div className="min-w-0 space-y-0.5">
-                    <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white truncate">
-                      {item.title}
-                    </h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white truncate">
+                        {item.title}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-200">
+                        {item.displayMode === 'BANNER'
+                          ? item.mobileImageUrl || item.mobileVideoUrl
+                            ? 'Banner Web + Telemóvel'
+                            : 'Banner Web'
+                          : 'Destaque Produto'}
+                      </span>
+                    </div>
                     {item.subtitle && (
                       <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
                         {item.subtitle}
@@ -691,9 +778,9 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
         </div>
       )}
 
-      {/* 3. DIALOG: EDITAR / NOVO DESTAQUE (Espelhado com exatidão da imagem enviada) */}
+      {/* 3. DIALOG: EDITAR / NOVO DESTAQUE */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-[#18022b] text-slate-900 dark:text-white p-0 overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 shadow-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-[#18022b] text-slate-900 dark:text-white p-0 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xl">
           {/* Cabeçalho Limpo */}
           <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10">
             <h2 className="text-xl font-bold text-slate-800 dark:text-white">
@@ -702,62 +789,170 @@ export default function MenuHighlightsAdmin({ tenantId }: MenuHighlightsAdminPro
           </div>
 
           <form onSubmit={handleSaveHighlight} className="p-6 space-y-5">
-            {/* Campo 1: Foto */}
+            {/* Seletor de Formato de Exibição */}
+            <div className="flex items-center gap-4">
+              <div className="w-28 text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                Formato:
+              </div>
+              <div className="flex-1 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, displayMode: 'BANNER' }))}
+                  className={`px-3 py-2 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                    formData.displayMode === 'BANNER'
+                      ? 'bg-purple-700 text-white border-purple-700'
+                      : 'bg-slate-50 dark:bg-white/5 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15'
+                  }`}
+                >
+                  Banner Arte Pronta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, displayMode: 'CARD' }))}
+                  className={`px-3 py-2 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                    formData.displayMode === 'CARD'
+                      ? 'bg-purple-700 text-white border-purple-700'
+                      : 'bg-slate-50 dark:bg-white/5 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15'
+                  }`}
+                >
+                  Destaque de Produto
+                </button>
+              </div>
+            </div>
+
+            {/* Campo 1A: Banner Web (Desktop) ou Foto do Produto */}
             <div className="flex items-start gap-4">
-              <div className="w-24 flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-300 pt-2 shrink-0">
-                <span>Foto:</span>
-                <span title="Imagem ou banner que será exibido no carrossel superior">
-                  <HelpCircle className="h-3.5 w-3.5 text-slate-400 cursor-help" />
-                </span>
+              <div className="w-28 text-xs font-bold text-slate-700 dark:text-slate-300 pt-2 shrink-0">
+                {formData.displayMode === 'BANNER' ? 'Banner Web:' : 'Foto / Vídeo:'}
               </div>
 
-              <div className="flex-1">
-                <div className="flex items-center gap-4">
-                  {/* Thumbnail Preview */}
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative w-44 h-24 rounded-lg overflow-hidden border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/5 cursor-pointer hover:opacity-90 transition group shadow-xs shrink-0"
-                    title="Clique para trocar imagem ou vídeo"
+              <div className="flex-1 space-y-2">
+                <div
+                  onClick={() => webFileInputRef.current?.click()}
+                  className={`relative rounded-lg overflow-hidden border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/5 cursor-pointer hover:opacity-95 transition group shadow-xs ${
+                    formData.displayMode === 'BANNER' ? 'w-full aspect-[16/5]' : 'w-36 h-36'
+                  }`}
+                >
+                  {formData.videoUrl ? (
+                    <video src={formData.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                  ) : formData.imageUrl ? (
+                    <img src={formData.imageUrl} alt="Banner Web" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-purple-900/10 text-xs font-semibold text-purple-600 dark:text-purple-300">
+                      {formData.displayMode === 'BANNER' ? 'Carregar arte Web' : 'Carregar mídia'}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity">
+                    {uploadingWeb ? 'A carregar...' : 'Alterar mídia'}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    disabled={uploadingWeb}
+                    onClick={() => webFileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white cursor-pointer transition"
                   >
-                    {formData.videoUrl ? (
-                      <video src={formData.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
-                    ) : formData.imageUrl ? (
-                      <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    {uploadingWeb ? 'A enviar...' : 'Carregar Ficheiro'}
+                  </button>
+                  {(formData.imageUrl || formData.videoUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, imageUrl: '', videoUrl: '' }))
+                        setUploadWebFileName('')
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer"
+                    >
+                      Remover
+                    </button>
+                  )}
+                  {uploadWebFileName && (
+                    <span className="text-[11px] text-slate-500 truncate max-w-[220px]">
+                      {uploadWebFileName}
+                    </span>
+                  )}
+                </div>
+
+                <input
+                  ref={webFileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={(e) => handleBannerUpload(e, 'WEB')}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* Campo 1B: Banner Telemóvel (apenas no modo Banner Arte Pronta) */}
+            {formData.displayMode === 'BANNER' && (
+            <div className="flex items-start gap-4">
+              <div className="w-28 text-xs font-bold text-slate-700 dark:text-slate-300 pt-2 shrink-0">
+                Banner Telemóvel:
+              </div>
+
+              <div className="flex-1 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div
+                    onClick={() => mobileFileInputRef.current?.click()}
+                    className="relative w-56 aspect-[9/5] rounded-lg overflow-hidden border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/5 cursor-pointer hover:opacity-95 transition group shadow-xs shrink-0"
+                  >
+                    {formData.mobileVideoUrl ? (
+                      <video src={formData.mobileVideoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                    ) : formData.mobileImageUrl ? (
+                      <img src={formData.mobileImageUrl} alt="Banner Telemóvel" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-purple-900/20 text-[10px] font-bold text-purple-400">
-                        Sem Foto
+                      <div className="w-full h-full flex items-center justify-center bg-pink-900/10 text-xs font-semibold text-pink-600 dark:text-pink-300 px-3 text-center">
+                        Opcional (usa arte Web)
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[11px] font-semibold transition-opacity">
-                      Trocar foto
+                    <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity">
+                      {uploadingMobile ? 'A carregar...' : 'Alterar banner Telemóvel'}
                     </div>
                   </div>
 
-                  {/* Upload de Imagem ou Vídeo */}
-                  <div className="flex-1 space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white cursor-pointer transition flex items-center gap-1.5"
-                    >
-                      <Upload className="h-3.5 w-3.5" />
-                      <span>Carregar Ficheiro</span>
-                    </button>
-                    <p className="text-[11px] text-slate-500 truncate">
-                      {uploadFileName || 'Selecione um vídeo ou imagem da sua galeria'}
-                    </p>
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*,video/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={uploadingMobile}
+                        onClick={() => mobileFileInputRef.current?.click()}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white cursor-pointer transition"
+                      >
+                        {uploadingMobile ? 'A enviar...' : 'Carregar Ficheiro'}
+                      </button>
+                      {(formData.mobileImageUrl || formData.mobileVideoUrl) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, mobileImageUrl: '', mobileVideoUrl: '' }))
+                            setUploadMobileFileName('')
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer"
+                        >
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                    {uploadMobileFileName && (
+                      <span className="text-[11px] text-slate-500 truncate max-w-[200px]">
+                        {uploadMobileFileName}
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                <input
+                  ref={mobileFileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={(e) => handleBannerUpload(e, 'MOBILE')}
+                  className="hidden"
+                />
               </div>
             </div>
+            )}
 
             {/* Campo 2: Título (Label Verde conforme print) */}
             <div className="flex items-center gap-4">

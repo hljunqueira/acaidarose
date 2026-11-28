@@ -14,6 +14,9 @@ export interface HighlightItem {
   price?: number
   imageUrl?: string
   videoUrl?: string
+  mobileImageUrl?: string | null
+  mobileVideoUrl?: string | null
+  displayMode?: 'CARD' | 'BANNER'
   mediaType?: 'VIDEO' | 'IMAGE'
   active: boolean
   displayOrder: number

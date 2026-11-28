@@ -83,10 +83,12 @@ export default function CustomerCartSheet({
   const isEn = language === 'en'
   const { isDark: isCustomerDark } = useCustomerTheme()
   const allowMbway = qrConfig?.allowMbwayPayment !== false
-  const allowPoints = qrConfig?.allowPointsPayment !== false
+  const [storeCashbackDisabled, setStoreCashbackDisabled] = useState(false)
+  const allowPoints = qrConfig?.allowPointsPayment !== false && !storeCashbackDisabled
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerNif, setCustomerNif] = useState('')
+  const [voucherCode, setVoucherCode] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentOption | ''>('')
   const [consumptionType, setConsumptionType] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN')
   const [needCutlery, setNeedCutlery] = useState(true)
@@ -114,10 +116,32 @@ export default function CustomerCartSheet({
     }
   }
 
+  // Verifica se a loja atual participa do programa de Cashback
+  useEffect(() => {
+    if (!open || !tenantId) return
+    let mounted = true
+    fetch('/api/loyalty/settings', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!mounted || !json) return
+        const disabledIds: string[] = Array.isArray(json?.stores?.disabled_tenant_ids)
+          ? json.stores.disabled_tenant_ids
+          : []
+        setStoreCashbackDisabled(disabledIds.includes(tenantId))
+      })
+      .catch(() => {})
+    return () => {
+      mounted = false
+    }
+  }, [open, tenantId])
+
   // Sincroniza forma de pagamento com a configuração do QR Code
   useEffect(() => {
     if (!allowMbway && (paymentMethod === 'MBWAY_PHONE' || paymentMethod === 'MBWAY_QR')) {
       setPaymentMethod(allowPoints ? 'POINTS' : 'MULTIBANCO')
+    }
+    if (!allowPoints && paymentMethod === 'POINTS') {
+      setPaymentMethod('')
     }
   }, [allowMbway, allowPoints, paymentMethod])
 
@@ -175,8 +199,8 @@ export default function CustomerCartSheet({
   const isPhoneRequired = qrConfig?.customerPhoneRule === 'REQUIRED'
   const showPhoneField = qrConfig?.customerPhoneRule !== 'NONE' || paymentMethod === 'MBWAY_PHONE'
   const isPointsPayment = paymentMethod === 'POINTS'
-  const isNifRequired = isPointsPayment || qrConfig?.customerNifRule === 'REQUIRED'
-  const showNifField = isPointsPayment || qrConfig?.customerNifRule !== 'NONE'
+  const isNifRequired = qrConfig?.customerNifRule === 'REQUIRED'
+  const showNifField = qrConfig?.customerNifRule !== 'NONE'
   const isViewOnly = qrConfig?.mode === 'VIEW_ONLY'
 
   const handleCheckout = async () => {
@@ -215,12 +239,14 @@ export default function CustomerCartSheet({
     }
 
     if (isPointsPayment) {
-      const cleanNif = customerNif.replace(/\D/g, '')
-      if (cleanNif.length !== 9) {
-        toast.error('O NIF é obrigatório para resgatar com pontos. Informe os 9 dígitos cadastrados no seu App Cashback.')
+      const cleanVoucher = voucherCode.trim().toUpperCase()
+      if (cleanVoucher.length < 4) {
+        toast.error('Informe o código do voucher gerado na app Açaí da Rose Cashback (ex: ROSE-A7K9X2).')
         return
       }
-    } else if (isNifRequired && !customerNif.trim()) {
+    }
+
+    if (isNifRequired && !customerNif.trim()) {
       toast.error('Por favor, informe o NIF para a fatura')
       return
     }
@@ -259,7 +285,7 @@ export default function CustomerCartSheet({
           case 'MBWAY_QR': return 'MB WAY (QR Code no Balcão)'
           case 'MULTIBANCO': return 'Multibanco no Balcão'
           case 'DINHEIRO': return 'Dinheiro no Balcão'
-          case 'POINTS': return `PONTOS CASHBACK (NIF: ${customerNif.trim()})`
+          case 'POINTS': return `VOUCHER CASHBACK (${voucherCode.trim().toUpperCase()})`
           default: return 'No Balcão'
         }
       }
@@ -984,7 +1010,7 @@ export default function CustomerCartSheet({
                           </option>
                           {allowPoints && (
                             <option value="POINTS" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900 font-medium">
-                              {isEn ? 'Redeem Points (Açaí da Rose App)' : 'Resgatar Pontos (App Açaí da Rose)'}
+                              {isEn ? 'Redeem Voucher (Açaí da Rose App)' : 'Resgatar Voucher (App Açaí da Rose)'}
                             </option>
                           )}
                         </select>
@@ -1017,42 +1043,52 @@ export default function CustomerCartSheet({
                       </div>
                     )}
 
-                    {/* Campo NIF */}
-                    {showNifField && (
+                    {/* Campo Código do Voucher (App Cashback) */}
+                    {isPointsPayment && (
                       <div className="space-y-1 pt-1 animate-in fade-in duration-150">
                         <div className="flex items-center justify-between">
                           <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
-                            {paymentMethod === 'POINTS'
-                              ? 'NIF na App Cashback (Obrigatório):'
-                              : isNifRequired
-                              ? 'NIF na Fatura (Obrigatório):'
-                              : 'NIF na Fatura (Opcional):'}
+                            {isEn ? 'Voucher Code (Required):' : 'Código do Voucher (Obrigatório):'}
                           </label>
-                          {paymentMethod === 'POINTS' && (
-                            <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded-md">
-                              Identificador no App
-                            </span>
-                          )}
+                          <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded-md">
+                            App Cashback
+                          </span>
                         </div>
+                        <input
+                          type="text"
+                          value={voucherCode}
+                          onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                          onFocus={handleFieldFocus}
+                          placeholder="Ex: ROSE-A7K9X2"
+                          maxLength={24}
+                          className="w-full h-11 px-3.5 rounded-xl bg-purple-50/40 dark:bg-purple-950/20 border border-purple-400 dark:border-purple-500 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono uppercase"
+                        />
+                        <p className="text-[10.5px] text-purple-800 dark:text-purple-300/90 leading-tight">
+                          {isEn
+                            ? 'Show the voucher code or QR generated in the Açaí da Rose Cashback app at the counter.'
+                            : 'Apresenta o código ou QR do voucher gerado na app Açaí da Rose Cashback no balcão.'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Campo NIF (Opcional) */}
+                    {showNifField && (
+                      <div className="space-y-1 pt-1 animate-in fade-in duration-150">
+                        <label className="text-xs text-slate-600 dark:text-purple-200 font-bold">
+                          {isNifRequired
+                            ? 'NIF na Fatura (Obrigatório):'
+                            : 'NIF na Fatura (Opcional):'}
+                        </label>
                         <input
                           type="text"
                           inputMode="numeric"
                           value={customerNif}
                           onChange={(e) => setCustomerNif(e.target.value)}
                           onFocus={handleFieldFocus}
-                          placeholder={paymentMethod === 'POINTS' ? 'NIF registado no app (9 dígitos)' : 'Ex: 123456789'}
+                          placeholder="Ex: 123456789"
                           maxLength={9}
-                          className={`w-full h-11 px-3.5 rounded-xl bg-white border text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono ${
-                            paymentMethod === 'POINTS'
-                              ? 'border-purple-400 dark:border-purple-500 bg-purple-50/40 dark:bg-purple-950/20'
-                              : 'border-purple-200 dark:bg-white/5 dark:border-white/15'
-                          }`}
+                          className="w-full h-11 px-3.5 rounded-xl bg-white border border-purple-200 dark:bg-white/5 dark:border-white/15 text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-purple-300/40 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none font-mono"
                         />
-                        {paymentMethod === 'POINTS' && (
-                          <p className="text-[10.5px] text-purple-800 dark:text-purple-300/90 leading-tight">
-                            O resgate de pontos é validado no aplicativo Açaí da Rose Cashback utilizando o seu NIF.
-                          </p>
-                        )}
                       </div>
                     )}
                   </div>

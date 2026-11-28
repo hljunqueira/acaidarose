@@ -6,16 +6,18 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const [referral, campaigns, birthday, receipt, stores, content] = await Promise.all([
+    const [referral, campaigns, birthday, receipt, stores, content, presentation, points_rate] = await Promise.all([
       loyaltyRepository.getReferralConfig(),
       loyaltyRepository.getCampaignsConfig(),
       loyaltyRepository.getBirthdayConfig(),
       loyaltyRepository.getReceiptConfig(),
       loyaltyRepository.getEnabledStoresConfig(),
       loyaltyRepository.getContentConfig(),
+      loyaltyRepository.getPresentationConfig(),
+      loyaltyRepository.getPointsRateConfig(),
     ]);
     return NextResponse.json(
-      { referral, campaigns, birthday, receipt, stores, content },
+      { referral, campaigns, birthday, receipt, stores, content, presentation, points_rate },
       { status: 200, headers: { 'Cache-Control': 'no-store, max-age=0' } }
     );
   } catch (error: any) {
@@ -131,8 +133,22 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
+    let presentation = await loyaltyRepository.getPresentationConfig();
+    if (body?.presentation !== undefined && Array.isArray(body.presentation.scenes)) {
+      presentation = await loyaltyRepository.updatePresentationConfig({
+        scenes: body.presentation.scenes,
+      });
+    }
+
+    let points_rate = await loyaltyRepository.getPointsRateConfig();
+    if (body?.points_rate !== undefined && body.points_rate?.points_per_euro !== undefined) {
+      points_rate = await loyaltyRepository.updatePointsRateConfig({
+        points_per_euro: Number(body.points_rate.points_per_euro),
+      });
+    }
+
     return NextResponse.json(
-      { referral, campaigns, birthday, receipt, stores, content },
+      { referral, campaigns, birthday, receipt, stores, content, presentation, points_rate },
       { status: 200 }
     );
   } catch (error: any) {

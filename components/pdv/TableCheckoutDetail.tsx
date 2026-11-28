@@ -52,11 +52,23 @@ export default function TableCheckoutDetail({
   const [thermalReceiptOpen, setThermalReceiptOpen] = useState(false)
   const [thermalType, setThermalType] = useState<'PRE_CONTA' | 'FICHA_PRODUCAO'>('PRE_CONTA')
 
-  // Filtrar todos os pedidos ativos vinculados a esta mesa
+  const isBalcaoVirtual = table.id === 'BALCAO_VIRTUAL' || table.number === 0
+
+  // Filtrar todos os pedidos ativos vinculados a esta mesa ou balcão
   const tableOrders = orders.filter((o) => {
-    const oTable = o.tableNumber ? String(o.tableNumber).replace(/^Mesa\s*/i, '').trim() : ''
-    const isMatch = oTable === String(table.number)
-    const isActive = o.status !== 'CANCELLED' && o.status !== 'REFUNDED'
+    const rawTable = o.tableNumber ? String(o.tableNumber).trim() : ''
+    const isMatch = isBalcaoVirtual
+      ? rawTable.toLowerCase() === 'balcão' ||
+        rawTable.toLowerCase() === 'balcao' ||
+        (!o.isTableOrder && !rawTable)
+      : rawTable.replace(/^Mesa\s*/i, '').trim() === String(table.number)
+    const isActive = isBalcaoVirtual
+      ? o.status === 'NEW' ||
+        o.status === 'PREPARING' ||
+        o.status === 'READY' ||
+        o.status === 'OPEN' ||
+        o.status === 'AWAITING_PAYMENT'
+      : o.status !== 'CANCELLED' && o.status !== 'REFUNDED'
     return isMatch && isActive
   })
 
